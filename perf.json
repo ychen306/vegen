@@ -1,0 +1,4906 @@
+perf_js = {
+	"FXSR":{
+		"FXSAVE":{
+			"":[
+				{"Skylake":{l:"",t:"~90",}},
+				{"Broadwell":{l:"",t:"~71",}},
+				{"Haswell":{l:"",t:"~75",}},
+				{"Ivy Bridge":{l:"",t:"~78",}},
+			]
+		}
+	},
+	"SSE4.1":{
+		"INSERTPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PINSRW":{
+			"xmm, r32, imm":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PMOVSXDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"BLENDVPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PCMPEQQ":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"ROUNDPD":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"ROUNDPS":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"BLENDVPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PTEST":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PEXTRB":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PMOVZXWD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMOVZXBD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PHMINPOSUW":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"DPPS":{
+			"":[
+				{"Skylake":{l:"13",t:"2",}},
+				{"Broadwell":{l:"12",t:"2",}},
+				{"Haswell":{l:"14",t:"2",}},
+				{"Ivy Bridge":{l:"13",t:"2",}},
+			]
+		},
+		"PEXTRD":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PMINUD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PBLENVB":{
+			"":[
+				{"Skylake":{l:"2",t:"2",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PMOVSXBD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMOVSXWQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMAXSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PBLENDW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PACKUSDW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PINSRB":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PINSRD":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"BLENDPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMINUW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMAXUW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMOVSXBW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"ROUNDSS":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"DPPD":{
+			"":[
+				{"Skylake":{l:"9",t:"1",}},
+				{"Broadwell":{l:"7",t:"1",}},
+				{"Haswell":{l:"9",t:"1",}},
+				{"Ivy Bridge":{l:"9",t:"1",}},
+			]
+		},
+		"PMOVSXWD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMINSD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMOVZXDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMOVZXWQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MPSADBW":{
+			"":[
+				{"Skylake":{l:"4",t:"2",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+				{"Ivy Bridge":{l:"6",t:"1",}},
+			]
+		},
+		"BLENDPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"ROUNDSD":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PMOVZXBQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMINSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMAXUD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMOVSXBQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMAXSD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PEXTRW":{
+			"r32, xmm, imm":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PMULDQ":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"EXTRACTPS":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PMULLD":{
+			"":[
+				{"Skylake":{l:"10",t:"2",}},
+				{"Broadwell":{l:"10",t:"2",}},
+				{"Haswell":{l:"10",t:"2",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PMOVZXBW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		}
+	},
+	"FMA":{
+		"VFNMADD231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUBADD132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADDSUB213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMSUB231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUBADD231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADDSUB132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUBADD231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADDSUB231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUBADD132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUBADD213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADDSUB231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADDSUB213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUB132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFNMADD132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADDSUB132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMSUBADD213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		},
+		"VFMADD132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+			]
+		}
+	},
+	"SSE":{
+		"MOVHLPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"RCPPS":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"DIVPS":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"11",t:"3",}},
+				{"Broadwell":{l:"<11",t:"4",}},
+				{"Haswell":{l:"<13",t:"6",}},
+				{"Ivy Bridge":{l:"14-Nov",t:"6",}},
+			]
+		},
+		"ANDPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"CVTSI2SS":{
+			"":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"MOVAPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MOVMSKPS":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"SUBPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"CVTSS2SI":{
+			"r64, xmm":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			],
+			"r32, xmm":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"SQRTPS":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"13",t:"3",}},
+				{"Broadwell":{l:"13",t:"7",}},
+				{"Haswell":{l:"13",t:"7",}},
+				{"Ivy Bridge":{l:"14",t:"7",}},
+			]
+		},
+		"UNPCKLPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MULPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"RSQRTPS":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"SHUFPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MOVLHPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"UNPCKHPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MAXPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"SQRTSS":{
+			"":[
+				{"Knights Landing":{l:"25",t:"~20",}},
+				{"Skylake":{l:"13",t:"3",}},
+				{"Broadwell":{l:"13",t:"4",}},
+				{"Haswell":{l:"13",t:"7",}},
+				{"Ivy Bridge":{l:"14",t:"7",}},
+			]
+		},
+		"CVTTSS2SI":{
+			"r32, xmm":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			],
+			"r64, xmm":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"UCOMISS":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"SUBSS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"ADDPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"ADDSS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"CMPSS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"ANDNPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MINSS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"COMISS":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"CMPPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"XORPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MULSS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"DIVSS":{
+			"":[
+				{"Knights Landing":{l:"25",t:"~20",}},
+				{"Skylake":{l:"11",t:"3",}},
+				{"Broadwell":{l:"<11",t:"2.5",}},
+				{"Haswell":{l:"<13",t:"6",}},
+				{"Ivy Bridge":{l:"14-Nov",t:"6",}},
+			]
+		},
+		"ORPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"STMXCSR":{
+			"":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"1",}},
+				{"Haswell":{l:"",t:"1",}},
+				{"Ivy Bridge":{l:"",t:"1",}},
+			]
+		},
+		"SFENCE":{
+			"":[
+				{"Skylake":{l:"",t:"7",}},
+				{"Broadwell":{l:"",t:"6",}},
+				{"Haswell":{l:"",t:"6",}},
+				{"Ivy Bridge":{l:"",t:"5",}},
+			]
+		},
+		"MINPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"MOVUPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MAXSS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"RCPSS":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"MOVSS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"RSQRTSS":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		}
+	},
+	"FP16C":{
+		"VCVTPS2PH":{
+			"xmm, ymm, imm":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"9",t:"1",}},
+			],
+			"ymm, xmm, imm":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"6",t:"1",}},
+				{"Haswell":{l:"6",t:"1",}},
+				{"Ivy Bridge":{l:"10",t:"1",}},
+			]
+		},
+		"VCVTPH2PS":{
+			"xmm, xmm":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"6",t:"1",}},
+			],
+			"ymm, xmm":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"6",t:"1",}},
+				{"Haswell":{l:"6",t:"1",}},
+				{"Ivy Bridge":{l:"7",t:"1",}},
+			]
+		}
+	},
+	"AVX512F":{
+		"VCVTPD2DQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUBADD231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMULPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTUDQ2PS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPD2PS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTPD2UDQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSQRTSD":{
+			"":[
+				{"Knights Landing":{l:"40",t:"~33",}},
+			]
+		},
+		"VCOMISD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTSS2USI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADDSUB231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADDSUB213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTSD2SI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADDSUB132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VADDSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VDIVPS":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"17",t:"10",}},
+			]
+		},
+		"VFMSUB231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPH2PS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSQRTPD":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"31",t:"24",}},
+			]
+		},
+		"KXORW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VFMADD231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRSQRT14PD":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+			]
+		},
+		"KNOTW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VCOMISS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VPMULDQ":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		},
+		"VFMSUB231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMAXPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTSS2SI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPS2PD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSUBSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTPS2UDQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTSD2USI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"KXNORW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VFNMSUB213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTUSI2SS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSCALEFPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSQRTSS":{
+			"":[
+				{"Knights Landing":{l:"25",t:"~20",}},
+			]
+		},
+		"VFMADD213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTPD2DQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPS2UDQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRNDSCALEPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMULSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTUDQ2PD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMULPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUBADD213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTSS2SI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSCALEFSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSCALEFSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMINPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"KORTESTW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VRNDSCALESS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTSD2SI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETEXPPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETEXPSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETMANTPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMINSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCMPPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFIXUPIMMPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD213SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"KANDNW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VFIXUPIMMSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTSS2SD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADDSUB213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCMPSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"KMOVW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VFMADD132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VADDPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADDSUB132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUBADD213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD231SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUBADD132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFIXUPIMMPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPS2DQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSQRTPS":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"19",t:"12",}},
+			]
+		},
+		"VFMSUB132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VDIVSS":{
+			"":[
+				{"Knights Landing":{l:"25",t:"~20",}},
+			]
+		},
+		"VFIXUPIMMSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMAXSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMAXSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSUBPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMAXPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPS2PH":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTPS2DQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRNDSCALEPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETEXPSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCMPSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTDQ2PD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETEXPPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"KORW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VFNMSUB213PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VPMULUDQ":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		},
+		"VCVTSI2SS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUBADD231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADDSUB231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPD2UDQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VDIVSD":{
+			"":[
+				{"Knights Landing":{l:"40",t:"~33",}},
+			]
+		},
+		"VFNMADD231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTDQ2PS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSCALEFPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTSI2SD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"KUNPCKBW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VFNMSUB132SD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTSD2USI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMULSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMINSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMADD132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETMANTSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCMPPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSUBPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETMANTSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTUSI2SD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMADD231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VMINPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB213PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTSS2USI":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB132PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRNDSCALESD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTSD2SS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB231SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VADDSS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFNMSUB231PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VADDPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VGETMANTPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB213SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"KANDW":{
+			"":[
+				{"Knights Landing":{l:"2",t:"0.5",}},
+			]
+		},
+		"VFMSUBADD132PD":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VFMSUB231PS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VDIVPD":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"23",t:"16",}},
+			]
+		},
+		"VFNMSUB132SS":{
+			"":[
+				{"Knights Landing":{l:"6",t:"0.5",}},
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VSUBSD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		}
+	},
+	"SSE3":{
+		"ADDSUBPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"MOVSLDUP":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MOVSHDUP":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MOVDDUP":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"HADDPD":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"5",t:"2",}},
+				{"Haswell":{l:"5",t:"2",}},
+				{"Ivy Bridge":{l:"5",t:"2",}},
+			]
+		},
+		"HSUBPD":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"5",t:"2",}},
+				{"Haswell":{l:"5",t:"2",}},
+				{"Ivy Bridge":{l:"5",t:"2",}},
+			]
+		},
+		"HADDPS":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"5",t:"2",}},
+				{"Haswell":{l:"5",t:"2",}},
+				{"Ivy Bridge":{l:"5",t:"2",}},
+			]
+		},
+		"ADDSUBPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"HSUBPS":{
+			"":[
+				{"Skylake":{l:"6",t:"2",}},
+				{"Broadwell":{l:"5",t:"2",}},
+				{"Haswell":{l:"5",t:"2",}},
+				{"Ivy Bridge":{l:"5",t:"2",}},
+			]
+		}
+	},
+	"POPCNT":{
+		"POPCNT":{
+			"r64, r64":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			],
+			"r32, r32":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		}
+	},
+	"BMI1":{
+		"BLSI":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"BLSMSK":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"ANDN":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"BEXTR":{
+			"":[
+				{"Skylake":{l:"2",t:"0.5",}},
+				{"Broadwell":{l:"2",t:"0.5",}},
+				{"Haswell":{l:"2",t:"0.5",}},
+			]
+		},
+		"TZCNT":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"BLSR":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		}
+	},
+	"AVX512ER":{
+		"VRCP28PD":{
+			"":[
+				{"Knights Landing":{l:"7",t:"2",}},
+			]
+		},
+		"VEXP2PS":{
+			"":[
+				{"Knights Landing":{l:"8",t:"3",}},
+			]
+		},
+		"VRCP28PS":{
+			"":[
+				{"Knights Landing":{l:"8",t:"3",}},
+			]
+		},
+		"VEXP2PD":{
+			"":[
+				{"Knights Landing":{l:"7",t:"2",}},
+			]
+		},
+		"VRSQRT28SD":{
+			"":[
+				{"Knights Landing":{l:"7",t:"2",}},
+			]
+		},
+		"VRSQRT28SS":{
+			"":[
+				{"Knights Landing":{l:"8",t:"3",}},
+			]
+		},
+		"VRSQRT28PD":{
+			"":[
+				{"Knights Landing":{l:"7",t:"2",}},
+			]
+		},
+		"VRSQRT28PS":{
+			"":[
+				{"Knights Landing":{l:"8",t:"3",}},
+			]
+		},
+		"VRCP28SS":{
+			"":[
+				{"Knights Landing":{l:"8",t:"3",}},
+			]
+		},
+		"VRCP28SD":{
+			"":[
+				{"Knights Landing":{l:"7",t:"2",}},
+			]
+		}
+	},
+	"RDSEED":{
+		"RESEED":{
+			"":[
+				{"Skylake":{l:"Varies",t:"<300",}},
+				{"Broadwell":{l:"Varies",t:"~250",}},
+			]
+		}
+	},
+	"AVX2":{
+		"VPSHUFLW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSIGND":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPMOVSX":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPXOR":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+			]
+		},
+		"VPERMPD":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPHADDSW":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+			]
+		},
+		"VPADDW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPUNPCKLDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPCMPEQQ":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPADDUSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPSLLQ":{
+			"ymm, ymm, xmm":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+			],
+			"ymm, ymm, imm":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSRAD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSLLW":{
+			"ymm, ymm, xmm":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+			],
+			"ymm, ymm, imm":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPUNPCKLWD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSLLDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSIGNQ":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VEXTRACTI128":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPAVGB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPMULHRSW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPBROADCASTB":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPERMPS":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPMASKMOVQ":{
+			"ymm, ymm, m256":[
+				{"Skylake":{l:"11",t:"1",}},
+				{"Broadwell":{l:"8",t:"2",}},
+				{"Haswell":{l:"8",t:"2",}},
+			],
+			"m256, ymm, ymm":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"2",}},
+				{"Haswell":{l:"",t:"2",}},
+			]
+		},
+		"VPBLENDW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPMAXSD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPMULDQ":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPCMPEQW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPACKUSDW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPMADDWD":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPALIGNR":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSHUFB":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPCMPEQB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPGATHERQQ":{
+			"xmm, vm64x, xmm":[
+				{"Skylake":{l:"~18",t:"~3",}},
+				{"Broadwell":{l:"~15",t:"~4",}},
+				{"Haswell":{l:"~12",t:"~5",}},
+			],
+			"ymm, vm64x, ymm":[
+				{"Skylake":{l:"~20",t:"~4",}},
+				{"Broadwell":{l:"~16",t:"~5",}},
+				{"Haswell":{l:"~15",t:"~7",}},
+			]
+		},
+		"VPUNPCKHBW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VMPSADBW":{
+			"":[
+				{"Skylake":{l:"4",t:"2",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+			]
+		},
+		"VPBLENDVB":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+			]
+		},
+		"VPMULHW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPUNPCKHDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPADDB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPBLENDD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+			]
+		},
+		"VPBROADCASTSD":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPADDD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPUNPCKHQDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPCMPGTQ":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPSIGNW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPUNPCKLBW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPUNPCKLQDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSHUFHW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPMULUDQ":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPGATHERDD":{
+			"xmm, vm32x, xmm":[
+				{"Skylake":{l:"~20",t:"~4",}},
+				{"Broadwell":{l:"~17",t:"~5",}},
+				{"Haswell":{l:"~14",t:"~7",}},
+			],
+			"ymm, vm32x, ymm":[
+				{"Skylake":{l:"~22",t:"~5",}},
+				{"Broadwell":{l:"~19",t:"~6",}},
+				{"Haswell":{l:"~20",t:"~10",}},
+			]
+		},
+		"VPMASKMOVD":{
+			"ymm, ymm, m256":[
+				{"Skylake":{l:"11",t:"1",}},
+				{"Broadwell":{l:"8",t:"2",}},
+				{"Haswell":{l:"8",t:"2",}},
+			],
+			"m256, ymm, ymm":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"2",}},
+				{"Haswell":{l:"",t:"2",}},
+			]
+		},
+		"VPSIGNB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPHADDD":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+			]
+		},
+		"VPMADDUBSW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPSLLVQ":{
+			"":[
+				{"Skylake":{l:"2",t:"0.5",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+			]
+		},
+		"VPADDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPMOVZX":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPSLLD":{
+			"ymm, ymm, xmm":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+			],
+			"ymm, ymm, imm":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPADDSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPHADDW":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+			]
+		},
+		"VPACKSSWB":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPMAXUD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VINSERTI128":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPCMPEQD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"VPOR":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+			]
+		},
+		"VPUNPCKHWD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPBROADCASTSS":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPSRAW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPBROADCASTD":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"VPSHUFD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+			]
+		},
+		"VPSADBW":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		},
+		"VPSLLVD":{
+			"":[
+				{"Skylake":{l:"2",t:"0.5",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+			]
+		},
+		"VPMULLD":{
+			"":[
+				{"Skylake":{l:"10",t:"1",}},
+				{"Broadwell":{l:"10",t:"2",}},
+				{"Haswell":{l:"10",t:"2",}},
+			]
+		},
+		"VPSRAVD":{
+			"":[
+				{"Skylake":{l:"2",t:"0.5",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+			]
+		},
+		"VPMULLW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+			]
+		}
+	},
+	"SSSE3":{
+		"PHADDSW":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1.5",}},
+			]
+		},
+		"PHSUBW":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1.5",}},
+			]
+		},
+		"PHSUBSW":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1.5",}},
+			]
+		},
+		"PMULHRSW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PHSUBD":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1.5",}},
+			]
+		},
+		"PMADDUBSW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PHADDW":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1.5",}},
+			]
+		},
+		"PSIGND":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PALIGNR":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PHADDD":{
+			"":[
+				{"Skylake":{l:"3",t:"2",}},
+				{"Broadwell":{l:"3",t:"2",}},
+				{"Haswell":{l:"3",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1.5",}},
+			]
+		},
+		"PABSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSHUFB":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSIGNB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PABSD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSIGNW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PABSW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		}
+	},
+	"AES":{
+		"AESDEC":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"7",t:"1",}},
+				{"Haswell":{l:"7",t:"1",}},
+				{"Ivy Bridge":{l:"8",t:"1",}},
+			]
+		},
+		"AESENC":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"7",t:"1",}},
+				{"Haswell":{l:"7",t:"1",}},
+				{"Ivy Bridge":{l:"8",t:"1",}},
+			]
+		},
+		"AESKEYGENASSIST":{
+			"":[
+				{"Skylake":{l:"12",t:"12",}},
+				{"Broadwell":{l:"10",t:"8",}},
+				{"Haswell":{l:"10",t:"8",}},
+				{"Ivy Bridge":{l:"10",t:"8",}},
+			]
+		},
+		"AESENCLAST":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"7",t:"1",}},
+				{"Haswell":{l:"7",t:"1",}},
+				{"Ivy Bridge":{l:"8",t:"1",}},
+			]
+		},
+		"AESDECLAST":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"7",t:"1",}},
+				{"Haswell":{l:"7",t:"1",}},
+				{"Ivy Bridge":{l:"8",t:"1",}},
+			]
+		},
+		"AESIMC":{
+			"":[
+				{"Skylake":{l:"8",t:"2",}},
+				{"Broadwell":{l:"14",t:"2",}},
+				{"Haswell":{l:"14",t:"2",}},
+				{"Ivy Bridge":{l:"14",t:"2",}},
+			]
+		}
+	},
+	"PCLMULQDQ":{
+		"PCLMULQDQ":{
+			"":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"7",t:"2",}},
+				{"Ivy Bridge":{l:"14",t:"8",}},
+			]
+		}
+	},
+	"AVX512DQ":{
+		"VCVTTPD2UQQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRANGEPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPS2UQQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPD2QQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRANGEPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTPS2UQQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTQQ2PS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTUQQ2PD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VREDUCESD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTQQ2PD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRANGESD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPD2UQQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTPS2QQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTPD2QQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTUQQ2PS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VREDUCEPS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VREDUCESS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VCVTTPS2QQ":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VRANGESS":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		},
+		"VREDUCEPD":{
+			"":[
+				{"Skylake":{l:"4-6",t:"",}},
+			]
+		}
+	},
+	"BMI2":{
+		"MULX":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+			]
+		},
+		"PDEP":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"BZHI":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"SARX":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"PEXT":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		},
+		"SHLX":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"RORX":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		},
+		"SALX":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+			]
+		}
+	},
+	"AVX512BW":{
+		"VPMULLW":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		},
+		"VPMADDUBSW":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		},
+		"VPMADDWD":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		},
+		"VPMULHW":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		},
+		"VPMULHUW":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		},
+		"VPMULHRSW":{
+			"":[
+				{"Skylake":{l:"5-7",t:"",}},
+			]
+		}
+	},
+	"AVX":{
+		"VMOVMSKPD":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VBLENDPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"VMOVSLDUP":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VMOVAPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VCVTTPD2DQ":{
+			"":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"6",t:"1",}},
+				{"Haswell":{l:"6",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"VANDNPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VMOVNTDQ":{
+			"":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"1",}},
+				{"Haswell":{l:"",t:"1",}},
+				{"Ivy Bridge":{l:"",t:"1",}},
+			]
+		},
+		"VMOVD":{
+			"xmm, r32/r64":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			],
+			"r32/r64, xmm":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VCVTDQ2PS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VXORPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VRCPPS":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"7",t:"2",}},
+				{"Haswell":{l:"7",t:"2",}},
+				{"Ivy Bridge":{l:"7",t:"2",}},
+			]
+		},
+		"VMASKMOVPS":{
+			"m256, ymm, ymm":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"2",}},
+				{"Haswell":{l:"",t:"2",}},
+				{"Ivy Bridge":{l:"",t:"2",}},
+			],
+			"ymm, ymm, m256":[
+				{"Skylake":{l:"11",t:"1",}},
+				{"Broadwell":{l:"8",t:"2",}},
+				{"Haswell":{l:"8",t:"2",}},
+				{"Ivy Bridge":{l:"8",t:"2",}},
+			]
+		},
+		"VSHUFPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VMULPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"VMOVNTPS":{
+			"":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"1",}},
+				{"Haswell":{l:"",t:"1",}},
+				{"Ivy Bridge":{l:"",t:"1",}},
+			]
+		},
+		"VMOVDDUP":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VEXTRACTPS":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"VROUNDPS":{
+			"":[
+				{"Skylake":{l:"8",t:"1",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VMINPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VMINPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VCMPPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VSUBPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VANDPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VDIVPD":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"14",t:"8",}},
+				{"Broadwell":{l:"16-23",t:"16",}},
+				{"Haswell":{l:"25-35",t:"27",}},
+				{"Ivy Bridge":{l:"27-35",t:"28",}},
+			]
+		},
+		"VMOVAPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VCMPPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VMOVMSKPS":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VADDPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VINSERTF128":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VZEROALL":{
+			"":[
+				{"Skylake":{l:"",t:"12",}},
+				{"Broadwell":{l:"",t:"8",}},
+				{"Haswell":{l:"",t:"8",}},
+				{"Ivy Bridge":{l:"",t:"9",}},
+			]
+		},
+		"VMOVNTPD":{
+			"":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"1",}},
+				{"Haswell":{l:"",t:"1",}},
+				{"Ivy Bridge":{l:"",t:"1",}},
+			]
+		},
+		"VEXTRACTF128":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VANDNPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VCVTPD2PS":{
+			"":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"6",t:"1",}},
+				{"Haswell":{l:"6",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"VUNPCKHPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VADDSUBPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VADDPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VMULPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"VMOVSHDUP":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VUNPCKLPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VCVTPD2DQ":{
+			"":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"6",t:"1",}},
+				{"Haswell":{l:"6",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"VCVTPS2DQ":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VMOVUPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VDPPS":{
+			"":[
+				{"Skylake":{l:"13",t:"1.5",}},
+				{"Broadwell":{l:"12",t:"2",}},
+				{"Haswell":{l:"14",t:"2",}},
+				{"Ivy Bridge":{l:"12",t:"2",}},
+			]
+		},
+		"VTESTPS":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"VMOVDQA":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.25",}},
+				{"Haswell":{l:"1",t:"0.25",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"VUNPCKHPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VANDPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VPERM2F128":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"VPERMILPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VMASKMOVPD":{
+			"ymm, ymm, m256":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"2",}},
+				{"Haswell":{l:"",t:"2",}},
+				{"Ivy Bridge":{l:"",t:"2",}},
+			],
+			"m256, ymm, ymm":[
+				{"Skylake":{l:"",t:"1",}},
+				{"Broadwell":{l:"",t:"2",}},
+				{"Haswell":{l:"",t:"2",}},
+				{"Ivy Bridge":{l:"",t:"2",}},
+			]
+		},
+		"VINSERTPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VBLENDVPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VSHUFPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VSQRTPS":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"12",t:"<6",}},
+				{"Broadwell":{l:"18-21",t:"13",}},
+				{"Haswell":{l:"18-21",t:"13",}},
+				{"Ivy Bridge":{l:"18-21",t:"14",}},
+			]
+		},
+		"VSQRTPD":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"<18",t:"<12",}},
+				{"Broadwell":{l:"19-35",t:"16-27",}},
+				{"Haswell":{l:"19-35",t:"16-27",}},
+				{"Ivy Bridge":{l:"19-35",t:"28",}},
+			]
+		},
+		"VROUNDPD":{
+			"":[
+				{"Skylake":{l:"8",t:"1",}},
+				{"Broadwell":{l:"6",t:"2",}},
+				{"Haswell":{l:"6",t:"2",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VMOVUPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VMOVQ":{
+			"r32/r64, xmm":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			],
+			"xmm, xmm":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.33",}},
+			],
+			"xmm, r32/r64":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VDIVPS":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"11",t:"5",}},
+				{"Broadwell":{l:"13-17",t:"10",}},
+				{"Haswell":{l:"17-21",t:"13",}},
+				{"Ivy Bridge":{l:"18-21",t:"14",}},
+			]
+		},
+		"VORPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VZEROUPPER":{
+			"":[
+				{"Skylake":{l:"0",t:"1",}},
+				{"Broadwell":{l:"0",t:"1",}},
+				{"Haswell":{l:"0",t:"1",}},
+				{"Ivy Bridge":{l:"0",t:"1",}},
+			]
+		},
+		"VCVTPS2PD":{
+			"":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"VORPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VCVTDQ2PD":{
+			"":[
+				{"Skylake":{l:"7",t:"1",}},
+				{"Broadwell":{l:"6",t:"1",}},
+				{"Haswell":{l:"6",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"VBLENDPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"VCVTTPS2DQ":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VUNPCKLPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VMOVDQU":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.25",}},
+				{"Haswell":{l:"1",t:"0.25",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"VMAXPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VMAXPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VBLENDVPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VADDSUBPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VXORPS":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VPERMILPS":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"VSUBPS":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"VRSQRTPS":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"7",t:"2",}},
+				{"Haswell":{l:"7",t:"2",}},
+				{"Ivy Bridge":{l:"7",t:"2",}},
+			]
+		}
+	},
+	"SSE4.2":{
+		"PCMPISTRM":{
+			"":[
+				{"Skylake":{l:"15",t:"3",}},
+				{"Broadwell":{l:"11",t:"3",}},
+				{"Haswell":{l:"11",t:"3",}},
+				{"Ivy Bridge":{l:"11",t:"3",}},
+			]
+		},
+		"PCMPGTQ":{
+			"":[
+				{"Skylake":{l:"3",t:"0.33",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"CRC32":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PCMPESTRI":{
+			"":[
+				{"Skylake":{l:"15",t:"5",}},
+				{"Broadwell":{l:"10",t:"4",}},
+				{"Haswell":{l:"10",t:"4",}},
+				{"Ivy Bridge":{l:"11",t:"4",}},
+			]
+		},
+		"PCMPESTRM":{
+			"":[
+				{"Skylake":{l:"10",t:"6",}},
+				{"Broadwell":{l:"10",t:"5",}},
+				{"Haswell":{l:"10",t:"5",}},
+				{"Ivy Bridge":{l:"11",t:"4",}},
+			]
+		},
+		"PCMPISTRI":{
+			"":[
+				{"Skylake":{l:"15",t:"3",}},
+				{"Broadwell":{l:"10",t:"3",}},
+				{"Haswell":{l:"10",t:"3",}},
+				{"Ivy Bridge":{l:"11",t:"3",}},
+			]
+		}
+	},
+	"SSE2":{
+		"ORPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PMADDWD":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PSHUFD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PCMPGTD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"CVTDQ2PD":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"PSLLD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MULSD":{
+			"":[
+				{"Skylake":{l:"3",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"SQRTPD":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"18",t:"6",}},
+				{"Broadwell":{l:"20",t:"13",}},
+				{"Haswell":{l:"20",t:"13",}},
+				{"Ivy Bridge":{l:"21",t:"14",}},
+			]
+		},
+		"PSRAD":{
+			"xmm, xmm":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			],
+			"xmm, imm":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"CVTDQ2PS":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PMULHW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PSUBUSW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MOVUPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"ADDPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PSRLDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PAVGB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSRAW":{
+			"xmm, imm":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			],
+			"xmm, xmm":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PUNPCKLQDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSUBSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"CVTPS2DQ":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"COMISD":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"CVTPD2PS":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"CVTPS2PD":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"MULPD":{
+			"":[
+				{"Skylake":{l:"3",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"0.5",}},
+				{"Haswell":{l:"5",t:"0.5",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PSHUFLW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PINSRW":{
+			"xmm, r32, imm":[
+				{"Skylake":{l:"2",t:"2",}},
+				{"Broadwell":{l:"2",t:"2",}},
+				{"Haswell":{l:"2",t:"2",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PADDB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"CVTSD2SS":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"PADDD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MOVAPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PXOR":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.33",}},
+			]
+		},
+		"PACKSSWB":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"SQRTSD":{
+			"":[
+				{"Knights Landing":{l:"40",t:"~33",}},
+				{"Skylake":{l:"18",t:"6",}},
+				{"Broadwell":{l:"20",t:"7",}},
+				{"Haswell":{l:"20",t:"13",}},
+				{"Ivy Bridge":{l:"21",t:"14",}},
+			]
+		},
+		"MOVDQU":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PCMPGTB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PEXTRW":{
+			"r32, xmm, imm":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"SUBSD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PADDUSW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PACKSSDW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSLLDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"POR":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.33",}},
+			]
+		},
+		"PUNPCKHWD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PCMPEQW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PUNPCKLDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"SUBPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PUNPCKLWD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MOVQ":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.33",}},
+			]
+		},
+		"PSADBW":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PSUBUSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PUNPCKHQDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MOVSD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PSUBD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PUNPCKHDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSRLW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PSHUFHW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PCMPGTW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMIN":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMOVMSKB3":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"PAVGW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSRL":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"MAXPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PSUBSW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MASKMOVDQU":{
+			"xmm, xmm":[
+				{"Skylake":{l:"",t:"7",}},
+				{"Broadwell":{l:"",t:"6",}},
+				{"Haswell":{l:"",t:"6",}},
+				{"Ivy Bridge":{l:"",t:"6",}},
+			]
+		},
+		"MOVMSKPD":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"CVTPD2DQ":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"CMPPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"MFENCE":{
+			"":[
+				{"Skylake":{l:"",t:"~40",}},
+				{"Broadwell":{l:"",t:"~35",}},
+				{"Haswell":{l:"",t:"~35",}},
+				{"Ivy Bridge":{l:"",t:"~35",}},
+			]
+		},
+		"PCMPEQB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MINSD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"ADDSD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PMULUDQ":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"DIVPD":{
+			"":[
+				{"Knights Landing":{l:"38",t:"~10",}},
+				{"Skylake":{l:"14",t:"4",}},
+				{"Broadwell":{l:"<14",t:"8",}},
+				{"Haswell":{l:"14-20",t:"13",}},
+				{"Ivy Bridge":{l:"15-20",t:"14",}},
+			]
+		},
+		"MOVDQA":{
+			"":[
+				{"Skylake":{l:"1",t:"0.25",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"CVTSD2SI":{
+			"":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PADDSW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PUNPCKLBW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"LFENCE":{
+			"":[
+				{"Skylake":{l:"",t:"6",}},
+				{"Broadwell":{l:"",t:"5",}},
+				{"Haswell":{l:"",t:"5",}},
+				{"Ivy Bridge":{l:"",t:"4",}},
+			]
+		},
+		"PSRLQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PSRLD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"CVTSI2SD":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"ANDPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PANDN":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.33",}},
+			]
+		},
+		"PADDUSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSLLW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PMULHUW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"CVTTSD2SI":{
+			"r64, xmm":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			],
+			"r32, xmm":[
+				{"Skylake":{l:"6",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"CVTTPD2DQ":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"4",t:"1",}},
+				{"Haswell":{l:"4",t:"1",}},
+				{"Ivy Bridge":{l:"4",t:"1",}},
+			]
+		},
+		"PUNPCKHBW":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"UNPCKHPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PACKUSWB":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"ANDNPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MINPD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"XORPD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"DIVSD":{
+			"":[
+				{"Knights Landing":{l:"40",t:"~33",}},
+				{"Skylake":{l:"14",t:"4",}},
+				{"Broadwell":{l:"<14",t:"5",}},
+				{"Haswell":{l:"14-20",t:"13",}},
+				{"Ivy Bridge":{l:"15-20",t:"14",}},
+			]
+		},
+		"CMPSD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"PADDSB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSUBB":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"MOVD":{
+			"xmm, r32":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			],
+			"r64, xmm":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			],
+			"xmm, r64":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			],
+			"r32, xmm":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"MAXSD":{
+			"":[
+				{"Skylake":{l:"4",t:"0.5",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"UCOMISD":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"UNPCKLPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PSUBW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PMULLW":{
+			"":[
+				{"Skylake":{l:"5",t:"0.5",}},
+				{"Broadwell":{l:"5",t:"1",}},
+				{"Haswell":{l:"5",t:"1",}},
+				{"Ivy Bridge":{l:"5",t:"1",}},
+			]
+		},
+		"PMAX":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PCMPEQD":{
+			"":[
+				{"Skylake":{l:"1",t:"0.5",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"SHUFPD":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PSLLQ":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+				{"Haswell":{l:"1",t:"1",}},
+				{"Ivy Bridge":{l:"1",t:"1",}},
+			]
+		},
+		"PADDW":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PADDQ":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PSUBQ3":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.5",}},
+				{"Haswell":{l:"1",t:"0.5",}},
+				{"Ivy Bridge":{l:"1",t:"0.5",}},
+			]
+		},
+		"PAND":{
+			"":[
+				{"Skylake":{l:"1",t:"0.33",}},
+				{"Broadwell":{l:"1",t:"0.33",}},
+				{"Haswell":{l:"1",t:"0.33",}},
+				{"Ivy Bridge":{l:"1",t:"0.33",}},
+			]
+		},
+		"PSLL":{
+			"":[
+				{"Skylake":{l:"2",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		},
+		"CVTTPS2DQ":{
+			"":[
+				{"Skylake":{l:"4",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+				{"Ivy Bridge":{l:"3",t:"1",}},
+			]
+		},
+		"CVTSS2SD":{
+			"":[
+				{"Skylake":{l:"5",t:"1",}},
+				{"Broadwell":{l:"2",t:"1",}},
+				{"Haswell":{l:"2",t:"1",}},
+				{"Ivy Bridge":{l:"2",t:"1",}},
+			]
+		}
+	},
+	"RDRAND":{
+		"RDRAND":{
+			"":[
+				{"Skylake":{l:"Varies",t:"<300",}},
+				{"Broadwell":{l:"Varies",t:"~250",}},
+				{"Haswell":{l:"Varies",t:"~250",}},
+				{"Ivy Bridge":{l:"<200",t:"<200",}},
+			]
+		}
+	},
+	"ADX":{
+		"ADOX":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+			]
+		},
+		"ADCX":{
+			"":[
+				{"Skylake":{l:"1",t:"1",}},
+				{"Broadwell":{l:"1",t:"1",}},
+			]
+		}
+	},
+	"LZCNT":{
+		"LZCNT":{
+			"":[
+				{"Skylake":{l:"3",t:"1",}},
+				{"Broadwell":{l:"3",t:"1",}},
+				{"Haswell":{l:"3",t:"1",}},
+			]
+		}
+	}
+}
