@@ -9,43 +9,7 @@ import bisect
 import functools
 import operator
 import math
-
-# "IR"
-Instruction = namedtuple('Instruction', ['op', 'bitwidth', 'args'])
-Constant = namedtuple('Constant', ['value', 'bitwidth'])
-
-class DynamicSlice:
-  def __init__(self, base, idx, stride):
-    self.base = base
-    self.idx = idx
-    self.stride = stride
-    self.bitwidth = stride
-    self.hash_key = base, idx, stride
-
-  def __hash__(self):
-    return hash(self.hash_key)
-
-  def __eq__(self, other):
-    return self.hash_key == other.hash_key
-
-  def __repr__(self):
-    return f'choose<{self.stride}>({self.base}).at({self.idx})'
-
-class Mux:
-  def __init__(self, ctrl, keys, values, bitwidth):
-    self.ctrl = ctrl
-    self.kv_pairs = tuple(sorted(zip(keys, values)))
-    self.bitwidth = bitwidth
-
-  def __hash__(self):
-    return hash(self.kv_pairs)
-
-  def __eq__(self, other):
-    return self.kv_pairs == other.kv_pairs
-
-  def __repr__(self):
-    mapping = ', '.join(f'{k} -> {v}' for k, v in self.kv_pairs)
-    return f'Mux[{self.ctrl}]({mapping})'
+from ir import *
 
 def trunc(x, size):
   return Instruction(op='Trunc', bitwidth=size, args=[x])
@@ -172,6 +136,10 @@ def match_dynamic_slice(f):
   offset = trunc_zero(offset)
   if not z3.is_app_of(offset, z3.Z3_OP_BMUL):
     return None
+  if not z3.is_app_of(base, z3.Z3_OP_UNINTERPRETED):
+    return None
+  if len(base.children()) != 0:
+    return None
 
   stride, idx = offset.children()
   idx = trunc_zero(idx)
@@ -181,8 +149,7 @@ def match_dynamic_slice(f):
   if stride.as_long() != hi + 1:
     return None
 
-  return DynamicSlice(base=base, idx=idx, stride=stride.as_long())
-  
+  return base, idx, stride.as_long()
 
 def elim_dead_branches(f):
   '''
@@ -298,46 +265,6 @@ def reduce_bitwidth(f):
       return z3.simplify(z3.ZeroExt(f.size()-f_reduced.size(), f_reduced))
 
   return reduce_bitwidth_rec(f)
-
-class Slice:
-  def __init__(self, base, lo, hi):
-    '''
-    lo is inclusive and hi is exclusive
-    '''
-    self.base = base
-    self.lo = lo
-    self.hi = hi
-    self.hash_key = base, lo, hi
-
-  def __hash__(self):
-    return hash(self.hash_key)
-
-  def __eq__(self, other):
-    return self.hash_key == other.hash_key
-
-  def overlaps(self, other):
-    return (
-        self.base == other.base and
-        self.size() + other.size() > self.union(other).size())
-
-  def union(self, other):
-    assert self.base == other.base
-    lo = min(self.lo, other.lo)
-    hi = max(self.hi, other.hi)
-    return Slice(self.base, lo, hi)
-
-  def size(self):
-    return self.hi - self.lo
-
-  @property
-  def bitwidth(self):
-    return self.size()
-
-  def to_z3(self):
-    return z3.Extract(self.hi-1, self.lo, self.base)
-
-  def __repr__(self):
-    return f'{self.base}[{self.lo}:{self.hi}]'
 
 def typecheck(dag):
   '''
@@ -704,12 +631,11 @@ class Translator:
 
     s = match_dynamic_slice(ext)
     if s is not None:
-      assert (z3.is_app_of(s.idx, z3.Z3_OP_UNINTERPRETED) and 
-          len(s.idx.children()) == 0) or (
-          z3.is_app_of(s.idx, z3.Z3_OP_EXTRACT) and is_simple_extraction(s.idx))
-      assert z3.is_app_of(s.base, z3.Z3_OP_UNINTERPRETED)
-      assert len(s.base.children()) == 0
-      return s
+      base, idx, stride = s
+      assert (z3.is_app_of(idx, z3.Z3_OP_UNINTERPRETED) and 
+          len(idx.children()) == 0) or (
+          z3.is_app_of(idx, z3.Z3_OP_EXTRACT) and is_simple_extraction(idx))
+      return DynamicSlice(base, idx=self.translate(idx), stride=stride)
 
     [x] = ext.children()
     assert x.size() <= 64,\
@@ -786,76 +712,78 @@ def is_alu_op(dag):
   return any(isinstance(v, Instruction) for v in dag.values())
 
 if __name__ == '__main__':
-    from semas import semas
-    from pprint import pprint
-    from tqdm import tqdm
-    import traceback
-    import math
-    import functools
+  from semas import semas
+  from pprint import pprint
+  from tqdm import tqdm
+  import traceback
+  import math
+  import functools
+  import pickle
 
-    debug = True
-    if debug:
-      '_mm_avg_pu16'
-      '_mm_avgw'
-      translator = Translator()
-      y = semas['_mm512_mask2_permutex2var_pd'][1][0]
-      y = elim_dead_branches(y)
-      #y = semas['_mm512_avg_epu16'][1][0]
-      y_reduced = reduce_bitwidth(y)
-      z3.prove(y_reduced == y)
-      y = y_reduced
+  debug = False
+  if debug:
+    translator = Translator()
+    y = semas['_mm512_mask2_permutex2var_pd'][1][0]
+    y = elim_dead_branches(y)
+    #y = semas['_mm512_avg_epu16'][1][0]
+    y_reduced = reduce_bitwidth(y)
+    z3.prove(y_reduced == y)
+    y = y_reduced
+    outs, dag = translator.translate_formula(y)
+    print('typechecked:', typecheck(dag))
+    print(outs)
+    pprint(dag)
+    exit()
+
+  var_counts = []
+
+  log_alu = open('alu.lifted.log', 'w')
+  log_shuf = open('shuf.lifted.log', 'w')
+
+  lifted_alu = {}
+  lifted_shuf = {}
+
+  s = z3.Solver()
+
+  pbar = tqdm(iter(semas.items()), total=len(semas))
+  num_tried = 0
+  num_translated = 0
+  for inst, sema in pbar:
+    num_tried += 1
+
+    translator = Translator()
+    y = sema[1][0]
+    y = elim_dead_branches(y)
+    y_reduced = reduce_bitwidth(y)
+    y = y_reduced
+
+    # compute stat. for average number of variables
+    try:
       outs, dag = translator.translate_formula(y)
-      print('typechecked:', typecheck(dag))
-      print(outs)
-      pprint(dag)
-      exit()
+      assert typecheck(dag)
+      num_translated += 1
+      sizes = {get_size(dag[y]) for y in outs}
+      if len(sizes) != 1:
+        gcd = functools.reduce(math.gcd, sizes)
+        print(inst, gcd, gcd in sizes)
+      if is_alu_op(dag):
+        log_alu.write(inst+'\n')
+        lifted_alu[inst] = outs, dag
+      else:
+        log_shuf.write(inst+'\n')
+        lifted_shuf[inst] = outs, dag
+    except Exception as e:
+      if not isinstance(e, AssertionError):
+        print('Error processing', inst)
+        traceback.print_exc()
+        exit()
+      print(inst)
+      #print('ERROR PROCESSING:', inst)
+      #traceback.print_exc()
+    pbar.set_description('translated/tried: %d/%d' % (
+      num_translated, num_tried))
 
-    var_counts = []
-
-    log_alu = open('lift.alu.log', 'w')
-    log_shuf = open('lift.shuf.log', 'w')
-
-    s = z3.Solver()
-
-    pbar = tqdm(iter(semas.items()), total=len(semas))
-    num_tried = 0
-    num_translated = 0
-    for inst, sema in pbar:
-      num_tried += 1
-
-      translator = Translator()
-      y = sema[1][0]
-      #print('... REDUCING BITWIDTH ...')
-      y = elim_dead_branches(y)
-      y_reduced = reduce_bitwidth(y)
-      #print('... CHECKING ...')
-      #broken = s.check(y_reduced != y) != z3.unsat
-      #print('... CHECKED ...')
-      #if broken:
-      #  print('reduce_bitwidth BROKE', inst)
-      #  continue
-      y = y_reduced
-
-      # compute stat. for average number of variables
-      try:
-        outs, dag = translator.translate_formula(y)
-        assert typecheck(dag)
-        num_translated += 1
-        sizes = {get_size(dag[y]) for y in outs}
-        if len(sizes) != 1:
-          gcd = functools.reduce(math.gcd, sizes)
-          print(inst, gcd, gcd in sizes)
-        if is_alu_op(dag):
-          log_alu.write(inst+'\n')
-        else:
-          log_shuf.write(inst+'\n')
-      except Exception as e:
-        if not isinstance(e, AssertionError):
-          print('Error processing', inst)
-          traceback.print_exc()
-          exit()
-        print(inst)
-        #print('ERROR PROCESSING:', inst)
-        #traceback.print_exc()
-      pbar.set_description('translated/tried: %d/%d' % (
-        num_translated, num_tried))
+  with open('alu.lifted', 'wb') as f:
+    pickle.dump(lifted_alu, f)
+  with open('shuf.lifted', 'wb') as f:
+    pickle.dump(lifted_shuf, f)
