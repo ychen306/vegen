@@ -69,6 +69,10 @@ def get_ctrl_key(f, ctrl):
 
   return key.as_long()
 
+def is_var(x):
+  return (z3.is_app_of(x, z3.Z3_OP_UNINTERPRETED) and
+      len(x.children()) != 0)
+
 def match_mux(f):
   '''
   turn (if x==0 ... else (if x == 1 ... else (if x == 2  ...))) into a mux
@@ -81,6 +85,9 @@ def match_mux(f):
     return None
 
   ctrl, _ = cond.children()
+  if not is_var(ctrl) and not (
+      z3.is_app_of(ctrl, z3.Z3_OP_EXTRACT) and is_simple_extraction(ctrl)):
+    return None
 
   mux = {} 
   s = z3.Solver()
@@ -136,9 +143,7 @@ def match_dynamic_slice(f):
   offset = trunc_zero(offset)
   if not z3.is_app_of(offset, z3.Z3_OP_BMUL):
     return None
-  if not z3.is_app_of(base, z3.Z3_OP_UNINTERPRETED):
-    return None
-  if len(base.children()) != 0:
+  if not is_var(base):
     return None
 
   stride, idx = offset.children()
@@ -292,20 +297,6 @@ def typecheck(dag):
         #pprint(dag)
         return False
   return True
-
-binary_ops = {
-    'Add', 'Sub', 'Mul', 'SDiv', 'SRem',
-    'UDiv', 'URem', 'Shl', 'LShr', 'AShr',
-    'And', 'Or', 'Xor',
-
-    'FAdd', 'FSub', 'FMul', 'FDiv', 'FRem',
-
-    }
-
-cmp_ops = {
-    'Eq', 'Ne', 'Ugt', 'Uge', 'Ult', 'Ule', 'Sgt', 'Sge', 'Slt', 'Sle',
-    'Foeq', 'Fone', 'Fogt', 'Foge', 'Folt', 'Fole',
-    }
 
 def reduction(op, ident):
   return lambda *xs: functools.reduce(op, xs, ident)
@@ -723,7 +714,7 @@ if __name__ == '__main__':
   debug = False
   if debug:
     translator = Translator()
-    y = semas['_mm512_mask2_permutex2var_pd'][1][0]
+    y = semas['_mm_maskz_fmaddsub_ps'][1][0]
     y = elim_dead_branches(y)
     #y = semas['_mm512_avg_epu16'][1][0]
     y_reduced = reduce_bitwidth(y)
@@ -752,7 +743,9 @@ if __name__ == '__main__':
     num_tried += 1
 
     translator = Translator()
-    y = sema[1][0]
+    xs, ys = sema
+    liveins = [x.decl().name() for x in xs]
+    y = ys[0]
     y = elim_dead_branches(y)
     y_reduced = reduce_bitwidth(y)
     y = y_reduced
@@ -768,10 +761,10 @@ if __name__ == '__main__':
         print(inst, gcd, gcd in sizes)
       if is_alu_op(dag):
         log_alu.write(inst+'\n')
-        lifted_alu[inst] = outs, dag
+        lifted_alu[inst] = liveins, outs, dag
       else:
         log_shuf.write(inst+'\n')
-        lifted_shuf[inst] = outs, dag
+        lifted_shuf[inst] = liveins, outs, dag
     except Exception as e:
       if not isinstance(e, AssertionError):
         print('Error processing', inst)
