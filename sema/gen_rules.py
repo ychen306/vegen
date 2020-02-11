@@ -1,18 +1,11 @@
 from ir import *
 from collections import namedtuple, defaultdict
+import xml.etree.ElementTree as ET
+from manual_parser import get_spec_from_xml
+from sig import get_intrinsic_signature, InputType
 import io
 
-var_counter = 0
-def new_var():
-  global var_counter
-  var_counter += 1
-  return 'tmp%d' % var_counter
-
-def emit_inst_matcher(x, inst):
-  '''
-  match an ir value `x` to `inst`,
-  return ([<the matching condition>], [<fresh var bound to operand of inst>]
-  '''
+def get_inst_pattern_ctor(inst):
   if inst.op in icmp_ops:
     matcher = f'm_ICmp(ICMP_{inst.op.upper()}, '
   elif inst.op in fcmp_ops:
@@ -20,23 +13,21 @@ def emit_inst_matcher(x, inst):
   else:
     matcher = f'm_{inst.op}('
 
-  bound_vars = [new_var() for _ in inst.args]
-  conds = [
-      '{matcher}{binding}).match({x})'
-      .format( 
-        matcher=matcher,
-        binding=', '.join(f'm_Value({x2})' for x2 in bound_vars),
-        x=x
-        )]
-  return conds, bound_vars
+  assert inst.op not in binary_ops or len(inst.args) <= 2,\
+      "flattend mul/xor/add/or/and not supported yet";
+  return matcher
 
-def emit_const_matcher(x, const):
-  '''
-  match an ir value `x` to a constant.
-  return a list of matching condition
-  '''
-  return [
-      f'm_SpecificInt(APInt({const.bitwidth}, {const.value})).match({x})']
+def get_const_pattern(const):
+  return f'm_SpecificInt(APInt({const.bitwidth}, {const.value}))'
+
+class VarGenerator:
+  def __init__(self):
+    self.counter = 0
+
+  def new_var(self):
+    v = 'tmp%d' % self.counter
+    self.counter += 1
+    return v
 
 class BoundRule:
   '''
@@ -46,57 +37,74 @@ class BoundRule:
 
   '''
   def __init__(self, root, dag):
-    # conditions for a match
-    conds = []
-    # mapping <matched ir value> -> <dag node id>
-    var2node = {}
+    var_generator = VarGenerator()
 
-    livein2vars = defaultdict(list)
-    # a unique, sorted list of variables representing the bound live ins
     liveins = []
-
-    def emit_rec(x):
-      node_id = var2node[x]
+    bound_liveins = []
+    livein2vars = defaultdict(list)
+    def build_pattern(node_id, depth=1):
       node = dag[node_id]
       node_ty = type(node)
       if node_ty == Instruction:
-        inst_conds, bound = emit_inst_matcher(x, node)
-        conds.extend(inst_conds)
-        var2node.update({
-          x2: node_id2
-          for x2, node_id2 in zip(bound, node.args)})
-        for x2 in bound:
-          emit_rec(x2)
+        pattern_ctor = get_inst_pattern_ctor(node)
+        sub_patterns = [build_pattern(arg, depth+1) for arg in node.args]
+        indent = '  ' * depth
+        ctor_args = ',\n'.join(indent+p for p in sub_patterns)
+        # pattern_ctor already has open parenthesis
+        return f'{pattern_ctor}\n{ctor_args})'
       elif node_ty == Constant:
-        conds.extend(emit_const_matcher(x, node))
+        return get_const_pattern(node)
       else:
+        x = var_generator.new_var()
+        # first time seeing a live-in
         if len(livein2vars[node_id]) == 0:
-          liveins.append(x)
+          liveins.append(node_id)
+          bound_liveins.append(x)
         livein2vars[node_id].append(x)
+        return f'm_Value({x})'
 
-    # in case we have more than one values bound to the same live-in
-    # insert additional constraint that force them to be the same value
+    pattern = build_pattern(root)
+    conds = [
+
+        f'match(root, {pattern})']
     for xs in livein2vars.values():
-      conds.extend(f'{xs[0]} == {x2}' for x2 in xs[1:])
+      conds.extend(f'{xs[0]} == {x}' for x in xs[1:])
 
-    buf = io.StringIO()
-    var2node['root'] = root
-    emit_rec('root')
-    # declare values for the bound variables
-    for x in var2node.keys():
-      if x == 'root':
-        continue
-      buf.write(f'\tValue *{x};\n')
-    buf.write('\tif ({conds})\n'.format(conds=' &&\n\t\t'.join(conds)))
-
-    self.matcher = buf.getvalue()
+    self.matching_cond = ' && '.join(conds)
     self.liveins = liveins
+    self.bound_liveins = bound_liveins
+    self.livein2vars = livein2vars
 
-  def get_livein_binding(self):
+  def get_rule_liveins(self):
     return self.liveins
 
-  def get_matcher(self):
-    return self.matcher
+  def get_bound_liveins(self):
+    return self.bound_liveins
+
+  def get_matching_cond(self):
+    return self.matching_cond
+
+class RuleCollection:
+  '''
+  represents either a single BoundRule or a collection of mux'd BoundRules
+  '''
+  def __init__(self, rules, mux_keys=None, mux_control=None):
+    self.rules = rules 
+    self.mux_keys = mux_keys
+
+  @staticmethod
+  def just_one(rule):
+    return RuleCollection([rule])
+
+  @staticmethod
+  def many(rules, mux_keys, mux_control):
+    return RuleCollection(rules, mux_keys, mux_control)
+
+  def num_rules(self):
+    return len(self.rules)
+
+  def is_muxed(self):
+    return len(self.rules) > 1
 
 class RuleBundle:
   '''
@@ -114,13 +122,24 @@ class RuleBundle:
   this means that we can uniform vector insts like padd is basically
    one rule but with 4 bindings
   '''
-  def __init__(self, liveins, out_ids, dag):
-    pass
+  # FIXME: detect when a rule (or one of the muxed rule) doesn't
+  # do computation (e.g. not starting with an instruction) so
+  # the packing heuristics knows this
+  def __init__(self, liveins, livein_types, out_ids, dag):
+    self.lanes = []
+    self.dag = dag
+    for out_id in out_ids:
+      if type(dag[out_id]) is not Mux:
+        self.lanes.append(RuleCollection.just_one(BoundRule(out_id, dag)))
+      else:
+        mux = dag[out_id]
+        rules = [BoundRule(v, dag) for _, v in mux.kv_pairs]
+        keys = [k for k, _ in mux.kv_pairs]
+        self.lanes.append(RuleCollection.many(rules, keys, mux.ctrl))
 
-  def get_rules(self):
-    '''
-    '''
-    pass
+  def rules(self):
+    for lane in self.lanes:
+      yield from lane.rules
 
   def emit_bundel_desc(self, outf):
     pass
@@ -131,11 +150,14 @@ class RuleBundleIndex:
     <rule> -> [<lane id>, <rule bundle>]
   '''
 
-  def __init__(self):
-    pass
-
-  def add_rule_bundle(self, bundle):
-    pass
+  def __init__(self, sigs, semas, lifted):
+    self.bundles = {}
+    for inst, (_, out_ids, dag) in lifted.items():
+      try:
+        self.bundles[inst] = RuleBundle(sigs[inst], semas[inst], out_ids, dag)
+      except AssertionError:
+        pass
+    print(len(self.bundles))
 
   def emit_matchers(self):
     pass
@@ -143,14 +165,55 @@ class RuleBundleIndex:
   def emit_index(self):
     pass
 
+def parse_specs(spec_f):
+  specs = {}
+  
+  for intrin in ET.parse(spec_f).iter('intrinsic'):
+    try:
+      spec = get_spec_from_xml(intrin)
+      specs[spec.intrin] = spec
+    except:
+      continue
+  return specs
+
+def get_inst_sigs(semas, specs):
+  sigs = {}
+  for inst, (in_vals, out_vals) in semas.items():
+    if inst in specs:
+      sigs[inst] = get_intrinsic_signature(specs[inst])
+    else:
+      input_types = tuple(InputType(x.size(), is_constant=False) for x in in_vals)
+      output_sizes = tuple(y.size() for y in out_vals)
+      sigs[inst] = input_types, output_sizes
+  return sigs
+
 if __name__ == '__main__':
   import sys
   import pickle
+  from semas import semas
+  from pprint import pprint
+  
+  specs = parse_specs('data-latest.xml')
+  sigs = get_inst_sigs(semas, specs)
 
   lifted_f = sys.argv[1]
   with open(lifted_f, 'rb') as f:
     lifted = pickle.load(f)
 
-  _, outs, dag = lifted['_mm512_avg_epu16']
-  br = BoundRule(outs[0], dag)
-  print(br.get_matcher())
+  inst = '_mm_maskz_fmaddsub_ps'
+  _, outs, dag = lifted[inst]
+  rb = RuleBundle(sigs[inst], semas[inst], outs, dag)
+  print(rb.rules)
+
+  rbi = RuleBundleIndex(sigs, semas, lifted)
+  for inst, rb in rbi.bundles.items():
+    conds = {
+        r.get_matching_cond()
+        for r in rb.rules()}
+    print(inst)
+    pprint(conds)
+
+  #_, outs, dag = lifted['_mm512_avg_epu16']
+  #br = BoundRule(outs[0], dag)
+  #print(br.get_rule())
+  #print(list(zip(br.get_rule_liveins(), br.get_bound_liveins())))

@@ -71,7 +71,7 @@ def get_ctrl_key(f, ctrl):
 
 def is_var(x):
   return (z3.is_app_of(x, z3.Z3_OP_UNINTERPRETED) and
-      len(x.children()) != 0)
+      len(x.children()) == 0)
 
 def match_mux(f):
   '''
@@ -714,7 +714,7 @@ if __name__ == '__main__':
   debug = False
   if debug:
     translator = Translator()
-    y = semas['_mm_maskz_fmaddsub_ps'][1][0]
+    y = semas['_mm_shuffle_pi8'][1][0]
     y = elim_dead_branches(y)
     #y = semas['_mm512_avg_epu16'][1][0]
     y_reduced = reduce_bitwidth(y)

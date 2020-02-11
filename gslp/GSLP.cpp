@@ -3,8 +3,10 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/IR/PatternMatch.h"
 
 using namespace llvm;
+using namespace PatternMatch;
 
 #include "rules.inc"
 
@@ -23,6 +25,7 @@ public:
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
+  return false;
 }
 
 // Automatically enable the pass.
