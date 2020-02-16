@@ -1,16 +1,16 @@
-#include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/Pass.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 using namespace llvm;
 using namespace PatternMatch;
 
 namespace {
 
-/////////////// begin data structure for the generalized packing problem 
+/////////////// begin data structure for the generalized packing problem
 struct InstSignature {
   std::vector<unsigned> InputBitwidths;
   std::vector<unsigned> OutputBitwidths;
@@ -31,7 +31,7 @@ struct Operation {
   virtual bool match(Value *V, std::vector<Value *> &MatchedLiveIns) const = 0;
 };
 
-// Interface describing output of a vector lane, which is 
+// Interface describing output of a vector lane, which is
 // either 1) simply a copy of an input slice.
 // or 2) an operation (BoundOperation)
 class SliceCopy;
@@ -41,9 +41,10 @@ struct LaneDescription {
   virtual const BoundOperation *getBoundOperation() const { return nullptr; }
 };
 
-// Excplicit copy of an input slice
+// Explicit copy of an input slice
 class SliceCopy : public LaneDescription {
   InputSlice CopiedSlice;
+
 public:
   SliceCopy(InputSlice S) : CopiedSlice(S) {}
   const SliceCopy *getSliceCopy() const override { return this; }
@@ -54,19 +55,23 @@ public:
 class BoundOperation : public LaneDescription {
   const Operation *Operation;
   std::vector<InputSlice> BoundSlices;
+  bool MergeMaskable;
+
 public:
   const BoundOperation *getBoundOperation() const override { return this; }
   // A bound operation
-  BoundOperation(
-      const struct Operation *Operation, 
-      std::vector<InputSlice> BoundSlices) :
-    Operation(Operation), BoundSlices(BoundSlices) {}
+  BoundOperation(const struct Operation *Operation,
+                 std::vector<InputSlice> BoundSlices,
+                 bool MergeMaskable = false)
+      : Operation(Operation), BoundSlices(BoundSlices),
+        MergeMaskable(MergeMaskable) {}
 };
 
 // An instruction is a list of lanes,
 // each of which characterized by a BoundOperation
 class InstBinding {
   std::vector<LaneDescription> Lanes;
+
 public:
   InstBinding(std::vector<LaneDescription> Lanes) : Lanes(Lanes) {}
 };
@@ -100,9 +105,7 @@ bool hasBitWidth(const Value *V, unsigned BitWidth) {
 
 char GSLP::ID = 0;
 
-bool GSLP::runOnFunction(Function &F) {
-  return false;
-}
+bool GSLP::runOnFunction(Function &F) { return false; }
 
 // Automatically enable the pass.
 // http://adriansampson.net/blog/clangpass.html
@@ -111,5 +114,4 @@ static void registerGSLP(const PassManagerBuilder &,
   PM.add(new GSLP());
 }
 static RegisterStandardPasses
-  RegisterMyPass(PassManagerBuilder::EP_VectorizerStart,
-                 registerGSLP);
+    RegisterMyPass(PassManagerBuilder::EP_VectorizerStart, registerGSLP);

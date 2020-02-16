@@ -711,10 +711,10 @@ if __name__ == '__main__':
   import functools
   import pickle
 
-  debug = False
+  debug = True
   if debug:
     translator = Translator()
-    y = semas['_mm_insert_epi16'][1][0]
+    y = semas['_mm512_permutex2var_pd'][1][0]
     y = elim_dead_branches(y)
     #y = semas['_mm512_avg_epu16'][1][0]
     y_reduced = reduce_bitwidth(y)
