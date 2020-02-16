@@ -82,17 +82,23 @@ class Slice:
     return f'{self.base}[{self.lo}:{self.hi}]'
 
 binary_ops = {
-    'Add', 'Sub', 'Mul', 'SDiv', 'SRem',
-    'UDiv', 'URem', 'Shl', 'LShr', 'AShr',
-    'And', 'Or', 'Xor',
+        'Add', 'Sub', 'Mul', 'SDiv', 'SRem',
+        'UDiv', 'URem', 'Shl', 'LShr', 'AShr',
+        'And', 'Or', 'Xor',
 
-    'FAdd', 'FSub', 'FMul', 'FDiv', 'FRem',
-    }
+        'FAdd', 'FSub', 'FMul', 'FDiv', 'FRem',
+        }
 
+commutative_binary_ops = {
+        'Add', 'Mul',
+        'And', 'Or', 'Xor',
+
+        'FAdd', 'FMul',
+        }
 icmp_ops = {
-    'Eq', 'Ne', 'Ugt', 'Uge', 'Ult', 'Ule', 'Sgt', 'Sge', 'Slt', 'Sle',
-    }
+        'Eq', 'Ne', 'Ugt', 'Uge', 'Ult', 'Ule', 'Sgt', 'Sge', 'Slt', 'Sle',
+        }
 fcmp_ops = {
-    'Foeq', 'Fone', 'Fogt', 'Foge', 'Folt', 'Fole',
-    }
+        'Foeq', 'Fone', 'Fogt', 'Foge', 'Folt', 'Fole',
+        }
 cmp_ops = icmp_ops.union(fcmp_ops)

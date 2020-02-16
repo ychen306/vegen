@@ -7,9 +7,11 @@ import io
 
 def get_inst_pattern_ctor(inst):
   if inst.op in icmp_ops:
-    matcher = f'm_ICmp(ICMP_{inst.op.upper()}, '
+    matcher = f'm_c_ICmp_dont_care(ICMP_{inst.op.upper()}, '
   elif inst.op in fcmp_ops:
-    matcher = f'm_ICmp(FCMP_{inst.op.upper()[1:]}, '
+    matcher = f'm_FCmp(FCMP_{inst.op.upper()[1:]}, '
+  elif inst.op in commutative_binary_ops:
+    matcher = f'm_c_{inst.op}('
   else:
     matcher = f'm_{inst.op}('
 
@@ -64,8 +66,9 @@ class BoundRule:
         return f'm_Value({x})'
 
     pattern = build_pattern(root)
+    root_bitwidth = dag[root].bitwidth
     conds = [
-
+        f'hasBitWidth(root, {root_bitwidth})',
         f'match(root, {pattern})']
     for xs in livein2vars.values():
       conds.extend(f'{xs[0]} == {x}' for x in xs[1:])
@@ -200,20 +203,21 @@ if __name__ == '__main__':
   with open(lifted_f, 'rb') as f:
     lifted = pickle.load(f)
 
-  inst = '_mm_maskz_fmaddsub_ps'
-  _, outs, dag = lifted[inst]
-  rb = RuleBundle(sigs[inst], semas[inst], outs, dag)
-  print(rb.rules)
-
   rbi = RuleBundleIndex(sigs, semas, lifted)
+  all_conds = set()
   for inst, rb in rbi.bundles.items():
     conds = {
         r.get_matching_cond()
         for r in rb.rules()}
+    all_conds.update(conds)
     print(inst)
     pprint(conds)
+  print('Total number of matching rules:', len(all_conds))
 
-  #_, outs, dag = lifted['_mm512_avg_epu16']
-  #br = BoundRule(outs[0], dag)
-  #print(br.get_rule())
-  #print(list(zip(br.get_rule_liveins(), br.get_bound_liveins())))
+  exit()
+  _, outs, dag = lifted['_mm512_avg_epu16']
+  br = BoundRule(outs[0], dag)
+  print(br.get_matching_cond())
+  print(list(zip(br.get_rule_liveins(), br.get_bound_liveins())))
+  print(list(zip(br.get_bound_liveins(),
+    (dag[x] for x in br.get_rule_liveins()))))
