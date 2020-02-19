@@ -714,7 +714,7 @@ if __name__ == '__main__':
   debug = True
   if debug:
     translator = Translator()
-    y = semas['_mm512_permutex2var_pd'][1][0]
+    y = semas['_mm_adds_epi16'][1][0]
     y = elim_dead_branches(y)
     #y = semas['_mm512_avg_epu16'][1][0]
     y_reduced = reduce_bitwidth(y)

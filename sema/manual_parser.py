@@ -1,5 +1,6 @@
 from sema_ast import Parameter, Spec
 from parser import parse
+import xml.etree.ElementTree as ET
 
 std_funcs = '''
 DEFINE MIN(a, b) {
@@ -35,3 +36,15 @@ def get_spec_from_xml(node):
       configs={}, # by default nothing is configured
       inst_form=inst_form,
       binary_exprs=binary_exprs)
+
+
+def parse_specs(spec_f):
+  specs = {}
+  
+  for intrin in ET.parse(spec_f).iter('intrinsic'):
+    try:
+      spec = get_spec_from_xml(intrin)
+      specs[spec.intrin] = spec
+    except:
+      continue
+  return specs
