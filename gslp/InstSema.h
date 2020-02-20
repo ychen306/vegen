@@ -47,6 +47,7 @@ class InstBinding {
   std::string Name;
   
 public:
+  std::string getName() { return Name; }
   InstBinding(std::string Name, InstSignature Sig, std::vector<BoundOperation> LaneOps) 
     : Name(Name), Sig(Sig), LaneOps(LaneOps) {}
   llvm::ArrayRef<BoundOperation> getLaneOps() const { return LaneOps; }
@@ -102,6 +103,6 @@ static bool hasBitWidth(const llvm::Value *V, unsigned BitWidth) {
   return false;
 }
 
-extern InstBinding Insts[];
+extern std::vector<InstBinding> Insts;
 
 #endif // end INST_SEMA_H

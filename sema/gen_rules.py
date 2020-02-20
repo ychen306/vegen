@@ -254,7 +254,7 @@ def codegen(bundles):
   inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values()) 
   return f'''
 {op_decls}
-InstBinding Insts[{len(inst_defs)}] = {{ 
+std::vector<InstBinding> Insts {{ 
   {inst_bindings}
 }};
   '''
