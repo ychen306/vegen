@@ -54,6 +54,7 @@ public:
 
   template <typename T, typename Inserter>
   llvm::Value *create(
+      llvm::Module &InstWrappers,
       llvm::IRBuilder<T, Inserter> &Builder,
       llvm::ArrayRef<llvm::Value *> Operands,
       unsigned char Imm8=0) const;

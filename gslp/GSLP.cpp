@@ -13,6 +13,8 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include "llvm/ADT/StringSet.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
+#include "llvm/InitializePasses.h"
 #include <set>
 
 using namespace llvm;
@@ -23,20 +25,28 @@ cl::opt<std::string> InstWrappersPath(
     cl::desc("Path to InstWrappers.bc"),
     cl::Required);
 
+namespace llvm {
+void initializeGSLPPass(PassRegistry &);
+}
+
 namespace {
 
-LLVMContext GlobalContext;
+class GSLP : public FunctionPass {
+  std::unique_ptr<Module> InstWrappers;
 
-std::unique_ptr<Module> InstWrappers;
-class GSLP : public ModulePass {
 public:
   static char ID; // Pass identification, replacement for typeid
-  GSLP() : ModulePass(ID) {
+  GSLP() : FunctionPass(ID) {
+    initializeGSLPPass(*PassRegistry::getPassRegistry());
   }
 
-  bool runOnFunction(Function &);
+  virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequiredTransitive<DependenceAnalysisWrapperPass>();
+  }
 
-  bool runOnModule(Module &M) override {
+  bool runOnFunction(Function &) override;
+
+  virtual bool doInitialization(Module &M) override {
     SMDiagnostic Err;
     errs() << "LOADING WRAPPERS\n";
     InstWrappers =
@@ -44,13 +54,7 @@ public:
     assert(InstWrappers && "Failed to parse Inst Wrappers");
     errs() << "WRAPPERS LOADED\n";
 
-    bool Changed;
-    std::set<Function *> DeleteLater;
-    for (Function &F : M) {
-      Changed |= runOnFunction(F);
-    }
-
-    return Changed;
+    return false;
   }
 
 };
@@ -58,17 +62,16 @@ public:
 } // end anonymous namespace
 
 
-// FIXME: this as some pretty significant performance problem.
-// Solution: manually clone the instructions from the wrapper func.
-// See https://stackoverflow.com/questions/43303943.
+// Emit an intrinsic
 template <typename T, typename Inserter>
 Value *InstBinding::create(
+    Module &InstWrappers,
     IRBuilder<T, Inserter> &Builder,
     ArrayRef<Value *> Operands, unsigned char Imm8) const {
   std::string WrapperName = formatv("intrinsic_wrapper_{0}_{1}", Name, Imm8).str();
   //auto M = Builder.GetInsertBlock()->getModule();
   //auto *F = M->getFunction(WrapperName);
-  auto *F = InstWrappers->getFunction(WrapperName);
+  auto *F = InstWrappers.getFunction(WrapperName);
   assert(F && "Intrinsic wrapper undefined.");
 
   assert(std::distance(F->begin(), F->end()) == 1 &&
@@ -112,6 +115,7 @@ Value *InstBinding::create(
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
+  auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
 #define TEST_INST_BINDING 1
 #if TEST_INST_BINDING
   InstBinding *IB;
@@ -128,7 +132,7 @@ bool GSLP::runOnFunction(Function &F) {
   for (auto &Arg : F.args()) {
     Args.push_back(&Arg);
   }
-  auto *I = IB->create(IRB, Args);
+  auto *I = IB->create(*InstWrappers, IRB, Args);
   OldInst->replaceAllUsesWith(IRB.CreateBitCast(I, OldInst->getType()));
   errs() << F << '\n';
 #endif
@@ -136,6 +140,11 @@ bool GSLP::runOnFunction(Function &F) {
   assert(!verifyFunction(F));
   return true;
 }
+
+INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
+INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(DependenceAnalysisWrapperPass)
+INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
 // Automatically enable the pass.
 // http://adriansampson.net/blog/clangpass.html
