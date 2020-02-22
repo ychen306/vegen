@@ -96,12 +96,17 @@ public:
 
     // Check if `Src` is reachable from `Dest` in the local dependency graph
     std::vector<Instruction *> Worklist { Dest };
+    DenseSet<Instruction *> Visited;
     while (!Worklist.empty()) {
       Instruction *I = Worklist.back();
       Worklist.pop_back();
 
       if (I == Src)
         return true;
+
+      bool Inserted = Visited.insert(I).second;
+      if (!Inserted)
+        continue;
 
       // this is a DAG, so we don't have to worry about seeing a node twice
       auto &Depended = Dependencies[I];
@@ -164,6 +169,7 @@ Value *InstBinding::create(
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
+#if 1
   DependenceInfo &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
   for (auto &BB : F) {
     LocalDependenceAnalysis LDA(DI, &BB);
@@ -176,6 +182,7 @@ bool GSLP::runOnFunction(Function &F) {
       }
     }
   }
+#endif
 #if 0
   InstBinding *IB;
   for (auto &I : Insts) {
