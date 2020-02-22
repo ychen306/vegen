@@ -67,22 +67,23 @@ class LocalDependenceAnalysis {
   DenseMap<Instruction *, std::vector<Instruction *>> Dependencies;
 
 public:
-  LocalDependenceAnalysis(DependenceInfo &DI, BasicBlock *BB) : DI(DI) {
+  LocalDependenceAnalysis(DependenceInfo &DI, BasicBlock *BB) : DI(DI), BB(BB) {
     std::vector<Instruction *> LoadStores;
     // build the local dependence graph
     for (Instruction &I : *BB) {
-      for (Use &U : I.uses()) {
-        if (auto *Used = dyn_cast<Instruction>(U.get()))
-          if (Used->getParent() == BB) {
-            Dependencies[&I].push_back(Used);
+      for (Value *Operand : I.operands()) {
+        if (auto *I2 = dyn_cast<Instruction>(Operand))
+          if (I2->getParent() == BB) {
+            Dependencies[&I].push_back(I2);
           }
       }
       if (isa<LoadInst>(&I) || isa<StoreInst>(&I)) {
         // check dependence with preceding loads and stores
         for (auto *PrevLS : LoadStores) {
           auto Dep = DI.depends(PrevLS, &I, true);
-          if (Dep && Dep->isOrdered())
+          if (Dep && Dep->isOrdered()) {
             Dependencies[&I].push_back(PrevLS);
+          }
         }
         LoadStores.push_back(&I);
       }
@@ -95,7 +96,6 @@ public:
 
     // Check if `Src` is reachable from `Dest` in the local dependency graph
     std::vector<Instruction *> Worklist { Dest };
-    DenseSet<Instruction *> Visited;
     while (!Worklist.empty()) {
       Instruction *I = Worklist.back();
       Worklist.pop_back();
@@ -103,18 +103,15 @@ public:
       if (I == Src)
         return true;
 
-      bool Inserted = Visited.insert(I).second;
-      if (!Inserted)
-        continue;
+      // this is a DAG, so we don't have to worry about seeing a node twice
       auto &Depended = Dependencies[I];
       Worklist.insert(Worklist.end(), Depended.begin(), Depended.end());
     }
-    return true;
+    return false;
   }
 };
 
 } // end anonymous namespace
-
 
 // Emit an intrinsic
 template <typename T, typename Inserter>
@@ -123,8 +120,6 @@ Value *InstBinding::create(
     IRBuilder<T, Inserter> &Builder,
     ArrayRef<Value *> Operands, unsigned char Imm8) const {
   std::string WrapperName = formatv("intrinsic_wrapper_{0}_{1}", Name, Imm8).str();
-  //auto M = Builder.GetInsertBlock()->getModule();
-  //auto *F = M->getFunction(WrapperName);
   auto *F = InstWrappers.getFunction(WrapperName);
   assert(F && "Intrinsic wrapper undefined.");
 
@@ -170,6 +165,17 @@ char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
   DependenceInfo &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+  for (auto &BB : F) {
+    LocalDependenceAnalysis LDA(DI, &BB);
+    for (auto &I : BB) {
+      for (auto &PrevI : BB) {
+        if (&I == &PrevI)
+          break;
+        errs() << "CHECKING DEPENDENCE: " << PrevI << " -> " << I << '\n';
+        errs() << "\t" << LDA.hasLocalDependence(&PrevI, &I) << '\n';
+      }
+    }
+  }
 #if 0
   InstBinding *IB;
   for (auto &I : Insts) {
