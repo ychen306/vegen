@@ -59,6 +59,60 @@ public:
 
 };
 
+// Utility class to track dependency within a basic block
+class LocalDependenceAnalysis {
+  DependenceInfo &DI;
+  BasicBlock *BB;
+  // mapping inst -> <users>
+  DenseMap<Instruction *, std::vector<Instruction *>> Dependencies;
+
+public:
+  LocalDependenceAnalysis(DependenceInfo &DI, BasicBlock *BB) : DI(DI) {
+    std::vector<Instruction *> LoadStores;
+    // build the local dependence graph
+    for (Instruction &I : *BB) {
+      for (Use &U : I.uses()) {
+        if (auto *Used = dyn_cast<Instruction>(U.get()))
+          if (Used->getParent() == BB) {
+            Dependencies[&I].push_back(Used);
+          }
+      }
+      if (isa<LoadInst>(&I) || isa<StoreInst>(&I)) {
+        // check dependence with preceding loads and stores
+        for (auto *PrevLS : LoadStores) {
+          auto Dep = DI.depends(PrevLS, &I, true);
+          if (Dep && Dep->isOrdered())
+            Dependencies[&I].push_back(PrevLS);
+        }
+        LoadStores.push_back(&I);
+      }
+    }
+  }
+
+  bool hasLocalDependence(Instruction *Src, Instruction *Dest) {
+    if (Src->getParent() != BB || Dest->getParent() != BB)
+      return false;
+
+    // Check if `Src` is reachable from `Dest` in the local dependency graph
+    std::vector<Instruction *> Worklist { Dest };
+    DenseSet<Instruction *> Visited;
+    while (!Worklist.empty()) {
+      Instruction *I = Worklist.back();
+      Worklist.pop_back();
+
+      if (I == Src)
+        return true;
+
+      bool Inserted = Visited.insert(I).second;
+      if (!Inserted)
+        continue;
+      auto &Depended = Dependencies[I];
+      Worklist.insert(Worklist.end(), Depended.begin(), Depended.end());
+    }
+    return true;
+  }
+};
+
 } // end anonymous namespace
 
 
@@ -115,9 +169,8 @@ Value *InstBinding::create(
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
-  auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
-#define TEST_INST_BINDING 1
-#if TEST_INST_BINDING
+  DependenceInfo &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+#if 0
   InstBinding *IB;
   for (auto &I : Insts) {
     if (I.getName() == "_mm_add_ss") {
