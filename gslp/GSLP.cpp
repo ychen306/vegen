@@ -8,12 +8,14 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Analysis/MemoryLocation.h"
+#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include "llvm/ADT/StringSet.h"
-#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/InitializePasses.h"
 #include <set>
 
@@ -41,7 +43,8 @@ public:
   }
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequiredTransitive<DependenceAnalysisWrapperPass>();
+    AU.addRequired<ScalarEvolutionWrapperPass>();
+    AU.addRequired<AAResultsWrapperPass>();
   }
 
   bool runOnFunction(Function &) override;
@@ -59,15 +62,44 @@ public:
 
 };
 
+MemoryLocation getLocation(Instruction *I, AliasAnalysis *AA) {              
+  if (StoreInst *SI = dyn_cast<StoreInst>(I))                                       
+    return MemoryLocation::get(SI);                                                 
+  if (LoadInst *LI = dyn_cast<LoadInst>(I))                                         
+    return MemoryLocation::get(LI);                                                 
+  return MemoryLocation();                                                          
+}
+
+/// \returns True if the instruction is not a volatile or atomic load/store.
+bool isSimple(Instruction *I) {
+  if (LoadInst *LI = dyn_cast<LoadInst>(I))
+    return LI->isSimple();
+  if (StoreInst *SI = dyn_cast<StoreInst>(I))
+    return SI->isSimple();
+  if (MemIntrinsic *MI = dyn_cast<MemIntrinsic>(I))
+    return !MI->isVolatile();
+  return true;
+}
+
+bool isAliased(const MemoryLocation &Loc1,
+    Instruction *Inst1, Instruction *Inst2, AliasAnalysis *AA) {
+  MemoryLocation Loc2 = getLocation(Inst2, AA);
+  bool Aliased = true;
+  if (Loc1.Ptr && Loc2.Ptr && isSimple(Inst1) && isSimple(Inst2)) {
+    // Do the alias check.
+    Aliased = AA->alias(Loc1, Loc2);
+  }
+  return Aliased;
+}
+
 // Utility class to track dependency within a basic block
 class LocalDependenceAnalysis {
-  DependenceInfo &DI;
   BasicBlock *BB;
   // mapping inst -> <users>
   DenseMap<Instruction *, std::vector<Instruction *>> Dependencies;
 
-public:
-  LocalDependenceAnalysis(DependenceInfo &DI, BasicBlock *BB) : DI(DI), BB(BB) {
+  public:
+  LocalDependenceAnalysis(AliasAnalysis *AA, BasicBlock *BB) : BB(BB) {
     std::vector<Instruction *> LoadStores;
     // build the local dependence graph
     for (Instruction &I : *BB) {
@@ -78,12 +110,14 @@ public:
           }
       }
       if (isa<LoadInst>(&I) || isa<StoreInst>(&I)) {
+        MemoryLocation Loc = getLocation(&I, AA);
         // check dependence with preceding loads and stores
         for (auto *PrevLS : LoadStores) {
-          auto Dep = DI.depends(PrevLS, &I, true);
-          if (Dep && Dep->isOrdered()) {
+          // ignore output dependence
+          if (isa<LoadInst>(PrevLS) && isa<LoadInst>(&I))
+            continue;
+          if (isAliased(Loc, &I, PrevLS, AA))
             Dependencies[&I].push_back(PrevLS);
-          }
         }
         LoadStores.push_back(&I);
       }
@@ -170,9 +204,9 @@ char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
 #if 1
-  DependenceInfo &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+  AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   for (auto &BB : F) {
-    LocalDependenceAnalysis LDA(DI, &BB);
+    LocalDependenceAnalysis LDA(AA, &BB);
     for (auto &I : BB) {
       for (auto &PrevI : BB) {
         if (&I == &PrevI)
@@ -209,14 +243,14 @@ bool GSLP::runOnFunction(Function &F) {
 
 INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(DependenceAnalysisWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
 // Automatically enable the pass.
 // http://adriansampson.net/blog/clangpass.html
 static void registerGSLP(const PassManagerBuilder &,
-                         legacy::PassManagerBase &PM) {
+    legacy::PassManagerBase &PM) {
   PM.add(new GSLP());
 }
 static RegisterStandardPasses
-    RegisterMyPass(PassManagerBuilder::EP_VectorizerStart, registerGSLP);
+RegisterMyPass(PassManagerBuilder::EP_VectorizerStart, registerGSLP);
