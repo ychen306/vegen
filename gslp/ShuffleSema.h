@@ -16,18 +16,18 @@ public:
       : ElementWidth(ElementWidth), Content(Content) {}
 };
 
-struct ShuffleTask {
+struct SwizzleTask {
   std::vector<VectorPack> Inputs, Outputs;
 };
 
-// Interfaces to help indexing this Shuffle, doesn't have to be precise.
-class AbstractShuffleOutput {
+// Interfaces to help indexing this Swizzle, doesn't have to be precise.
+class AbstractSwizzleOutput {
   unsigned ElementWidth;
   unsigned TotalWidth;
   std::vector<std::vector<InputSlice>> Lanes;
 
 public:
-  AbstractShuffleOutput(unsigned ElementWidth, unsigned TotalWidth,
+  AbstractSwizzleOutput(unsigned ElementWidth, unsigned TotalWidth,
                         std::vector<std::vector<InputSlice>> Lanes)
       : ElementWidth(ElementWidth), TotalWidth(TotalWidth), Lanes(Lanes) {
     assert(TotalWidth % ElementWidth == 0);
@@ -50,7 +50,7 @@ public:
 //  | DymamicSlice (base, idx, stride)
 //  | Mux (ctrl : slice) (mapping number -> Slice)
 //  | Slice
-class ShuffleOp {
+class SwizzleOp {
 public:
   enum OpKind { OK_DynamicSlice, OK_Mux, OK_Slice };
 
@@ -58,49 +58,64 @@ private:
   const OpKind Kind;
 
 public:
-  ShuffleOp(OpKind Kind) : Kind(Kind) {}
+  SwizzleOp(OpKind Kind) : Kind(Kind) {}
   OpKind getKind() const { return Kind; }
 };
 
-class DynamicSlice : public ShuffleOp {
-  ShuffleOp *Base;
+class DynamicSlice : public SwizzleOp {
+  SwizzleOp *Base;
   unsigned Stride;
   InputSlice Index;
 
 public:
-  DynamicSlice(ShuffleOp *Base, unsigned Stride, InputSlice Index)
-      : ShuffleOp(OK_DynamicSlice), Base(Base), Stride(Stride), Index(Index) {}
-  ShuffleOp *getBase() const { return Base; }
+  DynamicSlice(SwizzleOp *Base, unsigned Stride, InputSlice Index)
+      : SwizzleOp(OK_DynamicSlice), Base(Base), Stride(Stride), Index(Index) {}
+  SwizzleOp *getBase() const { return Base; }
   unsigned getStride() const { return Stride; }
+  const InputSlice &getIndex() const { return Index; }
 };
 
-class Mux : public ShuffleOp {
-  std::vector<ShuffleOp *> Choices;
+class Mux : public SwizzleOp {
+  std::vector<SwizzleOp *> Choices;
   InputSlice Control;
 
 public:
-  Mux(std::vector<ShuffleOp *> Choices, InputSlice Control)
-      : ShuffleOp(OK_Mux), Choices(Choices), Control(Control) {}
-  llvm::ArrayRef<ShuffleOp *> getChoices() const { return Choices; }
+  Mux(std::vector<SwizzleOp *> Choices, InputSlice Control)
+      : SwizzleOp(OK_Mux), Choices(Choices), Control(Control) {}
+  llvm::ArrayRef<SwizzleOp *> getChoices() const { return Choices; }
 };
 
-class Slice : public ShuffleOp {
+class Slice : public SwizzleOp {
   InputSlice S;
 
 public:
-  Slice(InputSlice S) : ShuffleOp(OK_Slice), S(S) {}
-  InputSlice getSlice() const { return S; }
+  Slice(InputSlice S) : SwizzleOp(OK_Slice), S(S) {}
+  const InputSlice &getSlice() const { return S; }
 };
 ///////////////////// END SHUFFLE OPS ///////////////////
 
 // interface describing a shuffling/swizzling operation
-struct Shuffle {
-  virtual AbstractShuffleOutput getAbstractOutput(unsigned OutputId) const = 0;
-  // Check if can precisely implement this shuffling task
-  virtual bool canImplement(const ShuffleTask &) const = 0;
+class Swizzle {
+public:
+  // Use this to represent imm8 or index vector
+  using Parameter = std::vector<uint8_t>;
+  // A set of parameter, mapping <input id> -> <parameter>
+  using ParameterSet = std::map<unsigned, Parameter>;
+
+  virtual InstSignature getSignature() const = 0;
+
+  virtual AbstractSwizzleOutput getAbstractOutput(unsigned OutputId) const = 0;
+
+  // Try to solve the parameter required to implement this task,
+  // return if it's sucessful
+  bool solveForParameter(const SwizzleTask &Task,
+                         ParameterSet &Parameters) const;
+
   // emit code that implements a task
-  virtual bool emit(const ShuffleTask &,
-                    std::vector<VectorPack> &Emitted) const = 0;
+  virtual std::vector<VectorPack>
+  emit(const SwizzleTask &Task, ParameterSet &Parameters) const = 0;
+  // Get the precise semantics of this swizzle kernel
+  virtual llvm::ArrayRef<SwizzleOp *> getSemantics() const = 0;
 };
 
 #endif
