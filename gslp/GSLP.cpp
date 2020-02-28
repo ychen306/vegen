@@ -1,4 +1,5 @@
 #include "InstSema.h"
+#include "ShuffleSema.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IRReader/IRReader.h"
@@ -211,8 +212,8 @@ bool GSLP::runOnFunction(Function &F) {
       for (auto &PrevI : BB) {
         if (&I == &PrevI)
           break;
-        errs() << "CHECKING DEPENDENCE: " << PrevI << " -> " << I << '\n';
-        errs() << "\t" << LDA.hasLocalDependence(&PrevI, &I) << '\n';
+        //errs() << "CHECKING DEPENDENCE: " << PrevI << " -> " << I << '\n';
+        //errs() << "\t" << LDA.hasLocalDependence(&PrevI, &I) << '\n';
       }
     }
   }

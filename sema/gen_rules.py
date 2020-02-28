@@ -291,20 +291,10 @@ using namespace PatternMatch;
     ''')
     f.write(codegen(bundles))
 
-  exit()
+  #exit()
 
-  rbi = RuleBundleIndex(bundles)
-  all_conds = set()
-  for inst, rb in rbi.bundles.items():
-    conds = {
-        r.get_matching_code()
-        for r in rb.rules()}
-    all_conds.update(conds)
-    print(inst)
-    pprint(conds)
-  print('Total number of matching rules:', len(all_conds))
 
-  _, outs, dag = lifted['_mm512_avg_epu16']
+  _, outs, dag = lifted['_mm_dp_ps']
   br = BoundOperation(outs[0], dag)
   print(br.get_matching_code())
   print(list(zip(br.get_bound_liveins(), br.get_operation_liveins())))

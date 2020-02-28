@@ -16,6 +16,13 @@ struct InstSignature {
 struct InputSlice {
   unsigned InputId;
   unsigned Lo, Hi;
+
+  unsigned size() { return Hi - Lo; }
+
+  bool operator<(InputSlice &Other) const {
+    return std::tie(InputId, Lo, Hi)
+      < std::tie(Other.InputId, Other.Lo, Other.Hi);
+  }
 };
 
 // Interface that abstractly defines an operation
