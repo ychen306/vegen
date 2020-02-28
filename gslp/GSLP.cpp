@@ -13,9 +13,7 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Transforms/Utils/ValueMapper.h"
 #include "llvm/ADT/StringSet.h"
 #include "llvm/InitializePasses.h"
 #include <set>
@@ -153,53 +151,6 @@ class LocalDependenceAnalysis {
 
 } // end anonymous namespace
 
-// Emit an intrinsic
-template <typename T, typename Inserter>
-Value *InstBinding::create(
-    Module &InstWrappers,
-    IRBuilder<T, Inserter> &Builder,
-    ArrayRef<Value *> Operands, unsigned char Imm8) const {
-  std::string WrapperName = formatv("intrinsic_wrapper_{0}_{1}", Name, Imm8).str();
-  auto *F = InstWrappers.getFunction(WrapperName);
-  assert(F && "Intrinsic wrapper undefined.");
-
-  assert(std::distance(F->begin(), F->end()) == 1 &&
-      "Intrinsic Wrapper should have a single basic block");
-  auto &BB = *F->begin();
-
-  unsigned NumArgs = std::distance(F->arg_begin(), F->arg_end());
-  assert(Operands.size() == NumArgs);
-
-  // map wrapper arg to operands
-  ValueToValueMapTy VMap;
-  for (unsigned i = 0; i < NumArgs; i++) {
-    Value *Arg = F->getArg(i);
-    assert(
-        CastInst::castIsValid(
-          Instruction::CastOps::BitCast, Operands[i], Arg->getType()) &&
-        "Invalid input type");
-    Value *Operand = Builder.CreateBitCast(Operands[i], Arg->getType());
-    VMap[Arg] = Operand;
-  }
-
-  Value *RetVal = nullptr;
-  for (auto &I : BB) {
-    if (auto *Ret = dyn_cast<ReturnInst>(&I)) {
-      RetVal = Ret->getReturnValue();
-      break;
-    }
-    auto *NewI = I.clone();
-    Builder.Insert(NewI);
-    VMap[&I] = NewI;
-    RemapInstruction(NewI, VMap, 
-        RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
-  }
-  assert(RetVal && "Wrapper not returning explicitly");
-  Value *Output = VMap.lookup(RetVal);
-  assert(Output);
-
-  return Output;
-}
 
 char GSLP::ID = 0;
 

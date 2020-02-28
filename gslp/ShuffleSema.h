@@ -3,6 +3,7 @@
 
 #include "InstSema.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/Casting.h"
 #include <vector>
@@ -22,13 +23,17 @@ struct SwizzleTask {
 
 // Interfaces to help indexing this Swizzle, doesn't have to be precise.
 class AbstractSwizzleOutput {
+public:
+  using SliceSet = std::vector<InputSlice>;
+
+private:
   unsigned ElementWidth;
   unsigned TotalWidth;
-  std::vector<std::vector<InputSlice>> Lanes;
+  std::vector<SliceSet> Lanes;
 
 public:
   AbstractSwizzleOutput(unsigned ElementWidth, unsigned TotalWidth,
-                        std::vector<std::vector<InputSlice>> Lanes)
+                        std::vector<SliceSet> Lanes)
       : ElementWidth(ElementWidth), TotalWidth(TotalWidth), Lanes(Lanes) {
     assert(TotalWidth % ElementWidth == 0);
     // verify that all input lanes have the same element size
@@ -94,28 +99,88 @@ public:
 };
 ///////////////////// END SHUFFLE OPS ///////////////////
 
+// Utility interface for emitting swizzle instructions.
+class SwizzleValue;
+// Use this to represent imm8 or index vector
+using Parameter = std::vector<uint8_t>;
+// A set of parameter, mapping <input to swizzle inst> -> <parameter>
+using ParameterMap = std::map<SwizzleValue *, Parameter>;
+
+struct SwizzleValue {
+  using InsertPoint = llvm::IRBuilderBase::InsertPoint;
+  using SwizzleEnv = llvm::DenseMap<const SwizzleValue *, llvm::Value *>;
+  virtual llvm::Value *emit(SwizzleEnv &Env,
+                            IntrinsicBuilder &Builder) const = 0;
+  virtual SwizzleValue *getParameter() const { return nullptr; }
+  virtual llvm::ArrayRef<SwizzleValue *> getOperands() const {
+    return llvm::None;
+  }
+};
+
+class SwizzleInput : public SwizzleValue {
+public:
+  llvm::Value *emit(SwizzleEnv &Env, IntrinsicBuilder &) const override {
+    auto It = Env.find(this);
+    assert(It != Env.end());
+    return It->second;
+  };
+};
+
+class SwizzleInst : public SwizzleValue {
+  std::string Name;
+  std::vector<SwizzleValue *> Operands;
+  // Indicate which of the operand is a parameter (should be statically
+  // specified)
+  int ParameterId;
+
+public:
+  SwizzleInst(std::string Name, std::vector<SwizzleValue *> Operands,
+              int ParameterId = -1)
+      : Name(Name), Operands(Operands), ParameterId(ParameterId) {}
+  llvm::Value *emit(SwizzleEnv &Env, IntrinsicBuilder &Builder) const override;
+  SwizzleValue *getParameter() const override {
+    assert(ParameterId >= 0);
+    return Operands[ParameterId];
+  }
+  llvm::ArrayRef<SwizzleValue *> getOperands() const override {
+    return Operands;
+  }
+};
+
 // interface describing a shuffling/swizzling operation
 class Swizzle {
 public:
-  // Use this to represent imm8 or index vector
-  using Parameter = std::vector<uint8_t>;
-  // A set of parameter, mapping <input id> -> <parameter>
-  using ParameterSet = std::map<unsigned, Parameter>;
+  // lanes of swizzle op
+  using VectorSemantics = std::vector<SwizzleOp *>;
 
-  virtual InstSignature getSignature() const = 0;
+private:
+  InstSignature Sig;
+  std::vector<VectorSemantics> Semantics;
+  std::vector<const SwizzleValue *> Inputs;
+  std::vector<const SwizzleValue *> Outputs;
+  std::vector<AbstractSwizzleOutput> AbstractOutputs;
+  llvm::DenseSet<const SwizzleValue *> ParameterSet;
 
-  virtual AbstractSwizzleOutput getAbstractOutput(unsigned OutputId) const = 0;
+public:
+  Swizzle(InstSignature Sig, std::vector<VectorSemantics> Semantics,
+          std::vector<const SwizzleValue *> Inputs,
+          std::vector<const SwizzleValue *> Outputs,
+          std::vector<AbstractSwizzleOutput> AbstractOutputs);
+
+  AbstractSwizzleOutput getAbstractOutput(unsigned OutputId) const {
+    return AbstractOutputs[OutputId];
+  }
+
+  const InstSignature &getSignature() { return Sig; }
+
+  // Get the precise semantics of this swizzle kernel,
+  // which can have multiple live outs
+  llvm::ArrayRef<VectorSemantics> getSemantics() const { return Semantics; }
 
   // Try to solve the parameter required to implement this task,
   // return if it's sucessful
   bool solveForParameter(const SwizzleTask &Task,
-                         ParameterSet &Parameters) const;
-
-  // emit code that implements a task
-  virtual std::vector<VectorPack>
-  emit(const SwizzleTask &Task, ParameterSet &Parameters) const = 0;
-  // Get the precise semantics of this swizzle kernel
-  virtual llvm::ArrayRef<SwizzleOp *> getSemantics() const = 0;
+                         ParameterMap &Parameters) const;
 };
 
 #endif
