@@ -107,23 +107,16 @@ using Parameter = std::vector<uint8_t>;
 using ParameterMap = std::map<SwizzleValue *, Parameter>;
 
 struct SwizzleValue {
-  using InsertPoint = llvm::IRBuilderBase::InsertPoint;
   using SwizzleEnv = llvm::DenseMap<const SwizzleValue *, llvm::Value *>;
-  virtual llvm::Value *emit(SwizzleEnv &Env,
-                            IntrinsicBuilder &Builder) const = 0;
+  virtual llvm::Value *emit(SwizzleEnv &Env, IntrinsicBuilder &) const {
+    auto It = Env.find(this);
+    assert(It != Env.end());
+    return It->second;
+  }
   virtual SwizzleValue *getParameter() const { return nullptr; }
   virtual llvm::ArrayRef<SwizzleValue *> getOperands() const {
     return llvm::None;
   }
-};
-
-class SwizzleInput : public SwizzleValue {
-public:
-  llvm::Value *emit(SwizzleEnv &Env, IntrinsicBuilder &) const override {
-    auto It = Env.find(this);
-    assert(It != Env.end());
-    return It->second;
-  };
 };
 
 class SwizzleInst : public SwizzleValue {
@@ -131,23 +124,25 @@ class SwizzleInst : public SwizzleValue {
   std::vector<SwizzleValue *> Operands;
   // Indicate which of the operand is a parameter (should be statically
   // specified)
-  int ParameterId;
+  int ParamId;
+  bool ParamIsImm;
 
 public:
   SwizzleInst(std::string Name, std::vector<SwizzleValue *> Operands,
-              int ParameterId = -1)
-      : Name(Name), Operands(Operands), ParameterId(ParameterId) {}
+              int ParamId = -1, bool ParamIsImm = false)
+      : Name(Name), Operands(Operands), ParamId(ParamId),
+        ParamIsImm(ParamIsImm) {}
   llvm::Value *emit(SwizzleEnv &Env, IntrinsicBuilder &Builder) const override;
   SwizzleValue *getParameter() const override {
-    assert(ParameterId >= 0);
-    return Operands[ParameterId];
+    assert(ParamId >= 0);
+    return Operands[ParamId];
   }
   llvm::ArrayRef<SwizzleValue *> getOperands() const override {
     return Operands;
   }
 };
 
-// interface describing a shuffling/swizzling operation
+// Interface describing a (parametrized) shuffling/swizzling operation
 class Swizzle {
 public:
   // lanes of swizzle op
@@ -155,10 +150,13 @@ public:
 
 private:
   InstSignature Sig;
+  // The semantics tells us how to solve for the swizzle parameters
   std::vector<VectorSemantics> Semantics;
   std::vector<const SwizzleValue *> Inputs;
   std::vector<const SwizzleValue *> Outputs;
+  // Imprecise semantics of this swizzle; used for indexing
   std::vector<AbstractSwizzleOutput> AbstractOutputs;
+  // Set of parameters we need to solve in order to implement a concrete swizzle task
   llvm::DenseSet<const SwizzleValue *> ParameterSet;
 
 public:
@@ -181,6 +179,9 @@ public:
   // return if it's sucessful
   bool solveForParameter(const SwizzleTask &Task,
                          ParameterMap &Parameters) const;
+
+  // Emit code to implement a task
+  bool emit(const SwizzleTask &Task, const ParameterMap &Parameters) const;
 };
 
 #endif
