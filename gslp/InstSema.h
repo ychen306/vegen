@@ -57,8 +57,13 @@ public:
   IntrinsicBuilder(InsertPoint IP, llvm::Module &InstWrappers)
   : Builder(InstWrappers.getContext()), InstWrappers(InstWrappers) {
     assert(&IP.getBlock()->getContext() == &InstWrappers.getContext());
+    setInsertPoint(IP);
+  }
+
+  void setInsertPoint(InsertPoint IP) {
     Builder.SetInsertPoint(IP.getBlock(), IP.getPoint());
   }
+
   llvm::Value *Create(
       llvm::StringRef Name,
       llvm::ArrayRef<llvm::Value *> Operands,
