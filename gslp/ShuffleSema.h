@@ -14,8 +14,8 @@ class OrderedInstructions;
 
 // See if two interval intersects
 // https://stackoverflow.com/questions/325933
-static inline bool intersects(
-    unsigned Lo1, unsigned Hi1, unsigned Lo2, unsigned Hi2) {
+static inline bool intersects(unsigned Lo1, unsigned Hi1, unsigned Lo2,
+                              unsigned Hi2) {
   return Lo1 < Hi2 && Lo2 < Hi1;
 }
 
@@ -37,7 +37,7 @@ public:
 
 struct SwizzleTask {
   std::vector<VectorPack> Inputs, Outputs;
-  llvm::LLVMContext &getContext() const { 
+  llvm::LLVMContext &getContext() const {
     return Inputs[0].getContent()[0]->getContext();
   }
 };
@@ -142,14 +142,14 @@ public:
 
 class SwizzleInput : public SwizzleOp {
   const SwizzleValue *X;
+
 public:
-  SwizzleInput(const SwizzleValue *X) : SwizzleOp(OK_Input, X->getSize()), X(X) {}
+  SwizzleInput(const SwizzleValue *X)
+      : SwizzleOp(OK_Input, X->getSize()), X(X) {}
 
   const SwizzleValue *get() const { return X; }
 
-  static bool classof(const SwizzleOp *op) {
-    return op->getKind() == OK_Input;
-  }
+  static bool classof(const SwizzleOp *op) { return op->getKind() == OK_Input; }
 };
 
 class SwizzleValue;
@@ -160,7 +160,7 @@ class Slice : public SwizzleOp {
 
 public:
   Slice(const SwizzleOp *Base, unsigned Lo, unsigned Hi)
-      : SwizzleOp(OK_Slice, Hi-Lo), Base(Base), Lo(Lo), Hi(Hi) {}
+      : SwizzleOp(OK_Slice, Hi - Lo), Base(Base), Lo(Lo), Hi(Hi) {}
   const SwizzleOp *getBase() const { return Base; }
   unsigned getLow() const { return Lo; }
   unsigned getHigh() const { return Hi; }
@@ -170,9 +170,7 @@ public:
     return Base == OtherBase && intersects(Lo, Hi, Other.Lo, Other.Hi);
   }
 
-  static bool classof(const SwizzleOp *op) {
-    return op->getKind() == OK_Slice;
-  }
+  static bool classof(const SwizzleOp *op) { return op->getKind() == OK_Slice; }
 };
 
 class Mux : public SwizzleOp {
@@ -182,7 +180,7 @@ class Mux : public SwizzleOp {
 public:
   Mux(std::vector<SwizzleOp *> Choices, const Slice *Control)
       : SwizzleOp(OK_Mux, Choices[0]->getSize()), Choices(Choices),
-      Control(Control) {
+        Control(Control) {
     assert(Choices.size() > 0 && "Empty Mux!");
     unsigned Size = Choices[0]->getSize();
     for (auto *Choice : Choices) {
@@ -192,9 +190,7 @@ public:
   llvm::ArrayRef<SwizzleOp *> getChoices() const { return Choices; }
   const Slice *getControl() const { return Control; }
 
-  static bool classof(const SwizzleOp *Op) {
-    return Op->getKind() == OK_Mux;
-  }
+  static bool classof(const SwizzleOp *Op) { return Op->getKind() == OK_Mux; }
 };
 
 class DynamicSlice : public SwizzleOp {
@@ -204,7 +200,8 @@ class DynamicSlice : public SwizzleOp {
 
 public:
   DynamicSlice(const SwizzleOp *Base, unsigned Stride, const Slice *Index)
-      : SwizzleOp(OK_DynamicSlice, Stride), Base(Base), Stride(Stride), Index(Index) {}
+      : SwizzleOp(OK_DynamicSlice, Stride), Base(Base), Stride(Stride),
+        Index(Index) {}
   const SwizzleOp *getBase() const { return Base; }
   unsigned getStride() const { return Stride; }
   const Slice *getIndex() const { return Index; }
@@ -222,9 +219,10 @@ class Concat : public SwizzleOp {
       TotalSize += Op->getSize();
     return TotalSize;
   }
+
 public:
-  Concat(std::vector<const SwizzleOp *> Elements) 
-    : SwizzleOp(OK_Concat, getTotalSize(Elements)), Elements(Elements) {}
+  Concat(std::vector<const SwizzleOp *> Elements)
+      : SwizzleOp(OK_Concat, getTotalSize(Elements)), Elements(Elements) {}
   llvm::ArrayRef<const SwizzleOp *> getElements() const { return Elements; }
   static bool classof(const SwizzleOp *Op) {
     return Op->getKind() == OK_Concat;
@@ -232,7 +230,6 @@ public:
 };
 
 ///////////////////// END SHUFFLE OPS ///////////////////
-
 
 // Interface describing a (parametrized) shuffling/swizzling operation
 class Swizzle {
@@ -250,8 +247,7 @@ private:
   llvm::DenseSet<const SwizzleValue *> ParameterSet;
 
 public:
-  Swizzle(InstSignature Sig,
-  std::vector<SwizzleOp *> OutputSema,
+  Swizzle(InstSignature Sig, std::vector<SwizzleOp *> OutputSema,
           std::vector<const SwizzleValue *> Inputs,
           std::vector<const SwizzleValue *> Outputs,
           std::vector<AbstractSwizzleOutput> AbstractOutputs);

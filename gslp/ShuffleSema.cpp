@@ -102,6 +102,7 @@ struct Constraint {
 
 class ParameterUpdateStack {
   std::vector<ParameterUpdate> Stack;
+
 public:
   using iterator = decltype(Stack)::iterator;
   ParameterUpdateStack() = default;
@@ -113,22 +114,20 @@ public:
     Stack.push_back(Update);
     return true;
   }
-  void pop() {
-    Stack.pop_back();
-  }
+  void pop() { Stack.pop_back(); }
   iterator begin() { return Stack.begin(); }
   iterator end() { return Stack.end(); }
 };
 
-bool solveConstraints(std::vector<Constraint> &Cs, ParameterUpdateStack &ParamUpdates) {
+bool solveConstraints(std::vector<Constraint> &Cs,
+                      ParameterUpdateStack &ParamUpdates) {
   const Constraint C = Cs.back();
   Cs.pop_back();
 
   // enum OpKind { OK_Input, OK_DynamicSlice, OK_Mux, OK_Slice, OK_Concat };
   if (auto *X = dyn_cast<SwizzleInput>(C.Op)) {
-    bool Solved = X->get() == C.Target &&
-      C.OpLo == C.TargetLo &&
-      C.OpHi == C.TargetHi && solveConstraints(Cs, ParamUpdates);
+    bool Solved = X->get() == C.Target && C.OpLo == C.TargetLo &&
+                  C.OpHi == C.TargetHi && solveConstraints(Cs, ParamUpdates);
     if (Solved)
       return true;
   } else if (auto *DS = dyn_cast<DynamicSlice>(C.Op)) {
@@ -142,10 +141,8 @@ bool solveConstraints(std::vector<Constraint> &Cs, ParameterUpdateStack &ParamUp
       bool UpdateOk = ParamUpdates.try_push(ParameterUpdate(Index, i));
       if (!UpdateOk)
         continue;
-      Cs.push_back({
-          Base, i*Stride + C.OpLo, i*Stride + Stride + C.OpHi,
-          C.Target, C.TargetLo, C.TargetHi
-          });
+      Cs.push_back({Base, i * Stride + C.OpLo, i * Stride + Stride + C.OpHi,
+                    C.Target, C.TargetLo, C.TargetHi});
       if (solveConstraints(Cs, ParamUpdates))
         return true;
       // backtrack
@@ -153,7 +150,7 @@ bool solveConstraints(std::vector<Constraint> &Cs, ParameterUpdateStack &ParamUp
       ParamUpdates.pop();
     }
   } else if (auto *M = dyn_cast<Mux>(C.Op)) {
-    auto Choices= M->getChoices();
+    auto Choices = M->getChoices();
     unsigned NumChoices = Choices.size();
     auto *Control = M->getControl();
     for (unsigned i = 0; i < NumChoices; i++) {
@@ -162,10 +159,7 @@ bool solveConstraints(std::vector<Constraint> &Cs, ParameterUpdateStack &ParamUp
       bool UpdateOk = ParamUpdates.try_push(ParameterUpdate(Control, i));
       if (!UpdateOk)
         continue;
-      Cs.push_back({
-          Op, C.OpLo, C.OpHi,
-          C.Target, C.TargetLo, C.TargetHi
-          });
+      Cs.push_back({Op, C.OpLo, C.OpHi, C.Target, C.TargetLo, C.TargetHi});
       if (solveConstraints(Cs, ParamUpdates))
         return true;
       // backtrack
@@ -175,10 +169,8 @@ bool solveConstraints(std::vector<Constraint> &Cs, ParameterUpdateStack &ParamUp
   } else if (auto *S = dyn_cast<Slice>(C.Op)) {
     unsigned NewLo = S->getLow() + C.OpLo;
     unsigned NewHi = NewLo + C.OpHi - C.OpLo;
-    Cs.push_back({
-        S->getBase(), NewLo, NewHi,
-        C.Target, C.TargetLo, C.TargetHi
-        });
+    Cs.push_back(
+        {S->getBase(), NewLo, NewHi, C.Target, C.TargetLo, C.TargetHi});
     if (solveConstraints(Cs, ParamUpdates))
       return true;
   } else if (auto *Cat = dyn_cast<Concat>(C.Op)) {
@@ -187,15 +179,12 @@ bool solveConstraints(std::vector<Constraint> &Cs, ParameterUpdateStack &ParamUp
     // Search for concatenated elements that falls in [Lo, Hi].
     for (auto *Op : Cat->getElements()) {
       unsigned OpSize = Op->getSize();
-      if (intersects(Offset, Offset+OpSize, C.OpLo, C.OpHi)) {
+      if (intersects(Offset, Offset + OpSize, C.OpLo, C.OpHi)) {
         unsigned NewLo = std::max(Offset, C.OpLo);
-        unsigned NewHi = std::min(Offset+OpSize, C.OpHi);
+        unsigned NewHi = std::min(Offset + OpSize, C.OpHi);
         unsigned NewTargetLo = C.TargetLo + NewLo - C.OpLo;
         unsigned NewTargetHi = NewTargetLo + NewHi - NewLo;
-        Cs.push_back({
-            Op, NewLo, NewHi,
-            C.Target, NewTargetLo, NewTargetHi
-            });
+        Cs.push_back({Op, NewLo, NewHi, C.Target, NewTargetLo, NewTargetHi});
         NumExtraConstraints += 1;
       }
       Offset += OpSize;
@@ -228,8 +217,7 @@ Value *SwizzleInst::emit(SwizzleEnv &Env, IntrinsicBuilder &Builder,
   return V;
 }
 
-Swizzle::Swizzle(InstSignature Sig,
-    std::vector<SwizzleOp *> OutputSema,
+Swizzle::Swizzle(InstSignature Sig, std::vector<SwizzleOp *> OutputSema,
                  std::vector<const SwizzleValue *> Inputs,
                  std::vector<const SwizzleValue *> Outputs,
                  std::vector<AbstractSwizzleOutput> AbstractOutputs)
@@ -274,7 +262,8 @@ bool Swizzle::solve(const SwizzleTask &Task, SwizzleEnv &Env,
     unsigned j = 0;
     unsigned ElemSize = Pack.getElementWidth();
     for (auto *X : Pack.getContent()) {
-      InputValueMap[X] = SwizzleValueSlice {SV, j*ElemSize, j*ElemSize+ElemSize};
+      InputValueMap[X] =
+          SwizzleValueSlice{SV, j * ElemSize, j * ElemSize + ElemSize};
       j += 1;
     }
   }
@@ -290,11 +279,9 @@ bool Swizzle::solve(const SwizzleTask &Task, SwizzleEnv &Env,
     unsigned j = 0;
     for (const Value *Y : OutputPack.getContent()) {
       auto &TargetSlice = InputValueMap[Y];
-      Constraints.push_back({
-          OutputOp, j * ElemSize, j*ElemSize + ElemSize,
-          // Target
-          TargetSlice.SV, TargetSlice.Lo, TargetSlice.Hi
-          });
+      Constraints.push_back({OutputOp, j * ElemSize, j * ElemSize + ElemSize,
+                             // Target
+                             TargetSlice.SV, TargetSlice.Lo, TargetSlice.Hi});
       j += 1;
     }
   }
