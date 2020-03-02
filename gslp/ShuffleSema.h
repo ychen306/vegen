@@ -12,6 +12,13 @@ namespace llvm {
 class OrderedInstructions;
 }
 
+// See if two interval intersects
+// https://stackoverflow.com/questions/325933
+static inline bool intersects(
+    unsigned Lo1, unsigned Hi1, unsigned Lo2, unsigned Hi2) {
+  return Lo1 < Hi2 && Lo2 < Hi1;
+}
+
 class VectorPack {
   unsigned ElementWidth; /* unit = bits */
   std::vector<llvm::Value *> Content;
@@ -22,14 +29,17 @@ public:
              llvm::Value *PackedContent = nullptr)
       : ElementWidth(ElementWidth), Content(Content),
         PackedContent(PackedContent) {}
-
   unsigned getElementWidth() const { return ElementWidth; }
+  unsigned getNumElements() const { return Content.size(); }
   llvm::ArrayRef<llvm::Value *> getContent() const { return Content; }
   llvm::Value *getPackedContent() const { return PackedContent; }
 };
 
 struct SwizzleTask {
   std::vector<VectorPack> Inputs, Outputs;
+  llvm::LLVMContext &getContext() const { 
+    return Inputs[0].getContent()[0]->getContext();
+  }
 };
 
 // Interfaces to help indexing this Swizzle, doesn't have to be precise.
@@ -131,8 +141,11 @@ public:
 };
 
 class SwizzleInput : public SwizzleOp {
+  const SwizzleValue *X;
 public:
-  SwizzleInput(SwizzleValue *V) : SwizzleOp(OK_Input, V->getSize()) {}
+  SwizzleInput(const SwizzleValue *X) : SwizzleOp(OK_Input, X->getSize()), X(X) {}
+
+  const SwizzleValue *get() const { return X; }
 
   static bool classof(const SwizzleOp *op) {
     return op->getKind() == OK_Input;
@@ -152,11 +165,9 @@ public:
   unsigned getLow() const { return Lo; }
   unsigned getHigh() const { return Hi; }
   bool intersectWith(const Slice &Other) const {
-    assert(llvm::isa<SwizzleInput>(Base));
-    // https://stackoverflow.com/questions/325933
-    return Base == Other.Base &&
-      Lo < Other.Hi && 
-      Other.Lo < Hi;
+    auto *Base = llvm::cast<SwizzleInput>(this->Base)->get();
+    auto *OtherBase = llvm::cast<SwizzleInput>(Other.Base)->get();
+    return Base == OtherBase && intersects(Lo, Hi, Other.Lo, Other.Hi);
   }
 
   static bool classof(const SwizzleOp *op) {
