@@ -138,12 +138,12 @@ bool solveConstraints(std::vector<Constraint> &Cs, ParameterUpdateStack &ParamUp
     unsigned TotalSize = DS->getBase()->getSize();
     unsigned NumChoices = TotalSize / Stride;
     for (int i = 0; i < NumChoices; i++) {
-      // try this branch
+      // try this index
       bool UpdateOk = ParamUpdates.try_push(ParameterUpdate(Index, i));
       if (!UpdateOk)
         continue;
       Cs.push_back({
-          Base, i*Stride, i*Stride + Stride,
+          Base, i*Stride + C.OpLo, i*Stride + Stride + C.OpHi,
           C.Target, C.TargetLo, C.TargetHi
           });
       if (solveConstraints(Cs, ParamUpdates))
