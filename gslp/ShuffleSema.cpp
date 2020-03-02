@@ -191,6 +191,7 @@ bool solveConstraints(std::vector<Constraint> &Cs,
     }
     if (solveConstraints(Cs, ParamUpdates))
       return true;
+    // Failed. Remove the extra constraints we generated for this concat
     while (NumExtraConstraints--)
       Cs.pop_back();
   }
