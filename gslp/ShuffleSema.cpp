@@ -85,6 +85,7 @@ public:
       Bits[i + Start] = Val % 2;
       Val >>= 1;
     }
+    assert(Val == 0 && "Udpate value larger than update bitwidth");
   }
 
   // Emit the llvm representation for this parameter
