@@ -32,66 +32,6 @@ findEarliestInsertPoint(ArrayRef<Value *> UsedValues,
                                        std::next(LatestIt));
 }
 
-class ParameterUpdate {
-  const Slice *LHS;
-  unsigned RHS;
-
-public:
-  ParameterUpdate(const Slice *LHS, unsigned RHS) : LHS(LHS), RHS(RHS) {
-    assert(isa<SwizzleInput>(LHS->getBase()));
-    assert(LHS->getSize() <= 32 && "Assignment bitwidth too large");
-  }
-
-  bool compatibleWith(const ParameterUpdate &Other) const {
-    // no conflict if the assignment doesn't touch the same values
-    if (!LHS->intersectWith(*Other.LHS))
-      return true;
-    unsigned V1 = RHS;
-    unsigned V2 = Other.RHS;
-    // Align the RHSs
-    int Diff = int(Other.LHS->getLow()) - int(LHS->getLow());
-    // Bump down bits starting at a higher interval
-    if (Diff > 0) {
-      V2 >>= Diff;
-    } else {
-      V1 >>= -Diff;
-    }
-    uint64_t NumBits = std::min(LHS->getSize(), Other.LHS->getSize());
-    uint64_t Mask = (1 << NumBits) - 1;
-    return (Mask & V1) == (Mask & V2);
-  }
-
-  const Slice *getLHS() const { return LHS; }
-  unsigned getRHS() const { return RHS; }
-};
-
-class ParameterMap {
-  // mapping <parameters> -> <their bitvector representations>
-  DenseMap<const SwizzleValue *, BitVector> BVs;
-
-public:
-  ParameterMap(const DenseSet<const SwizzleValue *> &Parameters) {
-    for (auto *Param : Parameters)
-      BVs[Param] = BitVector(Param->getSize());
-  }
-
-  void update(const ParameterUpdate &Update) {
-    const Slice *LHS = Update.getLHS();
-    unsigned N = LHS->getSize();
-    unsigned Start = LHS->getLow();
-    unsigned Val = Update.getRHS();
-    auto &Bits = BVs[cast<SwizzleInput>(LHS->getBase())->get()];
-    for (unsigned i = 0; i < N; i++) {
-      Bits[i + Start] = Val % 2;
-      Val >>= 1;
-    }
-    assert(Val == 0 && "Udpate value larger than update bitwidth");
-  }
-
-  // Emit the llvm representation for this parameter
-  Constant *emit(LLVMContext &Ctx, const SwizzleValue *Param);
-};
-
 // Read this as `Op[Lo : Hi] should be equivalent to Target[Lo : Hi]`.
 struct Constraint {
   const SwizzleOp *Op;
@@ -201,7 +141,58 @@ bool solveConstraints(std::vector<Constraint> &Cs,
   return false;
 }
 
+
+// emit llvm representation of a bitvector
+Constant *emitParameter(llvm::LLVMContext &Ctx, const BitVector &BV) {
+  return nullptr;
+}
+
 } // end anonymous namespace
+
+ParameterMap::ParameterMap(const DenseSet<const SwizzleValue *> &Parameters) {
+  for (auto *Param : Parameters)
+    BVs[Param] = BitVector(Param->getSize());
+}
+
+void ParameterMap::update(const ParameterUpdate &Update) {
+  const Slice *LHS = Update.getLHS();
+  unsigned N = LHS->getSize();
+  unsigned Start = LHS->getLow();
+  unsigned Val = Update.getRHS();
+  const SwizzleValue *Param = cast<SwizzleInput>(LHS->getBase())->get();
+  auto It = BVs.find(Param);
+  assert(It != BVs.end());
+  auto &Bits = It->second;
+  for (unsigned i = 0; i < N; i++) {
+    Bits[i + Start] = Val % 2;
+    Val >>= 1;
+  }
+  assert(Val == 0 && "Udpate value larger than update bitwidth");
+}
+
+bool ParameterUpdate::compatibleWith(const ParameterUpdate &Other) const {
+  // no conflict if the assignment doesn't touch the same values
+  if (!LHS->intersectWith(*Other.LHS))
+    return true;
+  uint64_t V1 = RHS;
+  uint64_t V2 = Other.RHS;
+  // Align the RHSs
+  int LowDiff = int(Other.LHS->getLow()) - int(LHS->getLow());
+  // Bump up bits starting at a lower interval
+  if (LowDiff > 0) {
+    V2 <<= LowDiff;
+  } else {
+    V1 <<= -LowDiff;
+  }
+  // Only check the intersected bits
+  uint64_t NumBits = (
+      std::min(LHS->getHigh(), Other.LHS->getHigh()) -
+      std::max(LHS->getLow(), Other.LHS->getLow()));
+  NumBits <<= std::abs(LowDiff);
+  uint64_t Mask = (1 << uint64_t(NumBits)) - 1;
+  return (Mask & V1) == (Mask & V2);
+}
+
 
 Value *SwizzleInst::emit(SwizzleEnv &Env, IntrinsicBuilder &Builder,
                          const OrderedInstructions *OI) const {
@@ -294,8 +285,9 @@ bool Swizzle::solve(const SwizzleTask &Task, SwizzleEnv &Env,
   ParameterMap Params(ParameterSet);
   for (auto &Update : ParamUpdates)
     Params.update(Update);
-  for (const auto *Param : ParameterSet) {
-    Params.emit(Task.getContext(), Param);
+  auto &Ctx = Task.getContext();
+  for (const SwizzleValue *Param : ParameterSet) {
+    Env[Param] = emitParameter(Ctx, Params.get(Param));
   }
   // TODO: verify all of the instructions used inside this swizzle kernel
   // can be produced before they are needed

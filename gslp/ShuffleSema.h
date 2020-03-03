@@ -2,6 +2,7 @@
 #define SHUFFLE_SEMA_H
 
 #include "InstSema.h"
+#include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Value.h"
@@ -266,6 +267,46 @@ public:
   // Emit code to implement a task
   std::vector<llvm::Value *> emit(SwizzleEnv &Env, IntrinsicBuilder &Builder,
                                   const llvm::OrderedInstructions *) const;
+};
+
+class ParameterUpdate {
+  llvm::Optional<Slice> TempSlice;
+  const Slice *LHS;
+  unsigned RHS;
+
+  void verify() const {
+    assert(llvm::isa<SwizzleInput>(LHS->getBase()));
+    assert(LHS->getSize() <= 32 && "Assignment bitwidth too large");
+  }
+
+public:
+  ParameterUpdate(const Slice *LHS, unsigned RHS) : LHS(LHS), RHS(RHS) {
+    verify();
+  }
+
+  ParameterUpdate(const SwizzleInput *X, unsigned RHS)
+    : TempSlice(Slice(X, 0, X->getSize())), LHS(TempSlice.getPointer()), RHS(RHS) {
+      verify();
+  }
+
+  bool compatibleWith(const ParameterUpdate &Other) const;
+
+  const Slice *getLHS() const { return LHS; }
+  unsigned getRHS() const { return RHS; }
+};
+
+class ParameterMap {
+  // mapping <parameters> -> <their bitvector representations>
+  llvm::DenseMap<const SwizzleValue *, llvm::BitVector> BVs;
+
+public:
+  ParameterMap(const llvm::DenseSet<const SwizzleValue *> &Parameters);
+  void update(const ParameterUpdate &Update);
+  const llvm::BitVector &get(const SwizzleValue *Param) const {
+    auto It = BVs.find(Param);
+    assert(It != BVs.end() && "Unknown parameter");
+    return It->second;
+  }
 };
 
 #endif

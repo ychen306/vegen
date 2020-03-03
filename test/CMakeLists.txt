@@ -4,9 +4,12 @@ add_executable(
   gtest-all.cpp
   main.cpp)
 
+message(STATUS "!!!!!!!!!!!1 ${llvm_libs}")
+
 target_link_libraries(
   unittests
-  GSLP_AUX)
+  GSLP_AUX
+  ${llvm_libs})
 
 add_test(
   NAME
