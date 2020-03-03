@@ -238,7 +238,7 @@ public:
 private:
   InstSignature Sig;
   // The semantics tells us how to solve for the swizzle parameters
-  std::vector<SwizzleOp *> OutputSema;
+  std::vector<const SwizzleOp *> OutputSema;
   std::vector<const SwizzleValue *> Inputs;
   std::vector<const SwizzleValue *> Outputs;
   // Imprecise semantics of this swizzle; used for indexing
@@ -248,7 +248,7 @@ private:
   llvm::DenseSet<const SwizzleValue *> ParameterSet;
 
 public:
-  Swizzle(InstSignature Sig, std::vector<SwizzleOp *> OutputSema,
+  Swizzle(InstSignature Sig, std::vector<const SwizzleOp *> OutputSema,
           std::vector<const SwizzleValue *> Inputs,
           std::vector<const SwizzleValue *> Outputs,
           std::vector<AbstractSwizzleOutput> AbstractOutputs);

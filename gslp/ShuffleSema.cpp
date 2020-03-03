@@ -61,6 +61,10 @@ public:
 
 bool solveConstraints(std::vector<Constraint> &Cs,
                       ParameterUpdateStack &ParamUpdates) {
+  // Nothing to solve
+  if (Cs.empty())
+    return true;
+
   const Constraint C = Cs.back();
   Cs.pop_back();
 
@@ -209,7 +213,7 @@ Value *SwizzleInst::emit(SwizzleEnv &Env, IntrinsicBuilder &Builder,
   return V;
 }
 
-Swizzle::Swizzle(InstSignature Sig, std::vector<SwizzleOp *> OutputSema,
+Swizzle::Swizzle(InstSignature Sig, std::vector<const SwizzleOp *> OutputSema,
                  std::vector<const SwizzleValue *> Inputs,
                  std::vector<const SwizzleValue *> Outputs,
                  std::vector<AbstractSwizzleOutput> AbstractOutputs)
@@ -264,7 +268,7 @@ bool Swizzle::solve(const SwizzleTask &Task, SwizzleEnv &Env,
   std::vector<Constraint> Constraints;
   unsigned NumOutputs = OutputSema.size();
   for (unsigned i = 0; i < NumOutputs; i++) {
-    SwizzleOp *OutputOp = OutputSema[i];
+    const SwizzleOp *OutputOp = OutputSema[i];
     auto &OutputPack = Task.Outputs[i];
     unsigned ElemSize = OutputPack.getElementWidth();
 
@@ -285,10 +289,20 @@ bool Swizzle::solve(const SwizzleTask &Task, SwizzleEnv &Env,
   ParameterMap Params(ParameterSet);
   for (auto &Update : ParamUpdates)
     Params.update(Update);
+
+  // Emit and bind the solved parameters
   auto &Ctx = Task.getContext();
   for (const SwizzleValue *Param : ParameterSet) {
     Env[Param] = emitParameter(Ctx, Params.get(Param));
   }
+
+  // Bind the input
+  for (unsigned i = 0; i < NumInputs; i++) {
+    Value *X = Task.Inputs[i].getPackedContent();
+    assert(X && "Input not packed");
+    Env[Inputs[i]] = X;
+  }
+  
   // TODO: verify all of the instructions used inside this swizzle kernel
   // can be produced before they are needed
   return true;

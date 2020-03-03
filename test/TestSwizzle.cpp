@@ -66,3 +66,81 @@ TEST(Swizzle, ParamMapUpdate) {
   PM.update(ParameterUpdate(&S3, 0b110));
   ASSERT_NE(Target, PM.get(&V));
 }
+
+namespace {
+
+// auxiliary environment with llvm types and constants we need for testing
+struct AuxEnv {
+  LLVMContext Ctx;
+  std::vector<Constant *> I8Values;
+  std::vector<Constant *> I32Values;
+  IntegerType *I8, *I32;
+
+  AuxEnv(unsigned NumValues=256) {
+    I8 = Type::getInt8Ty(Ctx);
+    I32 = Type::getInt32Ty(Ctx);
+
+    for (unsigned i = 0; i < NumValues; i++) {
+      I8Values.push_back(ConstantInt::get(I8, i));
+      I32Values.push_back(ConstantInt::get(I32, i));
+    }
+  }
+
+  std::vector<Constant *> selectValues(ArrayRef<Constant *> Values, std::vector<unsigned> Idxs) const {
+    std::vector<Constant *> Selected;
+    for (unsigned i : Idxs)
+      Selected.push_back(Values[i]);
+    return Selected;
+  }
+} Aux;
+
+Swizzle buildDummySwizzleKernel(
+    std::vector<const SwizzleValue *> Inputs,
+    std::vector<const SwizzleValue *> Outputs,
+    std::vector<const SwizzleOp *> OutputSema) {
+  InstSignature Sig;
+  Sig.InputBitwidths.resize(Inputs.size());
+  Sig.OutputBitwidths.resize(Outputs.size());
+  std::vector<AbstractSwizzleOutput> AbstractOutputs;
+  for (auto *X : Outputs) {
+    AbstractOutputs.push_back(AbstractSwizzleOutput(1,0,{}));
+  }
+  Swizzle Kernel(
+      Sig, OutputSema, Inputs, Outputs, AbstractOutputs);
+  return Kernel;
+}
+
+std::vector<Value *> toValueVector(const std::vector<Constant *> &Constants) {
+  std::vector<Value *> Values;
+  for (auto *C : Constants)
+    Values.push_back(C);
+  return Values;
+}
+
+VectorPack createInputPack(unsigned BitWidth, std::vector<Constant *> X) {
+  return VectorPack(BitWidth, toValueVector(X), ConstantVector::get(X));
+}
+
+VectorPack createOutputPack(unsigned BitWidth, std::vector<Constant *> X) {
+  return VectorPack(BitWidth, toValueVector(X));
+}
+
+} // end anonymous namespace
+
+
+TEST(Swizzle, ParamSolvingSimple) {
+  // basic kernel: 1234 -> 1234
+  VectorPack X = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
+  VectorPack Y = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
+  SwizzleTask Task {{X}, {Y}};
+
+  unsigned BW = 4 * 8;
+  SwizzleValue Sx(BW);
+  SwizzleValue Sy(BW);
+  SwizzleInput Sema(&Sx);
+
+  Swizzle Kernel = buildDummySwizzleKernel({&Sx}, {&Sy}, {&Sema});
+  SwizzleEnv Env;
+  OrderedInstructions *OI = nullptr;
+  ASSERT_TRUE(Kernel.solve(Task, Env, OI));
+}
