@@ -127,12 +127,11 @@ VectorPack createOutputPack(unsigned BitWidth, std::vector<Constant *> X) {
 
 } // end anonymous namespace
 
-
 TEST(Swizzle, ParamSolvingSimple) {
   // basic kernel: 1234 -> 1234
   VectorPack X = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
   VectorPack Y = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
-  SwizzleTask Task {{X}, {Y}};
+  VectorPack Y2 = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,3,2}));
 
   unsigned BW = 4 * 8;
   SwizzleValue Sx(BW);
@@ -142,5 +141,34 @@ TEST(Swizzle, ParamSolvingSimple) {
   Swizzle Kernel = buildDummySwizzleKernel({&Sx}, {&Sy}, {&Sema});
   SwizzleEnv Env;
   OrderedInstructions *OI = nullptr;
-  ASSERT_TRUE(Kernel.solve(Task, Env, OI));
+  ASSERT_TRUE(Kernel.solve({{X}, {Y}}, Env, OI));
+  ASSERT_FALSE(Kernel.solve({{X}, {Y2}}, Env, OI));
+  ASSERT_EQ(Env[&Sx], X.getPackedContent());
+}
+
+TEST(Swizzle, ParamSolvingUnpackLo) {
+  // basic kernel: 1234 -> 1234
+  VectorPack X1 = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
+  VectorPack X2 = createInputPack(8, Aux.selectValues(Aux.I8Values, {4,5,6,7}));
+  VectorPack Y = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,4,2,6}));
+
+  unsigned BW = 4 * 8;
+  SwizzleValue Sx1(BW);
+  SwizzleValue Sx2(BW);
+  SwizzleValue Sy(BW);
+
+  SwizzleInput Input1(&Sx1);
+  SwizzleInput Input2(&Sx2);
+  Slice Lane1(&Input1, 0, 8);
+  Slice Lane2(&Input2, 0, 8);
+  Slice Lane3(&Input1, 16, 24);
+  Slice Lane4(&Input2, 16, 24);
+  Concat Sema({&Lane1, &Lane2, &Lane3, &Lane4});
+
+  Swizzle Kernel = buildDummySwizzleKernel({&Sx1, &Sx2}, {&Sy}, {&Sema});
+  SwizzleEnv Env;
+  OrderedInstructions *OI = nullptr;
+  ASSERT_TRUE(Kernel.solve({{X1, X2}, {Y}}, Env, OI));
+  ASSERT_EQ(Env[&Sx1], X1.getPackedContent());
+  ASSERT_EQ(Env[&Sx2], X2.getPackedContent());
 }

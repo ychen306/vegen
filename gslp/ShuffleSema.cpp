@@ -38,6 +38,19 @@ struct Constraint {
   unsigned OpLo, OpHi;
   const SwizzleValue *Target;
   unsigned TargetLo, TargetHi;
+
+  unsigned getSize() {
+    return OpHi - OpLo;
+  }
+
+  // Some basic variants
+  void assert_invariants() const {
+    assert(OpLo < OpHi);
+    assert(OpHi <= Op->getSize());
+    assert(TargetLo < TargetHi);
+    assert(TargetHi <= Target->getSize());
+    assert(OpHi-OpLo == TargetHi-TargetLo);
+  }
 };
 
 class ParameterUpdateStack {
@@ -67,6 +80,7 @@ bool solveConstraints(std::vector<Constraint> &Cs,
 
   const Constraint C = Cs.back();
   Cs.pop_back();
+  C.assert_invariants();
 
   // enum OpKind { OK_Input, OK_DynamicSlice, OK_Mux, OK_Slice, OK_Concat };
   if (auto *X = dyn_cast<SwizzleInput>(C.Op)) {
@@ -117,16 +131,21 @@ bool solveConstraints(std::vector<Constraint> &Cs,
         {S->getBase(), NewLo, NewHi, C.Target, C.TargetLo, C.TargetHi});
     if (solveConstraints(Cs, ParamUpdates))
       return true;
-  } else if (auto *Cat = dyn_cast<Concat>(C.Op)) {
+    Cs.pop_back();
+  } else {
+    auto *Cat = cast<Concat>(C.Op);
     unsigned Offset = 0;
     unsigned NumExtraConstraints = 0;
     // Search for concatenated elements that falls in [Lo, Hi].
     for (auto *Op : Cat->getElements()) {
       unsigned OpSize = Op->getSize();
       if (intersects(Offset, Offset + OpSize, C.OpLo, C.OpHi)) {
-        unsigned NewLo = std::max(Offset, C.OpLo);
-        unsigned NewHi = std::min(Offset + OpSize, C.OpHi);
-        unsigned NewTargetLo = C.TargetLo + NewLo - C.OpLo;
+        unsigned IntersectLo = std::max(Offset, C.OpLo);
+        unsigned IntersectHi = std::min(Offset+OpSize, C.OpHi);
+        unsigned NewLo = IntersectLo - Offset;
+        unsigned NewHi = NewLo + IntersectHi - IntersectLo;
+        // increment the target lo by the amount we shift OpLo up
+        unsigned NewTargetLo = C.TargetLo + IntersectLo - C.OpLo;
         unsigned NewTargetHi = NewTargetLo + NewHi - NewLo;
         Cs.push_back({Op, NewLo, NewHi, C.Target, NewTargetLo, NewTargetHi});
         NumExtraConstraints += 1;
