@@ -147,7 +147,7 @@ TEST(Swizzle, ParamSolvingSimple) {
 }
 
 TEST(Swizzle, ParamSolvingUnpackLo) {
-  // basic kernel: 1234 -> 1234
+  // unpack lo : 0123 x 4567 -> 0426
   VectorPack X1 = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
   VectorPack X2 = createInputPack(8, Aux.selectValues(Aux.I8Values, {4,5,6,7}));
   VectorPack Y = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,4,2,6}));
