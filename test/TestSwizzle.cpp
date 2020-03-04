@@ -131,7 +131,7 @@ TEST(Swizzle, ParamSolvingSimple) {
   // basic kernel: 1234 -> 1234
   VectorPack X = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
   VectorPack Y = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
-  VectorPack Y2 = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,3,2}));
+  VectorPack Y2 = createOutputPack(8, Aux.selectValues(Aux.I8Values, {0,1,3,2}));
 
   unsigned BW = 4 * 8;
   SwizzleValue Sx(BW);
@@ -150,7 +150,7 @@ TEST(Swizzle, ParamSolvingUnpackLo) {
   // unpack lo : 0123 x 4567 -> 0426
   VectorPack X1 = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
   VectorPack X2 = createInputPack(8, Aux.selectValues(Aux.I8Values, {4,5,6,7}));
-  VectorPack Y = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,4,2,6}));
+  VectorPack Y = createOutputPack(8, Aux.selectValues(Aux.I8Values, {0,4,2,6}));
 
   unsigned BW = 4 * 8;
   SwizzleValue Sx1(BW);
