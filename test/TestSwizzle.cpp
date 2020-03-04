@@ -172,3 +172,55 @@ TEST(Swizzle, ParamSolvingUnpackLo) {
   ASSERT_EQ(Env[&Sx1], X1.getPackedContent());
   ASSERT_EQ(Env[&Sx2], X2.getPackedContent());
 }
+
+TEST(Swizzle, ParamSolvingUnpackLoCoarse) {
+  // unpack lo of (2x16 bit) : 0123 x 4567 -> 0145
+  VectorPack X1 = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
+  VectorPack X2 = createInputPack(8, Aux.selectValues(Aux.I8Values, {4,5,6,7}));
+  VectorPack Y = createOutputPack(8, Aux.selectValues(Aux.I8Values, {0,1,4,5}));
+
+  unsigned BW = 16 * 2;
+  SwizzleValue Sx1(BW);
+  SwizzleValue Sx2(BW);
+  SwizzleValue Sy(BW);
+
+  SwizzleInput Input1(&Sx1);
+  SwizzleInput Input2(&Sx2);
+  Slice Lane1(&Input1, 0, 16);
+  Slice Lane2(&Input2, 0, 16);
+  Concat Sema({&Lane1, &Lane2});
+
+  Swizzle Kernel = buildDummySwizzleKernel({&Sx1, &Sx2}, {&Sy}, {&Sema});
+  SwizzleEnv Env;
+  OrderedInstructions *OI = nullptr;
+  ASSERT_TRUE(Kernel.solve({{X1, X2}, {Y}}, Env, OI));
+  ASSERT_EQ(Env[&Sx1], X1.getPackedContent());
+  ASSERT_EQ(Env[&Sx2], X2.getPackedContent());
+}
+
+TEST(Swizzle, ParamSolvingUnpackHi) {
+  // unpack lo : 0123 x 4567 -> 1537
+  VectorPack X1 = createInputPack(8, Aux.selectValues(Aux.I8Values, {0,1,2,3}));
+  VectorPack X2 = createInputPack(8, Aux.selectValues(Aux.I8Values, {4,5,6,7}));
+  VectorPack Y = createOutputPack(8, Aux.selectValues(Aux.I8Values, {1,5,3,7}));
+
+  unsigned BW = 4 * 8;
+  SwizzleValue Sx1(BW);
+  SwizzleValue Sx2(BW);
+  SwizzleValue Sy(BW);
+
+  SwizzleInput Input1(&Sx1);
+  SwizzleInput Input2(&Sx2);
+  Slice Lane1(&Input1, 8, 16);
+  Slice Lane2(&Input2, 8, 16);
+  Slice Lane3(&Input1, 24, 32);
+  Slice Lane4(&Input2, 24, 32);
+  Concat Sema({&Lane1, &Lane2, &Lane3, &Lane4});
+
+  Swizzle Kernel = buildDummySwizzleKernel({&Sx1, &Sx2}, {&Sy}, {&Sema});
+  SwizzleEnv Env;
+  OrderedInstructions *OI = nullptr;
+  ASSERT_TRUE(Kernel.solve({{X1, X2}, {Y}}, Env, OI));
+  ASSERT_EQ(Env[&Sx1], X1.getPackedContent());
+  ASSERT_EQ(Env[&Sx2], X2.getPackedContent());
+}
