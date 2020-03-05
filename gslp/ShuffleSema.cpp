@@ -261,6 +261,7 @@ Swizzle::Swizzle(InstSignature Sig, std::vector<const SwizzleOp *> OutputSema,
   }
 }
 
+// TODO: use the abstract output to guide solving.
 bool Swizzle::solve(const SwizzleTask &Task, SwizzleEnv &Env,
                     const OrderedInstructions *OI) const {
   struct SwizzleValueSlice {

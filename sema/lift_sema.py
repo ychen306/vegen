@@ -711,12 +711,11 @@ if __name__ == '__main__':
   import functools
   import pickle
 
-  debug = True
+  debug = '_mm256_shufflelo_epi16'
   if debug:
     translator = Translator()
-    y = semas['_mm_dbsad_epu8'][1][0]
+    y = semas[debug][1][0]
     y = elim_dead_branches(y)
-    #y = semas['_mm512_avg_epu16'][1][0]
     y_reduced = reduce_bitwidth(y)
     z3.prove(y_reduced == y)
     y = y_reduced

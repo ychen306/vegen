@@ -7,6 +7,7 @@ Constant = namedtuple('Constant', ['value', 'bitwidth'])
 class DynamicSlice:
   def __init__(self, base, idx, stride):
     self.base = base.decl().name()
+    self.base_size = base.size()
     self.idx = idx
     self.stride = stride
     self.bitwidth = stride
@@ -20,6 +21,12 @@ class DynamicSlice:
 
   def __repr__(self):
     return f'choose<{self.stride}>({self.base}).at({self.idx})'
+
+  def get_z3_base(self):
+    return z3.BitVec(self.base, self.base_size)
+
+  def size(self):
+    return self.stride
 
 class Mux:
   def __init__(self, ctrl, keys, values, bitwidth):

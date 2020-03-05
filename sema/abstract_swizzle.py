@@ -45,7 +45,7 @@ def get_swizzle_info(lifted):
 
   # FIXME: verify that the output has the same stride
 
-  return SwizzleInfo(size, list(parameters))
+  return SwizzleInfo(size, parameters)
 
 def popcount(x):
   count = 0
@@ -79,28 +79,50 @@ def get_num_propagated_elements(x, x_stride, args, y):
     bv = bv | (1 << (y_elem-1))
   return z3.simplify(popcount(bv))
 
-def get_abstract_swizzle_output(inst, lifted, sema, swizzle_info):
+def get_abstract_swizzle_output(lifted, sema):
   '''
   Given a swizzle instruction of input X = {x_1, ... x_n}, (excluding control parameter)
   (suppose it has only one output), we can assign its output a type:
   Further assume that all x_i are indexed with the same stride
   [a_1, ..., a_n], where
-  a_i can have the following type:
-    | AtMost c (the instruction can select at most c values from x_1)
-    | Exactly c (the instruction can select at exactly c values from x_1)
+  a_i is an integer interval specifying potential elements of x_i
+  propagated to the output
 
   return ([a_1, ..., a_n])
   '''
-  _, out_ids, dag = lifted
+  stride, params = get_swizzle_info(lifted)
+  xs, [y] = sema
+  args = [x for x in xs if x not in params]
+  abstract_output = {}
+  s = z3.Solver()
+  for x in args:
+    num_propagated = get_num_propagated_elements(x, stride, args, y)
+    if z3.is_bv_value(num_propagated):
+      a_lo = num_propagated.as_long()
+      a = a_lo, a_lo+1
+    else: # can't simplify, the number of propagated elements depends on parameters
+      candidates = []
+      for i in range(x.size()//stride+1):
+        if s.check(num_propagated == i) != z3.unsat:
+          candidates.append(i)
+      a = min(candidates), max(candidates)+1
+    abstract_output[x] = a
+  return abstract_output
 
 if __name__ == '__main__':
   import sys
   import pickle
-  from semas import 
+  from semas import semas
 
   lifted_f = sys.argv[1]
   with open(lifted_f, 'rb') as f:
     lifted_insts = pickle.load(f)
+
+  inst = '_mm256_permutevar_ps'
+  lifted = lifted_insts[inst]
+  a = get_abstract_swizzle_output(lifted, semas[inst])
+  print(a)
+  exit()
 
   for inst, lifted in lifted_insts.items():
     si = get_swizzle_info(lifted)
