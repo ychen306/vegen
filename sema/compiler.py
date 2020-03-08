@@ -849,7 +849,7 @@ def compile_select(select, env, pred):
 
 def compile_match(match_stmt, env, pred):
   # number of bits required to index the cases
-  num_bits = int(math.log2(len(match_stmt.cases)))
+  num_bits = math.ceil(math.log2(len(match_stmt.cases)))
   val_expr = BitSlice(
       match_stmt.val,
       hi=Number(num_bits - 1),
