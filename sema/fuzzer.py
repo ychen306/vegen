@@ -11,6 +11,7 @@ import z3
 import functools
 import operator
 from spec_serializer import dump_spec, load_spec
+from z3_utils import get_used_bit_range
 
 src_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -20,19 +21,9 @@ def get_imm_mask(imm8, outs):
   figure out a mask that identifies the bits of imm8
   that are actually useful
   '''
-  # TODO: don't assume there is only one output
-  y = outs[0]
-  mask = (1 << 33)-1
-  s = z3.Solver()
-  for i in range(33, 0, -1):
-    cur_mask = (1<<(i+1))-1
-    y_masked = z3.substitute(y, (imm8, imm8 & cur_mask))
-    ok = z3.is_true(z3.simplify(y_masked == y))
-
-    if not ok:
-      return mask
-    mask = cur_mask
-  return mask
+  lo, hi = get_used_bit_range(outs[0], imm8)
+  # hi is exclusive
+  return (1 << hi) - 1
 
 def extract_float(bv, i, bitwidth):
   '''
@@ -431,19 +422,23 @@ if __name__ == '__main__':
   from intrinsic_types import IntegerType
 
   sema = '''
-<intrinsic tech="Other" rettype='unsigned int' name='_bextr_u32'>
-	<type>Integer</type>
-	<CPUID>BMI1</CPUID>
-	<category>Bit Manipulation</category>
-	<parameter type='unsigned int' varname='a' />
-	<parameter type='unsigned int' varname='start' />
-	<parameter type='unsigned int' varname='len' />
-	<description>Extract contiguous bits from unsigned 32-bit integer "a", and store the result in "dst". Extract the number of bits specified by "len", starting at the bit specified by "start".</description>
+<intrinsic tech='AVX' rettype='__m256' name='_mm256_insertf128_ps'>
+	<type>Floating Point</type>
+	<CPUID>AVX</CPUID>
+	<category>Swizzle</category>
+	<parameter varname='a' type='__m256'/>
+	<parameter varname='b' type='__m128'/>
+	<parameter varname="imm8" type='int'/>
+	<description>Copy "a" to "dst", then insert 128 bits (composed of 4 packed single-precision (32-bit) floating-point elements) from "b" into "dst" at the location specified by "imm8".</description>
 	<operation>
-tmp := ZeroExtend_To_512(a)
-dst := ZeroExtend(tmp[start[7:0]+len[7:0]-1:start[7:0]])
+dst[255:0] := a[255:0]
+CASE (imm8[1:0]) OF
+0: dst[127:0] := b[127:0]
+1: dst[255:128] := b[127:0]
+ESAC
+dst[MAX:256] := 0
 	</operation>
-	<instruction name='bextr' form='r32, r32, r32'/>
+	<instruction name='vinsertf128' form='ymm, ymm, xmm, imm'/>
 	<header>immintrin.h</header>
 </intrinsic>
   '''

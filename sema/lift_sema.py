@@ -123,6 +123,58 @@ def match_mux(f):
 
   return mux, ctrl
 
+class MatchFailure(Exception):
+  pass
+
+def match_with(f, op, num_args):
+  if not z3.is_app_of(f, op):
+    raise MatchFailure
+  if len(f.children()) != num_args:
+    raise MatchFailure
+  return f.children()
+
+def assert_const(f, const):
+  if z3.is_bv_value(f) and f.as_long() == const:
+    return 
+  raise MatchFailure
+
+def assert_pred(pred):
+  if not pred:
+    raise MatchFailure
+
+def match_insert(f):
+  '''
+  z3 canonicalizes vector insertion (`src[i] = x`) into the following form:
+    keep | update
+  where 
+    keep = ~(~<src> | <mask of x_size> << <offset>)
+    update = x << <offset>
+  where
+    offset = (<x_size> * <idx>)
+  '''
+  try:
+    s = z3.Solver()
+    [keep, update] = match_with(f, z3.Z3_OP_BOR, 2)
+
+    [x, offset1] = match_with(update, z3.Z3_OP_BSHL, 2)
+    offset1 = trunc_zero(offset1)
+    x = trunc_zero(x)
+
+    [keep] = match_with(keep, z3.Z3_OP_BNOT, 1)
+    [not_of_src, mask] = match_with(keep, z3.Z3_OP_BOR, 2)
+    [src] = match_with(not_of_src, z3.Z3_OP_BNOT, 1)
+    [ones, offset2] = match_with(mask, z3.Z3_OP_BSHL, 2)
+    offset2 = trunc_zero(offset2)
+    assert_const(ones, (1 << x.size())-1)
+
+    assert_pred(s.check(offset1 != offset2) == z3.unsat)
+    [x_size, idx] = match_with(offset1, z3.Z3_OP_BMUL, 2)
+    idx = trunc_zero(idx)
+    assert_const(x_size, x.size())
+    return src, x, idx
+  except MatchFailure:
+    return None
+
 def match_dynamic_slice(f):
   '''
   z3 doesn't support Extract with dynamic parameters,
@@ -277,7 +329,7 @@ def typecheck(dag):
   * bitwidths are scalar bitwidth (e.g., 64)
   '''
   for value in dag.values():
-    assert type(value) in (Constant, Instruction, Slice, DynamicSlice, Mux)
+    assert type(value) in ir_types
     if isinstance(value, Instruction):
       if value.op in binary_ops:
         args = [dag[arg] for arg in value.args]
@@ -561,9 +613,17 @@ class Translator:
     node_id = self.new_id()
     z3op = z3_utils.get_z3_app(f)
 
+
     # try to match this to a mux
+    insert = match_insert(f)
+    # try to match this to a vector insertion
     mux = match_mux(f)
-    if mux is not None:
+
+    if insert:
+      src, x, idx = insert
+      node = Insert(self.translate(src), src.size(),
+          self.translate(x), self.translate(idx))
+    elif mux is not None:
       mux, ctrl = mux
       keys = list(mux.keys())
       values = [self.translate(mux[k]) for k in keys]
@@ -711,7 +771,8 @@ if __name__ == '__main__':
   import functools
   import pickle
 
-  debug = '_mm256_shufflelo_epi16'
+  debug = None
+  debug = '_mm256_insertf128_ps'
   if debug:
     translator = Translator()
     y = semas[debug][1][0]

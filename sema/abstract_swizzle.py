@@ -62,7 +62,8 @@ def get_num_propagated_elements(x, x_stride, args, y):
   assert(x.size() % x_stride == 0)
   num_elems = x.size() // x_stride
   # assigning a unique id (starting from 1) for each of the lane
-  x_val = z3.Concat([z3.BitVecVal(i+1, x_stride) for i in range(num_elems)])
+  x_elems = [z3.BitVecVal(i+1, x_stride) for i in range(num_elems)]
+  x_val = z3.Concat(x_elems) if num_elems > 1 else x_elems[0]
   # assigning the rest of the input 0
   vals = [z3.BitVecVal(0, arg.size()) if arg.get_id() != x.get_id() else x_val
       for arg in args]
@@ -99,13 +100,13 @@ def get_abstract_swizzle_output(lifted, sema):
     num_propagated = get_num_propagated_elements(x, stride, args, y)
     if z3.is_bv_value(num_propagated):
       a_lo = num_propagated.as_long()
-      a = a_lo, a_lo+1
+      a = a_lo, a_lo
     else: # can't simplify, the number of propagated elements depends on parameters
       candidates = []
       for i in range(x.size()//stride+1):
         if s.check(num_propagated == i) != z3.unsat:
           candidates.append(i)
-      a = min(candidates), max(candidates)+1
+      a = min(candidates), max(candidates)
     abstract_output[x] = a
   return abstract_output
 
@@ -118,13 +119,17 @@ if __name__ == '__main__':
   with open(lifted_f, 'rb') as f:
     lifted_insts = pickle.load(f)
 
-  inst = '_mm256_permutevar_ps'
-  lifted = lifted_insts[inst]
-  a = get_abstract_swizzle_output(lifted, semas[inst])
-  print(a)
-  exit()
+  inst = '_mm512_shuffle_f64x2'
+  if inst is not None:
+    lifted = lifted_insts[inst]
+    si = get_swizzle_info(lifted)
+    a = get_abstract_swizzle_output(lifted, semas[inst])
+    print(a)
+    print(si)
+    exit()
 
   for inst, lifted in lifted_insts.items():
     si = get_swizzle_info(lifted)
-    if si is None:
-      print(inst)
+    if si is not None:
+      print(inst,':')
+      print(get_abstract_swizzle_output(lifted, semas[inst]))

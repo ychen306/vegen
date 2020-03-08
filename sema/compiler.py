@@ -7,6 +7,7 @@ from intrinsic_types import (
 from sema_ast import *
 from fp_sema import *
 import z3
+import math
 
 '''
 TODO: convert z3.If into masking???
@@ -847,7 +848,13 @@ def compile_select(select, env, pred):
   return z3.If(cond != 0, then, otherwise), then_ty
 
 def compile_match(match_stmt, env, pred):
-  val, _ = compile_expr(match_stmt.val, env, pred, deref=True)
+  # number of bits required to index the cases
+  num_bits = int(math.log2(len(match_stmt.cases)))
+  val_expr = BitSlice(
+      match_stmt.val,
+      hi=Number(num_bits - 1),
+      lo=Number(0))
+  val, _ = compile_expr(val_expr, env, pred, deref=True)
   cases = {}
   for case in match_stmt.cases:
     case_val, _ = compile_expr(case.val, env, pred, deref=True)
@@ -933,56 +940,24 @@ if __name__ == '__main__':
 
   import xml.etree.ElementTree as ET
   sema = '''
-<intrinsic tech="AVX-512" rettype="__mmask64" name="_mm512_mask_cmpneq_epi8_mask">
-	<type>Integer</type>
-	<type>Mask</type>
-	<CPUID>AVX512BW</CPUID>
-	<category>Compare</category>
-	<parameter varname="k1" type="__mmask64"/>
-	<parameter varname="a" type="__m512i"/>
-	<parameter varname="b" type="__m512i"/>
-	<description>Compare packed 8-bit integers in "a" and "b" for not-equal, and store the results in mask vector "k" using zeromask "k1" (elements are zeroed out when the corresponding mask bit is not set).</description>
-	<operation>
-FOR j := 0 to 63
-	i := j*8
-	IF k1[j]
-		k[j] := ( a[i+7:i] != b[i+7:i] ) ? 1 : 0
-	ELSE
-		k[j] := 0
-	FI
-ENDFOR
-k[MAX:64] := 0
-RETURN k
-	</operation>
-	<instruction name="vpcmpb"/>
-	<header>immintrin.h</header>
-</intrinsic>
-  '''
-  sema = '''
-<intrinsic tech="AVX-512" rettype="__m256i" name="_mm256_mask_permutex2var_epi32">
-	<type>Integer</type>
-	<CPUID>AVX512VL</CPUID>
-	<CPUID>AVX512F</CPUID>
-	<category>Miscellaneous</category>
-	<parameter varname="a" type="__m256i"/>
-	<parameter varname="k" type="__mmask8"/>
-	<parameter varname="idx" type="__m256i"/>
-	<parameter varname="b" type="__m256i"/>
-	<description>Shuffle 32-bit integers in "a" and "b" across lanes using the corresponding selector and index in "idx", and store the results in "dst" using writemask "k" (elements are copied from "a" when the corresponding mask bit is not set).</description>
-	<operation>
-FOR j := 0 to 7
-	i := j*32
-	off := idx[i+3:i]*32
-	IF k[j]
-		dst[i+31:i] := idx[i+4] ? b[off+31:off] : a[off+31:off]
-	ELSE
-		dst[i+31:i] := a[i+31:i]
-	FI
-ENDFOR
+<intrinsic tech='AVX' rettype='__m256' name='_mm256_insertf128_ps'>
+        <type>Floating Point</type>
+        <CPUID>AVX</CPUID>
+        <category>Swizzle</category>
+        <parameter varname='a' type='__m256'/>
+        <parameter varname='b' type='__m128'/>
+        <parameter varname="imm8" type='int'/>
+        <description>Copy "a" to "dst", then insert 128 bits (composed of 4 packed single-precision (32-bit) floating-point elements) from "b" into "dst" at the location specified by "imm8".</description>
+        <operation>
+dst[255:0] := a[255:0]
+CASE (imm8[1:0]) OF
+0: dst[127:0] := b[127:0]
+1: dst[255:128] := b[127:0]
+ESAC
 dst[MAX:256] := 0
-	</operation>
-	<instruction name="vpermt2d"/>
-	<header>immintrin.h</header>
+        </operation>
+        <instruction name='vinsertf128' form='ymm, ymm, xmm, imm'/>
+        <header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)

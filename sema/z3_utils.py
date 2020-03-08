@@ -104,3 +104,36 @@ def deserialize_z3_expr(serialized):
   s = z3.Solver()
   s.from_string(serialized)
   return s.assertions()[0].children()[0]
+
+def get_used_bit_range(f, x):
+  '''
+  get the range of bits of x used in f
+  '''
+  bit_range = None
+  def update_bit_range(new_range):
+    nonlocal bit_range
+    if bit_range is None:
+      bit_range = new_range
+    lo = min(bit_range[0], new_range[0])
+    hi = max(bit_range[1], new_range[1])
+    bit_range = lo, hi
+
+  visited = set()
+  def visit(f):
+    if f in visited:
+      return
+    visited.add(f)
+    if z3.is_app_of(f, z3.Z3_OP_EXTRACT):
+      [base] = f.children()
+      if base.get_id() == x.get_id():
+        hi, lo = f.params()
+        update_bit_range((lo, hi))
+    for arg in f.children():
+      visit(arg)
+  visit(f)
+
+  if bit_range is not None:
+    lo, hi = bit_range
+    # the parameters of z3.Extract is inclusive
+    # make it exclusive
+    return lo, hi+1

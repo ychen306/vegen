@@ -88,6 +88,25 @@ class Slice:
   def __repr__(self):
     return f'{self.base}[{self.lo}:{self.hi}]'
 
+class Insert:
+  def __init__(self, src, src_size, x, idx):
+    '''
+    replace src[idx] with x
+    '''
+    self.src = src
+    self.src_size = src_size
+    self.x = x
+    self.idx = idx
+
+  @property
+  def bitwidth(self):
+    return self.src_size
+
+  def __repr__(self):
+    return f'replace {self.src} at {self.idx} with {self.x}'
+
+ir_types = (Constant, Instruction, Slice, DynamicSlice, Mux, Insert)
+
 binary_ops = {
         'Add', 'Sub', 'Mul', 'SDiv', 'SRem',
         'UDiv', 'URem', 'Shl', 'LShr', 'AShr',
