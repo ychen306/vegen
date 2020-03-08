@@ -21,7 +21,10 @@ def get_imm_mask(imm8, outs):
   figure out a mask that identifies the bits of imm8
   that are actually useful
   '''
-  lo, hi = get_used_bit_range(outs[0], imm8)
+  br = get_used_bit_range(outs[0], imm8)
+  if br is None:
+    return None
+  lo, hi = br
   # hi is exclusive
   return (1 << hi) - 1
 
@@ -260,7 +263,11 @@ def fuzz_intrinsic_once(outf, spec, sema):
         param.name == 'imm8'):
       param_id = len(arg_vals)
       mask = get_imm_mask(xs[param_id], ys)
-      byte = random.randint(0, 255) & mask
+      if mask is not None:
+        byte = random.randint(0, 255) & mask
+      else:
+        # no bits used in this imm8... just set it to 0
+        byte = 0
       c_vars.append(str(byte))
       arg_vals.append(Bits(uint=byte, length=8))
       continue
