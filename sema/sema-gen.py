@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 from manual_parser import get_spec_from_xml
 import sys
-from interp import interpret
 from spec_configurer import configure_spec
 from compiler import compile
 from spec_serializer import dump_spec
