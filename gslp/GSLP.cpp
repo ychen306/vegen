@@ -295,9 +295,9 @@ public:
     BitVector::const_set_bits_iterator Handle;
 
   public:
-    value_iterator(const VectorPackContext *VPCtx, 
-        BitVector::const_set_bits_iterator Handle) 
-      : VPCtx(VPCtx), Handle(Handle) {}
+    value_iterator(const VectorPackContext *VPCtx,
+                   BitVector::const_set_bits_iterator Handle)
+        : VPCtx(VPCtx), Handle(Handle) {}
     Value *operator*() {
       unsigned Id = *Handle;
       return VPCtx->getScalar(Id);
@@ -313,7 +313,7 @@ public:
 
   iterator_range<value_iterator> iter_values(BitVector Ids) const {
     value_iterator Begin(this, Ids.set_bits_begin()),
-                   End(this, Ids.set_bits_end());
+        End(this, Ids.set_bits_end());
     return make_range(Begin, End);
   }
 };
@@ -464,12 +464,12 @@ private:
     return UsePacks;
   }
 
-  std::vector<UsePack> getUsePacksForLoad() {
+  std::vector<UsePack> getUsePacksForLoad() const {
     // Only need the single *scalar* pointer, doesn't need packed operand
     return std::vector<UsePack>();
   }
 
-  std::vector<UsePack> getUsePacksForStore() {
+  std::vector<UsePack> getUsePacksForStore() const {
     std::vector<UsePack> UPs(1);
     auto &UP = UPs[0];
     // Don't care about the pointers,
@@ -479,7 +479,7 @@ private:
     return UPs;
   }
 
-  std::vector<UsePack> getUsePacksForPhi() {
+  std::vector<UsePack> getUsePacksForPhi() const {
     auto *FirstPHI = PHIs[0];
     unsigned NumIncomings = FirstPHI->getNumIncomingValues();
     // We need as many packs as there are incoming edges
@@ -494,7 +494,8 @@ private:
   }
 
   // Shameless stolen from llvm's SLPVectorizer
-  Value *emitVectorLoad(ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+  Value *emitVectorLoad(ArrayRef<Value *> Operands,
+                        IntrinsicBuilder &Builder) const {
     auto *FirstLoad = Loads[0];
     auto &DL = FirstLoad->getParent()->getModule()->getDataLayout();
     auto *ScalarLoadTy = FirstLoad->getType();
@@ -522,7 +523,7 @@ private:
   }
 
   Value *emitVectorStore(ArrayRef<Value *> Operands,
-                         IntrinsicBuilder &Builder) {
+                         IntrinsicBuilder &Builder) const {
     auto *FirstStore = Stores[0];
 
     // This is the value we want to store
@@ -552,7 +553,8 @@ private:
     return propagateMetadata(VecStore, Stores_);
   }
 
-  Value *emitVectorPhi(ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+  Value *emitVectorPhi(ArrayRef<Value *> Operands,
+                       IntrinsicBuilder &Builder) const {
     auto *FirstPHI = PHIs[0];
     unsigned NumIncomings = FirstPHI->getNumIncomingValues();
 
@@ -590,7 +592,7 @@ public:
 
   const InstBinding *getProducer() const { return Producer; }
 
-  const std::vector<UsePack> getUsePacks() {
+  const std::vector<UsePack> getUsePacks() const {
     switch (Kind) {
     case General:
       return getUsePacksForGeneral();
@@ -603,7 +605,7 @@ public:
     }
   }
 
-  Value *emit(ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+  Value *emit(ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) const {
     IRBuilderBase::InsertPointGuard Guard(Builder);
 
     // FIXME: choose insert point
@@ -626,10 +628,9 @@ public:
 // This reordering makes codegen easier because we can
 // just insert the vector instruction immediately after the last
 // instruction that you are replacing.
-std::vector<const VectorPack *> sortVectorPacks(
-    BasicBlock *BB,
-    ArrayRef<VectorPack> Packs,
-    LocalDependenceAnalysis &LDA) {
+std::vector<const VectorPack *>
+sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
+                       LocalDependenceAnalysis &LDA) {
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
   for (auto &VP : Packs)
@@ -659,7 +660,7 @@ std::vector<const VectorPack *> sortVectorPacks(
   using InstOrPack = PointerUnion<const Instruction *, const VectorPack *>;
   DenseSet<void *> Reordered;
   std::vector<const Instruction *> ReorderedInsts;
-  std::function<void (InstOrPack)> Reorder = [&](InstOrPack IOP) {
+  std::function<void(InstOrPack)> Schedule = [&](InstOrPack IOP) {
     bool Inserted = Reordered.insert(IOP.getOpaqueValue()).second;
     if (!Inserted)
       return;
@@ -689,10 +690,10 @@ std::vector<const VectorPack *> sortVectorPacks(
       // If the depended value comes from a pack,
       // that pack needs to be reorder as a whole unit.
       if (It != ValueToPackMap.end())
-        Reorder(It->second);
+        Schedule(It->second);
       else if (auto *I = dyn_cast<Instruction>(V)) {
         if (I->getParent() == BB)
-          Reorder(I);
+          Schedule(I);
       }
     }
 
@@ -709,12 +710,13 @@ std::vector<const VectorPack *> sortVectorPacks(
   // Sort the packs first
   for (auto &VP : Packs)
     SortPack(&VP);
+  assert(SortedPacks == Packs.size());
 
   // Now reschedule the whole basic blocks;
   for (auto &I : *BB)
-    Reorder(&I);
+    Schedule(&I);
   for (auto &VP : Packs)
-    Reorder(&VP);
+    Schedule(&VP);
   assert(ReorderedInsts.size() == BB->size());
 
   // Reorder the instruction according to the schedule
@@ -734,61 +736,37 @@ class VectorPackSet {
   DenseMap<BasicBlock *, std::vector<VectorPack>> Packs;
   DenseMap<BasicBlock *, BitVector> PackedValues;
 
+  // This tells us where a value is located in a pack
+  struct VectorPackIndex {
+    const VectorPack *VP;
+    unsigned Idx;
+  };
+
+  // Mapping a value to the pack that produce them.
+  using ValueIndexTy = DenseMap<const Value *, VectorPackIndex>;
+  // Mapping VectorPack -> their materialized values.
+  using PackToValueTy = DenseMap<const VectorPack *, Value *>;
+
+  // Get the vector value representing UP.
+  static Value *getOrEmitUsePack(VectorPack::UsePack UP,
+                                 const ValueIndexTy &ValueIndex,
+                                 const PackToValueTy &MaterializedPacks,
+                                 IntrinsicBuilder &Builder) {}
+
 public:
   VectorPackSet(Function *F) : F(F) {}
 
-  bool tryAdd(BasicBlock *BB, VectorPack VP) {
-    auto &Packed = PackedValues[BB];
-    // Abort if one of the value we want to produce is produced by another pack
-    if (Packed.anyCommon(VP.getElements()))
-      return false;
+  // Add VP to this set if it doesn't conflict with existing packs.
+  // return if successful
+  bool tryAdd(BasicBlock *BB, VectorPack VP);
 
-    Packed |= VP.getElements();
+  // Estimate cost of this pack
+  int getCostSaving(TargetTransformInfo *TTI) const;
 
-    auto &BBPacks = Packs[BB];
-    for (auto &VP2 : BBPacks) {
-      // Abort if adding this pack creates circular dependence
-      if (VP2.getDepended().anyCommon(VP.getElements()) &&
-          VP.getElements().anyCommon(VP2.getDepended()))
-        return false;
-    }
-
-    BBPacks.push_back(VP);
-    return true;
-  }
-
-  int getCostSaving(TargetTransformInfo *TTI) const {
-    int CostSaving = 0;
-    // Compute arithmetic cost saving
-    for (auto BBAndPacks : Packs) {
-      for (auto &VP : BBAndPacks.second) {
-        // FIXME: this is undercounting for more general vector instruction
-        // (e.g., fmadd)
-        for (Value *V : VP.elementValues()) {
-          CostSaving -= TTI->getInstructionCost(
-              cast<Instruction>(V), TargetTransformInfo::TCK_Latency);
-        }
-        CostSaving += VP.getProducer()->getCost(TTI, F->getContext());
-      }
-    }
-
-    // Update the required shuffles and vector
-    // First, figure out which packs we need to explicitly introduce
-
-    return CostSaving;
-  }
-
+  // Generate vector code from the packs
   void codegen(
-      DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs) {
-    DenseMap<Value *, const VectorPack *> ValueToPackMap;
-
-    // Generate code according to basic block order
-    ReversePostOrderTraversal<Function *> RPO(F);
-    for (BasicBlock *BB : RPO) {
-      std::vector<const VectorPack *> OrderedPacks =
-        sortVectorPacks(BB, Packs[BB], *LDAs[BB]);
-    }
-  }
+      IntrinsicBuilder &Builder,
+      DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs);
 };
 
 struct MCMCVectorPackSet : public VectorPackSet {
@@ -796,6 +774,84 @@ struct MCMCVectorPackSet : public VectorPackSet {
 };
 
 } // end anonymous namespace
+
+bool VectorPackSet::tryAdd(BasicBlock *BB, VectorPack VP) {
+  auto &Packed = PackedValues[BB];
+  // Abort if one of the value we want to produce is produced by another pack
+  if (Packed.anyCommon(VP.getElements()))
+    return false;
+
+  Packed |= VP.getElements();
+
+  auto &BBPacks = Packs[BB];
+  for (auto &VP2 : BBPacks) {
+    // Abort if adding this pack creates circular dependence
+    if (VP2.getDepended().anyCommon(VP.getElements()) &&
+        VP.getElements().anyCommon(VP2.getDepended()))
+      return false;
+  }
+
+  BBPacks.push_back(VP);
+  return true;
+}
+
+int VectorPackSet::getCostSaving(TargetTransformInfo *TTI) const {
+  int CostSaving = 0;
+  // Compute arithmetic cost saving
+  for (auto BBAndPacks : Packs) {
+    for (auto &VP : BBAndPacks.second) {
+      // FIXME: this is undercounting for more general vector instruction
+      // (e.g., fmadd)
+      for (Value *V : VP.elementValues()) {
+        CostSaving -= TTI->getInstructionCost(cast<Instruction>(V),
+                                              TargetTransformInfo::TCK_Latency);
+      }
+      CostSaving += VP.getProducer()->getCost(TTI, F->getContext());
+    }
+  }
+
+  // TODO
+  // Update the required shuffles and vector
+  // First, figure out which packs we need to explicitly introduce
+
+  return CostSaving;
+}
+
+void VectorPackSet::codegen(
+    IntrinsicBuilder &Builder,
+    DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs) {
+  ValueIndexTy ValueIndex;
+  PackToValueTy MaterializedPacks;
+
+  // Generate code in RPO of the CFG
+  ReversePostOrderTraversal<Function *> RPO(F);
+  for (BasicBlock *BB : RPO) {
+    // Determine the schedule according to the dependence constraint
+    std::vector<const VectorPack *> OrderedPacks =
+        sortPacksAndScheduleBB(BB, Packs[BB], *LDAs[BB]);
+
+    // FIXME: Also need to consider scalar use of vector packs!!!!
+    // Now generate code according to the schedule
+    for (auto *VP : OrderedPacks) {
+      // Get the operands ready.
+      SmallVector<Value *, 2> Operands;
+      for (auto &UP : VP->getUsePacks())
+        Operands.push_back(
+            getOrEmitUsePack(UP, ValueIndex, MaterializedPacks, Builder));
+
+      // Now we can emit the vector instruction
+      auto *VecInst = VP->emit(Operands, Builder);
+
+      // Update the value index
+      // to track where the originally scalar values are produced
+      unsigned i = 0;
+      for (auto *V : VP->elementValues())
+        ValueIndex[V] = {VP, i++};
+      // Map the pack to its materialized value
+      MaterializedPacks[VP] = VecInst;
+    }
+  }
+}
 
 IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
                                         unsigned VectorWidth) {
