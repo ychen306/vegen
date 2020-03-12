@@ -1,4 +1,4 @@
-add_library(GSLP MODULE GSLP.cpp InstSema.cpp ShuffleSema.cpp)
+add_library(GSLP MODULE GSLP.cpp InstSema.cpp)
 # expose the auxiliary code for testing
 add_library(GSLP_AUX STATIC ShuffleSema.cpp)
 

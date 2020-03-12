@@ -227,7 +227,7 @@ Value *SwizzleInst::emit(SwizzleEnv &Env, IntrinsicBuilder &Builder,
   for (auto *Operand : Operands)
     Args.push_back(Operand->emit(Env, Builder, OI));
   auto IP = findEarliestInsertPoint(Args, OI);
-  Builder.setInsertPoint(IntrinsicBuilder::InsertPoint(IP));
+  Builder.SetInsertPoint(IP.getBlock(), IP.getPoint());
   V = Builder.Create(Name, Args);
   return V;
 }

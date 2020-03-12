@@ -71,7 +71,7 @@ class BoundOperation:
     root_bitwidth = dag[root].bitwidth
     conds = [
         f'hasBitWidth(V, {root_bitwidth})',
-        f'PatternMatch::match(const_cast<Value *>(V), {pattern})']
+        f'PatternMatch::match(V, {pattern})']
     for xs in livein2vars.values():
       conds.extend(f'{xs[0]} == {x}' for x in xs[1:])
 
@@ -81,7 +81,12 @@ class BoundOperation:
     {var_decls};
     bool Matched = {matching_cond};
     if (Matched)
-      Matches.push_back({{ {', '.join(bound_liveins)} }});
+      Matches.push_back({{
+      // matched live ins
+      {{ {', '.join(bound_liveins)} }},
+      // the matched value itself
+      V
+      }});
     return Matched;
     '''
     self.liveins = liveins
@@ -196,12 +201,8 @@ class RuleBundleIndex:
 def declare_operation(op_name, bound_operation):
   return f'''
 class : public Operation {{
-  virtual bool numLiveins() const override {{
-    return { len(bound_operation.liveins) };
-  }}
-
   virtual bool match(
-    const Value *V, std::vector<Match> &Matches) const override {{
+    Value *V, std::vector<Match> &Matches) const override {{
     { bound_operation.get_matching_code() }
   }}
 }} {op_name};
@@ -291,7 +292,7 @@ using namespace PatternMatch;
     ''')
     f.write(codegen(bundles))
 
-  #exit()
+  exit()
 
 
   _, outs, dag = lifted['_mm_dp_ps']

@@ -9,11 +9,16 @@
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <vector>
 
+namespace llvm {
+class TargetTransformInfo;
+}
+
 struct InstSignature {
   std::vector<unsigned> InputBitwidths;
   std::vector<unsigned> OutputBitwidths;
   bool HasImm8;
-  unsigned numOutputs() { return OutputBitwidths.size(); }
+  unsigned numInputs() const { return InputBitwidths.size(); }
+  unsigned numOutputs() const { return OutputBitwidths.size(); }
 };
 
 struct InputSlice {
@@ -22,7 +27,7 @@ struct InputSlice {
 
   unsigned size() { return Hi - Lo; }
 
-  bool operator<(InputSlice &Other) const {
+  bool operator<(const InputSlice &Other) const {
     return std::tie(InputId, Lo, Hi)
       < std::tie(Other.InputId, Other.Lo, Other.Hi);
   }
@@ -30,11 +35,13 @@ struct InputSlice {
 
 // Interface that abstractly defines an operation
 struct Operation {
-  typedef std::vector<const llvm::Value *> Match;
-  virtual bool numLiveins() const = 0;
+  struct Match {
+    std::vector<llvm::Value *> Inputs;
+    llvm::Value *Output;
+  };
   // `match' returns true if `V` is matched.
   // If a match is found, additionally return the matched liveins
-  virtual bool match(const llvm::Value *V, std::vector<Match> &Matches) const = 0;
+  virtual bool match(llvm::Value *V, std::vector<Match> &Matches) const = 0;
 };
 
 // An operation explicitly bound to an instruction and its input(s)
@@ -47,21 +54,18 @@ public:
   BoundOperation(const Operation *Op, std::vector<InputSlice> BoundSlices)
       : Op(Op), BoundSlices(BoundSlices) {}
   const Operation *getOperation() const { return Op; }
+  llvm::ArrayRef<InputSlice> getBoundSlices() const { return BoundSlices; }
 };
 
-class IntrinsicBuilder {
-  llvm::IRBuilder<> Builder;
+class IntrinsicBuilder : public llvm::IRBuilder<> {
   llvm::Module &InstWrappers;
 public:
   using InsertPoint = llvm::IRBuilderBase::InsertPoint;
   IntrinsicBuilder(InsertPoint IP, llvm::Module &InstWrappers)
-  : Builder(InstWrappers.getContext()), InstWrappers(InstWrappers) {
+  : llvm::IRBuilder<>(InstWrappers.getContext()), InstWrappers(InstWrappers) {
     assert(&IP.getBlock()->getContext() == &InstWrappers.getContext());
-    setInsertPoint(IP);
-  }
 
-  void setInsertPoint(InsertPoint IP) {
-    Builder.SetInsertPoint(IP.getBlock(), IP.getPoint());
+    SetInsertPoint(IP.getBlock(), IP.getPoint());
   }
 
   llvm::Value *Create(
@@ -88,7 +92,7 @@ public:
           CastInst::castIsValid(
             Instruction::CastOps::BitCast, Operands[i], Arg->getType()) &&
           "Invalid input type");
-      Value *Operand = Builder.CreateBitCast(Operands[i], Arg->getType());
+      Value *Operand = CreateBitCast(Operands[i], Arg->getType());
       VMap[Arg] = Operand;
     }
 
@@ -99,7 +103,7 @@ public:
         break;
       }
       auto *NewI = I.clone();
-      Builder.Insert(NewI);
+      Insert(NewI);
       VMap[&I] = NewI;
       RemapInstruction(NewI, VMap, 
           RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
@@ -120,36 +124,13 @@ class InstBinding {
   std::string Name;
   
 public:
-  std::string getName() { return Name; }
+  virtual int getCost(llvm::TargetTransformInfo *, llvm::LLVMContext &) const { return -1; }
   InstBinding(std::string Name, InstSignature Sig, std::vector<BoundOperation> LaneOps) 
     : Name(Name), Sig(Sig), LaneOps(LaneOps) {}
+  const InstSignature &getSignature() const { return Sig; }
   llvm::ArrayRef<BoundOperation> getLaneOps() const { return LaneOps; }
-};
-
-// this one pulls all operation that we are interested in 
-// and tries to match all of them while trying to avoid
-// matching the same operation twice on the same value
-class MatchManager {
-  // record matches for each operation
-  llvm::DenseMap<const Operation *, std::vector<Operation::Match>> Matches;
-
-public:
-  MatchManager(llvm::ArrayRef<InstBinding> Insts) {
-    for (auto &Inst : Insts)
-      for (auto &LaneOp : Inst.getLaneOps())
-        Matches.FindAndConstruct(LaneOp.getOperation());
-  }
-
-  void match(const llvm::Value *V) {
-    for (auto &KV : Matches) {
-      const Operation *Op = KV.first;
-      std::vector<Operation::Match> &Matches = KV.second;
-      Op->match(V, Matches);
-    }
-  }
-
-  llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const {
-    return Matches.lookup(Op);
+  virtual llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands, IntrinsicBuilder &Builder) const {
+    return Builder.Create(Name, Operands);
   }
 };
 

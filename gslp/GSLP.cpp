@@ -1,36 +1,108 @@
 #include "InstSema.h"
-#include "ShuffleSema.h"
-#include "llvm/Linker/Linker.h"
+#include "llvm/ADT/BitVector.h"
+#include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/MemoryLocation.h"
+#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IRReader/IRReader.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/Pass.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Analysis/MemoryLocation.h"
-#include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/ADT/StringSet.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
+#include "llvm/Linker/Linker.h"
+#include "llvm/Pass.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/InstSimplifyPass.h"
 #include <set>
 
 using namespace llvm;
 using namespace PatternMatch;
 
-cl::opt<std::string> InstWrappersPath(
-    "inst-wrappers",
-    cl::desc("Path to InstWrappers.bc"),
-    cl::Required);
+cl::opt<std::string> InstWrappersPath("inst-wrappers",
+                                      cl::desc("Path to InstWrappers.bc"),
+                                      cl::Required);
 
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
 }
 
 namespace {
+
+bool isFloat(Instruction::BinaryOps Opcode) {
+  switch (Opcode) {
+  case Instruction::FAdd:
+  case Instruction::FSub:
+  case Instruction::FMul:
+  case Instruction::FDiv:
+  case Instruction::FRem:
+    return true;
+  default:
+    return false;
+  }
+}
+
+// TODO: Support LOAD, STORE, and PHI
+class BinaryIROperation : public Operation {
+  const Instruction::BinaryOps Opcode;
+  unsigned Bitwidth;
+
+public:
+  BinaryIROperation(Instruction::BinaryOps Opcode, unsigned Bitwidth)
+      : Opcode(Opcode), Bitwidth(Bitwidth) {}
+  std::string getName() const { return Instruction::getOpcodeName(Opcode); }
+  unsigned getBitwidth() const { return Bitwidth; }
+  const Instruction::BinaryOps getOpcode() const { return Opcode; }
+  bool match(llvm::Value *V, std::vector<Match> &Matches) const override {
+    auto *BinOp = dyn_cast<BinaryOperator>(V);
+    bool Matched =
+        BinOp && BinOp->getOpcode() == Opcode && hasBitWidth(BinOp, Bitwidth);
+    if (Matched)
+      Matches.push_back({// live ins of this operation
+                         {BinOp->getOperand(0), BinOp->getOperand(1)},
+                         V});
+    return Matched;
+  }
+};
+
+class IRVectorBinding : public InstBinding {
+  const BinaryIROperation *Op;
+
+  IRVectorBinding(const BinaryIROperation *Op, std::string Name,
+                  InstSignature Sig, std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, Sig, LaneOps), Op(Op) {}
+
+public:
+  static IRVectorBinding Create(const BinaryIROperation *Op,
+                                unsigned VectorWidth);
+  virtual Value *emit(ArrayRef<llvm::Value *> Operands,
+                      IntrinsicBuilder &Builder) const override;
+  int getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const override {
+    Type *ScalarTy;
+    unsigned ElemWidth = Op->getBitwidth();
+    auto Opcode = Op->getOpcode();
+    if (isFloat(Opcode)) {
+      assert(ElemWidth == 32 || ElemWidth == 64);
+      if (ElemWidth == 32)
+        ScalarTy = Type::getFloatTy(Ctx);
+      else
+        ScalarTy = Type::getDoubleTy(Ctx);
+    } else {
+      ScalarTy = IntegerType::get(Ctx, ElemWidth);
+    }
+    unsigned NumElems = getLaneOps().size();
+    auto *VecTy = VectorType::get(ScalarTy, NumElems);
+    return TTI->getVectorInstrCost(Opcode, VecTy);
+  }
+};
 
 class GSLP : public FunctionPass {
   std::unique_ptr<Module> InstWrappers;
@@ -44,6 +116,7 @@ public:
   virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<AAResultsWrapperPass>();
+    AU.addRequired<TargetTransformInfoWrapperPass>();
   }
 
   bool runOnFunction(Function &) override;
@@ -51,22 +124,20 @@ public:
   virtual bool doInitialization(Module &M) override {
     SMDiagnostic Err;
     errs() << "LOADING WRAPPERS\n";
-    InstWrappers =
-      parseIRFile(InstWrappersPath, Err, M.getContext());
+    InstWrappers = parseIRFile(InstWrappersPath, Err, M.getContext());
     assert(InstWrappers && "Failed to parse Inst Wrappers");
     errs() << "WRAPPERS LOADED\n";
 
     return false;
   }
-
 };
 
-MemoryLocation getLocation(Instruction *I, AliasAnalysis *AA) {              
-  if (StoreInst *SI = dyn_cast<StoreInst>(I))                                       
-    return MemoryLocation::get(SI);                                                 
-  if (LoadInst *LI = dyn_cast<LoadInst>(I))                                         
-    return MemoryLocation::get(LI);                                                 
-  return MemoryLocation();                                                          
+MemoryLocation getLocation(Instruction *I, AliasAnalysis *AA) {
+  if (StoreInst *SI = dyn_cast<StoreInst>(I))
+    return MemoryLocation::get(SI);
+  if (LoadInst *LI = dyn_cast<LoadInst>(I))
+    return MemoryLocation::get(LI);
+  return MemoryLocation();
 }
 
 /// \returns True if the instruction is not a volatile or atomic load/store.
@@ -80,8 +151,8 @@ bool isSimple(Instruction *I) {
   return true;
 }
 
-bool isAliased(const MemoryLocation &Loc1,
-    Instruction *Inst1, Instruction *Inst2, AliasAnalysis *AA) {
+bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
+               Instruction *Inst2, AliasAnalysis *AA) {
   MemoryLocation Loc2 = getLocation(Inst2, AA);
   bool Aliased = true;
   if (Loc1.Ptr && Loc2.Ptr && isSimple(Inst1) && isSimple(Inst2)) {
@@ -91,14 +162,175 @@ bool isAliased(const MemoryLocation &Loc1,
   return Aliased;
 }
 
+std::vector<Instruction::BinaryOps> VectorizableOpcodes = {
+    Instruction::BinaryOps::Add,  Instruction::BinaryOps::FAdd,
+    Instruction::BinaryOps::Sub,  Instruction::BinaryOps::FSub,
+    Instruction::BinaryOps::Mul,  Instruction::BinaryOps::FMul,
+    Instruction::BinaryOps::UDiv, Instruction::BinaryOps::SDiv,
+    Instruction::BinaryOps::FDiv, Instruction::BinaryOps::URem,
+    Instruction::BinaryOps::SRem, Instruction::BinaryOps::FRem,
+    Instruction::BinaryOps::Shl,  Instruction::BinaryOps::LShr,
+    Instruction::BinaryOps::AShr, Instruction::BinaryOps::And,
+    Instruction::BinaryOps::Or,   Instruction::BinaryOps::Xor};
+
+// Aux class enumerating vector ir that we can emit
+class VectorizableTable {
+  std::vector<BinaryIROperation> VectorizableOps;
+  std::vector<IRVectorBinding> VectorInsts;
+
+  std::vector<InstBinding *> Bindings;
+
+public:
+  VectorizableTable() {
+    // enumerate vectorizable scalar ops
+    std::vector<unsigned> ScalarBitwidths = {8, 16, 32, 64};
+    for (auto Opcode : VectorizableOpcodes)
+      for (unsigned SB : ScalarBitwidths) {
+        if (isFloat(Opcode) && SB != 32 && SB != 64)
+          continue;
+        VectorizableOps.emplace_back(Opcode, SB);
+      }
+
+    // enumerate vector insts
+    std::vector<unsigned> VectorBitwidths = {64, 128, 256};
+    for (auto &Op : VectorizableOps)
+      for (unsigned VB : VectorBitwidths)
+        VectorInsts.emplace_back(IRVectorBinding::Create(&Op, VB));
+
+    for (auto &Binding : VectorInsts)
+      Bindings.push_back(&Binding);
+  }
+
+  ArrayRef<InstBinding *> getBindings() const { return Bindings; }
+
+} VecBindingTable;
+
+// This class pulls all operation that we are interested in
+// and tries to match all of them while trying to avoid
+// matching the same operation twice on the same value
+class MatchManager {
+  // record matches for each operation
+  DenseMap<const Operation *, std::vector<Operation::Match>> Matches;
+
+public:
+  MatchManager() = default;
+  MatchManager(ArrayRef<InstBinding *> Insts) {
+    for (auto &Inst : Insts)
+      for (auto &LaneOp : Inst->getLaneOps())
+        Matches.FindAndConstruct(LaneOp.getOperation());
+  }
+
+  void match(Value *V) {
+    for (auto &KV : Matches) {
+      const Operation *Op = KV.first;
+      std::vector<Operation::Match> &Matches = KV.second;
+      Op->match(V, Matches);
+    }
+  }
+
+  llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const {
+    auto It = Matches.find(Op);
+    assert(It != Matches.end());
+    return It->second;
+  }
+};
+
+// VectorPackContext captures various meta data we use to create and manage
+// vector packs. Basically we want to store vector packs are a bitvector, and we
+// need this class to manage the mapping between a value and its integer id
+class VectorPack;
+class VectorPackContext {
+  BasicBlock *BB;
+  std::vector<Value *> Scalars;
+
+  using MatchedOperation = std::pair<const Operation *, const Value *>;
+  DenseMap<MatchedOperation, Operation::Match> MatchedOps;
+
+public:
+  VectorPackContext(BasicBlock *BB) : BB(BB) {
+    for (auto &I : *BB)
+      Scalars.push_back(&I);
+    std::sort(Scalars.begin(), Scalars.end());
+  }
+
+  void trackMatchedOperation(const Operation::Match &Match,
+                             const Operation *Op) {
+    MatchedOps[{Op, Match.Output}] = Match;
+  }
+
+  // Create a "General" vector pack
+  VectorPack createVectorPack(std::vector<Operation::Match> Matches,
+                              BitVector Elements, BitVector Depended,
+                              const InstBinding *Producer);
+
+  // Create a vectorized load
+  VectorPack createLoadPack(ArrayRef<LoadInst *> Loads, BitVector Elements,
+                            BitVector Depended);
+
+  // Create a vectorized store
+  VectorPack createStorePack(ArrayRef<StoreInst *> Stores, BitVector Elements,
+                             BitVector Depended);
+
+  // Create a vectorized phi
+  VectorPack createPhiPack(ArrayRef<PHINode *> PHIs, BitVector Elements,
+                           BitVector Depended);
+
+  Value *getScalar(unsigned Id) const {
+    assert(Id < Scalars.size());
+    return Scalars[Id];
+  }
+
+  unsigned getScalarId(const Value *V) const {
+    auto It = std::lower_bound(Scalars.begin(), Scalars.end(), V);
+    assert(It != Scalars.end());
+    return It - Scalars.begin();
+  }
+
+  unsigned getNumValues() const { return Scalars.size(); }
+  BasicBlock *getBasicBlock() const { return BB; }
+
+  // Fixme : templatize this to decouple use of bitvector
+  class value_iterator {
+    const VectorPackContext *VPCtx;
+    BitVector::const_set_bits_iterator Handle;
+
+  public:
+    value_iterator(const VectorPackContext *VPCtx, 
+        BitVector::const_set_bits_iterator Handle) 
+      : VPCtx(VPCtx), Handle(Handle) {}
+    Value *operator*() {
+      unsigned Id = *Handle;
+      return VPCtx->getScalar(Id);
+    }
+
+    value_iterator &operator++() {
+      ++Handle;
+      return *this;
+    }
+
+    bool operator!=(const value_iterator &It) { return Handle != It.Handle; }
+  };
+
+  iterator_range<value_iterator> iter_values(BitVector Ids) const {
+    value_iterator Begin(this, Ids.set_bits_begin()),
+                   End(this, Ids.set_bits_end());
+    return make_range(Begin, End);
+  }
+};
+
 // Utility class to track dependency within a basic block
 class LocalDependenceAnalysis {
   BasicBlock *BB;
   // mapping inst -> <users>
   DenseMap<Instruction *, std::vector<Instruction *>> Dependencies;
+  VectorPackContext &VPCtx;
+  // mapping an instruction -> instructions that it transitively depends on
+  DenseMap<Instruction *, BitVector> TransitiveClosure;
 
-  public:
-  LocalDependenceAnalysis(AliasAnalysis *AA, BasicBlock *BB) : BB(BB) {
+public:
+  LocalDependenceAnalysis(AliasAnalysis *AA, BasicBlock *BB,
+                          VectorPackContext &VPCtx)
+      : BB(BB), VPCtx(VPCtx) {
     std::vector<Instruction *> LoadStores;
     // build the local dependence graph
     for (Instruction &I : *BB) {
@@ -123,71 +355,496 @@ class LocalDependenceAnalysis {
     }
   }
 
-  bool hasLocalDependence(Instruction *Src, Instruction *Dest) {
-    if (Src->getParent() != BB || Dest->getParent() != BB)
+  BitVector getDepended(Instruction *I) {
+    auto It = TransitiveClosure.try_emplace(I, BitVector(VPCtx.getNumValues()));
+    BitVector &Depended = It.first->second;
+    bool Inserted = It.second;
+    if (!Inserted)
+      return Depended;
+
+    for (auto *Src : Dependencies[I])
+      Depended |= getDepended(Src);
+
+    return Depended;
+  }
+};
+
+// A vector pack is an *ordered* set of values,
+// these values should come from the same basic block
+class VectorPack {
+
+public:
+  // Use this to model input operands
+  using UsePack = SmallVector<Value *, 8>;
+
+  enum PackKind { General, Phi, Load, Store };
+
+private:
+  friend class VectorPackContext;
+
+  const VectorPackContext *VPCtx;
+  BitVector Elements;
+  BitVector Depended;
+
+  //////////// Data for the 4 kinds
+  PackKind Kind;
+  // General
+  struct {
+    // SmallVector<Operation::Match, 4> Matches;
+    std::vector<Operation::Match> Matches;
+    const InstBinding *Producer;
+  };
+  // Load
+  std::vector<LoadInst *> Loads;
+  // Store
+  std::vector<StoreInst *> Stores;
+  // PHI
+  std::vector<PHINode *> PHIs;
+  ///////////////
+
+  // Constructor for a generic pack
+  VectorPack(const VectorPackContext *VPCtx, ArrayRef<Operation::Match> Matches,
+             BitVector Elements, BitVector Depended,
+             const InstBinding *Producer)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::General), Producer(Producer), Matches(Matches) {}
+
+  // Load Pack
+  VectorPack(const VectorPackContext *VPCtx, ArrayRef<LoadInst *> Loads,
+             BitVector Elements, BitVector Depended)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::Load), Loads(Loads) {}
+
+  // Store Pack
+  VectorPack(const VectorPackContext *VPCtx, ArrayRef<StoreInst *> Stores,
+             BitVector Elements, BitVector Depended)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::Store), Stores(Stores) {}
+
+  // Load Pack
+  VectorPack(const VectorPackContext *VPCtx, ArrayRef<PHINode *> PHIs,
+             BitVector Elements, BitVector Depended)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::Phi), PHIs(PHIs) {}
+
+  std::vector<UsePack> getUsePacksForGeneral() const {
+    auto &Sig = Producer->getSignature();
+    unsigned NumInputs = Sig.numInputs();
+    auto LaneOps = Producer->getLaneOps();
+    unsigned NumLanes = LaneOps.size();
+    std::vector<UsePack> UsePacks(NumInputs);
+
+    struct BoundInput {
+      InputSlice S;
+      Value *V;
+      // Order by offset of the slice
+      bool operator<(const BoundInput &Other) const { return S < Other.S; }
+    };
+
+    // Figure out which input packs we need
+    for (unsigned i = 0; i < NumInputs; i++) {
+      std::vector<BoundInput> InputValues;
+      // Find output lanes that uses input `i`, and record those uses
+      for (unsigned j = 0; j < NumLanes; j++) {
+        ArrayRef<InputSlice> BoundSlices = LaneOps[j].getBoundSlices();
+        for (unsigned k = 0; k < BoundSlices.size(); k++) {
+          auto &BS = BoundSlices[k];
+          if (BS.InputId != i)
+            continue;
+          InputValues.push_back({BS, Matches[j].Inputs[k]});
+        }
+      }
+
+      // Sort the input values by their slice offset
+      std::sort(InputValues.begin(), InputValues.end());
+      // After sorting, we have the input pack!
+      for (const BoundInput &BV : InputValues)
+        UsePacks[i].push_back(BV.V);
+    }
+    return UsePacks;
+  }
+
+  std::vector<UsePack> getUsePacksForLoad() {
+    // Only need the single *scalar* pointer, doesn't need packed operand
+    return std::vector<UsePack>();
+  }
+
+  std::vector<UsePack> getUsePacksForStore() {
+    std::vector<UsePack> UPs(1);
+    auto &UP = UPs[0];
+    // Don't care about the pointers,
+    // only the values being stored need to be packed first
+    for (auto *S : Stores)
+      UP.push_back(S->getValueOperand());
+    return UPs;
+  }
+
+  std::vector<UsePack> getUsePacksForPhi() {
+    auto *FirstPHI = PHIs[0];
+    unsigned NumIncomings = FirstPHI->getNumIncomingValues();
+    // We need as many packs as there are incoming edges
+    std::vector<UsePack> UPs(NumIncomings);
+    for (unsigned i = 0; i < NumIncomings; i++) {
+      auto *BB = FirstPHI->getIncomingBlock(i);
+      // all of the values coming from BB should be packed
+      for (auto *PH : PHIs)
+        UPs[i].push_back(PH->getIncomingValueForBlock(BB));
+    }
+    return UPs;
+  }
+
+  // Shameless stolen from llvm's SLPVectorizer
+  Value *emitVectorLoad(ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+    auto *FirstLoad = Loads[0];
+    auto &DL = FirstLoad->getParent()->getModule()->getDataLayout();
+    auto *ScalarLoadTy = FirstLoad->getType();
+
+    // Figure out type of the vector that we are loading
+    auto *ScalarPtr = FirstLoad->getPointerOperand();
+    auto *ScalarTy = cast<PointerType>(ScalarPtr->getType())->getElementType();
+    auto *VecTy = VectorType::get(ScalarTy, Loads.size());
+
+    // Cast the scalar pointer to a vector pointer
+    unsigned AS = FirstLoad->getPointerAddressSpace();
+    Value *VecPtr = Builder.CreateBitCast(ScalarPtr, VecTy->getPointerTo(AS));
+
+    // Emit the load
+    auto *VecLoad = Builder.CreateLoad(VecTy, VecPtr);
+
+    // Set alignment data
+    MaybeAlign Alignment = MaybeAlign(FirstLoad->getAlignment());
+    if (!Alignment)
+      Alignment = MaybeAlign(DL.getABITypeAlignment(ScalarLoadTy));
+    VecLoad->setAlignment(Alignment);
+
+    std::vector<Value *> Values(Loads.begin(), Loads.end());
+    return propagateMetadata(VecLoad, Values);
+  }
+
+  Value *emitVectorStore(ArrayRef<Value *> Operands,
+                         IntrinsicBuilder &Builder) {
+    auto *FirstStore = Stores[0];
+
+    // This is the value we want to store
+    Value *VecValue = Operands[0];
+
+    // Figure out the store alignment
+    unsigned Alignment = FirstStore->getAlignment();
+    unsigned AS = FirstStore->getPointerAddressSpace();
+
+    // Cast the scalar pointer to vector pointer
+    assert(Operands.size() == 1);
+    Value *ScalarPtr = FirstStore->getPointerOperand();
+    Value *VecPtr =
+        Builder.CreateBitCast(ScalarPtr, VecValue->getType()->getPointerTo(AS));
+
+    // Emit the vector store
+    StoreInst *VecStore = Builder.CreateStore(VecValue, VecPtr);
+
+    // Fix the vector store alignment
+    auto &DL = FirstStore->getParent()->getModule()->getDataLayout();
+    if (!Alignment)
+      Alignment =
+          DL.getABITypeAlignment(FirstStore->getValueOperand()->getType());
+
+    VecStore->setAlignment(Align(Alignment));
+    std::vector<Value *> Stores_(Stores.begin(), Stores.end());
+    return propagateMetadata(VecStore, Stores_);
+  }
+
+  Value *emitVectorPhi(ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+    auto *FirstPHI = PHIs[0];
+    unsigned NumIncomings = FirstPHI->getNumIncomingValues();
+
+    auto *VecTy = VectorType::get(FirstPHI->getType(), PHIs.size());
+    auto *VecPHI = Builder.CreatePHI(VecTy, NumIncomings);
+
+    // Values in operands follow the order of ::getUserPack,
+    // which follows the basic block order of the first phi.
+    for (unsigned i = 0; i < NumIncomings; i++) {
+      auto *BB = FirstPHI->getIncomingBlock(i);
+      auto *VecIncoming = Operands[i];
+      VecPHI->addIncoming(VecIncoming, BB);
+    }
+    assert(VecPHI->getNumIncomingValues() == FirstPHI->getNumIncomingValues());
+    return VecPHI;
+  }
+
+public:
+  VectorPack(const VectorPack &Other) = default;
+  VectorPack &operator=(const VectorPack &Other) = default;
+
+  const VectorPackContext *getContext() const { return VPCtx; }
+
+  iterator_range<VectorPackContext::value_iterator> elementValues() const {
+    return VPCtx->iter_values(Elements);
+  }
+
+  iterator_range<VectorPackContext::value_iterator> dependedValues() const {
+    return VPCtx->iter_values(Depended);
+  }
+
+  const BitVector &getDepended() const { return Depended; }
+
+  const BitVector &getElements() const { return Elements; }
+
+  const InstBinding *getProducer() const { return Producer; }
+
+  const std::vector<UsePack> getUsePacks() {
+    switch (Kind) {
+    case General:
+      return getUsePacksForGeneral();
+    case Load:
+      return getUsePacksForLoad();
+    case Store:
+      return getUsePacksForStore();
+    case Phi:
+      return getUsePacksForPhi();
+    }
+  }
+
+  Value *emit(ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+    IRBuilderBase::InsertPointGuard Guard(Builder);
+
+    // FIXME: choose insert point
+    switch (Kind) {
+    case General:
+      return Producer->emit(Operands, Builder);
+    case Load:
+      return emitVectorLoad(Operands, Builder);
+    case Store:
+      return emitVectorStore(Operands, Builder);
+    case Phi:
+      return emitVectorPhi(Operands, Builder);
+    }
+  }
+};
+
+// Topsort the vector packs.
+// Also reschedule the basic block according to the sorted packs.
+//
+// This reordering makes codegen easier because we can
+// just insert the vector instruction immediately after the last
+// instruction that you are replacing.
+std::vector<const VectorPack *> sortVectorPacks(
+    BasicBlock *BB,
+    ArrayRef<VectorPack> Packs,
+    LocalDependenceAnalysis &LDA) {
+  // Mapping values to where they are packed
+  DenseMap<Value *, const VectorPack *> ValueToPackMap;
+  for (auto &VP : Packs)
+    for (Value *V : VP.elementValues())
+      ValueToPackMap[V] = &VP;
+
+  std::vector<const VectorPack *> SortedPacks;
+  DenseSet<const VectorPack *> Visited;
+
+  // Do DFS on the dependence graph
+  std::function<void(const VectorPack *)> Visit = [&](const VectorPack *VP) {
+    bool Inserted = Visited.insert(VP).second;
+    if (!Inserted)
+      return;
+
+    // visit the depended packs
+    for (Value *V : VP->dependedValues()) {
+      auto It = ValueToPackMap.find(V);
+      if (It != ValueToPackMap.end())
+        Visit(It->second);
+    }
+
+    SortedPacks.push_back(VP);
+  };
+
+  for (auto &VP : Packs)
+    Visit(&VP);
+
+  const VectorPackContext *VPCtx = Packs[0].getContext();
+
+  // Now reschedule the basic blocks
+  using InstOrPack = PointerUnion<const Instruction *, const VectorPack *>;
+  DenseSet<void *> Reordered;
+  std::function<void (InstOrPack)> Reorder = [&](InstOrPack IOP) {
+    bool Inserted = Reordered.insert(IOP.getOpaqueValue()).second;
+    if (!Inserted)
+      return;
+
+    // Figure out the dependence
+    std::vector<Value *> DependedValues;
+    if (auto *I = IOP.dyn_cast<const Instruction *>()) {
+      auto Depended = LDA.getDepended(const_cast<Instruction *>(I));
+      for (auto *V : VPCtx->iter_values(Depended))
+        DependedValues.push_back(V);
+    } else {
+      auto *VP = IOP.get<const VectorPack *>();
+      for (auto *V : VP->dependedValues())
+        DependedValues.push_back(V);
+    }
+
+    // Recurse on the depended values
+    for (auto *V : DependedValues) {
+      auto It = ValueToPackMap.find(V);
+      // If the depended value comes from a pack,
+      // that pack needs to be reorder as a whole unit.
+      if (It != ValueToPackMap.end())
+        Reorder(It->second);
+      else if (auto *I = dyn_cast<Instruction>(V)) {
+        if (I->getParent() == BB)
+          Reorder(I);
+      }
+    }
+
+    // Now reorder this (pack of) instruction(s)
+  };
+
+  return SortedPacks;
+}
+
+class VectorPackSet {
+  Function *F;
+  DenseMap<BasicBlock *, std::vector<VectorPack>> Packs;
+  DenseMap<BasicBlock *, BitVector> PackedValues;
+
+public:
+  VectorPackSet(Function *F) : F(F) {}
+
+  bool tryAdd(BasicBlock *BB, VectorPack VP) {
+    auto &Packed = PackedValues[BB];
+    // Abort if one of the value we want to produce is produced by another pack
+    if (Packed.anyCommon(VP.getElements()))
       return false;
 
-    // Check if `Src` is reachable from `Dest` in the local dependency graph
-    std::vector<Instruction *> Worklist { Dest };
-    DenseSet<Instruction *> Visited;
-    while (!Worklist.empty()) {
-      Instruction *I = Worklist.back();
-      Worklist.pop_back();
+    Packed |= VP.getElements();
 
-      if (I == Src)
-        return true;
-
-      bool Inserted = Visited.insert(I).second;
-      if (!Inserted)
-        continue;
-
-      // this is a DAG, so we don't have to worry about seeing a node twice
-      auto &Depended = Dependencies[I];
-      Worklist.insert(Worklist.end(), Depended.begin(), Depended.end());
+    auto &BBPacks = Packs[BB];
+    for (auto &VP2 : BBPacks) {
+      // Abort if adding this pack creates circular dependence
+      if (VP2.getDepended().anyCommon(VP.getElements()) &&
+          VP.getElements().anyCommon(VP2.getDepended()))
+        return false;
     }
-    return false;
+
+    BBPacks.push_back(VP);
+    return true;
   }
+
+  int getCostSaving(TargetTransformInfo *TTI) const {
+    int CostSaving = 0;
+    // Compute arithmetic cost saving
+    for (auto BBAndPacks : Packs) {
+      for (auto &VP : BBAndPacks.second) {
+        // FIXME: this is undercounting for more general vector instruction
+        // (e.g., fmadd)
+        for (Value *V : VP.elementValues()) {
+          CostSaving -= TTI->getInstructionCost(
+              cast<Instruction>(V), TargetTransformInfo::TCK_Latency);
+        }
+        CostSaving += VP.getProducer()->getCost(TTI, F->getContext());
+      }
+    }
+
+    // Update the required shuffles and vector
+    // First, figure out which packs we need to explicitly introduce
+
+    return CostSaving;
+  }
+
+  void codegen(
+      DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs) {
+    DenseMap<Value *, const VectorPack *> ValueToPackMap;
+
+    // Generate code according to basic block order
+    ReversePostOrderTraversal<Function *> RPO(F);
+    for (BasicBlock *BB : RPO) {
+      std::vector<const VectorPack *> OrderedPacks =
+        sortVectorPacks(BB, Packs[BB], *LDAs[BB]);
+    }
+  }
+};
+
+struct MCMCVectorPackSet : public VectorPackSet {
+  void removeRandomPack();
 };
 
 } // end anonymous namespace
 
+IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
+                                        unsigned VectorWidth) {
+  // Compute the signature of this BINARY vector inst
+  InstSignature Sig = {// bitwidths of the inputs
+                       {VectorWidth, VectorWidth},
+                       // bitwidth of the output
+                       {VectorWidth},
+                       // has imm8?
+                       false};
+
+  unsigned ElemWidth = Op->getBitwidth();
+  assert(VectorWidth % ElemWidth == 0);
+  unsigned NumLanes = VectorWidth / ElemWidth;
+  std::vector<BoundOperation> LaneOps;
+  for (int i = 0; i < NumLanes; i++) {
+    unsigned Lo = i * ElemWidth, Hi = Lo + ElemWidth;
+    LaneOps.push_back(BoundOperation(Op,
+                                     // input binding
+                                     {{0, Lo, Hi}, {1, Lo, Hi}}));
+  }
+
+  return IRVectorBinding(Op, Op->getName(), Sig, LaneOps);
+}
+
+Value *IRVectorBinding::emit(llvm::ArrayRef<llvm::Value *> Operands,
+                             IntrinsicBuilder &Builder) const {
+  assert(Operands.size() == 2);
+  Instruction::BinaryOps Opcode = Op->getOpcode();
+  return Builder.CreateBinOp(Opcode, Operands[0], Operands[1]);
+}
+
+VectorPack
+VectorPackContext::createVectorPack(std::vector<Operation::Match> Matches,
+                                    BitVector Elements, BitVector Depended,
+                                    const InstBinding *Producer) {
+  return VectorPack(this, Matches, Elements, Depended, Producer);
+}
+
+VectorPack VectorPackContext::createLoadPack(ArrayRef<LoadInst *> Loads,
+                                             BitVector Elements,
+                                             BitVector Depended) {
+  return VectorPack(this, Loads, Elements, Depended);
+}
+
+VectorPack VectorPackContext::createStorePack(ArrayRef<StoreInst *> Stores,
+                                              BitVector Elements,
+                                              BitVector Depended) {
+  return VectorPack(this, Stores, Elements, Depended);
+}
+
+VectorPack VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
+                                            BitVector Elements,
+                                            BitVector Depended) {
+  return VectorPack(this, PHIs, Elements, Depended);
+}
 
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
-#if 1
-  AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+  auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+  auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+
+  std::vector<VectorPackContext> VPCtxs;
+
+  DenseMap<BasicBlock *, MatchManager> MMs;
+  DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs;
+
   for (auto &BB : F) {
-    LocalDependenceAnalysis LDA(AA, &BB);
-    for (auto &I : BB) {
-      for (auto &PrevI : BB) {
-        if (&I == &PrevI)
-          break;
-        //errs() << "CHECKING DEPENDENCE: " << PrevI << " -> " << I << '\n';
-        //errs() << "\t" << LDA.hasLocalDependence(&PrevI, &I) << '\n';
-      }
-    }
+    // Find packable instructions
+    auto &MM = MMs[&BB] = MatchManager(VecBindingTable.getBindings());
+    for (auto &I : BB)
+      MM.match(&I);
+
+    VPCtxs.emplace_back(&BB);
+    auto &VPCtx = VPCtxs.back();
+
+    LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, &BB, VPCtx);
   }
-#endif
-#if 0
-  InstBinding *IB;
-  for (auto &I : Insts) {
-    if (I.getName() == "_mm_add_ss") {
-      IB = &I;
-      break;
-    }
-  }
-  auto &BB = *F.begin();
-  auto *OldInst = &*BB.begin();
-  IRBuilder<> IRB(&BB, BB.begin());
-  std::vector<Value *> Args;
-  for (auto &Arg : F.args()) {
-    Args.push_back(&Arg);
-  }
-  auto *I = IB->create(*InstWrappers, IRB, Args);
-  OldInst->replaceAllUsesWith(IRB.CreateBitCast(I, OldInst->getType()));
-  errs() << F << '\n';
-#endif
 
   assert(!verifyFunction(F));
   return true;
@@ -196,13 +853,56 @@ bool GSLP::runOnFunction(Function &F) {
 INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
 // Automatically enable the pass.
 // http://adriansampson.net/blog/clangpass.html
-static void registerGSLP(const PassManagerBuilder &,
-    legacy::PassManagerBase &PM) {
-  PM.add(new GSLP());
+static void registerGSLP(const PassManagerBuilder &PMB,
+                         legacy::PassManagerBase &MPM) {
+  MPM.add(new GSLP());
+
+  //============ run the cleanup passes ==============//
+
+  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+
+  // Unroll small loops
+  MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
+                               PMB.ForgetAllSCEVInLoopUnroll));
+
+  if (!PMB.DisableUnrollLoops) {
+    // LoopUnroll may generate some redundency to cleanup.
+    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+
+    // Runtime unrolling will introduce runtime check in loop prologue. If the
+    // unrolled loop is a inner loop, then the prologue will be inside the
+    // outer loop. LICM pass can help to promote the runtime check out if the
+    // checked value is loop invariant.
+    MPM.add(
+        createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+  }
+
+  // After vectorization and unrolling, assume intrinsics may tell us more
+  // about pointer alignments.
+  MPM.add(createAlignmentFromAssumptionsPass());
+
+  // LoopSink pass sinks instructions hoisted by LICM, which serves as a
+  // canonicalization pass that enables other optimizations. As a result,
+  // LoopSink pass needs to be a very late IR pass to avoid undoing LICM
+  // result too early.
+  MPM.add(createLoopSinkPass());
+  // Get rid of LCSSA nodes.
+  MPM.add(createInstSimplifyLegacyPass());
+
+  // This hoists/decomposes div/rem ops. It should run after other sink/hoist
+  // passes to avoid re-sinking, but before SimplifyCFG because it can allow
+  // flattening of blocks.
+  MPM.add(createDivRemPairsPass());
+
+  // LoopSink (and other loop passes since the last simplifyCFG) might have
+  // resulted in single-entry-single-exit or empty blocks. Clean up the CFG.
+  MPM.add(createCFGSimplificationPass());
 }
+
 static RegisterStandardPasses
-RegisterMyPass(PassManagerBuilder::EP_VectorizerStart, registerGSLP);
+    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
