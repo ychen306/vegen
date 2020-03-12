@@ -636,11 +636,10 @@ std::vector<const VectorPack *> sortVectorPacks(
     for (Value *V : VP.elementValues())
       ValueToPackMap[V] = &VP;
 
+  // Do topsort on the backs
   std::vector<const VectorPack *> SortedPacks;
   DenseSet<const VectorPack *> Visited;
-
-  // Do DFS on the dependence graph
-  std::function<void(const VectorPack *)> Visit = [&](const VectorPack *VP) {
+  std::function<void(const VectorPack *)> SortPack = [&](const VectorPack *VP) {
     bool Inserted = Visited.insert(VP).second;
     if (!Inserted)
       return;
@@ -649,33 +648,37 @@ std::vector<const VectorPack *> sortVectorPacks(
     for (Value *V : VP->dependedValues()) {
       auto It = ValueToPackMap.find(V);
       if (It != ValueToPackMap.end())
-        Visit(It->second);
+        SortPack(It->second);
     }
 
     SortedPacks.push_back(VP);
   };
 
-  for (auto &VP : Packs)
-    Visit(&VP);
-
+  // Pack Scheduling
   const VectorPackContext *VPCtx = Packs[0].getContext();
-
-  // Now reschedule the basic blocks
   using InstOrPack = PointerUnion<const Instruction *, const VectorPack *>;
   DenseSet<void *> Reordered;
+  std::vector<const Instruction *> ReorderedInsts;
   std::function<void (InstOrPack)> Reorder = [&](InstOrPack IOP) {
     bool Inserted = Reordered.insert(IOP.getOpaqueValue()).second;
     if (!Inserted)
       return;
 
+    auto *I = IOP.dyn_cast<const Instruction *>();
+    auto *VP = IOP.dyn_cast<const VectorPack *>();
+
+    // Don't process a packed instruction independently with the rest of a pack
+    if (I && ValueToPackMap.count(I))
+      return;
+
     // Figure out the dependence
     std::vector<Value *> DependedValues;
-    if (auto *I = IOP.dyn_cast<const Instruction *>()) {
+    if (I) {
       auto Depended = LDA.getDepended(const_cast<Instruction *>(I));
       for (auto *V : VPCtx->iter_values(Depended))
         DependedValues.push_back(V);
     } else {
-      auto *VP = IOP.get<const VectorPack *>();
+      assert(VP);
       for (auto *V : VP->dependedValues())
         DependedValues.push_back(V);
     }
@@ -694,7 +697,34 @@ std::vector<const VectorPack *> sortVectorPacks(
     }
 
     // Now reorder this (pack of) instruction(s)
+    if (I)
+      ReorderedInsts.push_back(I);
+    else {
+      assert(VP);
+      for (auto *V : VP->elementValues())
+        ReorderedInsts.push_back(cast<Instruction>(V));
+    }
   };
+
+  // Sort the packs first
+  for (auto &VP : Packs)
+    SortPack(&VP);
+
+  // Now reschedule the whole basic blocks;
+  for (auto &I : *BB)
+    Reorder(&I);
+  for (auto &VP : Packs)
+    Reorder(&VP);
+  assert(ReorderedInsts.size() == BB->size());
+
+  // Reorder the instruction according to the schedule
+  for (auto *I : ReorderedInsts)
+    const_cast<Instruction *>(I)->removeFromParent();
+  assert(BB->empty());
+  auto &InstList = BB->getInstList();
+  for (auto *I : ReorderedInsts)
+    InstList.push_back(const_cast<Instruction *>(I));
+  assert(BB->size() == ReorderedInsts.size());
 
   return SortedPacks;
 }
