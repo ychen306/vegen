@@ -375,7 +375,7 @@ class VectorPack {
 
 public:
   // Use this to model input operands
-  using UsePack = SmallVector<Value *, 8>;
+  using OperandPack = SmallVector<Value *, 8>;
 
   enum PackKind { General, Phi, Load, Store };
 
@@ -427,12 +427,12 @@ private:
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::Phi), PHIs(PHIs) {}
 
-  std::vector<UsePack> getUsePacksForGeneral() const {
+  std::vector<OperandPack> getOperandPacksForGeneral() const {
     auto &Sig = Producer->getSignature();
     unsigned NumInputs = Sig.numInputs();
     auto LaneOps = Producer->getLaneOps();
     unsigned NumLanes = LaneOps.size();
-    std::vector<UsePack> UsePacks(NumInputs);
+    std::vector<OperandPack> OperandPacks(NumInputs);
 
     struct BoundInput {
       InputSlice S;
@@ -444,7 +444,7 @@ private:
     // Figure out which input packs we need
     for (unsigned i = 0; i < NumInputs; i++) {
       std::vector<BoundInput> InputValues;
-      // Find output lanes that uses input `i`, and record those uses
+      // Find output lanes that uses input `i` and record those uses
       for (unsigned j = 0; j < NumLanes; j++) {
         ArrayRef<InputSlice> BoundSlices = LaneOps[j].getBoundSlices();
         for (unsigned k = 0; k < BoundSlices.size(); k++) {
@@ -457,20 +457,19 @@ private:
 
       // Sort the input values by their slice offset
       std::sort(InputValues.begin(), InputValues.end());
-      // After sorting, we have the input pack!
       for (const BoundInput &BV : InputValues)
-        UsePacks[i].push_back(BV.V);
+        OperandPacks[i].push_back(BV.V);
     }
-    return UsePacks;
+    return OperandPacks;
   }
 
-  std::vector<UsePack> getUsePacksForLoad() const {
+  std::vector<OperandPack> getOperandPacksForLoad() const {
     // Only need the single *scalar* pointer, doesn't need packed operand
-    return std::vector<UsePack>();
+    return std::vector<OperandPack>();
   }
 
-  std::vector<UsePack> getUsePacksForStore() const {
-    std::vector<UsePack> UPs(1);
+  std::vector<OperandPack> getOperandPacksForStore() const {
+    std::vector<OperandPack> UPs(1);
     auto &UP = UPs[0];
     // Don't care about the pointers,
     // only the values being stored need to be packed first
@@ -479,11 +478,11 @@ private:
     return UPs;
   }
 
-  std::vector<UsePack> getUsePacksForPhi() const {
+  std::vector<OperandPack> getOperandPacksForPhi() const {
     auto *FirstPHI = PHIs[0];
     unsigned NumIncomings = FirstPHI->getNumIncomingValues();
     // We need as many packs as there are incoming edges
-    std::vector<UsePack> UPs(NumIncomings);
+    std::vector<OperandPack> UPs(NumIncomings);
     for (unsigned i = 0; i < NumIncomings; i++) {
       auto *BB = FirstPHI->getIncomingBlock(i);
       // all of the values coming from BB should be packed
@@ -586,22 +585,24 @@ public:
     return VPCtx->iter_values(Depended);
   }
 
+  unsigned numElements() const { return Elements.count(); }
+
   const BitVector &getDepended() const { return Depended; }
 
   const BitVector &getElements() const { return Elements; }
 
   const InstBinding *getProducer() const { return Producer; }
 
-  const std::vector<UsePack> getUsePacks() const {
+  const std::vector<OperandPack> getOperandPacks() const {
     switch (Kind) {
     case General:
-      return getUsePacksForGeneral();
+      return getOperandPacksForGeneral();
     case Load:
-      return getUsePacksForLoad();
+      return getOperandPacksForLoad();
     case Store:
-      return getUsePacksForStore();
+      return getOperandPacksForStore();
     case Phi:
-      return getUsePacksForPhi();
+      return getOperandPacksForPhi();
     }
   }
 
@@ -637,7 +638,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
     for (Value *V : VP.elementValues())
       ValueToPackMap[V] = &VP;
 
-  // Do topsort on the backs
+  // Sort the packs by dependence
   std::vector<const VectorPack *> SortedPacks;
   DenseSet<const VectorPack *> Visited;
   std::function<void(const VectorPack *)> SortPack = [&](const VectorPack *VP) {
@@ -655,7 +656,8 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
     SortedPacks.push_back(VP);
   };
 
-  // Pack Scheduling
+  // Schedule the basic block subject to the pack dependence.
+  // In particular, we want the instructions to be packed stay together.
   const VectorPackContext *VPCtx = Packs[0].getContext();
   using InstOrPack = PointerUnion<const Instruction *, const VectorPack *>;
   DenseSet<void *> Reordered;
@@ -748,10 +750,10 @@ class VectorPackSet {
   using PackToValueTy = DenseMap<const VectorPack *, Value *>;
 
   // Get the vector value representing UP.
-  static Value *getOrEmitUsePack(VectorPack::UsePack UP,
-                                 const ValueIndexTy &ValueIndex,
-                                 const PackToValueTy &MaterializedPacks,
-                                 IntrinsicBuilder &Builder) {}
+  static Value *getOrEmitOperandPack(VectorPack::OperandPack UP,
+                                     const ValueIndexTy &ValueIndex,
+                                     const PackToValueTy &MaterializedPacks,
+                                     IntrinsicBuilder &Builder);
 
 public:
   VectorPackSet(Function *F) : F(F) {}
@@ -774,6 +776,120 @@ struct MCMCVectorPackSet : public VectorPackSet {
 };
 
 } // end anonymous namespace
+
+// Get the vector value representing `UP'.
+// If `UP` is not directly produced by another Pack,
+// we need to emit code to either swizzle it together.
+Value *VectorPackSet::getOrEmitOperandPack(
+    VectorPack::OperandPack UP, const ValueIndexTy &ValueIndex,
+    const PackToValueTy &MaterializedPacks, IntrinsicBuilder &Builder) {
+  struct GatherEdge {
+    unsigned SrcIndex;
+    unsigned DestIndex;
+  };
+
+  std::map<const VectorPack *, SmallVector<GatherEdge, 4>> SrcPacks;
+  std::map<Value *, SmallVector<unsigned, 4>> SrcScalars;
+
+  // Figure out sources of the values in `UP`
+  unsigned NumValues = UP.size();
+  for (unsigned i = 0; i < NumValues; i++) {
+    auto *V = UP[i];
+    auto It = ValueIndex.find(V);
+    if (It != ValueIndex.end()) {
+      // V is produced by a pack
+      auto &VPIdx = It->second;
+      // Remember we need to gather from this vector to the `i`th element
+      SrcPacks[VPIdx.VP].push_back({VPIdx.Idx, i});
+    } else {
+      // Remember that we need to insert `V` as the `i`th element
+      SrcScalars[V].push_back(i);
+    }
+  }
+
+  using ShuffleMaskTy = SmallVector<Constant *, 8>;
+  ShuffleMaskTy Undefs(NumValues);
+  auto *Int32Ty = Type::getInt32Ty(Builder.getContext());
+  auto *UndefInt32 = UndefValue::get(Int32Ty);
+  for (auto &U : Undefs)
+    U = UndefInt32;
+
+  // Here's the codegen strategy we will use.
+  // Suppose we need to gather from N vectors,
+  // and the output vector has M elements.
+  // We then generate N partial gather, resulting in N vector if size M
+  // Then we merge these temporaries to get the final vector.
+  //
+  // Additionally, if any of the source values come from scalars, we just insert them.
+  //
+  // We don't care about the performance that much at this stage
+  // because we are going to optimize the gather sequences later.
+  
+  // 1) Emit hte partial gathers
+  struct PartialGather {
+    BitVector DefinedBits;
+    Value *Gather;
+  };
+  std::vector<PartialGather> PartialGathers;
+
+  for (auto &KV : SrcPacks) {
+    auto *SrcVP = KV.first;
+    auto &GatherEdges = KV.second;
+
+    BitVector DefinedBits;
+    // Figure out which values we want to gather
+    ShuffleMaskTy MaskValues = Undefs;
+    for (auto &GE : GatherEdges) {
+      MaskValues[GE.DestIndex] = ConstantInt::get(Int32Ty, GE.SrcIndex);
+      DefinedBits.set(GE.DestIndex);
+    }
+
+    auto *Src = MaterializedPacks.lookup(SrcVP);
+    auto *Mask = ConstantVector::get(MaskValues);
+    Value *Gather;
+    // Minor optimization: avoid unnecessary shuffle.
+    if (SrcVP->numElements() == NumValues &&
+        ShuffleVectorInst::isIdentityMask(Mask))
+      Gather = Src;
+    else
+      Gather = Builder.CreateShuffleVector(
+          Src, UndefValue::get(Src->getType()), Mask);
+
+    PartialGathers.push_back({ DefinedBits, Gather });
+  }
+
+  // 2) Merge the partial gathers
+  auto DefinedBits = std::move(PartialGathers.back().DefinedBits);
+  auto *Acc = PartialGathers.back().Gather;
+  PartialGathers.pop_back();
+  while (PartialGathers.empty()) {
+    auto &PG = PartialGathers.back();
+
+    ShuffleMaskTy Mask = Undefs;
+    // Select from Acc
+    for (unsigned Idx : DefinedBits.set_bits())
+      Mask[Idx] = ConstantInt::get(Int32Ty, Idx);
+    // Select from the partial gather
+    for (unsigned Idx : PG.DefinedBits.set_bits())
+      Mask[Idx] = ConstantInt::get(Int32Ty, NumValues+Idx);
+    Acc = Builder.CreateShuffleVector(
+        Acc, PG.Gather,
+        ConstantVector::get(Mask));
+
+    DefinedBits |= PG.DefinedBits;
+    PartialGathers.pop_back();
+  }
+
+  // 3) Insert the scalar values
+  for (auto &KV : SrcScalars) {
+    Value *V = KV.first;
+    auto &Indices = KV.second;
+    for (unsigned Idx : Indices)
+      Acc = Builder.CreateInsertElement(Acc, V, Idx);
+  }
+
+  return Acc;
+}
 
 bool VectorPackSet::tryAdd(BasicBlock *BB, VectorPack VP) {
   auto &Packed = PackedValues[BB];
@@ -835,9 +951,12 @@ void VectorPackSet::codegen(
     for (auto *VP : OrderedPacks) {
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
-      for (auto &UP : VP->getUsePacks())
+      for (auto &UP : VP->getOperandPacks())
         Operands.push_back(
-            getOrEmitUsePack(UP, ValueIndex, MaterializedPacks, Builder));
+            getOrEmitOperandPack(UP, ValueIndex, MaterializedPacks, Builder));
+
+      Instruction *PackLeader = cast<Instruction>(*VP->elementValues().begin());
+      Builder.SetInsertPoint(PackLeader);
 
       // Now we can emit the vector instruction
       auto *VecInst = VP->emit(Operands, Builder);
