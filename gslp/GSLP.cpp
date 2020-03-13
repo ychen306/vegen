@@ -996,7 +996,7 @@ void VectorPackSet::codegen(
 
       Instruction *PackLeader = cast<Instruction>(*VP->elementValues().begin());
       Builder.SetInsertPoint(PackLeader);
-      
+
       // Now we can emit the vector instruction
       auto *VecInst = VP->emit(Operands, Builder);
 
@@ -1009,7 +1009,7 @@ void VectorPackSet::codegen(
           V->replaceAllUsesWith(Extract);
         }
       }
-      
+
       // Mark the packed values as dead so we can delete them later
       for (auto *V : VP->elementValues())
         DeadInsts.push_back(cast<Instruction>(V));
@@ -1023,6 +1023,11 @@ void VectorPackSet::codegen(
       MaterializedPacks[VP] = VecInst;
     }
   }
+
+  // Delete the dead instructions.
+  // Do it the reverse of program order to avoid dangling pointer.
+  for (auto I = DeadInsts.rbegin(), E = DeadInsts.rend(); I != E; ++E)
+    (*I)->eraseFromParent();
 }
 
 IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
