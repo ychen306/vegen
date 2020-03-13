@@ -470,11 +470,11 @@ private:
 
   std::vector<OperandPack> getOperandPacksForStore() const {
     std::vector<OperandPack> UPs(1);
-    auto &UP = UPs[0];
+    auto &OpndPack = UPs[0];
     // Don't care about the pointers,
     // only the values being stored need to be packed first
     for (auto *S : Stores)
-      UP.push_back(S->getValueOperand());
+      OpndPack.push_back(S->getValueOperand());
     return UPs;
   }
 
@@ -749,14 +749,52 @@ class VectorPackSet {
   // Mapping VectorPack -> their materialized values.
   using PackToValueTy = DenseMap<const VectorPack *, Value *>;
 
-  // Get the vector value representing UP.
-  static Value *getOrEmitOperandPack(VectorPack::OperandPack UP,
+  // Get the vector value representing OpndPack.
+  static Value *getOrEmitOperandPack(VectorPack::OperandPack OpndPack,
                                      const ValueIndexTy &ValueIndex,
                                      const PackToValueTy &MaterializedPacks,
                                      IntrinsicBuilder &Builder);
 
+  // Use this to flatten `Packs`
+  struct iterator {
+    VectorPackSet *Parent;
+    decltype(Packs)::iterator BBIt;
+    decltype(Packs)::mapped_type::iterator VPIt;
+
+    const VectorPack &operator*() const { return *VPIt; }
+
+    iterator &operator++() {
+      ++VPIt;
+      if (VPIt == BBIt->second.end()) {
+        ++BBIt;
+        if (BBIt != Parent->Packs.end())
+          VPIt = BBIt->second.begin();
+      }
+
+      return *this;
+    }
+
+    bool operator!=(const iterator &Other) const {
+      if (BBIt == Parent->Packs.end() && Other.BBIt == Parent->Packs.end())
+        return false;
+      return std::tie(BBIt, VPIt) != std::tie(Other.BBIt, Other.VPIt);
+    }
+  };
+
 public:
   VectorPackSet(Function *F) : F(F) {}
+
+  iterator_range<iterator> iter_packs() {
+    iterator Begin, End;
+    Begin.Parent = this;
+    Begin.BBIt = Packs.begin();
+    Begin.VPIt = Packs.begin()->second.begin();
+
+    End.Parent = this;
+    End.BBIt = Packs.end();
+
+    return make_range(Begin, End);
+  }
 
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
@@ -777,11 +815,11 @@ struct MCMCVectorPackSet : public VectorPackSet {
 
 } // end anonymous namespace
 
-// Get the vector value representing `UP'.
-// If `UP` is not directly produced by another Pack,
+// Get the vector value representing `OpndPack'.
+// If `OpndPack` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
 Value *VectorPackSet::getOrEmitOperandPack(
-    VectorPack::OperandPack UP, const ValueIndexTy &ValueIndex,
+    VectorPack::OperandPack OpndPack, const ValueIndexTy &ValueIndex,
     const PackToValueTy &MaterializedPacks, IntrinsicBuilder &Builder) {
   struct GatherEdge {
     unsigned SrcIndex;
@@ -791,10 +829,10 @@ Value *VectorPackSet::getOrEmitOperandPack(
   std::map<const VectorPack *, SmallVector<GatherEdge, 4>> SrcPacks;
   std::map<Value *, SmallVector<unsigned, 4>> SrcScalars;
 
-  // Figure out sources of the values in `UP`
-  unsigned NumValues = UP.size();
+  // Figure out sources of the values in `OpndPack`
+  unsigned NumValues = OpndPack.size();
   for (unsigned i = 0; i < NumValues; i++) {
-    auto *V = UP[i];
+    auto *V = OpndPack[i];
     auto It = ValueIndex.find(V);
     if (It != ValueIndex.end()) {
       // V is produced by a pack
@@ -820,11 +858,12 @@ Value *VectorPackSet::getOrEmitOperandPack(
   // We then generate N partial gather, resulting in N vector if size M
   // Then we merge these temporaries to get the final vector.
   //
-  // Additionally, if any of the source values come from scalars, we just insert them.
+  // Additionally, if any of the source values come from scalars, we just insert
+  // them.
   //
   // We don't care about the performance that much at this stage
   // because we are going to optimize the gather sequences later.
-  
+
   // 1) Emit hte partial gathers
   struct PartialGather {
     BitVector DefinedBits;
@@ -852,10 +891,10 @@ Value *VectorPackSet::getOrEmitOperandPack(
         ShuffleVectorInst::isIdentityMask(Mask))
       Gather = Src;
     else
-      Gather = Builder.CreateShuffleVector(
-          Src, UndefValue::get(Src->getType()), Mask);
+      Gather = Builder.CreateShuffleVector(Src, UndefValue::get(Src->getType()),
+                                           Mask);
 
-    PartialGathers.push_back({ DefinedBits, Gather });
+    PartialGathers.push_back({DefinedBits, Gather});
   }
 
   // 2) Merge the partial gathers
@@ -871,10 +910,9 @@ Value *VectorPackSet::getOrEmitOperandPack(
       Mask[Idx] = ConstantInt::get(Int32Ty, Idx);
     // Select from the partial gather
     for (unsigned Idx : PG.DefinedBits.set_bits())
-      Mask[Idx] = ConstantInt::get(Int32Ty, NumValues+Idx);
-    Acc = Builder.CreateShuffleVector(
-        Acc, PG.Gather,
-        ConstantVector::get(Mask));
+      Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
+    Acc =
+        Builder.CreateShuffleVector(Acc, PG.Gather, ConstantVector::get(Mask));
 
     DefinedBits |= PG.DefinedBits;
     PartialGathers.pop_back();
@@ -939,6 +977,8 @@ void VectorPackSet::codegen(
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
 
+  std::vector<Instruction *> DeadInsts;
+
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
   for (BasicBlock *BB : RPO) {
@@ -946,20 +986,33 @@ void VectorPackSet::codegen(
     std::vector<const VectorPack *> OrderedPacks =
         sortPacksAndScheduleBB(BB, Packs[BB], *LDAs[BB]);
 
-    // FIXME: Also need to consider scalar use of vector packs!!!!
     // Now generate code according to the schedule
     for (auto *VP : OrderedPacks) {
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
-      for (auto &UP : VP->getOperandPacks())
-        Operands.push_back(
-            getOrEmitOperandPack(UP, ValueIndex, MaterializedPacks, Builder));
+      for (auto &OpndPack : VP->getOperandPacks())
+        Operands.push_back(getOrEmitOperandPack(OpndPack, ValueIndex,
+                                                MaterializedPacks, Builder));
 
       Instruction *PackLeader = cast<Instruction>(*VP->elementValues().begin());
       Builder.SetInsertPoint(PackLeader);
-
+      
       // Now we can emit the vector instruction
       auto *VecInst = VP->emit(Operands, Builder);
+
+      // Conservatively extract all elements.
+      // Let the later cleanup passes clean up dead extracts.
+      if (!isa<StoreInst>(VecInst)) {
+        unsigned LaneId = 0;
+        for (auto *V : VP->elementValues()) {
+          auto *Extract = Builder.CreateExtractElement(VecInst, LaneId++);
+          V->replaceAllUsesWith(Extract);
+        }
+      }
+      
+      // Mark the packed values as dead so we can delete them later
+      for (auto *V : VP->elementValues())
+        DeadInsts.push_back(cast<Instruction>(V));
 
       // Update the value index
       // to track where the originally scalar values are produced
@@ -1067,47 +1120,23 @@ static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
   MPM.add(new GSLP());
 
-  //============ run the cleanup passes ==============//
-
+  // run the cleanup passes, copied from llvm's pass builder
   MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-
-  // Unroll small loops
   MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
                                PMB.ForgetAllSCEVInLoopUnroll));
-
   if (!PMB.DisableUnrollLoops) {
-    // LoopUnroll may generate some redundency to cleanup.
     MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-
-    // Runtime unrolling will introduce runtime check in loop prologue. If the
-    // unrolled loop is a inner loop, then the prologue will be inside the
-    // outer loop. LICM pass can help to promote the runtime check out if the
-    // checked value is loop invariant.
     MPM.add(
         createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
   }
-
-  // After vectorization and unrolling, assume intrinsics may tell us more
-  // about pointer alignments.
   MPM.add(createAlignmentFromAssumptionsPass());
-
-  // LoopSink pass sinks instructions hoisted by LICM, which serves as a
-  // canonicalization pass that enables other optimizations. As a result,
-  // LoopSink pass needs to be a very late IR pass to avoid undoing LICM
-  // result too early.
   MPM.add(createLoopSinkPass());
-  // Get rid of LCSSA nodes.
   MPM.add(createInstSimplifyLegacyPass());
-
-  // This hoists/decomposes div/rem ops. It should run after other sink/hoist
-  // passes to avoid re-sinking, but before SimplifyCFG because it can allow
-  // flattening of blocks.
   MPM.add(createDivRemPairsPass());
-
-  // LoopSink (and other loop passes since the last simplifyCFG) might have
-  // resulted in single-entry-single-exit or empty blocks. Clean up the CFG.
   MPM.add(createCFGSimplificationPass());
 }
 
+// Register this pass to run after all optimization,
+// because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
     RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
