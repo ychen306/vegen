@@ -62,12 +62,8 @@ class IntrinsicBuilder : public llvm::IRBuilder<> {
 public:
   llvm::LLVMContext &getContext() { return InstWrappers.getContext(); }
   using InsertPoint = llvm::IRBuilderBase::InsertPoint;
-  IntrinsicBuilder(InsertPoint IP, llvm::Module &InstWrappers)
-  : llvm::IRBuilder<>(InstWrappers.getContext()), InstWrappers(InstWrappers) {
-    assert(&IP.getBlock()->getContext() == &InstWrappers.getContext());
-
-    SetInsertPoint(IP.getBlock(), IP.getPoint());
-  }
+  IntrinsicBuilder(llvm::Module &InstWrappers)
+  : llvm::IRBuilder<>(InstWrappers.getContext()), InstWrappers(InstWrappers) {}
 
   llvm::Value *Create(
       llvm::StringRef Name,

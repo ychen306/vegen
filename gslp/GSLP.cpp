@@ -1,6 +1,7 @@
 #include "InstSema.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -621,6 +622,20 @@ public:
       return emitVectorPhi(Operands, Builder);
     }
   }
+
+  // Choose a right place to gather an operand
+  void setOperandGatherPoint(unsigned OperandId,
+                             IntrinsicBuilder &Builder) const {
+    if (Kind != Phi) {
+      auto *LeaderVal = *elementValues().begin();
+      Builder.SetInsertPoint(cast<Instruction>(LeaderVal));
+    } else {
+      // We need to gather the input before the execution gets to this block
+      auto *FirstPHI = PHIs[0];
+      auto *BB = FirstPHI->getIncomingBlock(OperandId);
+      Builder.SetInsertPoint(BB->getTerminator());
+    }
+  }
 };
 
 // Topsort the vector packs.
@@ -632,6 +647,9 @@ public:
 std::vector<const VectorPack *>
 sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
                        LocalDependenceAnalysis &LDA) {
+  if (Packs.empty())
+    return std::vector<const VectorPack *>();
+
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
   for (auto &VP : Packs)
@@ -712,7 +730,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
   // Sort the packs first
   for (auto &VP : Packs)
     SortPack(&VP);
-  assert(SortedPacks == Packs.size());
+  assert(SortedPacks.size() == Packs.size());
 
   // Now reschedule the whole basic blocks;
   for (auto &I : *BB)
@@ -750,12 +768,13 @@ class VectorPackSet {
   using PackToValueTy = DenseMap<const VectorPack *, Value *>;
 
   // Get the vector value representing OpndPack.
-  static Value *getOrEmitOperandPack(VectorPack::OperandPack OpndPack,
-                                     const ValueIndexTy &ValueIndex,
-                                     const PackToValueTy &MaterializedPacks,
-                                     IntrinsicBuilder &Builder);
+  static Value *gatherOperandPack(VectorPack::OperandPack OpndPack,
+                                  const ValueIndexTy &ValueIndex,
+                                  const PackToValueTy &MaterializedPacks,
+                                  IntrinsicBuilder &Builder);
 
-  // Use this to flatten `Packs`
+  // Use this to iterate over `Packs` if you don't care about grouping them by
+  // basic blocks
   struct iterator {
     VectorPackSet *Parent;
     decltype(Packs)::iterator BBIt;
@@ -806,21 +825,41 @@ public:
   // Generate vector code from the packs
   void codegen(
       IntrinsicBuilder &Builder,
-      DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs);
+      DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs);
 };
 
 struct MCMCVectorPackSet : public VectorPackSet {
   void removeRandomPack();
 };
 
+// Mapping a load/store -> a set of consecutive loads/stores
+//
+// This is basically a generalization of a store/load chain.
+// We use a DAG because a load, for example, might have multiple
+// "next" candidate.
+using ConsecutiveAccessDAG =
+    DenseMap<Instruction *, SmallPtrSet<Instruction *, 4>>;
+
 } // end anonymous namespace
+
+// Do a quadratic search to build the access dags
+void buildAccessDAG(ConsecutiveAccessDAG &DAG,
+                    ArrayRef<Instruction *> Accesses, const DataLayout *DL,
+                    ScalarEvolution *SE) {
+  for (auto *A1 : Accesses)
+    for (auto *A2 : Accesses)
+      if (A1->getType() == A2->getType() &&
+          isConsecutiveAccess(A1, A2, *DL, *SE))
+        DAG[A1].insert(A2);
+};
 
 // Get the vector value representing `OpndPack'.
 // If `OpndPack` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
-Value *VectorPackSet::getOrEmitOperandPack(
-    VectorPack::OperandPack OpndPack, const ValueIndexTy &ValueIndex,
-    const PackToValueTy &MaterializedPacks, IntrinsicBuilder &Builder) {
+Value *VectorPackSet::gatherOperandPack(VectorPack::OperandPack OpndPack,
+                                        const ValueIndexTy &ValueIndex,
+                                        const PackToValueTy &MaterializedPacks,
+                                        IntrinsicBuilder &Builder) {
   struct GatherEdge {
     unsigned SrcIndex;
     unsigned DestIndex;
@@ -973,7 +1012,7 @@ int VectorPackSet::getCostSaving(TargetTransformInfo *TTI) const {
 
 void VectorPackSet::codegen(
     IntrinsicBuilder &Builder,
-    DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs) {
+    DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
 
@@ -990,9 +1029,13 @@ void VectorPackSet::codegen(
     for (auto *VP : OrderedPacks) {
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
-      for (auto &OpndPack : VP->getOperandPacks())
-        Operands.push_back(getOrEmitOperandPack(OpndPack, ValueIndex,
-                                                MaterializedPacks, Builder));
+      unsigned OperandId = 0;
+      for (auto &OpndPack : VP->getOperandPacks()) {
+        VP->setOperandGatherPoint(OperandId, Builder);
+        Operands.push_back(gatherOperandPack(OpndPack, ValueIndex,
+                                             MaterializedPacks, Builder));
+        OperandId++;
+      }
 
       Instruction *PackLeader = cast<Instruction>(*VP->elementValues().begin());
       Builder.SetInsertPoint(PackLeader);
@@ -1089,25 +1132,50 @@ VectorPack VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(Function &F) {
-  auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+  auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+  auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+
+  auto *DL = &F.getParent()->getDataLayout();
 
   std::vector<VectorPackContext> VPCtxs;
 
   DenseMap<BasicBlock *, MatchManager> MMs;
   DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs;
+  DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> LoadDAGs;
+  DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> StoreDAGs;
 
+  // Setup analyses and determine search space
   for (auto &BB : F) {
+    std::vector<Instruction *> Loads;
+    std::vector<Instruction *> Stores;
     // Find packable instructions
     auto &MM = MMs[&BB] = MatchManager(VecBindingTable.getBindings());
-    for (auto &I : BB)
+    for (auto &I : BB) {
       MM.match(&I);
+      if (isa<LoadInst>(&I))
+        Loads.push_back(&I);
+      else if (isa<StoreInst>(&I))
+        Stores.push_back(&I);
+    }
 
     VPCtxs.emplace_back(&BB);
     auto &VPCtx = VPCtxs.back();
-
     LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, &BB, VPCtx);
+    auto LoadDAG = std::make_unique<ConsecutiveAccessDAG>();
+    auto StoreDAG = std::make_unique<ConsecutiveAccessDAG>();
+    buildAccessDAG(*LoadDAG, Loads, DL, SE);
+    buildAccessDAG(*StoreDAG, Stores, DL, SE);
+    LoadDAGs[&BB] = std::move(LoadDAG);
+    StoreDAGs[&BB] = std::move(StoreDAG);
   }
+
+  VectorPackSet Packs(&F);
+
+  // TODO: select packs
+
+  IntrinsicBuilder Builder(*InstWrappers);
+  Packs.codegen(Builder, LDAs);
 
   assert(!verifyFunction(F));
   return true;
