@@ -1184,34 +1184,31 @@ sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
   return {Accesses, Elements, Depended};
 }
 
-static VectorPack sampleLoadPack(
-    ConsecutiveAccessDAG &LoadDAG,
-    VectorPackContext &VPCtx,
-    LocalDependenceAnalysis &LDA,
-    unsigned MaxNumLoads) {
+static VectorPack sampleLoadPack(ConsecutiveAccessDAG &LoadDAG,
+                                 VectorPackContext &VPCtx,
+                                 LocalDependenceAnalysis &LDA,
+                                 unsigned MaxNumLoads) {
   std::vector<LoadInst *> Loads;
   BitVector Elements;
   BitVector Depended;
   std::tie(Loads, Elements, Depended) =
-    sampleAccesses<LoadInst>(LoadDAG, VPCtx, LDA, MaxNumLoads);
+      sampleAccesses<LoadInst>(LoadDAG, VPCtx, LDA, MaxNumLoads);
   return VPCtx.createLoadPack(Loads, Elements, Depended);
 }
 
-static VectorPack sampleStorePack(
-    ConsecutiveAccessDAG &StoreDAG,
-    VectorPackContext &VPCtx,
-    LocalDependenceAnalysis &LDA,
-    unsigned MaxNumStores) {
+static VectorPack sampleStorePack(ConsecutiveAccessDAG &StoreDAG,
+                                  VectorPackContext &VPCtx,
+                                  LocalDependenceAnalysis &LDA,
+                                  unsigned MaxNumStores) {
   std::vector<StoreInst *> Stores;
   BitVector Elements;
   BitVector Depended;
   std::tie(Stores, Elements, Depended) =
-    sampleAccesses<StoreInst>(StoreDAG, VPCtx, LDA, MaxNumStores);
+      sampleAccesses<StoreInst>(StoreDAG, VPCtx, LDA, MaxNumStores);
   return VPCtx.createStorePack(Stores, Elements, Depended);
 }
 
-static VectorPack samplePhiPack(VectorPackContext &VPCtx,
-                                 unsigned MaxNumPHIs) {
+static VectorPack samplePhiPack(VectorPackContext &VPCtx, unsigned MaxNumPHIs) {
   // All phi nodes within a basic block are always locally independent
   // so we don't need to query the dependence analysis.
 
@@ -1236,12 +1233,9 @@ static VectorPack samplePhiPack(VectorPackContext &VPCtx,
 // TODO: support NOOP lanes
 //
 // return true if success
-static bool sampleGeneralPack(
-    const MatchManager &MM,
-    VectorPackContext &VPCtx,
-    LocalDependenceAnalysis &LDA,
-    InstBinding *Inst,
-    VectorPack &VP, unsigned NumTrials) {
+static bool sampleGeneralPack(const MatchManager &MM, VectorPackContext &VPCtx,
+                              LocalDependenceAnalysis &LDA, InstBinding *Inst,
+                              VectorPack &VP, unsigned NumTrials) {
 
   while (NumTrials--) {
     BitVector Elements(VPCtx.getNumValues());
@@ -1257,7 +1251,8 @@ static bool sampleGeneralPack(
         auto Depended2 = LDA.getDepended(cast<Instruction>(M.Output));
         // make sure M is independent from the existing values
         if (!Depended.test(OutputId) /* selcted values depends on this one */
-            && !Elements.anyCommon(Depended2) /* this one depends on selected values */)
+            && !Elements.anyCommon(
+                   Depended2) /* this one depends on selected values */)
           IndependentMatches.push_back(&M);
       }
       if (IndependentMatches.empty()) {
