@@ -311,7 +311,7 @@ public:
     bool operator!=(const value_iterator &It) { return Handle != It.Handle; }
   };
 
-  iterator_range<value_iterator> iter_values(BitVector Ids) const {
+  iterator_range<value_iterator> iter_values(const BitVector &Ids) const {
     value_iterator Begin(this, Ids.set_bits_begin()),
         End(this, Ids.set_bits_end());
     return make_range(Begin, End);
@@ -323,13 +323,13 @@ class LocalDependenceAnalysis {
   BasicBlock *BB;
   // mapping inst -> <users>
   DenseMap<Instruction *, std::vector<Instruction *>> Dependencies;
-  VectorPackContext &VPCtx;
+  VectorPackContext *VPCtx;
   // mapping an instruction -> instructions that it transitively depends on
   DenseMap<Instruction *, BitVector> TransitiveClosure;
 
 public:
   LocalDependenceAnalysis(AliasAnalysis *AA, BasicBlock *BB,
-                          VectorPackContext &VPCtx)
+                          VectorPackContext *VPCtx)
       : BB(BB), VPCtx(VPCtx) {
     std::vector<Instruction *> LoadStores;
     // build the local dependence graph
@@ -360,14 +360,16 @@ public:
   }
 
   BitVector getDepended(Instruction *I) {
-    auto It = TransitiveClosure.try_emplace(I, BitVector(VPCtx.getNumValues()));
+    auto It = TransitiveClosure.try_emplace(I, BitVector(VPCtx->getNumValues()));
     BitVector &Depended = It.first->second;
     bool Inserted = It.second;
     if (!Inserted)
       return Depended;
 
-    for (auto *Src : Dependencies[I])
+    for (auto *Src : Dependencies[I]) {
+      Depended.set(VPCtx->getScalarId(Src));
       Depended |= getDepended(Src);
+    }
 
     return Depended;
   }
@@ -589,6 +591,8 @@ public:
     return VPCtx->iter_values(Depended);
   }
 
+  std::vector<Value *> getOrderedValues() const;
+
   unsigned numElements() const { return Elements.count(); }
 
   const BitVector &getDepended() const { return Depended; }
@@ -630,7 +634,7 @@ public:
   void setOperandGatherPoint(unsigned OperandId,
                              IntrinsicBuilder &Builder) const {
     if (Kind != Phi) {
-      auto *LeaderVal = *elementValues().begin();
+      auto *LeaderVal = *getOrderedValues().begin();
       Builder.SetInsertPoint(cast<Instruction>(LeaderVal));
     } else {
       // We need to gather the input before the execution gets to this block
@@ -638,6 +642,13 @@ public:
       auto *BB = FirstPHI->getIncomingBlock(OperandId);
       Builder.SetInsertPoint(BB->getTerminator());
     }
+  }
+
+  void dump(raw_ostream &OS) const {
+    OS << "PACK : <\n";
+    for (auto *V : getOrderedValues())
+      OS << *V << '\n';
+    OS << ">";
   }
 };
 
@@ -655,9 +666,11 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
 
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
-  for (auto &VP : Packs)
+  for (auto &VP : Packs) {
+    auto &Foo = VP.getElements();
     for (Value *V : VP.elementValues())
       ValueToPackMap[V] = &VP;
+  }
 
   // Sort the packs by dependence
   std::vector<const VectorPack *> SortedPacks;
@@ -691,9 +704,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
     auto *I = IOP.dyn_cast<const Instruction *>();
     auto *VP = IOP.dyn_cast<const VectorPack *>();
 
-    // Don't process a packed instruction independently with the rest of a pack
-    if (I && ValueToPackMap.count(I))
-      return;
+    bool Packed = I && ValueToPackMap.count(I);
 
     // Figure out the dependence
     std::vector<Value *> DependedValues;
@@ -721,11 +732,13 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
     }
 
     // Now reorder this (pack of) instruction(s)
-    if (I)
-      ReorderedInsts.push_back(I);
-    else {
+    if (I) {
+      // We need to reorder a packed instruction *together* with its pack
+      if (!Packed)
+        ReorderedInsts.push_back(I);
+    } else {
       assert(VP);
-      for (auto *V : VP->elementValues())
+      for (auto *V : VP->getOrderedValues())
         ReorderedInsts.push_back(cast<Instruction>(V));
     }
   };
@@ -736,11 +749,15 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
   assert(SortedPacks.size() == Packs.size());
 
   // Now reschedule the whole basic blocks;
-  for (auto &I : *BB)
-    Schedule(&I);
+  for (auto &PHI : BB->phis())
+    Schedule(&PHI);
   for (auto &VP : Packs)
     Schedule(&VP);
+  for (auto &I : *BB)
+    Schedule(&I);
+
   assert(ReorderedInsts.size() == BB->size());
+  assert((*ReorderedInsts.rbegin())->isTerminator());
 
   // Reorder the instruction according to the schedule
   for (auto *I : ReorderedInsts)
@@ -844,6 +861,29 @@ using ConsecutiveAccessDAG =
     DenseMap<Instruction *, SmallPtrSet<Instruction *, 4>>;
 
 } // end anonymous namespace
+
+std::vector<Value *> VectorPack::getOrderedValues() const {
+  std::vector<Value *> OrderedValues;
+  switch (Kind) {
+    case General: 
+      for (auto &M : Matches)
+        OrderedValues.push_back(M.Output);
+      break;
+    case Load:
+      for (auto *LI : Loads)
+        OrderedValues.push_back(LI);
+      break;
+    case Store:
+      for (auto *SI : Stores)
+        OrderedValues.push_back(SI);
+      break;
+    case Phi:
+      for (auto *PHI : PHIs)
+        OrderedValues.push_back(PHI);
+      break;
+  }
+  return OrderedValues;
+}
 
 // Do a quadratic search to build the access dags
 void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
@@ -1023,6 +1063,8 @@ void VectorPackSet::codegen(
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
   for (BasicBlock *BB : RPO) {
+    if (Packs[BB].empty())
+      continue;
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
         sortPacksAndScheduleBB(BB, Packs[BB], *LDAs[BB]);
@@ -1039,7 +1081,7 @@ void VectorPackSet::codegen(
         OperandId++;
       }
 
-      Instruction *PackLeader = cast<Instruction>(*VP->elementValues().begin());
+      Instruction *PackLeader = cast<Instruction>(*VP->getOrderedValues().begin());
       Builder.SetInsertPoint(PackLeader);
 
       // Now we can emit the vector instruction
@@ -1049,20 +1091,21 @@ void VectorPackSet::codegen(
       // Let the later cleanup passes clean up dead extracts.
       if (!isa<StoreInst>(VecInst)) {
         unsigned LaneId = 0;
-        for (auto *V : VP->elementValues()) {
+        for (auto *V : VP->getOrderedValues()) {
           auto *Extract = Builder.CreateExtractElement(VecInst, LaneId++);
           V->replaceAllUsesWith(Extract);
         }
       }
 
       // Mark the packed values as dead so we can delete them later
-      for (auto *V : VP->elementValues())
+      for (auto *V : VP->elementValues()) {
         DeadInsts.push_back(cast<Instruction>(V));
+      }
 
       // Update the value index
       // to track where the originally scalar values are produced
       unsigned i = 0;
-      for (auto *V : VP->elementValues())
+      for (auto *V : VP->getOrderedValues())
         ValueIndex[V] = {VP, i++};
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
@@ -1071,8 +1114,10 @@ void VectorPackSet::codegen(
 
   // Delete the dead instructions.
   // Do it the reverse of program order to avoid dangling pointer.
-  for (auto I = DeadInsts.rbegin(), E = DeadInsts.rend(); I != E; ++E)
-    (*I)->eraseFromParent();
+  for (auto *I : make_range(DeadInsts.rbegin(), DeadInsts.rend())) {
+    I->eraseFromParent();
+    assert(!I->isTerminator());
+  }
 }
 
 IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
@@ -1151,8 +1196,8 @@ sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
   BitVector Depended = LDA.getDepended(LastAccess);
 
   std::vector<MemAccessTy *> Accesses{LastAccess};
+  assert(Elements.count() == Accesses.size());
   while (Accesses.size() < MaxNumAccesses) {
-    assert(Elements.size() == Accesses.size());
 
     // Find independent candidate to extend this chain of loads
     SmallVector<MemAccessTy *, 4> IndependentAccesses;
@@ -1179,6 +1224,7 @@ sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
     if (It == DAG.end())
       break;
     NextAccesses = &It->second;
+    assert(Elements.count() == Accesses.size());
   }
 
   return {Accesses, Elements, Depended};
@@ -1280,34 +1326,36 @@ bool GSLP::runOnFunction(Function &F) {
 
   auto *DL = &F.getParent()->getDataLayout();
 
-  std::vector<VectorPackContext> VPCtxs;
-
-  DenseMap<BasicBlock *, MatchManager> MMs;
+  // FIXME: fuse all of these together into a single map
+  DenseMap<BasicBlock *, std::unique_ptr<MatchManager>> MMs;
   DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs;
   DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> LoadDAGs;
   DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> StoreDAGs;
+  DenseMap<BasicBlock *, std::unique_ptr<VectorPackContext>> VPCtxs;
 
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<Instruction *> Loads;
     std::vector<Instruction *> Stores;
     // Find packable instructions
-    auto &MM = MMs[&BB] = MatchManager(VecBindingTable.getBindings());
+    auto MM = std::make_unique<MatchManager>(VecBindingTable.getBindings());
     for (auto &I : BB) {
-      MM.match(&I);
+      MM->match(&I);
       if (isa<LoadInst>(&I))
         Loads.push_back(&I);
       else if (isa<StoreInst>(&I))
         Stores.push_back(&I);
     }
 
-    VPCtxs.emplace_back(&BB);
-    auto &VPCtx = VPCtxs.back();
-    LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, &BB, VPCtx);
+    auto VPCtx = std::make_unique<VectorPackContext>(&BB);
     auto LoadDAG = std::make_unique<ConsecutiveAccessDAG>();
     auto StoreDAG = std::make_unique<ConsecutiveAccessDAG>();
     buildAccessDAG(*LoadDAG, Loads, DL, SE);
     buildAccessDAG(*StoreDAG, Stores, DL, SE);
+
+    MMs[&BB] = std::move(MM);
+    LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, &BB, VPCtx.get());
+    VPCtxs[&BB] = std::move(VPCtx);
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
@@ -1315,11 +1363,26 @@ bool GSLP::runOnFunction(Function &F) {
   VectorPackSet Packs(&F);
 
   std::srand(42);
+  for (auto &BB : F) {
+    for (int i = 0; i < 16; i++) {
+      auto &LoadDAG = *LoadDAGs[&BB];
+      if (LoadDAG.empty())
+        continue;
+      Packs.tryAdd(&BB,
+                   sampleLoadPack(LoadDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
+    }
+    for (int i = 0; i < 16; i++) {
+    }
+    for (int i = 0; i < 16; i++) {
+    }
+    for (int i = 0; i < 16; i++) {
+    }
+  }
 
   IntrinsicBuilder Builder(*InstWrappers);
   Packs.codegen(Builder, LDAs);
 
-  assert(!verifyFunction(F));
+  assert(!verifyFunction(F, &errs()));
   return true;
 }
 
