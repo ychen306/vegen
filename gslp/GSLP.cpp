@@ -273,8 +273,7 @@ public:
                              BitVector Depended);
 
   // Create a vectorized phi
-  VectorPack createPhiPack(ArrayRef<PHINode *> PHIs, BitVector Elements,
-                           BitVector Depended);
+  VectorPack createPhiPack(ArrayRef<PHINode *> PHIs);
 
   Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());
@@ -335,6 +334,10 @@ public:
     std::vector<Instruction *> LoadStores;
     // build the local dependence graph
     for (Instruction &I : *BB) {
+      // PHINodes do not introduce any local dependence
+      if (isa<PHINode>(&I))
+        continue;
+
       for (Value *Operand : I.operands()) {
         if (auto *I2 = dyn_cast<Instruction>(Operand))
           if (I2->getParent() == BB) {
@@ -843,9 +846,8 @@ using ConsecutiveAccessDAG =
 } // end anonymous namespace
 
 // Do a quadratic search to build the access dags
-void buildAccessDAG(ConsecutiveAccessDAG &DAG,
-                    ArrayRef<Instruction *> Accesses, const DataLayout *DL,
-                    ScalarEvolution *SE) {
+void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
+                    const DataLayout *DL, ScalarEvolution *SE) {
   for (auto *A1 : Accesses)
     for (auto *A2 : Accesses)
       if (A1->getType() == A2->getType() &&
@@ -1123,13 +1125,158 @@ VectorPack VectorPackContext::createStorePack(ArrayRef<StoreInst *> Stores,
   return VectorPack(this, Stores, Elements, Depended);
 }
 
-VectorPack VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
-                                            BitVector Elements,
-                                            BitVector Depended) {
-  return VectorPack(this, PHIs, Elements, Depended);
+VectorPack VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs) {
+  BitVector Elements(getNumValues());
+  for (auto *PHI : PHIs)
+    Elements.set(getScalarId(PHI));
+  return VectorPack(this, PHIs, Elements, BitVector(getNumValues()));
 }
 
 char GSLP::ID = 0;
+
+// Sample an integer between 0 and N.
+static unsigned randint(int N) { return std::rand() % N; }
+
+// sample indenpdent, consecutive memory accesses
+template <typename MemAccessTy>
+static std::tuple<std::vector<MemAccessTy *>, BitVector, BitVector>
+sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
+               LocalDependenceAnalysis &LDA, unsigned MaxNumAccesses) {
+  // Pick a seed to start the chain
+  auto DAGIt = std::next(DAG.begin(), randint(DAG.size()));
+  auto *LastAccess = cast<MemAccessTy>(DAGIt->first);
+  auto *NextAccesses = &DAGIt->second;
+  BitVector Elements(VPCtx.getNumValues());
+  Elements.set(VPCtx.getScalarId(LastAccess));
+  BitVector Depended = LDA.getDepended(LastAccess);
+
+  std::vector<MemAccessTy *> Accesses{LastAccess};
+  while (Accesses.size() < MaxNumAccesses) {
+    assert(Elements.size() == Accesses.size());
+
+    // Find independent candidate to extend this chain of loads
+    SmallVector<MemAccessTy *, 4> IndependentAccesses;
+    for (auto *L : *NextAccesses) {
+      auto Depended2 = LDA.getDepended(L);
+      unsigned AccessId = VPCtx.getScalarId(L);
+      if (Elements.anyCommon(Depended2) || Depended.test(AccessId))
+        continue;
+      IndependentAccesses.push_back(cast<MemAccessTy>(L));
+    }
+
+    // Abort if we don't have anything to choose from
+    if (IndependentAccesses.empty())
+      break;
+
+    // Sample one of the candidates
+    LastAccess = IndependentAccesses[randint(IndependentAccesses.size())];
+    Accesses.push_back(LastAccess);
+    Depended |= LDA.getDepended(LastAccess);
+    Elements.set(VPCtx.getScalarId(LastAccess));
+
+    auto It = DAG.find(LastAccess);
+    // This load doesn't have any consecutive load that follows
+    if (It == DAG.end())
+      break;
+    NextAccesses = &It->second;
+  }
+
+  return {Accesses, Elements, Depended};
+}
+
+static VectorPack sampleLoadPack(
+    ConsecutiveAccessDAG &LoadDAG,
+    VectorPackContext &VPCtx,
+    LocalDependenceAnalysis &LDA,
+    unsigned MaxNumLoads) {
+  std::vector<LoadInst *> Loads;
+  BitVector Elements;
+  BitVector Depended;
+  std::tie(Loads, Elements, Depended) =
+    sampleAccesses<LoadInst>(LoadDAG, VPCtx, LDA, MaxNumLoads);
+  return VPCtx.createLoadPack(Loads, Elements, Depended);
+}
+
+static VectorPack sampleStorePack(
+    ConsecutiveAccessDAG &StoreDAG,
+    VectorPackContext &VPCtx,
+    LocalDependenceAnalysis &LDA,
+    unsigned MaxNumStores) {
+  std::vector<StoreInst *> Stores;
+  BitVector Elements;
+  BitVector Depended;
+  std::tie(Stores, Elements, Depended) =
+    sampleAccesses<StoreInst>(StoreDAG, VPCtx, LDA, MaxNumStores);
+  return VPCtx.createStorePack(Stores, Elements, Depended);
+}
+
+static VectorPack samplePhiPack(VectorPackContext &VPCtx,
+                                 unsigned MaxNumPHIs) {
+  // All phi nodes within a basic block are always locally independent
+  // so we don't need to query the dependence analysis.
+
+  auto *BB = VPCtx.getBasicBlock();
+
+  // Group the phi nodes by their types
+  DenseMap<Type *, SmallVector<PHINode *, 4>> PHIs;
+  for (auto &PHI : BB->phis())
+    PHIs[PHI.getType()].push_back(&PHI);
+
+  // Now choose one group of isomorphic phis
+  auto It = std::next(PHIs.begin(), randint(PHIs.size()));
+  auto &IsoPHIs = It->second;
+  // Shuffle these phis before we pack them
+  std::random_shuffle(IsoPHIs.begin(), IsoPHIs.end(), randint);
+  unsigned NumPHIs = std::min<unsigned>(IsoPHIs.size(), MaxNumPHIs);
+  std::vector<PHINode *> SelectedPHIs(IsoPHIs.begin(),
+                                      std::next(IsoPHIs.begin(), NumPHIs));
+  return VPCtx.createPhiPack(SelectedPHIs);
+}
+
+// TODO: support NOOP lanes
+//
+// return true if success
+static bool sampleGeneralPack(
+    const MatchManager &MM,
+    VectorPackContext &VPCtx,
+    LocalDependenceAnalysis &LDA,
+    InstBinding *Inst,
+    VectorPack &VP, unsigned NumTrials) {
+
+  while (NumTrials--) {
+    BitVector Elements(VPCtx.getNumValues());
+    BitVector Depended(VPCtx.getNumValues());
+
+    // Fill each lane...
+    bool Success = true;
+    std::vector<Operation::Match> Matches;
+    for (auto &LaneOp : Inst->getLaneOps()) {
+      std::vector<const Operation::Match *> IndependentMatches;
+      for (auto &M : MM.getMatches(LaneOp.getOperation())) {
+        unsigned OutputId = VPCtx.getScalarId(M.Output);
+        auto Depended2 = LDA.getDepended(cast<Instruction>(M.Output));
+        // make sure M is independent from the existing values
+        if (!Depended.test(OutputId) /* selcted values depends on this one */
+            && !Elements.anyCommon(Depended2) /* this one depends on selected values */)
+          IndependentMatches.push_back(&M);
+      }
+      if (IndependentMatches.empty()) {
+        Success = false;
+        break;
+      }
+      // Choose one of the independent mathes
+      auto *SelectedM = IndependentMatches[randint(IndependentMatches.size())];
+      Elements.set(VPCtx.getScalarId(SelectedM->Output));
+      Depended |= LDA.getDepended(cast<Instruction>(SelectedM->Output));
+      Matches.push_back(*SelectedM);
+    }
+
+    VP = VPCtx.createVectorPack(Matches, Elements, Depended, Inst);
+    return true;
+  }
+
+  return false;
+}
 
 bool GSLP::runOnFunction(Function &F) {
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
@@ -1172,7 +1319,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   VectorPackSet Packs(&F);
 
-  // TODO: select packs
+  std::srand(42);
 
   IntrinsicBuilder Builder(*InstWrappers);
   Packs.codegen(Builder, LDAs);

@@ -37,6 +37,7 @@ struct InputSlice {
 struct Operation {
   struct Match {
     std::vector<llvm::Value *> Inputs;
+    // FIXME: make this an Instruction instead
     llvm::Value *Output;
   };
   // `match' returns true if `V` is matched.
