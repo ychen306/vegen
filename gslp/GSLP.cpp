@@ -608,6 +608,8 @@ public:
     return VPCtx->iter_values(Depended);
   }
 
+  BasicBlock *getBasicBlock() { return VPCtx->getBasicBlock(); }
+
   std::vector<Value *> getOrderedValues() const;
 
   unsigned numElements() const { return Elements.count(); }
@@ -790,6 +792,7 @@ protected:
   unsigned NumPacks;
   Function *F;
   std::vector<std::unique_ptr<VectorPack>> AllPacks;
+  // FIXME : rename Packs to BB2Packs;
   DenseMap<BasicBlock *, std::vector<VectorPack *>> Packs;
   DenseMap<BasicBlock *, BitVector> PackedValues;
 
@@ -813,6 +816,8 @@ protected:
 public:
   VectorPackSet(Function *F) : NumPacks(0), F(F) {}
 
+  unsigned getNumPacks() const { return NumPacks; }
+
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
   bool tryAdd(BasicBlock *BB, VectorPack VP);
@@ -828,7 +833,7 @@ public:
 
 struct MCMCVectorPackSet : public VectorPackSet {
   MCMCVectorPackSet(Function *F) : VectorPackSet(F) {}
-  void removeRandomPack();
+  void eraseRandomPack();
 };
 
 // Mapping a load/store -> a set of consecutive loads/stores
@@ -1322,9 +1327,30 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
   return None;
 }
 
-void MCMCVectorPackSet::removeRandomPack() {
-  //auto It = std::next(iter_packs().begin(), randint(NumPacks));
-  //It->BBIt->second.erase(It.VPIt);
+// Erase stuff from a vector when we don't care about ordering within the vector
+template <typename T>
+void eraseUnordered(std::vector<T> &Container, typename std::vector<T>::iterator It) {
+  // first swap the stuff we want to delete to the end
+  auto LastIt = std::prev(Container.end());
+  std::iter_swap(It, LastIt);
+  Container.pop_back();
+}
+
+void MCMCVectorPackSet::eraseRandomPack() {
+  auto It = std::next(AllPacks.begin(), randint(AllPacks.size()));
+  auto *VP = It->get();
+  auto *BB = VP->getBasicBlock();
+
+  // Find the local iterator
+  auto &LocalPacks = Packs[BB];
+  auto LocalIt = std::find(LocalPacks.begin(), LocalPacks.end(), VP);
+  assert(LocalIt != LocalPacks.end());
+
+  // Delete the pack pointer from the basic block index
+  eraseUnordered(LocalPacks, LocalIt);
+  // Delete the pack itself
+  eraseUnordered(AllPacks, It);
+  NumPacks--;
 }
 
 bool GSLP::runOnFunction(Function &F) {
@@ -1413,6 +1439,11 @@ bool GSLP::runOnFunction(Function &F) {
           break;
       }
     }
+  }
+
+  for (int i = 0; i < 8; i++) {
+    if (Packs.getNumPacks() > 4)
+      Packs.eraseRandomPack();
   }
 
   IntrinsicBuilder Builder(*InstWrappers);
