@@ -355,8 +355,7 @@ public:
         MemoryLocation Loc = getLocation(&I, AA);
         // check dependence with preceding loads and stores
         for (auto *PrevRef : MemRefs) {
-          if ((PrevRef->mayWriteToMemory() ||
-              I.mayWriteToMemory()) &&
+          if ((PrevRef->mayWriteToMemory() || I.mayWriteToMemory()) &&
               isAliased(Loc, &I, PrevRef, AA))
             Dependencies[&I].push_back(PrevRef);
         }
@@ -1022,7 +1021,7 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
         Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
       Acc = Builder.CreateShuffleVector(Acc, PG.Gather,
                                         ConstantVector::get(Mask));
-      errs() << "EMITTED MERGE SHUFFLE: "<< *Acc << '\n';
+      errs() << "EMITTED MERGE SHUFFLE: " << *Acc << '\n';
 
       assert(!DefinedBits.anyCommon(PG.DefinedBits));
       DefinedBits |= PG.DefinedBits;
@@ -1098,7 +1097,6 @@ void VectorPackSet::codegen(
   for (BasicBlock *BB : RPO) {
     if (Packs[BB].empty())
       continue;
-    errs() << "======= BEFORE =====\n" << *BB << '\n';
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
@@ -1148,7 +1146,6 @@ void VectorPackSet::codegen(
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
     }
-    errs() << "======= AFTER =====\n" << *BB << '\n';
   }
 
   // Delete the dead instructions.
