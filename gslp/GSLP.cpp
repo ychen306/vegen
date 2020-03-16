@@ -395,6 +395,7 @@ private:
   BitVector Elements;
   BitVector Depended;
 
+  // FIXME just make VectorPack an interface
   //////////// Data for the 4 kinds
   PackKind Kind;
   // General
@@ -758,9 +759,9 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
     SortPack(&VP);
   assert(SortedPacks.size() == Packs.size());
 
+  // FIXME: there's something fishy here...
+  // why does the order of scheduling i and vp matter???
   // Now reschedule the whole basic blocks;
-  for (auto &PHI : BB->phis())
-    Schedule(&PHI);
   for (auto &I : *BB)
     Schedule(&I);
   for (auto &VP : Packs)
@@ -931,7 +932,7 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   std::map<Value *, SmallVector<unsigned, 4>> SrcScalars;
 
   // Figure out sources of the values in `OpndPack`
-  unsigned NumValues = OpndPack.size();
+  const unsigned NumValues = OpndPack.size();
   for (unsigned i = 0; i < NumValues; i++) {
     auto *V = OpndPack[i];
     auto It = ValueIndex.find(V);
@@ -954,6 +955,7 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
     U = UndefInt32;
 
   // Here's the codegen strategy we will use.
+  //
   // Suppose we need to gather from N vectors,
   // and the output vector has M elements.
   // We then generate N partial gather, resulting in N vector if size M
@@ -1001,13 +1003,12 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   Value *Acc;
   if (!PartialGathers.empty()) {
     // 2) Merge the partial gathers
-    BitVector DefinedBits = std::move(PartialGathers.back().DefinedBits);
-    Acc = PartialGathers.back().Gather;
-    PartialGathers.pop_back();
-    while (PartialGathers.empty()) {
-      auto &PG = PartialGathers.back();
-
+    BitVector DefinedBits = PartialGathers[0].DefinedBits;
+    Acc = PartialGathers[0].Gather;
+    for (auto &PG :
+         make_range(PartialGathers.begin() + 1, PartialGathers.end())) {
       ShuffleMaskTy Mask = Undefs;
+      assert(Mask.size() == NumValues);
       // Select from Acc
       for (unsigned Idx : DefinedBits.set_bits())
         Mask[Idx] = ConstantInt::get(Int32Ty, Idx);
@@ -1018,7 +1019,6 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
                                         ConstantVector::get(Mask));
 
       DefinedBits |= PG.DefinedBits;
-      PartialGathers.pop_back();
     }
   } else {
     auto *VecTy = VectorType::get(OpndPack[0]->getType(), OpndPack.size());
@@ -1304,9 +1304,11 @@ samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
 // TODO: support NOOP lanes
 //
 // return true if success
-static bool sampleGeneralPack(const MatchManager &MM, VectorPackContext &VPCtx,
-                              LocalDependenceAnalysis &LDA, InstBinding *Inst,
-                              VectorPack &VP, unsigned NumTrials) {
+static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
+                                             VectorPackContext &VPCtx,
+                                             LocalDependenceAnalysis &LDA,
+                                             InstBinding *Inst,
+                                             unsigned NumTrials) {
 
   while (NumTrials--) {
     BitVector Elements(VPCtx.getNumValues());
@@ -1319,6 +1321,9 @@ static bool sampleGeneralPack(const MatchManager &MM, VectorPackContext &VPCtx,
       std::vector<const Operation::Match *> IndependentMatches;
       for (auto &M : MM.getMatches(LaneOp.getOperation())) {
         unsigned OutputId = VPCtx.getScalarId(M.Output);
+        // This value has already been packed
+        if (Elements.test(OutputId))
+          continue;
         auto Depended2 = LDA.getDepended(cast<Instruction>(M.Output));
         // make sure M is independent from the existing values
         if (!Depended.test(OutputId) /* selcted values depends on this one */
@@ -1337,11 +1342,12 @@ static bool sampleGeneralPack(const MatchManager &MM, VectorPackContext &VPCtx,
       Matches.push_back(*SelectedM);
     }
 
-    VP = VPCtx.createVectorPack(Matches, Elements, Depended, Inst);
-    return true;
+    if (Success) {
+      return VPCtx.createVectorPack(Matches, Elements, Depended, Inst);
+    }
   }
 
-  return false;
+  return None;
 }
 
 bool GSLP::runOnFunction(Function &F) {
@@ -1418,7 +1424,14 @@ bool GSLP::runOnFunction(Function &F) {
         continue;
       Packs.tryAdd(&BB, samplePhiPack(PHIs, *VPCtxs[&BB], 4));
     }
-    for (int i = 0; i < 16; i++) {
+
+    for (auto *Inst : VecBindingTable.getBindings()) {
+      for (int i = 0; i < 32; i++) {
+        Optional<VectorPack> VPOrNull =
+            sampleVectorPack(*MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 32);
+        if (VPOrNull)
+          Packs.tryAdd(&BB, VPOrNull.getValue());
+      }
     }
   }
 
