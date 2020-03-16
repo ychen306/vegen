@@ -563,18 +563,30 @@ private:
 
   Value *emitVectorPhi(ArrayRef<Value *> Operands,
                        IntrinsicBuilder &Builder) const {
+    auto *BB = VPCtx->getBasicBlock();
+    Builder.SetInsertPoint(&*BB->begin());
     auto *FirstPHI = PHIs[0];
     unsigned NumIncomings = FirstPHI->getNumIncomingValues();
 
     auto *VecTy = VectorType::get(FirstPHI->getType(), PHIs.size());
     auto *VecPHI = Builder.CreatePHI(VecTy, NumIncomings);
 
+    std::set<BasicBlock *> Visited;
     // Values in operands follow the order of ::getUserPack,
     // which follows the basic block order of the first phi.
     for (unsigned i = 0; i < NumIncomings; i++) {
       auto *BB = FirstPHI->getIncomingBlock(i);
+      // Apparently sometimes a phi node can have more than one
+      // incoming value for the same basic block...
+      if (Visited.count(BB)) {
+        VecPHI->addIncoming(
+            VecPHI->getIncomingValueForBlock(BB),
+            BB);
+        continue;
+      }
       auto *VecIncoming = Operands[i];
       VecPHI->addIncoming(VecIncoming, BB);
+      Visited.insert(BB);
     }
     assert(VecPHI->getNumIncomingValues() == FirstPHI->getNumIncomingValues());
     return VecPHI;
@@ -1110,6 +1122,8 @@ void VectorPackSet::codegen(
       // Let the later cleanup passes clean up dead extracts.
       if (!isa<StoreInst>(VecInst)) {
         unsigned LaneId = 0;
+        if (isa<PHINode>(VecInst))
+          Builder.SetInsertPoint(BB->getFirstNonPHI());
         for (auto *V : VP->getOrderedValues()) {
           auto *Extract = Builder.CreateExtractElement(VecInst, LaneId++);
           V->replaceAllUsesWith(Extract);
@@ -1273,21 +1287,13 @@ static VectorPack sampleStorePack(ConsecutiveAccessDAG &StoreDAG,
   return VPCtx.createStorePack(Stores, Elements, Depended);
 }
 
-static VectorPack samplePhiPack(VectorPackContext &VPCtx, unsigned MaxNumPHIs) {
-  // All phi nodes within a basic block are always locally independent
+static VectorPack samplePhiPack(
+DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
+    VectorPackContext &VPCtx, unsigned MaxNumPHIs) {
+  // NOTE: All phi nodes within a basic block are always locally independent
   // so we don't need to query the dependence analysis.
 
-  auto *BB = VPCtx.getBasicBlock();
-
-  // Group the phi nodes by their types
-  DenseMap<Type *, SmallVector<PHINode *, 4>> PHIs;
-  for (auto &PHI : BB->phis()) {
-    if (!isScalarType(PHI.getType()))
-      continue;
-    PHIs[PHI.getType()].push_back(&PHI);
-  }
-
-  // Now choose one group of isomorphic phis
+  // Now choose one group of isomorphic phis.
   auto It = std::next(PHIs.begin(), randint(PHIs.size()));
   auto &IsoPHIs = It->second;
   // Shuffle these phis before we pack them
@@ -1403,7 +1409,20 @@ bool GSLP::runOnFunction(Function &F) {
       Packs.tryAdd(&BB,
                    sampleStorePack(StoreDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
     }
-    for (int i = 0; i < 16; i++) {
+
+    DenseMap<Type *, SmallVector<PHINode *, 4>> PHIs;
+    // Group the phi nodes by their types
+    for (auto &PHI : BB.phis()) {
+      if (!isScalarType(PHI.getType()))
+        continue;
+      PHIs[PHI.getType()].push_back(&PHI);
+    }
+
+    for (int i = 0; i < 32; i++) {
+      if (PHIs.empty())
+        continue;
+      Packs.tryAdd(&BB,
+          samplePhiPack(PHIs, *VPCtxs[&BB], 4));
     }
     for (int i = 0; i < 16; i++) {
     }
