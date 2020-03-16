@@ -675,18 +675,18 @@ public:
 // This reordering makes codegen easier because we can
 // just insert the vector instruction immediately after the last
 // instruction that you are replacing.
-std::vector<const VectorPack *>
-sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
+static std::vector<const VectorPack *>
+sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack *> Packs,
                        LocalDependenceAnalysis &LDA) {
   if (Packs.empty())
     return std::vector<const VectorPack *>();
 
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
-  for (auto &VP : Packs) {
-    auto &Foo = VP.getElements();
-    for (Value *V : VP.elementValues())
-      ValueToPackMap[V] = &VP;
+  for (auto *VP : Packs) {
+    auto &Foo = VP->getElements();
+    for (Value *V : VP->elementValues())
+      ValueToPackMap[V] = VP;
   }
 
   // Sort the packs by dependence
@@ -709,7 +709,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
 
   // Schedule the basic block subject to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
-  const VectorPackContext *VPCtx = Packs[0].getContext();
+  const VectorPackContext *VPCtx = Packs[0]->getContext();
   using InstOrPack = PointerUnion<const Instruction *, const VectorPack *>;
   DenseSet<void *> Reordered;
   std::vector<const Instruction *> ReorderedInsts;
@@ -758,8 +758,8 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
   };
 
   // Sort the packs first
-  for (auto &VP : Packs)
-    SortPack(&VP);
+  for (auto *VP : Packs)
+    SortPack(VP);
   assert(SortedPacks.size() == Packs.size());
 
   // FIXME: there's something fishy here...
@@ -767,8 +767,8 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
   // Now reschedule the whole basic blocks;
   for (auto &I : *BB)
     Schedule(&I);
-  for (auto &VP : Packs)
-    Schedule(&VP);
+  for (auto *VP : Packs)
+    Schedule(VP);
 
   assert(ReorderedInsts.size() == BB->size());
   assert((*ReorderedInsts.rbegin())->isTerminator());
@@ -786,8 +786,11 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
 }
 
 class VectorPackSet {
+protected:
+  unsigned NumPacks;
   Function *F;
-  DenseMap<BasicBlock *, std::vector<VectorPack>> Packs;
+  std::vector<std::unique_ptr<VectorPack>> AllPacks;
+  DenseMap<BasicBlock *, std::vector<VectorPack *>> Packs;
   DenseMap<BasicBlock *, BitVector> PackedValues;
 
   // This tells us where a value is located in a pack
@@ -814,7 +817,7 @@ class VectorPackSet {
     decltype(Packs)::iterator BBIt;
     decltype(Packs)::mapped_type::iterator VPIt;
 
-    const VectorPack &operator*() const { return *VPIt; }
+    const VectorPack *operator*() const { return *VPIt; }
 
     iterator &operator++() {
       ++VPIt;
@@ -835,7 +838,7 @@ class VectorPackSet {
   };
 
 public:
-  VectorPackSet(Function *F) : F(F) {}
+  VectorPackSet(Function *F) : NumPacks(0), F(F) {}
 
   iterator_range<iterator> iter_packs() {
     iterator Begin, End;
@@ -1051,14 +1054,16 @@ bool VectorPackSet::tryAdd(BasicBlock *BB, VectorPack VP) {
   Packed |= VP.getElements();
 
   auto &BBPacks = Packs[BB];
-  for (auto &VP2 : BBPacks) {
+  for (auto VP2 : BBPacks) {
     // Abort if adding this pack creates circular dependence
-    if (VP2.getDepended().anyCommon(VP.getElements()) &&
-        VP.getElements().anyCommon(VP2.getDepended()))
+    if (VP2->getDepended().anyCommon(VP.getElements()) &&
+        VP.getElements().anyCommon(VP2->getDepended()))
       return false;
   }
 
-  BBPacks.push_back(VP);
+  AllPacks.push_back(std::make_unique<VectorPack>(VP));
+  BBPacks.push_back(AllPacks.back().get());
+  NumPacks ++;
   return true;
 }
 
@@ -1066,14 +1071,14 @@ int VectorPackSet::getCostSaving(TargetTransformInfo *TTI) const {
   int CostSaving = 0;
   // Compute arithmetic cost saving
   for (auto BBAndPacks : Packs) {
-    for (auto &VP : BBAndPacks.second) {
+    for (auto VP : BBAndPacks.second) {
       // FIXME: this is undercounting for more general vector instruction
       // (e.g., fmadd)
-      for (Value *V : VP.elementValues()) {
+      for (Value *V : VP->elementValues()) {
         CostSaving -= TTI->getInstructionCost(cast<Instruction>(V),
                                               TargetTransformInfo::TCK_Latency);
       }
-      CostSaving += VP.getProducer()->getCost(TTI, F->getContext());
+      CostSaving += VP->getProducer()->getCost(TTI, F->getContext());
     }
   }
 
@@ -1357,7 +1362,8 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
 }
 
 void MCMCVectorPackSet::removeRandomPack() {
-  auto It = iter_packs().begin();
+  //auto It = std::next(iter_packs().begin(), randint(NumPacks));
+  //It->BBIt->second.erase(It.VPIt);
 }
 
 bool GSLP::runOnFunction(Function &F) {
