@@ -863,6 +863,7 @@ public:
 };
 
 struct MCMCVectorPackSet : public VectorPackSet {
+  MCMCVectorPackSet(Function *F) : VectorPackSet(F) {}
   void removeRandomPack();
 };
 
@@ -1021,7 +1022,6 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
         Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
       Acc = Builder.CreateShuffleVector(Acc, PG.Gather,
                                         ConstantVector::get(Mask));
-      errs() << "EMITTED MERGE SHUFFLE: " << *Acc << '\n';
 
       assert(!DefinedBits.anyCommon(PG.DefinedBits));
       DefinedBits |= PG.DefinedBits;
@@ -1356,6 +1356,10 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
   return None;
 }
 
+void MCMCVectorPackSet::removeRandomPack() {
+  auto It = iter_packs().begin();
+}
+
 bool GSLP::runOnFunction(Function &F) {
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
@@ -1400,12 +1404,11 @@ bool GSLP::runOnFunction(Function &F) {
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
 
-  VectorPackSet Packs(&F);
+  MCMCVectorPackSet Packs(&F);
 
   std::srand(42);
   for (auto &BB : F) {
 
-#if 0
     for (int i = 0; i < 32; i++) {
       auto &LoadDAG = *LoadDAGs[&BB];
       if (LoadDAG.empty())
@@ -1432,7 +1435,6 @@ bool GSLP::runOnFunction(Function &F) {
         continue;
       Packs.tryAdd(&BB, samplePhiPack(PHIs, *VPCtxs[&BB], 4));
     }
-#endif
 
     for (auto *Inst : VecBindingTable.getBindings()) {
       for (int i = 0; i < 32; i++) {
