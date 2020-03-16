@@ -195,9 +195,14 @@ public:
 
     // enumerate vector insts
     std::vector<unsigned> VectorBitwidths = {64, 128, 256};
-    for (auto &Op : VectorizableOps)
-      for (unsigned VB : VectorBitwidths)
+    for (auto &Op : VectorizableOps) {
+      for (unsigned VB : VectorBitwidths) {
+        // Skip singleton pack
+        if (VB / Op.getBitwidth() == 1)
+          continue;
         VectorInsts.emplace_back(IRVectorBinding::Create(&Op, VB));
+      }
+    }
 
     for (auto &Binding : VectorInsts)
       Bindings.push_back(&Binding);
@@ -332,7 +337,7 @@ public:
   LocalDependenceAnalysis(AliasAnalysis *AA, BasicBlock *BB,
                           VectorPackContext *VPCtx)
       : BB(BB), VPCtx(VPCtx) {
-    std::vector<Instruction *> LoadStores;
+    std::vector<Instruction *> MemRefs;
     // build the local dependence graph
     for (Instruction &I : *BB) {
       // PHINodes do not introduce any local dependence
@@ -346,17 +351,16 @@ public:
           }
         }
       }
-      if (isa<LoadInst>(&I) || isa<StoreInst>(&I)) {
+      if (I.mayReadOrWriteMemory()) {
         MemoryLocation Loc = getLocation(&I, AA);
         // check dependence with preceding loads and stores
-        for (auto *PrevLS : LoadStores) {
-          // ignore output dependence
-          if (isa<LoadInst>(PrevLS) && isa<LoadInst>(&I))
-            continue;
-          if (isAliased(Loc, &I, PrevLS, AA))
-            Dependencies[&I].push_back(PrevLS);
+        for (auto *PrevRef : MemRefs) {
+          if ((PrevRef->mayWriteToMemory() ||
+              I.mayWriteToMemory()) &&
+              isAliased(Loc, &I, PrevRef, AA))
+            Dependencies[&I].push_back(PrevRef);
         }
-        LoadStores.push_back(&I);
+        MemRefs.push_back(&I);
       }
     }
   }
@@ -982,6 +986,7 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
     // Figure out which values we want to gather
     ShuffleMaskTy MaskValues = Undefs;
     for (auto &GE : GatherEdges) {
+      assert(GE.DestIndex < MaskValues.size());
       MaskValues[GE.DestIndex] = ConstantInt::get(Int32Ty, GE.SrcIndex);
       DefinedBits.set(GE.DestIndex);
     }
@@ -1002,7 +1007,7 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
 
   Value *Acc;
   if (!PartialGathers.empty()) {
-    // 2) Merge the partial gathers
+    // 2)uMerge the partial gathers
     BitVector DefinedBits = PartialGathers[0].DefinedBits;
     Acc = PartialGathers[0].Gather;
     for (auto &PG :
@@ -1017,7 +1022,9 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
         Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
       Acc = Builder.CreateShuffleVector(Acc, PG.Gather,
                                         ConstantVector::get(Mask));
+      errs() << "EMITTED MERGE SHUFFLE: "<< *Acc << '\n';
 
+      assert(!DefinedBits.anyCommon(PG.DefinedBits));
       DefinedBits |= PG.DefinedBits;
     }
   } else {
@@ -1091,6 +1098,7 @@ void VectorPackSet::codegen(
   for (BasicBlock *BB : RPO) {
     if (Packs[BB].empty())
       continue;
+    errs() << "======= BEFORE =====\n" << *BB << '\n';
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
@@ -1140,6 +1148,7 @@ void VectorPackSet::codegen(
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
     }
+    errs() << "======= AFTER =====\n" << *BB << '\n';
   }
 
   // Delete the dead instructions.
@@ -1398,6 +1407,8 @@ bool GSLP::runOnFunction(Function &F) {
 
   std::srand(42);
   for (auto &BB : F) {
+
+#if 0
     for (int i = 0; i < 32; i++) {
       auto &LoadDAG = *LoadDAGs[&BB];
       if (LoadDAG.empty())
@@ -1424,6 +1435,7 @@ bool GSLP::runOnFunction(Function &F) {
         continue;
       Packs.tryAdd(&BB, samplePhiPack(PHIs, *VPCtxs[&BB], 4));
     }
+#endif
 
     for (auto *Inst : VecBindingTable.getBindings()) {
       for (int i = 0; i < 32; i++) {
@@ -1431,6 +1443,8 @@ bool GSLP::runOnFunction(Function &F) {
             sampleVectorPack(*MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 32);
         if (VPOrNull)
           Packs.tryAdd(&BB, VPOrNull.getValue());
+        else
+          break;
       }
     }
   }
