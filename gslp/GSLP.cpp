@@ -4,10 +4,10 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/MemoryLocation.h"
+#include "llvm/Analysis/OrderedBasicBlock.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/VectorUtils.h"
-#include "llvm/Analysis/OrderedBasicBlock.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LLVMContext.h"
@@ -579,9 +579,7 @@ private:
       // Apparently sometimes a phi node can have more than one
       // incoming value for the same basic block...
       if (Visited.count(BB)) {
-        VecPHI->addIncoming(
-            VecPHI->getIncomingValueForBlock(BB),
-            BB);
+        VecPHI->addIncoming(VecPHI->getIncomingValueForBlock(BB), BB);
         continue;
       }
       auto *VecIncoming = Operands[i];
@@ -872,31 +870,29 @@ struct MCMCVectorPackSet : public VectorPackSet {
 using ConsecutiveAccessDAG =
     DenseMap<Instruction *, SmallPtrSet<Instruction *, 4>>;
 
-bool isScalarType(Type *Ty) {
-  return Ty->getScalarType() == Ty;
-}
+bool isScalarType(Type *Ty) { return Ty->getScalarType() == Ty; }
 
 } // end anonymous namespace
 
 std::vector<Value *> VectorPack::getOrderedValues() const {
   std::vector<Value *> OrderedValues;
   switch (Kind) {
-    case General: 
-      for (auto &M : Matches)
-        OrderedValues.push_back(M.Output);
-      break;
-    case Load:
-      for (auto *LI : Loads)
-        OrderedValues.push_back(LI);
-      break;
-    case Store:
-      for (auto *SI : Stores)
-        OrderedValues.push_back(SI);
-      break;
-    case Phi:
-      for (auto *PHI : PHIs)
-        OrderedValues.push_back(PHI);
-      break;
+  case General:
+    for (auto &M : Matches)
+      OrderedValues.push_back(M.Output);
+    break;
+  case Load:
+    for (auto *LI : Loads)
+      OrderedValues.push_back(LI);
+    break;
+  case Store:
+    for (auto *SI : Stores)
+      OrderedValues.push_back(SI);
+    break;
+  case Phi:
+    for (auto *PHI : PHIs)
+      OrderedValues.push_back(PHI);
+    break;
   }
   return OrderedValues;
 }
@@ -907,8 +903,8 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
                     const DataLayout *DL, ScalarEvolution *SE) {
   for (auto *A1 : Accesses) {
     // Get type of the value being acccessed
-    auto *Ty = cast<PointerType>(
-        A1->getPointerOperand()->getType())->getElementType();
+    auto *Ty =
+        cast<PointerType>(A1->getPointerOperand()->getType())->getElementType();
     if (!isScalarType(Ty))
       continue;
     for (auto *A2 : Accesses) {
@@ -1018,8 +1014,8 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
       // Select from the partial gather
       for (unsigned Idx : PG.DefinedBits.set_bits())
         Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
-      Acc =
-        Builder.CreateShuffleVector(Acc, PG.Gather, ConstantVector::get(Mask));
+      Acc = Builder.CreateShuffleVector(Acc, PG.Gather,
+                                        ConstantVector::get(Mask));
 
       DefinedBits |= PG.DefinedBits;
       PartialGathers.pop_back();
@@ -1112,7 +1108,8 @@ void VectorPackSet::codegen(
         OperandId++;
       }
 
-      Instruction *PackLeader = cast<Instruction>(*VP->getOrderedValues().begin());
+      Instruction *PackLeader =
+          cast<Instruction>(*VP->getOrderedValues().begin());
       Builder.SetInsertPoint(PackLeader);
 
       // Now we can emit the vector instruction
@@ -1287,9 +1284,9 @@ static VectorPack sampleStorePack(ConsecutiveAccessDAG &StoreDAG,
   return VPCtx.createStorePack(Stores, Elements, Depended);
 }
 
-static VectorPack samplePhiPack(
-DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
-    VectorPackContext &VPCtx, unsigned MaxNumPHIs) {
+static VectorPack
+samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
+              VectorPackContext &VPCtx, unsigned MaxNumPHIs) {
   // NOTE: All phi nodes within a basic block are always locally independent
   // so we don't need to query the dependence analysis.
 
@@ -1399,15 +1396,13 @@ bool GSLP::runOnFunction(Function &F) {
       auto &LoadDAG = *LoadDAGs[&BB];
       if (LoadDAG.empty())
         continue;
-      Packs.tryAdd(&BB,
-                   sampleLoadPack(LoadDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
+      Packs.tryAdd(&BB, sampleLoadPack(LoadDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
     }
     for (int i = 0; i < 32; i++) {
       auto &StoreDAG = *StoreDAGs[&BB];
       if (StoreDAG.empty())
         continue;
-      Packs.tryAdd(&BB,
-                   sampleStorePack(StoreDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
+      Packs.tryAdd(&BB, sampleStorePack(StoreDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
     }
 
     DenseMap<Type *, SmallVector<PHINode *, 4>> PHIs;
@@ -1421,8 +1416,7 @@ bool GSLP::runOnFunction(Function &F) {
     for (int i = 0; i < 32; i++) {
       if (PHIs.empty())
         continue;
-      Packs.tryAdd(&BB,
-          samplePhiPack(PHIs, *VPCtxs[&BB], 4));
+      Packs.tryAdd(&BB, samplePhiPack(PHIs, *VPCtxs[&BB], 4));
     }
     for (int i = 0; i < 16; i++) {
     }
