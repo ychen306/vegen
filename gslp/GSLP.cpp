@@ -788,7 +788,7 @@ class VectorPackSet {
   using PackToValueTy = DenseMap<const VectorPack *, Value *>;
 
   // Get the vector value representing OpndPack.
-  static Value *gatherOperandPack(VectorPack::OperandPack OpndPack,
+  static Value *gatherOperandPack(const VectorPack::OperandPack &OpndPack,
                                   const ValueIndexTy &ValueIndex,
                                   const PackToValueTy &MaterializedPacks,
                                   IntrinsicBuilder &Builder);
@@ -890,10 +890,13 @@ std::vector<Value *> VectorPack::getOrderedValues() const {
 }
 
 // Do a quadratic search to build the access dags
-void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
+template <typename MemAccessTy>
+void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
                     const DataLayout *DL, ScalarEvolution *SE) {
   for (auto *A1 : Accesses) {
-    auto *Ty = A1->getType();
+    // Get type of the value being acccessed
+    auto *Ty = cast<PointerType>(
+        A1->getPointerOperand()->getType())->getElementType();
     if (!isScalarType(Ty))
       continue;
     for (auto *A2 : Accesses) {
@@ -907,7 +910,7 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
 // Get the vector value representing `OpndPack'.
 // If `OpndPack` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
-Value *VectorPackSet::gatherOperandPack(VectorPack::OperandPack OpndPack,
+Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
                                         const ValueIndexTy &ValueIndex,
                                         const PackToValueTy &MaterializedPacks,
                                         IntrinsicBuilder &Builder) {
@@ -965,7 +968,7 @@ Value *VectorPackSet::gatherOperandPack(VectorPack::OperandPack OpndPack,
     auto *SrcVP = KV.first;
     auto &GatherEdges = KV.second;
 
-    BitVector DefinedBits;
+    BitVector DefinedBits(NumValues);
     // Figure out which values we want to gather
     ShuffleMaskTy MaskValues = Undefs;
     for (auto &GE : GatherEdges) {
@@ -987,25 +990,31 @@ Value *VectorPackSet::gatherOperandPack(VectorPack::OperandPack OpndPack,
     PartialGathers.push_back({DefinedBits, Gather});
   }
 
-  // 2) Merge the partial gathers
-  auto DefinedBits = std::move(PartialGathers.back().DefinedBits);
-  auto *Acc = PartialGathers.back().Gather;
-  PartialGathers.pop_back();
-  while (PartialGathers.empty()) {
-    auto &PG = PartialGathers.back();
+  Value *Acc;
+  if (!PartialGathers.empty()) {
+    // 2) Merge the partial gathers
+    BitVector DefinedBits = std::move(PartialGathers.back().DefinedBits);
+    Acc = PartialGathers.back().Gather;
+    PartialGathers.pop_back();
+    while (PartialGathers.empty()) {
+      auto &PG = PartialGathers.back();
 
-    ShuffleMaskTy Mask = Undefs;
-    // Select from Acc
-    for (unsigned Idx : DefinedBits.set_bits())
-      Mask[Idx] = ConstantInt::get(Int32Ty, Idx);
-    // Select from the partial gather
-    for (unsigned Idx : PG.DefinedBits.set_bits())
-      Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
-    Acc =
+      ShuffleMaskTy Mask = Undefs;
+      // Select from Acc
+      for (unsigned Idx : DefinedBits.set_bits())
+        Mask[Idx] = ConstantInt::get(Int32Ty, Idx);
+      // Select from the partial gather
+      for (unsigned Idx : PG.DefinedBits.set_bits())
+        Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
+      Acc =
         Builder.CreateShuffleVector(Acc, PG.Gather, ConstantVector::get(Mask));
 
-    DefinedBits |= PG.DefinedBits;
-    PartialGathers.pop_back();
+      DefinedBits |= PG.DefinedBits;
+      PartialGathers.pop_back();
+    }
+  } else {
+    auto *VecTy = VectorType::get(OpndPack[0]->getType(), OpndPack.size());
+    Acc = UndefValue::get(VecTy);
   }
 
   // 3) Insert the scalar values
@@ -1348,8 +1357,8 @@ bool GSLP::runOnFunction(Function &F) {
 
   // Setup analyses and determine search space
   for (auto &BB : F) {
-    std::vector<Instruction *> Loads;
-    std::vector<Instruction *> Stores;
+    std::vector<LoadInst *> Loads;
+    std::vector<StoreInst *> Stores;
     // Find packable instructions
     auto MM = std::make_unique<MatchManager>(VecBindingTable.getBindings());
     for (auto &I : BB) {
@@ -1366,8 +1375,8 @@ bool GSLP::runOnFunction(Function &F) {
     auto VPCtx = std::make_unique<VectorPackContext>(&BB);
     auto LoadDAG = std::make_unique<ConsecutiveAccessDAG>();
     auto StoreDAG = std::make_unique<ConsecutiveAccessDAG>();
-    buildAccessDAG(*LoadDAG, Loads, DL, SE);
-    buildAccessDAG(*StoreDAG, Stores, DL, SE);
+    buildAccessDAG<LoadInst>(*LoadDAG, Loads, DL, SE);
+    buildAccessDAG<StoreInst>(*StoreDAG, Stores, DL, SE);
 
     MMs[&BB] = std::move(MM);
     LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, &BB, VPCtx.get());
@@ -1380,14 +1389,19 @@ bool GSLP::runOnFunction(Function &F) {
 
   std::srand(42);
   for (auto &BB : F) {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 32; i++) {
       auto &LoadDAG = *LoadDAGs[&BB];
       if (LoadDAG.empty())
         continue;
       Packs.tryAdd(&BB,
                    sampleLoadPack(LoadDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
     }
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 32; i++) {
+      auto &StoreDAG = *StoreDAGs[&BB];
+      if (StoreDAG.empty())
+        continue;
+      Packs.tryAdd(&BB,
+                   sampleStorePack(StoreDAG, *VPCtxs[&BB], *LDAs[&BB], 4));
     }
     for (int i = 0; i < 16; i++) {
     }
