@@ -810,47 +810,8 @@ protected:
                                   const PackToValueTy &MaterializedPacks,
                                   IntrinsicBuilder &Builder);
 
-  // Use this to iterate over `Packs` if you don't care about grouping them by
-  // basic blocks
-  struct iterator {
-    VectorPackSet *Parent;
-    decltype(Packs)::iterator BBIt;
-    decltype(Packs)::mapped_type::iterator VPIt;
-
-    const VectorPack *operator*() const { return *VPIt; }
-
-    iterator &operator++() {
-      ++VPIt;
-      if (VPIt == BBIt->second.end()) {
-        ++BBIt;
-        if (BBIt != Parent->Packs.end())
-          VPIt = BBIt->second.begin();
-      }
-
-      return *this;
-    }
-
-    bool operator!=(const iterator &Other) const {
-      if (BBIt == Parent->Packs.end() && Other.BBIt == Parent->Packs.end())
-        return false;
-      return std::tie(BBIt, VPIt) != std::tie(Other.BBIt, Other.VPIt);
-    }
-  };
-
 public:
   VectorPackSet(Function *F) : NumPacks(0), F(F) {}
-
-  iterator_range<iterator> iter_packs() {
-    iterator Begin, End;
-    Begin.Parent = this;
-    Begin.BBIt = Packs.begin();
-    Begin.VPIt = Packs.begin()->second.begin();
-
-    End.Parent = this;
-    End.BBIt = Packs.end();
-
-    return make_range(Begin, End);
-  }
 
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
