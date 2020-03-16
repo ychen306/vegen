@@ -7,6 +7,7 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/VectorUtils.h"
+#include "llvm/Analysis/OrderedBasicBlock.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LLVMContext.h"
@@ -325,7 +326,7 @@ class LocalDependenceAnalysis {
   DenseMap<Instruction *, std::vector<Instruction *>> Dependencies;
   VectorPackContext *VPCtx;
   // mapping an instruction -> instructions that it transitively depends on
-  DenseMap<Instruction *, BitVector> TransitiveClosure;
+  std::map<Instruction *, BitVector> TransitiveClosure;
 
 public:
   LocalDependenceAnalysis(AliasAnalysis *AA, BasicBlock *BB,
@@ -339,10 +340,11 @@ public:
         continue;
 
       for (Value *Operand : I.operands()) {
-        if (auto *I2 = dyn_cast<Instruction>(Operand))
-          if (I2->getParent() == BB) {
+        if (auto *I2 = dyn_cast<Instruction>(Operand)) {
+          if (!isa<PHINode>(I2) && I2->getParent() == BB) {
             Dependencies[&I].push_back(I2);
           }
+        }
       }
       if (isa<LoadInst>(&I) || isa<StoreInst>(&I)) {
         MemoryLocation Loc = getLocation(&I, AA);
@@ -360,15 +362,16 @@ public:
   }
 
   BitVector getDepended(Instruction *I) {
-    auto It = TransitiveClosure.try_emplace(I, BitVector(VPCtx->getNumValues()));
-    BitVector &Depended = It.first->second;
-    bool Inserted = It.second;
-    if (!Inserted)
+    auto &Depended = TransitiveClosure[I];
+    if (Depended.size() != 0)
       return Depended;
+    Depended = BitVector(VPCtx->getNumValues());
 
     for (auto *Src : Dependencies[I]) {
       Depended.set(VPCtx->getScalarId(Src));
+      unsigned Count = Depended.count();
       Depended |= getDepended(Src);
+      assert(Depended.test(VPCtx->getScalarId(Src)));
     }
 
     return Depended;
@@ -704,7 +707,11 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
     auto *I = IOP.dyn_cast<const Instruction *>();
     auto *VP = IOP.dyn_cast<const VectorPack *>();
 
-    bool Packed = I && ValueToPackMap.count(I);
+    // We need to reorder a packed instruction *together* with its pack
+    if (I && ValueToPackMap.count(I)) {
+      Schedule(ValueToPackMap[const_cast<Instruction *>(I)]);
+      return;
+    }
 
     // Figure out the dependence
     std::vector<Value *> DependedValues;
@@ -720,12 +727,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
 
     // Recurse on the depended values
     for (auto *V : DependedValues) {
-      auto It = ValueToPackMap.find(V);
-      // If the depended value comes from a pack,
-      // that pack needs to be reorder as a whole unit.
-      if (It != ValueToPackMap.end())
-        Schedule(It->second);
-      else if (auto *I = dyn_cast<Instruction>(V)) {
+      if (auto *I = dyn_cast<Instruction>(V)) {
         if (I->getParent() == BB)
           Schedule(I);
       }
@@ -733,9 +735,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
 
     // Now reorder this (pack of) instruction(s)
     if (I) {
-      // We need to reorder a packed instruction *together* with its pack
-      if (!Packed)
-        ReorderedInsts.push_back(I);
+      ReorderedInsts.push_back(I);
     } else {
       assert(VP);
       for (auto *V : VP->getOrderedValues())
@@ -751,10 +751,10 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack> Packs,
   // Now reschedule the whole basic blocks;
   for (auto &PHI : BB->phis())
     Schedule(&PHI);
-  for (auto &VP : Packs)
-    Schedule(&VP);
   for (auto &I : *BB)
     Schedule(&I);
+  for (auto &VP : Packs)
+    Schedule(&VP);
 
   assert(ReorderedInsts.size() == BB->size());
   assert((*ReorderedInsts.rbegin())->isTerminator());
@@ -860,6 +860,10 @@ struct MCMCVectorPackSet : public VectorPackSet {
 using ConsecutiveAccessDAG =
     DenseMap<Instruction *, SmallPtrSet<Instruction *, 4>>;
 
+bool isScalarType(Type *Ty) {
+  return Ty->getScalarType() == Ty;
+}
+
 } // end anonymous namespace
 
 std::vector<Value *> VectorPack::getOrderedValues() const {
@@ -888,11 +892,16 @@ std::vector<Value *> VectorPack::getOrderedValues() const {
 // Do a quadratic search to build the access dags
 void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
                     const DataLayout *DL, ScalarEvolution *SE) {
-  for (auto *A1 : Accesses)
-    for (auto *A2 : Accesses)
+  for (auto *A1 : Accesses) {
+    auto *Ty = A1->getType();
+    if (!isScalarType(Ty))
+      continue;
+    for (auto *A2 : Accesses) {
       if (A1->getType() == A2->getType() &&
           isConsecutiveAccess(A1, A2, *DL, *SE))
         DAG[A1].insert(A2);
+    }
+  }
 };
 
 // Get the vector value representing `OpndPack'.
@@ -1065,6 +1074,7 @@ void VectorPackSet::codegen(
   for (BasicBlock *BB : RPO) {
     if (Packs[BB].empty())
       continue;
+
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
         sortPacksAndScheduleBB(BB, Packs[BB], *LDAs[BB]);
@@ -1201,12 +1211,12 @@ sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
 
     // Find independent candidate to extend this chain of loads
     SmallVector<MemAccessTy *, 4> IndependentAccesses;
-    for (auto *L : *NextAccesses) {
-      auto Depended2 = LDA.getDepended(L);
-      unsigned AccessId = VPCtx.getScalarId(L);
+    for (auto *A : *NextAccesses) {
+      auto Depended2 = LDA.getDepended(A);
+      unsigned AccessId = VPCtx.getScalarId(A);
       if (Elements.anyCommon(Depended2) || Depended.test(AccessId))
         continue;
-      IndependentAccesses.push_back(cast<MemAccessTy>(L));
+      IndependentAccesses.push_back(cast<MemAccessTy>(A));
     }
 
     // Abort if we don't have anything to choose from
@@ -1262,8 +1272,11 @@ static VectorPack samplePhiPack(VectorPackContext &VPCtx, unsigned MaxNumPHIs) {
 
   // Group the phi nodes by their types
   DenseMap<Type *, SmallVector<PHINode *, 4>> PHIs;
-  for (auto &PHI : BB->phis())
+  for (auto &PHI : BB->phis()) {
+    if (!isScalarType(PHI.getType()))
+      continue;
     PHIs[PHI.getType()].push_back(&PHI);
+  }
 
   // Now choose one group of isomorphic phis
   auto It = std::next(PHIs.begin(), randint(PHIs.size()));
@@ -1341,10 +1354,13 @@ bool GSLP::runOnFunction(Function &F) {
     auto MM = std::make_unique<MatchManager>(VecBindingTable.getBindings());
     for (auto &I : BB) {
       MM->match(&I);
-      if (isa<LoadInst>(&I))
-        Loads.push_back(&I);
-      else if (isa<StoreInst>(&I))
-        Stores.push_back(&I);
+      if (auto *LI = dyn_cast<LoadInst>(&I)) {
+        if (LI->isSimple())
+          Loads.push_back(LI);
+      } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
+        if (SI->isSimple())
+          Stores.push_back(SI);
+      }
     }
 
     auto VPCtx = std::make_unique<VectorPackContext>(&BB);
