@@ -130,6 +130,7 @@ public:
   virtual llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands, IntrinsicBuilder &Builder) const {
     return Builder.Create(Name, Operands);
   }
+  llvm::StringRef getName() const { return Name; }
 };
 
 template <typename LHS_TY, typename RHS_TY>
