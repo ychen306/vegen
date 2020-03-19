@@ -3,12 +3,12 @@
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/OrderedBasicBlock.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/VectorUtils.h"
-#include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LLVMContext.h"
@@ -35,9 +35,8 @@ using namespace PatternMatch;
 cl::opt<std::string> InstWrappersPath("inst-wrappers",
                                       cl::desc("Path to InstWrappers.bc"),
                                       cl::Required);
-cl::opt<bool> UseMainlineSLP("use-slp",
-    cl::desc("Use LLVM SLP"),
-    cl::init(false));
+cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
+                             cl::init(false));
 
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
@@ -180,8 +179,7 @@ std::vector<Instruction::BinaryOps> VectorizableOpcodes = {
     Instruction::BinaryOps::SRem, Instruction::BinaryOps::FRem,
     Instruction::BinaryOps::Shl,  Instruction::BinaryOps::LShr,
     Instruction::BinaryOps::AShr, Instruction::BinaryOps::And,
-    Instruction::BinaryOps::Or,   Instruction::BinaryOps::Xor
-};
+    Instruction::BinaryOps::Or,   Instruction::BinaryOps::Xor};
 
 // Aux class enumerating vector ir that we can emit
 class VectorizableTable {
@@ -382,7 +380,7 @@ public:
     // Cycle detection
     DenseSet<Instruction *> Processing;
     DenseSet<Instruction *> Visited;
-    std::function<void (Instruction *)> Visit = [&](Instruction *I){
+    std::function<void(Instruction *)> Visit = [&](Instruction *I) {
       assert(!Processing.count(I) && "CYCLE DETECTED IN DEP GRAPH");
       bool Inserted = Visited.insert(I).second;
       if (!Inserted)
@@ -397,7 +395,8 @@ public:
 #endif
 
     // Now compute transitive closure in topological order,
-    // which we don't need to compute because the basic block order is a valid one
+    // which we don't need to compute because the basic block order is a valid
+    // one
     for (auto &I : *BB) {
       BitVector Depended = BitVector(VPCtx->getNumValues());
       for (auto *Src : Dependencies[&I]) {
@@ -635,7 +634,7 @@ public:
   VectorPack(const VectorPack &Other) = default;
   VectorPack &operator=(const VectorPack &Other) = default;
 
-  const InstBinding *getProducer() const { 
+  const InstBinding *getProducer() const {
     return (Kind == General) ? Producer : nullptr;
   }
 
@@ -693,19 +692,18 @@ public:
     case General:
       return Producer->getCost(TTI, Ctx);
     case Load: {
-                 auto *LI = Loads[0];
-                 MaybeAlign Alignment(LI->getAlignment());
-                 auto *VecTy = VectorType::get(LI->getType(), Loads.size());
-                 return TTI->getMemoryOpCost(Instruction::Load,
-                     VecTy, Alignment, 0, LI);
-               }
+      auto *LI = Loads[0];
+      MaybeAlign Alignment(LI->getAlignment());
+      auto *VecTy = VectorType::get(LI->getType(), Loads.size());
+      return TTI->getMemoryOpCost(Instruction::Load, VecTy, Alignment, 0, LI);
+    }
     case Store: {
-                 auto *SI = Stores[0];
-                 MaybeAlign Alignment(SI->getAlignment());
-                 auto *VecTy = VectorType::get(SI->getValueOperand()->getType(), Stores.size());
-                 return TTI->getMemoryOpCost(Instruction::Store,
-                     VecTy, Alignment, 0, SI);
-                }
+      auto *SI = Stores[0];
+      MaybeAlign Alignment(SI->getAlignment());
+      auto *VecTy =
+          VectorType::get(SI->getValueOperand()->getType(), Stores.size());
+      return TTI->getMemoryOpCost(Instruction::Store, VecTy, Alignment, 0, SI);
+    }
     case Phi:
       return 0;
     }
@@ -1104,7 +1102,7 @@ bool VectorPackSet::tryAdd(VectorPack VP, LocalDependenceAnalysis &LDA) {
   // Abort if one of the value we want to produce is produced by another pack
   if (Packed.anyCommon(VP.getElements()))
     return false;
-  
+
   // FIXME: make this data structure part of VectorPackSet to avoid recomputing
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
@@ -1120,7 +1118,7 @@ bool VectorPackSet::tryAdd(VectorPack VP, LocalDependenceAnalysis &LDA) {
 
   // Do a DFS on the dependence graph starting from VP.
   // We want to see if we can get back to any of VP's values
-  std::vector<const VectorPack *> Worklist {&VP};
+  std::vector<const VectorPack *> Worklist{&VP};
   DenseSet<const VectorPack *> Visited;
   while (!Worklist.empty()) {
     auto *VP = Worklist.back();
@@ -1157,10 +1155,12 @@ void VectorPackSet::pop() {
 }
 
 static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
-  return float(BFI->getBlockFreq(BB).getFrequency()) / float(BFI->getEntryFreq());
+  return float(BFI->getBlockFreq(BB).getFrequency()) /
+         float(BFI->getEntryFreq());
 }
 
-float VectorPackSet::getCostSaving(TargetTransformInfo *TTI, BlockFrequencyInfo *BFI) const {
+float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
+                                   BlockFrequencyInfo *BFI) const {
   int CostSaving = 0;
   assert(AllPacks.size() == NumPacks);
   // Compute arithmetic cost saving
@@ -1170,8 +1170,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI, BlockFrequencyInfo 
     // FIXME: this is undercounting for more general vector instruction
     // (e.g., fmadd)
     for (Value *V : VP->elementValues()) {
-      BBCostSaving -= TTI->getInstructionCost(cast<Instruction>(V),
-          TargetTransformInfo::TCK_RecipThroughput);
+      BBCostSaving -= TTI->getInstructionCost(
+          cast<Instruction>(V), TargetTransformInfo::TCK_RecipThroughput);
     }
     BBCostSaving += VP->getCost(TTI, F->getContext());
 
@@ -1193,7 +1193,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI, BlockFrequencyInfo 
   const int PermuteCost = 1;
 
   // FIXME:
-  // use of block frequency is pessimistic when we can hoist gathers out of loops
+  // use of block frequency is pessimistic when we can hoist gathers out of
+  // loops
   for (auto &VP : AllPacks) {
     auto *BB = VP->getBasicBlock();
     float BBCost = 0;
@@ -1214,7 +1215,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI, BlockFrequencyInfo 
       unsigned NumSrcs = SrcPacks.size() + SrcScalars.size();
       if (NumSrcs > 1) {
         if (SrcPacks.size() > 0)
-          BBCost += GatherCost * 2*(SrcPacks.size() - 1);
+          BBCost += GatherCost * 2 * (SrcPacks.size() - 1);
         BBCost += InsertCost * SrcScalars.size();
       } else if (!SrcPacks.empty()) {
         auto *SrcPack = *SrcPacks.begin();
@@ -1227,8 +1228,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI, BlockFrequencyInfo 
           bool InOrder = true;
           for (Value *V : OpndPack) {
             auto It = ValueIndex.find(V);
-            if (It == ValueIndex.end() ||
-                It->second.Idx != i) {
+            if (It == ValueIndex.end() || It->second.Idx != i) {
               InOrder = false;
               break;
             }
@@ -1408,7 +1408,7 @@ static unsigned rand_int(int N) { return std::rand() % N; }
 
 // Sample a float between 0 and 1
 float rand_float() {
-  float r = (float)rand()/(float)RAND_MAX;
+  float r = (float)rand() / (float)RAND_MAX;
   return r;
 }
 
@@ -1525,10 +1525,10 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
         if (Elements.test(OutputId))
           continue;
         auto Depended2 = LDA.getDepended(cast<Instruction>(M.Output));
-        // Selcted values depends on this one 
+        // Selcted values depends on this one
         if (Depended.test(OutputId))
           continue;
-        // This one depends on selected values 
+        // This one depends on selected values
         if (Depended2.anyCommon(Elements))
           continue;
         IndependentMatches.push_back(&M);
@@ -1557,7 +1557,8 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
 
 // Erase stuff from a vector when we don't care about ordering within the vector
 template <typename T>
-void eraseUnordered(std::vector<T> &Container, typename std::vector<T>::iterator It) {
+void eraseUnordered(std::vector<T> &Container,
+                    typename std::vector<T>::iterator It) {
   // first swap the stuff we want to delete to the end
   auto LastIt = std::prev(Container.end());
   std::iter_swap(It, LastIt);
@@ -1579,7 +1580,6 @@ std::unique_ptr<VectorPack> MCMCVectorPackSet::removeRandomPack() {
   // Delete the pack itself
   std::unique_ptr<VectorPack> Removed(It->release());
   eraseUnordered(AllPacks, It);
-
 
   auto &Packed = PackedValues[BB];
   Packed ^= Removed->getElements();
@@ -1642,7 +1642,7 @@ bool GSLP::runOnFunction(Function &F) {
   for (auto *Inst : VecBindingTable.getBindings()) {
     for (auto &BB : F) {
       Optional<VectorPack> VPOrNull =
-        sampleVectorPack(*MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 32);
+          sampleVectorPack(*MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 32);
       if (VPOrNull)
         InstBindings[&BB].insert(Inst);
     }
@@ -1654,7 +1654,8 @@ bool GSLP::runOnFunction(Function &F) {
   const unsigned ProbGeneral = 5;
 
   auto sampleOnePack = [&]() -> bool {
-    auto &RandInst = *std::next(inst_begin(F), rand_int(F.getInstructionCount()));
+    auto &RandInst =
+        *std::next(inst_begin(F), rand_int(F.getInstructionCount()));
     auto *BB = RandInst.getParent();
     unsigned P = rand_int(10);
     if (P < ProbLoad) {
@@ -1662,7 +1663,7 @@ bool GSLP::runOnFunction(Function &F) {
       if (LoadDAG.empty())
         return false;
       return Packs.tryAdd(sampleLoadPack(LoadDAG, *VPCtxs[BB], *LDAs[BB], 4),
-          *LDAs[BB]);
+                          *LDAs[BB]);
     }
     P -= ProbLoad;
 
@@ -1670,9 +1671,8 @@ bool GSLP::runOnFunction(Function &F) {
       auto &StoreDAG = *StoreDAGs[BB];
       if (StoreDAG.empty())
         return false;
-      return Packs.tryAdd(
-          sampleStorePack(StoreDAG, *VPCtxs[BB], *LDAs[BB], 4),
-          *LDAs[BB]);
+      return Packs.tryAdd(sampleStorePack(StoreDAG, *VPCtxs[BB], *LDAs[BB], 4),
+                          *LDAs[BB]);
     }
     P -= ProbStore;
 
@@ -1687,8 +1687,7 @@ bool GSLP::runOnFunction(Function &F) {
       }
       if (PHIs.empty())
         return false;
-      return Packs.tryAdd(samplePhiPack(PHIs, *VPCtxs[BB], 4),
-          *LDAs[BB]);
+      return Packs.tryAdd(samplePhiPack(PHIs, *VPCtxs[BB], 4), *LDAs[BB]);
     }
 
     auto &Bindings = InstBindings[BB];
@@ -1697,7 +1696,7 @@ bool GSLP::runOnFunction(Function &F) {
     // FIXME: refactor all of these `std::next(... rand_int))` stuff
     auto *Inst = *std::next(Bindings.begin(), rand_int(Bindings.size()));
     Optional<VectorPack> VPOrNull =
-      sampleVectorPack(*MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, 32);
+        sampleVectorPack(*MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, 32);
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue(), *LDAs[BB]);
   };
 
