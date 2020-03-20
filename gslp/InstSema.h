@@ -118,13 +118,15 @@ public:
 // each of which characterized by a BoundOperation
 class InstBinding {
   InstSignature Sig;
-  std::vector<BoundOperation> LaneOps;
   std::string Name;
+  std::vector<std::string> TargetFeatures;
+  std::vector<BoundOperation> LaneOps;
   
 public:
   virtual int getCost(llvm::TargetTransformInfo *, llvm::LLVMContext &) const { return -1; }
-  InstBinding(std::string Name, InstSignature Sig, std::vector<BoundOperation> LaneOps) 
-    : Name(Name), Sig(Sig), LaneOps(LaneOps) {}
+  llvm::ArrayRef<std::string> getTargetFeatures() const { return TargetFeatures; }
+  InstBinding(std::string Name, std::vector<std::string> TargetFeatures, InstSignature Sig, std::vector<BoundOperation> LaneOps) 
+    : Name(Name), TargetFeatures(TargetFeatures), Sig(Sig), LaneOps(LaneOps) {}
   const InstSignature &getSignature() const { return Sig; }
   llvm::ArrayRef<BoundOperation> getLaneOps() const { return LaneOps; }
   virtual llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands, IntrinsicBuilder &Builder) const {

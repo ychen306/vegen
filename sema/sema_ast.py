@@ -30,6 +30,7 @@ Spec = namedtuple('Spec', [
   'spec', 'rettype', 'binary_exprs',
 
   'inst_form',
+  'cpuids',
 
   # configuration of binary exprs
   'configs',

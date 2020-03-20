@@ -19,6 +19,7 @@ def get_spec_from_xml(node):
     if name == '':
       continue
     params.append(Parameter(name, type))
+  cpuids = [cpuid.text.lower() for cpuid in node.findall('CPUID')]
   intrin = node.attrib['name']
   inst = node.find('instruction')
   inst_form = inst.attrib.get('form', '')
@@ -33,6 +34,7 @@ def get_spec_from_xml(node):
       spec=spec,
       params=params,
       rettype=rettype,
+      cpuids=cpuids,
       configs={}, # by default nothing is configured
       inst_form=inst_form,
       binary_exprs=binary_exprs)

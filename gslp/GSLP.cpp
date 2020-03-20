@@ -85,7 +85,7 @@ class IRVectorBinding : public InstBinding {
 
   IRVectorBinding(const BinaryIROperation *Op, std::string Name,
                   InstSignature Sig, std::vector<BoundOperation> LaneOps)
-      : InstBinding(Name, Sig, LaneOps), Op(Op) {}
+      : InstBinding(Name, {}/* no target features required*/, Sig, LaneOps), Op(Op) {}
 
 public:
   static IRVectorBinding Create(const BinaryIROperation *Op,
@@ -200,7 +200,7 @@ public:
       }
 
     // enumerate vector insts
-    std::vector<unsigned> VectorBitwidths = {128, 256};
+    std::vector<unsigned> VectorBitwidths = {64, 128, 256};
     for (auto &Op : VectorizableOps) {
       for (unsigned VB : VectorBitwidths) {
         // Skip singleton pack
@@ -541,6 +541,14 @@ private:
     return UPs;
   }
 
+  Value *emitVectorGeneral(ArrayRef<Value *> Operands,
+      IntrinsicBuilder &Builder) const {
+    auto *VecInst = Producer->emit(Operands, Builder);
+    // Fix the output type
+    auto *VecType = VectorType::get(Matches[0].Output->getType(), Matches.size());
+    return Builder.CreateBitCast(VecInst, VecType);
+  }
+
   // Shameless stolen from llvm's SLPVectorizer
   Value *emitVectorLoad(ArrayRef<Value *> Operands,
                         IntrinsicBuilder &Builder) const {
@@ -677,7 +685,7 @@ public:
     // FIXME: choose insert point
     switch (Kind) {
     case General:
-      return Producer->emit(Operands, Builder);
+      return emitVectorGeneral(Operands, Builder);
     case Load:
       return emitVectorLoad(Operands, Builder);
     case Store:
@@ -722,14 +730,18 @@ public:
       Builder.SetInsertPoint(BB->getTerminator());
     }
   }
-
-  void dump(raw_ostream &OS) const {
-    OS << "PACK : <\n";
-    for (auto *V : getOrderedValues())
-      OS << *V << '\n';
-    OS << ">\n";
-  }
 };
+
+raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
+  StringRef ProducerName = "";
+  if (auto *Producer = VP.getProducer())
+    ProducerName = Producer->getName();
+  OS << "PACK<" << ProducerName << ">: (\n";
+  for (auto *V : VP.getOrderedValues())
+    OS << *V << '\n';
+  OS << ")\n";
+  return OS;
+}
 
 // Topsort the vector packs.
 // Also reschedule the basic block according to the sorted packs.
@@ -935,6 +947,19 @@ using ConsecutiveAccessDAG =
 
 bool isScalarType(Type *Ty) { return Ty->getScalarType() == Ty; }
 
+bool hasFeature(const Function &F, std::string Feature) {
+  Attribute Features = F.getFnAttribute("target-features");
+  return !Features.hasAttribute(Attribute::None) &&
+    Features.getValueAsString().contains("+"+Feature);
+}
+
+bool isSupported(InstBinding *Inst, const Function &F) {
+  for (auto &Feature : Inst->getTargetFeatures())
+    if (!hasFeature(F, Feature))
+      return false;
+  return true;
+}
+
 } // end anonymous namespace
 
 std::vector<Value *> VectorPack::getOrderedValues() const {
@@ -1093,8 +1118,11 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   for (auto &KV : SrcScalars) {
     Value *V = KV.first;
     auto &Indices = KV.second;
-    for (unsigned Idx : Indices)
+    for (unsigned Idx : Indices) {
+      errs() << "ACCUMULATOR TYPE: " << *Acc->getType() << '\n';
+      errs() << "VALUE: " << *V << '\n';
       Acc = Builder.CreateInsertElement(Acc, V, Idx, "gslp.insert");
+    }
   }
 
   return Acc;
@@ -1315,6 +1343,7 @@ void VectorPackSet::codegen(
       SmallVector<Value *, 2> Operands;
       unsigned OperandId = 0;
       for (auto &OpndPack : VP->getOperandPacks()) {
+        errs() << "GATHERING FOR " << *VP << '\n';
         VP->setOperandGatherPoint(OperandId, Builder);
         Operands.push_back(gatherOperandPack(OpndPack, ValueIndex,
                                              MaterializedPacks, Builder));
@@ -1633,6 +1662,27 @@ bool GSLP::runOnFunction(Function &F) {
 
   auto *DL = &F.getParent()->getDataLayout();
 
+  // Figure out vector instructions we can use
+  std::vector<InstBinding *> SupportedInsts;
+#define USE_INTRINSICS 1
+#ifndef USE_INTRINSICS
+#define USE_INTRINSICS 0
+#endif
+#if USE_INTRINSICS
+  errs() << "Using vector intrinsics.\n";
+  std::vector<InstBinding *> AvailableInsts;
+  for (auto &Inst : Insts)
+    AvailableInsts.push_back(&Inst);
+#else
+  errs() << "Using LLVM IR vectors.\n";
+  std::vector<InstBinding *> AvailableInsts = VecBindingTable.getBindings();
+#endif
+  for (auto *Inst : AvailableInsts) {
+    if (isSupported(Inst, F))
+      SupportedInsts.push_back(Inst);
+  }
+  errs() << "Num supported insts: " << SupportedInsts.size() << '\n';
+
   // FIXME: fuse all of these together into a single map
   DenseMap<BasicBlock *, std::unique_ptr<MatchManager>> MMs;
   DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs;
@@ -1645,7 +1695,7 @@ bool GSLP::runOnFunction(Function &F) {
     std::vector<LoadInst *> Loads;
     std::vector<StoreInst *> Stores;
     // Find packable instructions
-    auto MM = std::make_unique<MatchManager>(VecBindingTable.getBindings());
+    auto MM = std::make_unique<MatchManager>(SupportedInsts);
     for (auto &I : BB) {
       MM->match(&I);
       if (auto *LI = dyn_cast<LoadInst>(&I)) {
@@ -1676,7 +1726,7 @@ bool GSLP::runOnFunction(Function &F) {
   // First find out if which vector instruction we can emit.
   // E.g. sometimes there is simply no `fadd` in a basic block..
   DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> InstBindings;
-  for (auto *Inst : VecBindingTable.getBindings()) {
+  for (auto *Inst : SupportedInsts) {
     for (auto &BB : F) {
       Optional<VectorPack> VPOrNull =
           sampleVectorPack(*MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 1000);
@@ -1746,7 +1796,10 @@ bool GSLP::runOnFunction(Function &F) {
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
-#if 1
+  for (int i = 0; i < 100; i++)
+    sampleOnePack();
+
+#if 0
   const unsigned NumIters = 100000;
   const float Beta = 0.5;
 

@@ -99,6 +99,9 @@ class BoundOperation:
   def __eq__(self, other):
     return self.matching_code == other.matching_code
 
+  def __ne__(self, other):
+    return self.matching_code != other.matching_code
+
   def get_bound_liveins(self):
     '''
     return the dag nodes corresponding to `get_operation_liveins`
@@ -225,7 +228,7 @@ def emit_sig(sig):
   has_imm8 = 'true' if any(x.is_constant for x in xs) else 'false'
   return f'InstSignature {{ {{ {input_sizes} }}, {{ {output_sizes} }}, {has_imm8} }}' 
 
-def codegen(bundles):
+def codegen(bundles, inst_features):
   '''
   bundles : mapping inst -> bundles
   '''
@@ -233,6 +236,8 @@ def codegen(bundles):
   operation_defs = {}
   inst_defs = {}
   for inst, bundle in bundles.items():
+    features = inst_features[inst]
+    feature_list = ', '.join(f'"{f}"' for f in features)
     liveins, _ = bundle.sema
     # BoundOperation for each lane
     bound_ops = []
@@ -244,12 +249,14 @@ def codegen(bundles):
         op_name = 'Operation%d' % op_id
         operation_names[op] = op_name
         operation_defs[op] = declare_operation(op_name, op)
+      else:
+        op_name = operation_names[op]
 
       bound_liveins = [emit_slice(liveins, bundle.dag[x]) for x in op.get_bound_liveins()]
       bound_ops.append(
           f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
     sig = emit_sig(bundle.sig)
-    inst_defs[inst] = f'InstBinding("{inst}", {sig}, {{ {", ".join(bound_ops)} }})'
+    inst_defs[inst] = f'InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }})'
 
   op_decls = '\n'.join(op_decl for op_decl in operation_defs.values()) 
   inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values()) 
@@ -283,6 +290,10 @@ if __name__ == '__main__':
     except AssertionError as e:
       pass
 
+  inst_features = {
+      inst: spec.cpuids
+      for inst, spec in specs.items()}
+
   with open('InstSema.cpp', 'w') as f:
     f.write('''
 #include "InstSema.h"
@@ -290,7 +301,7 @@ if __name__ == '__main__':
 using namespace llvm;
 using namespace PatternMatch;
     ''')
-    f.write(codegen(bundles))
+    f.write(codegen(bundles, inst_features))
 
   exit()
 
