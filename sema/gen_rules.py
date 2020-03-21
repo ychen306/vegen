@@ -5,22 +5,9 @@ from manual_parser import get_spec_from_xml
 from sig import get_inst_sigs
 import io
 
-def get_inst_pattern_ctor(inst):
-  if inst.op in icmp_ops:
-    matcher = f'm_Cmp_dont_care(CmpInst::Predicate::ICMP_{inst.op.upper()}, '
-  elif inst.op in fcmp_ops:
-    matcher = f'm_Cmp_dont_care(CmpInst::Predicate::FCMP_{inst.op.upper()[1:]}, '
-  elif inst.op in commutative_binary_ops:
-    matcher = f'm_c_{inst.op}('
-  else:
-    matcher = f'm_{inst.op}('
-
-  assert inst.op not in binary_ops or len(inst.args) <= 2,\
-      "flattend mul/xor/add/or/and not supported yet";
-  return matcher
-
 def get_const_pattern(const):
-  return f'm_SpecificInt(APInt({const.bitwidth}, {const.value}ull))'
+  #return f'm_SpecificInt(APInt({const.bitwidth}, {const.value}ull))'
+  return f'm_SpecificInt({const.value}ull)'
 
 class VarGenerator:
   def __init__(self):
@@ -45,11 +32,36 @@ class BoundOperation:
     bound_liveins = []
     vars_to_declare = []
     livein2vars = defaultdict(list)
+
+    # LLVM's pattern matcher doesn't support matching particular prediates
+    # and instead "returns" the predicate of a comparison.
+    # What we want to do here is to check that these predicates are what we want
+    preds = []
+
     def build_pattern(node_id, depth=1):
       node = dag[node_id]
       node_ty = type(node)
       if node_ty == Instruction:
-        pattern_ctor = get_inst_pattern_ctor(node)
+        if node.op in icmp_ops:
+          pred = var_generator.new_var()
+          preds.append(
+              (pred,
+              f'CmpInst::Predicate::ICMP_{node.op.upper()}'))
+          pattern_ctor = f'm_Cmp({pred}, '
+        elif node.op in fcmp_ops:
+          pred = var_generator.new_var()
+          preds.append(
+              (pred,
+              f'CmpInst::Predicate::FCMP_{node.op.upper()[1:]}'))
+          pattern_ctor = f'm_Cmp({pred}, '
+        elif node.op in commutative_binary_ops:
+          pattern_ctor = f'm_c_{node.op}('
+        else:
+          pattern_ctor = f'm_{node.op}('
+
+        assert node.op not in binary_ops or len(node.args) <= 2,\
+            "flattend mul/xor/add/or/and not supported yet";
+
         sub_patterns = [build_pattern(arg, depth+1) for arg in node.args]
         indent = '  ' * (depth+2)
         ctor_args = ',\n'.join(indent+p for p in sub_patterns)
@@ -67,18 +79,23 @@ class BoundOperation:
         livein2vars[node_id].append(x)
         return f'm_Value({x})'
 
+    self.is_nop = not isinstance(dag[root], Instruction)
     pattern = build_pattern(root)
     root_bitwidth = dag[root].bitwidth
     conds = [
         f'hasBitWidth(V, {root_bitwidth})',
         f'PatternMatch::match(V, {pattern})']
+    for pred_var, pred_val in preds:
+      conds.append(f'{pred_var} == {pred_val}')
     for xs in livein2vars.values():
       conds.extend(f'{xs[0]} == {x}' for x in xs[1:])
 
     matching_cond = ' && '.join(conds)
+    pred_decls = ' '.join(f'CmpInst::Predicate {p};' for p, _ in preds)
     var_decls = ' '.join(f'Value *{x};' for x in vars_to_declare)
     self.matching_code = f'''
-    {var_decls};
+    {pred_decls}
+    {var_decls}
     bool Matched = {matching_cond};
     if (Matched)
       Matches.push_back({{
@@ -175,6 +192,9 @@ class RuleBundle:
 
   def all_lanes_simple(self):
     return all(lane.num_rules() == 1 for lane in self.lanes)
+
+  def has_nop(self):
+    return any(lane.rules[0].is_nop for lane in self.lanes)
 
   def rules(self):
     rules = []
@@ -281,14 +301,18 @@ if __name__ == '__main__':
     lifted = pickle.load(f)
 
   bundles = {}
-  for inst, (_, out_ids, dag) in lifted.items():
+  for inst, (_, out_ids, dag) in iter(lifted.items()):
     try:
       rb = RuleBundle(sigs[inst], semas[inst], out_ids, dag)
       if not rb.all_lanes_simple():
         continue
+      if rb.has_nop():
+        continue
       bundles[inst] = rb 
     except AssertionError as e:
       pass
+
+  print('Num instructions:', len(bundles))
 
   inst_features = {
       inst: spec.cpuids

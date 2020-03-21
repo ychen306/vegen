@@ -476,6 +476,8 @@ private:
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::Phi), PHIs(PHIs) {}
 
+  // FIXME: we need to generalize the definition of an operand pack
+  // because some of the input lanes are "DONT CARES" (e.g. _mm_div_pd)
   std::vector<OperandPack> getOperandPacksForGeneral() const {
     auto &Sig = Producer->getSignature();
     unsigned NumInputs = Sig.numInputs();
@@ -1584,6 +1586,10 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
     bool Success = true;
     std::vector<Operation::Match> Matches;
     for (auto &LaneOp : Inst->getLaneOps()) {
+      // FIXME: need to distinguish between an arithmetic operation and "pass-through"
+      // We allow a value to pass through multiple operation.
+      // But we only allow a value to be *produced* at a single pack.
+      //
       // Figure out available independent packs
       std::vector<const Operation::Match *> IndependentMatches;
       for (auto &M : MM.getMatches(LaneOp.getOperation())) {

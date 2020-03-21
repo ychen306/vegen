@@ -105,6 +105,16 @@ public:
       VMap[&I] = NewI;
       RemapInstruction(NewI, VMap, 
           RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+      if (auto *CI = dyn_cast<CallInst>(NewI)) {
+        auto *Callee = CI->getCalledFunction();
+        assert(Callee->isIntrinsic());
+        // If the intrinsic wrapper calls an llvm intrinsic,
+        // that intrinsic is declared inside `IntrinsicWrappers`.
+        // We need to redeclare that intrinsic.
+        Module *M = CI->getParent()->getModule();
+        auto *IntrinsicDecl = Intrinsic::getDeclaration(M, Callee->getIntrinsicID());
+        CI->setCalledFunction(IntrinsicDecl);
+      }
     }
     assert(RetVal && "Wrapper not returning explicitly");
     Value *Output = VMap.lookup(RetVal);
@@ -134,12 +144,6 @@ public:
   }
   llvm::StringRef getName() const { return Name; }
 };
-
-template <typename LHS_TY, typename RHS_TY>
-llvm::PatternMatch::CmpClass_match<LHS_TY, RHS_TY, llvm::CmpInst, llvm::CmpInst::Predicate> 
-m_Cmp_dont_care(llvm::CmpInst::Predicate Pred, LHS_TY LHS, RHS_TY RHS) {
-  return llvm::PatternMatch::m_Cmp(Pred, LHS, RHS);
-}
 
 static bool hasBitWidth(const llvm::Value *V, unsigned BitWidth) {
   auto *Ty = V->getType();
