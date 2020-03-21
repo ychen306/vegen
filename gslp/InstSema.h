@@ -82,10 +82,14 @@ public:
     unsigned NumArgs = std::distance(F->arg_begin(), F->arg_end());
     assert(Operands.size() == NumArgs);
 
+    errs() << "EMITTING " << Name << '\n';
+
     // map wrapper arg to operands
     ValueToValueMapTy VMap;
     for (unsigned i = 0; i < NumArgs; i++) {
       Value *Arg = F->getArg(i);
+      errs() << "CASTING FROM " << *Operands[i] << " TO " << *Arg->getType()
+        << '\n';
       assert(
           CastInst::castIsValid(
             Instruction::CastOps::BitCast, Operands[i], Arg->getType()) &&

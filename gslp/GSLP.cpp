@@ -486,10 +486,10 @@ private:
     std::vector<OperandPack> OperandPacks(NumInputs);
 
     struct BoundInput {
-      InputSlice S;
+      InputSlice Slice;
       Value *V;
       // Order by offset of the slice
-      bool operator<(const BoundInput &Other) const { return S < Other.S; }
+      bool operator<(const BoundInput &Other) const { return Slice < Other.Slice; }
     };
 
     // Figure out which input packs we need
@@ -508,8 +508,25 @@ private:
 
       // Sort the input values by their slice offset
       std::sort(InputValues.begin(), InputValues.end());
-      for (const BoundInput &BV : InputValues)
-        OperandPacks[i].push_back(BV.V);
+
+      unsigned CurOffset = 0;
+      unsigned Stride = InputValues[0].Slice.size();
+      auto &OpndPack = OperandPacks[i];
+      for (const BoundInput &BV : InputValues) {
+        while (CurOffset < BV.Slice.Lo) {
+          OpndPack.push_back(nullptr);
+          CurOffset += Stride;
+        }
+        assert(CurOffset == BV.Slice.Lo);
+        OpndPack.push_back(BV.V);
+        CurOffset += Stride;
+      }
+      unsigned InputSize = Sig.InputBitwidths[i];
+      while (CurOffset < InputSize) {
+        OpndPack.push_back(nullptr);
+        CurOffset += Stride;
+      }
+      assert(OpndPack.size() * Stride == InputSize);
     }
     return OperandPacks;
   }
@@ -1024,6 +1041,8 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   const unsigned NumValues = OpndPack.size();
   for (unsigned i = 0; i < NumValues; i++) {
     auto *V = OpndPack[i];
+    // Null means don't care/undef
+    if (!V) continue;
     auto It = ValueIndex.find(V);
     if (It != ValueIndex.end()) {
       // V is produced by a pack
@@ -1121,8 +1140,6 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
     Value *V = KV.first;
     auto &Indices = KV.second;
     for (unsigned Idx : Indices) {
-      errs() << "ACCUMULATOR TYPE: " << *Acc->getType() << '\n';
-      errs() << "VALUE: " << *V << '\n';
       Acc = Builder.CreateInsertElement(Acc, V, Idx, "gslp.insert");
     }
   }
@@ -1345,7 +1362,6 @@ void VectorPackSet::codegen(
       SmallVector<Value *, 2> Operands;
       unsigned OperandId = 0;
       for (auto &OpndPack : VP->getOperandPacks()) {
-        errs() << "GATHERING FOR " << *VP << '\n';
         VP->setOperandGatherPoint(OperandId, Builder);
         Operands.push_back(gatherOperandPack(OpndPack, ValueIndex,
                                              MaterializedPacks, Builder));

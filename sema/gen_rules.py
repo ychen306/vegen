@@ -87,10 +87,13 @@ class BoundOperation:
         f'PatternMatch::match(V, {pattern})']
     for pred_var, pred_val in preds:
       conds.append(f'{pred_var} == {pred_val}')
-    for xs in livein2vars.values():
+    for livein, xs in livein2vars.items():
+      # assert that the liveins have the right size
+      conds.append(f'hasBitWidth({xs[0]}, {dag[livein].bitwidth})')
+      # assert that the matched live-ins are consistent
       conds.extend(f'{xs[0]} == {x}' for x in xs[1:])
 
-    matching_cond = ' && '.join(conds)
+    matching_cond = ' &&\n'.join(conds)
     pred_decls = ' '.join(f'CmpInst::Predicate {p};' for p, _ in preds)
     var_decls = ' '.join(f'Value *{x};' for x in vars_to_declare)
     self.matching_code = f'''
@@ -302,6 +305,10 @@ if __name__ == '__main__':
 
   bundles = {}
   for inst, (_, out_ids, dag) in iter(lifted.items()):
+    # Also skip instructions that use `mm` registers
+    if any(operand.strip() == 'mm'
+        for operand in specs[inst].inst_form.split(',')):
+      continue
     try:
       rb = RuleBundle(sigs[inst], semas[inst], out_ids, dag)
       if not rb.all_lanes_simple():
