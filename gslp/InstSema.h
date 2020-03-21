@@ -1,10 +1,10 @@
 #ifndef INST_SEMA_H
 #define INST_SEMA_H
 
-#include "llvm/IR/Value.h"
 #include "llvm/ADT/APInt.h"
-#include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/PatternMatch.h"
+#include "llvm/IR/Value.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <vector>
@@ -28,8 +28,8 @@ struct InputSlice {
   unsigned size() { return Hi - Lo; }
 
   bool operator<(const InputSlice &Other) const {
-    return std::tie(InputId, Lo, Hi)
-      < std::tie(Other.InputId, Other.Lo, Other.Hi);
+    return std::tie(InputId, Lo, Hi) <
+           std::tie(Other.InputId, Other.Lo, Other.Hi);
   }
 };
 
@@ -60,40 +60,38 @@ public:
 
 class IntrinsicBuilder : public llvm::IRBuilder<> {
   llvm::Module &InstWrappers;
+
 public:
   llvm::LLVMContext &getContext() { return InstWrappers.getContext(); }
   using InsertPoint = llvm::IRBuilderBase::InsertPoint;
   IntrinsicBuilder(llvm::Module &InstWrappers)
-  : llvm::IRBuilder<>(InstWrappers.getContext()), InstWrappers(InstWrappers) {}
+      : llvm::IRBuilder<>(InstWrappers.getContext()),
+        InstWrappers(InstWrappers) {}
 
-  llvm::Value *Create(
-      llvm::StringRef Name,
-      llvm::ArrayRef<llvm::Value *> Operands,
-      unsigned char Imm8=0) {
+  llvm::Value *Create(llvm::StringRef Name,
+                      llvm::ArrayRef<llvm::Value *> Operands,
+                      unsigned char Imm8 = 0) {
     using namespace llvm;
-    std::string WrapperName = formatv("intrinsic_wrapper_{0}_{1}", Name, Imm8).str();
+
+    std::string WrapperName =
+        formatv("intrinsic_wrapper_{0}_{1}", Name, Imm8).str();
     auto *F = InstWrappers.getFunction(WrapperName);
     assert(F && "Intrinsic wrapper undefined.");
 
     assert(std::distance(F->begin(), F->end()) == 1 &&
-        "Intrinsic Wrapper should have a single basic block");
+           "Intrinsic Wrapper should have a single basic block");
     auto &BB = *F->begin();
 
     unsigned NumArgs = std::distance(F->arg_begin(), F->arg_end());
     assert(Operands.size() == NumArgs);
 
-    errs() << "EMITTING " << Name << '\n';
-
     // map wrapper arg to operands
     ValueToValueMapTy VMap;
     for (unsigned i = 0; i < NumArgs; i++) {
       Value *Arg = F->getArg(i);
-      errs() << "CASTING FROM " << *Operands[i] << " TO " << *Arg->getType()
-        << '\n';
-      assert(
-          CastInst::castIsValid(
-            Instruction::CastOps::BitCast, Operands[i], Arg->getType()) &&
-          "Invalid input type");
+      assert(CastInst::castIsValid(Instruction::CastOps::BitCast, Operands[i],
+                                   Arg->getType()) &&
+             "Invalid input type");
       Value *Operand = CreateBitCast(Operands[i], Arg->getType());
       VMap[Arg] = Operand;
     }
@@ -107,8 +105,8 @@ public:
       auto *NewI = I.clone();
       Insert(NewI);
       VMap[&I] = NewI;
-      RemapInstruction(NewI, VMap, 
-          RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+      RemapInstruction(NewI, VMap,
+                       RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
       if (auto *CI = dyn_cast<CallInst>(NewI)) {
         auto *Callee = CI->getCalledFunction();
         assert(Callee->isIntrinsic());
@@ -116,8 +114,10 @@ public:
         // that intrinsic is declared inside `IntrinsicWrappers`.
         // We need to redeclare that intrinsic.
         Module *M = CI->getParent()->getModule();
-        auto *IntrinsicDecl = Intrinsic::getDeclaration(M, Callee->getIntrinsicID());
-        CI->setCalledFunction(IntrinsicDecl);
+        FunctionCallee IntrinsicDecl =
+            M->getOrInsertFunction(Callee->getName(), Callee->getFunctionType(),
+                                   Callee->getAttributes());
+        CI->setCalledFunction(cast<Function>(IntrinsicDecl.getCallee()));
       }
     }
     assert(RetVal && "Wrapper not returning explicitly");
@@ -135,15 +135,22 @@ class InstBinding {
   std::string Name;
   std::vector<std::string> TargetFeatures;
   std::vector<BoundOperation> LaneOps;
-  
+
 public:
-  virtual int getCost(llvm::TargetTransformInfo *, llvm::LLVMContext &) const { return -1; }
-  llvm::ArrayRef<std::string> getTargetFeatures() const { return TargetFeatures; }
-  InstBinding(std::string Name, std::vector<std::string> TargetFeatures, InstSignature Sig, std::vector<BoundOperation> LaneOps) 
-    : Name(Name), TargetFeatures(TargetFeatures), Sig(Sig), LaneOps(LaneOps) {}
+  virtual int getCost(llvm::TargetTransformInfo *, llvm::LLVMContext &) const {
+    return -1;
+  }
+  llvm::ArrayRef<std::string> getTargetFeatures() const {
+    return TargetFeatures;
+  }
+  InstBinding(std::string Name, std::vector<std::string> TargetFeatures,
+              InstSignature Sig, std::vector<BoundOperation> LaneOps)
+      : Name(Name), TargetFeatures(TargetFeatures), Sig(Sig), LaneOps(LaneOps) {
+  }
   const InstSignature &getSignature() const { return Sig; }
   llvm::ArrayRef<BoundOperation> getLaneOps() const { return LaneOps; }
-  virtual llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands, IntrinsicBuilder &Builder) const {
+  virtual llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                            IntrinsicBuilder &Builder) const {
     return Builder.Create(Name, Operands);
   }
   llvm::StringRef getName() const { return Name; }

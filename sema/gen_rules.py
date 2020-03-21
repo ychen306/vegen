@@ -305,6 +305,9 @@ if __name__ == '__main__':
 
   bundles = {}
   for inst, (_, out_ids, dag) in iter(lifted.items()):
+    # Skip instructions with multiple outputs
+    if len(sigs[inst][1]) != 1:
+      continue
     # Also skip instructions that use `mm` registers
     if any(operand.strip() == 'mm'
         for operand in specs[inst].inst_form.split(',')):

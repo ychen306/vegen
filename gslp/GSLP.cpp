@@ -85,7 +85,8 @@ class IRVectorBinding : public InstBinding {
 
   IRVectorBinding(const BinaryIROperation *Op, std::string Name,
                   InstSignature Sig, std::vector<BoundOperation> LaneOps)
-      : InstBinding(Name, {}/* no target features required*/, Sig, LaneOps), Op(Op) {}
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        Op(Op) {}
 
 public:
   static IRVectorBinding Create(const BinaryIROperation *Op,
@@ -489,7 +490,9 @@ private:
       InputSlice Slice;
       Value *V;
       // Order by offset of the slice
-      bool operator<(const BoundInput &Other) const { return Slice < Other.Slice; }
+      bool operator<(const BoundInput &Other) const {
+        return Slice < Other.Slice;
+      }
     };
 
     // Figure out which input packs we need
@@ -561,10 +564,11 @@ private:
   }
 
   Value *emitVectorGeneral(ArrayRef<Value *> Operands,
-      IntrinsicBuilder &Builder) const {
+                           IntrinsicBuilder &Builder) const {
     auto *VecInst = Producer->emit(Operands, Builder);
     // Fix the output type
-    auto *VecType = VectorType::get(Matches[0].Output->getType(), Matches.size());
+    auto *VecType =
+        VectorType::get(Matches[0].Output->getType(), Matches.size());
     return Builder.CreateBitCast(VecInst, VecType);
   }
 
@@ -969,7 +973,7 @@ bool isScalarType(Type *Ty) { return Ty->getScalarType() == Ty; }
 bool hasFeature(const Function &F, std::string Feature) {
   Attribute Features = F.getFnAttribute("target-features");
   return !Features.hasAttribute(Attribute::None) &&
-    Features.getValueAsString().contains("+"+Feature);
+         Features.getValueAsString().contains("+" + Feature);
 }
 
 bool isSupported(InstBinding *Inst, const Function &F) {
@@ -1042,7 +1046,8 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   for (unsigned i = 0; i < NumValues; i++) {
     auto *V = OpndPack[i];
     // Null means don't care/undef
-    if (!V) continue;
+    if (!V)
+      continue;
     auto It = ValueIndex.find(V);
     if (It != ValueIndex.end()) {
       // V is produced by a pack
@@ -1602,9 +1607,9 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
     bool Success = true;
     std::vector<Operation::Match> Matches;
     for (auto &LaneOp : Inst->getLaneOps()) {
-      // FIXME: need to distinguish between an arithmetic operation and "pass-through"
-      // We allow a value to pass through multiple operation.
-      // But we only allow a value to be *produced* at a single pack.
+      // FIXME: need to distinguish between an arithmetic operation and
+      // "pass-through" We allow a value to pass through multiple operation. But
+      // we only allow a value to be *produced* at a single pack.
       //
       // Figure out available independent packs
       std::vector<const Operation::Match *> IndependentMatches;
