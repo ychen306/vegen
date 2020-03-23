@@ -1267,6 +1267,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   const int GatherCost = 2;
   const int InsertCost = 3;
   const int PermuteCost = 1;
+  const int BroadcastCost = 1;
 
   // FIXME:
   // use of block frequency is pessimistic when we can hoist gathers out of
@@ -1275,6 +1276,11 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     auto *BB = VP->getBasicBlock();
     float BBCost = 0;
     for (auto &OpndPack : VP->getOperandPacks()) {
+      // special case for broadcast
+      if (is_splat(OpndPack)) {
+        BBCost = 1.0;
+        break;
+      }
       // figure out from where we need to gather
       SmallPtrSet<Value *, 4> SrcScalars;
       SmallPtrSet<const VectorPack *, 4> SrcPacks;
@@ -1356,6 +1362,11 @@ void VectorPackSet::codegen(
   for (BasicBlock *BB : RPO) {
     if (Packs[BB].empty())
       continue;
+
+    errs() << "LOWERING PACKS:\n";
+    for (auto *VP : Packs[BB]) {
+      errs() << *VP << '\n';
+    }
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
@@ -1823,15 +1834,18 @@ bool GSLP::runOnFunction(Function &F) {
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
+#if 0
   for (int i = 0; i < 100; i++)
     sampleOnePack();
-
-#if 0
+#else
   const unsigned NumIters = 100000;
-  const float Beta = 0.5;
+  const float Beta = 1.0;
 
   float Cost = 0.0;
   for (int i = 0; i < NumIters; i++) {
+    if (i % 1000 == 0)
+      errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks()
+        << ", ITER: " << i << '\n';
     std::unique_ptr<VectorPack> Removed;
     if (Packs.getNumPacks() && rand_int(100) < 5) {
       Removed = Packs.removeRandomPack();
@@ -1849,9 +1863,6 @@ bool GSLP::runOnFunction(Function &F) {
       else
         Packs.pop();
     }
-    if (i % 1000 == 0)
-      errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks()
-             << ", ITER: " << i << '\n';
   }
 #endif
 

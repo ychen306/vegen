@@ -138,7 +138,7 @@ class InstBinding {
 
 public:
   virtual int getCost(llvm::TargetTransformInfo *, llvm::LLVMContext &) const {
-    return -1;
+    return 1;
   }
   llvm::ArrayRef<std::string> getTargetFeatures() const {
     return TargetFeatures;
