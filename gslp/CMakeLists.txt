@@ -1,4 +1,7 @@
-add_library(GSLP MODULE GSLP.cpp InstSema.cpp VectorPack.cpp VectorPackSet.cpp LocalDependenceAnalysis.cpp)
+add_library(GSLP MODULE
+  GSLP.cpp InstSema.cpp
+  VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
+  LocalDependenceAnalysis.cpp)
 # expose the auxiliary code for testing
 add_library(GSLP_AUX STATIC ShuffleSema.cpp)
 

@@ -324,32 +324,6 @@ Value *IRVectorBinding::emit(llvm::ArrayRef<llvm::Value *> Operands,
   return Builder.CreateBinOp(Opcode, Operands[0], Operands[1]);
 }
 
-VectorPack
-VectorPackContext::createVectorPack(std::vector<Operation::Match> Matches,
-                                    BitVector Elements, BitVector Depended,
-                                    const InstBinding *Producer) {
-  return VectorPack(this, Matches, Elements, Depended, Producer);
-}
-
-VectorPack VectorPackContext::createLoadPack(ArrayRef<LoadInst *> Loads,
-                                             BitVector Elements,
-                                             BitVector Depended) {
-  return VectorPack(this, Loads, Elements, Depended);
-}
-
-VectorPack VectorPackContext::createStorePack(ArrayRef<StoreInst *> Stores,
-                                              BitVector Elements,
-                                              BitVector Depended) {
-  return VectorPack(this, Stores, Elements, Depended);
-}
-
-VectorPack VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs) {
-  BitVector Elements(getNumValues());
-  for (auto *PHI : PHIs)
-    Elements.set(getScalarId(PHI));
-  return VectorPack(this, PHIs, Elements, BitVector(getNumValues()));
-}
-
 char GSLP::ID = 0;
 
 // Sample an integer between 0 and N.
