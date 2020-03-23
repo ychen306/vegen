@@ -59,7 +59,6 @@ bool isFloat(Instruction::BinaryOps Opcode) {
   }
 }
 
-// TODO: Support LOAD, STORE, and PHI
 class BinaryIROperation : public Operation {
   const Instruction::BinaryOps Opcode;
   unsigned Bitwidth;
