@@ -5,7 +5,7 @@
 
 using namespace llvm;
 
-MemoryLocation getLocation(Instruction *I, AliasAnalysis *AA) {
+static MemoryLocation getLocation(Instruction *I, AliasAnalysis *AA) {
   if (StoreInst *SI = dyn_cast<StoreInst>(I))
     return MemoryLocation::get(SI);
   if (LoadInst *LI = dyn_cast<LoadInst>(I))
@@ -14,7 +14,7 @@ MemoryLocation getLocation(Instruction *I, AliasAnalysis *AA) {
 }
 
 /// True if the instruction is not a volatile or atomic load/store.
-bool isSimple(Instruction *I) {
+static bool isSimple(Instruction *I) {
   if (LoadInst *LI = dyn_cast<LoadInst>(I))
     return LI->isSimple();
   if (StoreInst *SI = dyn_cast<StoreInst>(I))
@@ -24,7 +24,7 @@ bool isSimple(Instruction *I) {
   return true;
 }
 
-bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
+static bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
                Instruction *Inst2, AliasAnalysis *AA) {
   MemoryLocation Loc2 = getLocation(Inst2, AA);
   bool Aliased = true;
