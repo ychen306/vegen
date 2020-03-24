@@ -670,13 +670,15 @@ bool GSLP::runOnFunction(Function &F) {
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
-#if 1
+#if 0
   for (int i = 0; i < 100; i++)
     sampleOnePack();
 #else
   const unsigned NumIters = 100000;
-  const float Beta = 1.0;
+  const float Beta = 0.8;
 
+  float BestCost = 0.0;
+  VectorPackSet BestPacks(&F);
   float Cost = 0.0;
   for (int i = 0; i < NumIters; i++) {
     if (i % 1000 == 0)
@@ -693,6 +695,10 @@ bool GSLP::runOnFunction(Function &F) {
     float NewCost = Packs.getCostSaving(TTI, BFI);
     if (NewCost < Cost - logf(rand_float()) / Beta) {
       Cost = NewCost;
+      if (Cost < BestCost) {
+        BestCost = Cost;
+        BestPacks = Packs;
+      }
     } else {
       if (Removed)
         Packs.tryAdd(*Removed);
@@ -703,7 +709,7 @@ bool GSLP::runOnFunction(Function &F) {
 #endif
 
   IntrinsicBuilder Builder(*InstWrappers);
-  Packs.codegen(Builder, LDAs);
+  BestPacks.codegen(Builder, LDAs);
 
   assert(!verifyFunction(F, &errs()));
   return true;

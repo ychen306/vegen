@@ -44,8 +44,18 @@ protected:
   // Clear auxiliary data structure storing a vector pack
   void removeAux(VectorPack *);
 
+  void copy(const VectorPackSet &Other);
+
+  void add(const VectorPack &VP);
+
 public:
+  VectorPackSet(const VectorPackSet &Other) { copy(Other); }
   VectorPackSet(llvm::Function *F) : NumPacks(0), F(F) {}
+
+  VectorPackSet &operator=(const VectorPackSet &Other) {
+    copy(Other);
+    return *this;
+  }
 
   unsigned getNumPacks() const { return NumPacks; }
 

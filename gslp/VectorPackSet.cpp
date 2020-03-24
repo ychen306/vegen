@@ -133,11 +133,23 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   return Acc;
 }
 
+void VectorPackSet::add(const VectorPack &VP) {
+  auto *BB = VP.getBasicBlock();
+  PackedValues[BB] |= VP.getElements();
+  AllPacks.push_back(std::make_unique<VectorPack>(VP));
+
+  auto *NewVP = AllPacks.back().get();
+  for (Value *V : NewVP->elementValues())
+    ValueToPackMap[V] = NewVP;
+  Packs[BB].push_back(NewVP);
+
+  NumPacks++;
+}
+
 bool VectorPackSet::tryAdd(VectorPack VP) {
   auto *BB = VP.getBasicBlock();
-  auto &Packed = PackedValues[BB];
   // Abort if one of the value we want to produce is produced by another pack
-  if (Packed.anyCommon(VP.getElements())) {
+  if (PackedValues[BB].anyCommon(VP.getElements())) {
     return false;
   }
 
@@ -167,16 +179,7 @@ bool VectorPackSet::tryAdd(VectorPack VP) {
     }
   }
 
-  unsigned OldCount = Packed.count();
-  Packed |= VP.getElements();
-  AllPacks.push_back(std::make_unique<VectorPack>(VP));
-
-  auto *NewVP = AllPacks.back().get();
-  for (Value *V : NewVP->elementValues())
-    ValueToPackMap[V] = NewVP;
-  Packs[BB].push_back(NewVP);
-
-  NumPacks++;
+  add(VP);
   return true;
 }
 
@@ -199,6 +202,7 @@ void VectorPackSet::pop() {
 }
 
 static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
+  return 1.0;
   return float(BFI->getBlockFreq(BB).getFrequency()) /
          float(BFI->getEntryFreq());
 }
@@ -318,7 +322,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     }
   }
 
-  const unsigned ExtractCost = 4;
+  const unsigned ExtractCost = 2;
 
   for (auto &VPIdx : Extractions) {
     auto *BB = VPIdx.VP->getBasicBlock();
@@ -539,4 +543,17 @@ void VectorPackSet::codegen(
     assert(!I->isTerminator());
     I->eraseFromParent();
   }
+}
+
+void VectorPackSet::copy(const VectorPackSet &Other) {
+  NumPacks = 0;
+  F = Other.F;
+  AllPacks.clear();
+  Packs.clear();
+  PackedValues.clear();
+  ValueToPackMap.clear();
+  for (auto &VP : Other.AllPacks)
+    add(*VP);
+  assert(NumPacks == AllPacks.size());
+  assert(NumPacks == Other.NumPacks);
 }

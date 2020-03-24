@@ -38,7 +38,8 @@ class BoundOperation:
     # What we want to do here is to check that these predicates are what we want
     preds = []
 
-    def build_pattern(node_id, depth=1):
+    def build_pattern(node_id, depth=1, max_depth=16):
+      assert depth < max_depth
       node = dag[node_id]
       node_ty = type(node)
       if node_ty == Instruction:
@@ -69,7 +70,17 @@ class BoundOperation:
         return f'{pattern_ctor}\n{ctor_args})'
       elif node_ty == Constant:
         return get_const_pattern(node)
+      elif node_ty == Mux:
+        # only support 2-way Mux
+        assert len(node.kv_pairs) == 2
+        false_branch, true_branch = node.kv_pairs
+        assert true_branch[0] == 1
+        ctrl_val = build_pattern(node.ctrl, depth+1)
+        true_val = build_pattern(true_branch[1], depth+1)
+        false_val = build_pattern(false_branch[1], depth+1)
+        return f'm_Select({ctrl_val}, {true_val}, {false_val})'
       else:
+        assert node_ty == Slice
         x = var_generator.new_var()
         # first time seeing a live-in
         if len(livein2vars[node_id]) == 0:
@@ -79,7 +90,7 @@ class BoundOperation:
         livein2vars[node_id].append(x)
         return f'm_Value({x})'
 
-    self.is_nop = not isinstance(dag[root], Instruction)
+    self.is_nop = type(dag[root]) not in (Instruction, Mux)
     pattern = build_pattern(root)
     root_bitwidth = dag[root].bitwidth
     conds = [
@@ -184,13 +195,7 @@ class RuleBundle:
     self.lanes = []
     self.dag = dag
     for out_id in out_ids:
-      if type(dag[out_id]) is not Mux:
-        self.lanes.append(RuleCollection.just_one(BoundOperation(out_id, dag)))
-      else:
-        mux = dag[out_id]
-        rules = [BoundOperation(v, dag) for _, v in mux.kv_pairs]
-        keys = [k for k, _ in mux.kv_pairs]
-        self.lanes.append(RuleCollection.many(rules, keys, mux.ctrl))
+      self.lanes.append(RuleCollection.just_one(BoundOperation(out_id, dag)))
     self.lanes.reverse()
 
   def all_lanes_simple(self):
@@ -303,23 +308,39 @@ if __name__ == '__main__':
   with open(lifted_f, 'rb') as f:
     lifted = pickle.load(f)
 
+  debug = None
+
+  if debug:
+    _, outs, dag = lifted[debug]
+    rb = RuleBundle(sigs[debug], semas[debug], outs, dag)
+    print(rb.all_lanes_simple())
+    print(rb.has_nop())
+    print(len(sigs[debug][1]) != 1)
+    exit()
+
   bundles = {}
   for inst, (_, out_ids, dag) in iter(lifted.items()):
     # Skip instructions with multiple outputs
     if len(sigs[inst][1]) != 1:
+      print(inst, 'multiple output')
       continue
     # Also skip instructions that use `mm` registers
-    if any(operand.strip() == 'mm'
-        for operand in specs[inst].inst_form.split(',')):
+    operands = specs[inst].inst_form.split(',')
+    if operands and any(operand.strip() == 'mm'
+        for operand in operands):
+      print(inst, 'bad inst form')
       continue
     try:
       rb = RuleBundle(sigs[inst], semas[inst], out_ids, dag)
       if not rb.all_lanes_simple():
+        print(inst, 'yucky lanes')
         continue
       if rb.has_nop():
+        print(inst, 'has noop lane')
         continue
       bundles[inst] = rb 
     except AssertionError as e:
+      print(inst, 'assertion error')
       pass
 
   print('Num instructions:', len(bundles))
