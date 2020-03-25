@@ -790,13 +790,7 @@ bool GSLP::runOnFunction(Function &F) {
     }
     if (Extensions.empty())
       return false;
-    {
-    auto &VP = Extensions[rand_int(Extensions.size())];
-    bool Added = Packs.tryAdd(VP);
-    if (Added)
-      errs() << "ADDING  " << VP << '\n';
-    return Added;
-    }
+    return Packs.tryAdd(Extensions[rand_int(Extensions.size())]);
   };
 
   auto SampleOnePack = [&]() -> bool {

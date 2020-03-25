@@ -340,10 +340,6 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
 static std::vector<const VectorPack *>
 sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack *> Packs,
                        LocalDependenceAnalysis &LDA) {
-  errs() << "======= SCHEDULING ========\n";
-  for (auto *VP : Packs) {
-    errs() << *VP << '\n';
-  }
   if (Packs.empty())
     return std::vector<const VectorPack *>();
 
