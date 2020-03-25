@@ -24,18 +24,18 @@ public:
   // Create a "General" vector pack
   VectorPack createVectorPack(std::vector<Operation::Match> Matches,
                               llvm::BitVector Elements, llvm::BitVector Depended,
-                              const InstBinding *Producer);
+                              const InstBinding *Producer) const;
 
   // Create a vectorized load
   VectorPack createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
-                            llvm::BitVector Depended);
+                            llvm::BitVector Depended) const;
 
   // Create a vectorized store
   VectorPack createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
-                             llvm::BitVector Depended);
+                             llvm::BitVector Depended) const;
 
   // Create a vectorized phi
-  VectorPack createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs);
+  VectorPack createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs) const;
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());

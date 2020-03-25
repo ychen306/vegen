@@ -74,6 +74,11 @@ public:
   void codegen(IntrinsicBuilder &Builder,
                llvm::DenseMap<llvm::BasicBlock *,
                               std::unique_ptr<LocalDependenceAnalysis>> &LDAs);
+
+  VectorPack &getPack(unsigned i) {
+    assert(i < NumPacks);
+    return *AllPacks[i];
+  }
 };
 
 #endif // end VECTOR_PACK_SET_H

@@ -202,7 +202,6 @@ void VectorPackSet::pop() {
 }
 
 static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
-  return 1.0;
   return float(BFI->getBlockFreq(BB).getFrequency()) /
          float(BFI->getEntryFreq());
 }
@@ -249,7 +248,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
       ValueIndex[V] = {VP.get(), i++};
   }
 
-  const int GatherCost = 2;
+  const int GatherCost = 4;
   const int InsertCost = 3;
   const int PermuteCost = 1;
   const int BroadcastCost = 1;
@@ -282,7 +281,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
       unsigned NumSrcs = SrcPacks.size() + SrcScalars.size();
       if (NumSrcs > 1) {
         if (SrcPacks.size() > 0)
-          BBCost += GatherCost * 2 * (SrcPacks.size() - 1);
+          BBCost += GatherCost * SrcPacks.size();
         BBCost += InsertCost * SrcScalars.size();
       } else if (!SrcPacks.empty()) {
         auto *SrcPack = *SrcPacks.begin();
@@ -322,7 +321,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     }
   }
 
-  const unsigned ExtractCost = 2;
+  const unsigned ExtractCost = 4;
 
   for (auto &VPIdx : Extractions) {
     auto *BB = VPIdx.VP->getBasicBlock();
@@ -341,6 +340,10 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
 static std::vector<const VectorPack *>
 sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack *> Packs,
                        LocalDependenceAnalysis &LDA) {
+  errs() << "======= SCHEDULING ========\n";
+  for (auto *VP : Packs) {
+    errs() << *VP << '\n';
+  }
   if (Packs.empty())
     return std::vector<const VectorPack *>();
 

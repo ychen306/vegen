@@ -200,7 +200,6 @@ class MatchManager {
   DenseMap<const Operation *, std::vector<Operation::Match>> Matches;
 
 public:
-  MatchManager() = default;
   MatchManager(ArrayRef<InstBinding *> Insts) {
     for (auto &Inst : Insts)
       for (auto &LaneOp : Inst->getLaneOps())
@@ -528,6 +527,153 @@ std::unique_ptr<VectorPack> MCMCVectorPackSet::removeRandomPack() {
   return Removed;
 }
 
+template <typename InstTy>
+Optional<std::vector<InstTy *>>
+castOperandPack(const VectorPack::OperandPack &OpndPack) {
+  std::vector<InstTy *> Ret;
+  for (auto *V : OpndPack) {
+    auto *I = dyn_cast<InstTy>(V);
+    if (!I)
+      return None;
+    Ret.push_back(I);
+  }
+  return Ret;
+}
+
+// Find vector packs that produces operand pack
+static void extendWithDef(const VectorPack::OperandPack &OpndPack,
+                          std::vector<VectorPack> &Extensions,
+                          ConsecutiveAccessDAG &LoadDAG,
+                          const MatchManager &MM,
+                          const VectorPackContext &VPCtx,
+                          LocalDependenceAnalysis &LDA,
+                          const SmallPtrSet<const InstBinding *, 4> &Insts) {
+  auto *BB = VPCtx.getBasicBlock();
+
+  BitVector Elements(VPCtx.getNumValues());
+  BitVector Depended(VPCtx.getNumValues());
+
+  // First, check if the operand pack is indepdendent.
+  // We can't extend if it's not independent.
+  for (Value *V : OpndPack) {
+    // Also bail if we can't produce this pack at current basic block
+    auto *I = dyn_cast<Instruction>(V);
+    if (!I)
+      return;
+    if (I->getParent() != BB)
+      return;
+
+    // Check dependence
+    unsigned ValueId = VPCtx.getScalarId(I);
+    if (Elements.test(ValueId))
+      return;
+
+    BitVector Depended2 = LDA.getDepended(I);
+    if (Depended.test(ValueId))
+      return;
+    if (Depended2.anyCommon(Elements))
+      return;
+
+    Elements.set(ValueId);
+    Depended |= Depended2;
+  }
+
+  if (auto LoadsOrNull = castOperandPack<LoadInst>(OpndPack)) {
+    std::vector<LoadInst *> Loads;
+    for (auto *LI : LoadsOrNull.getValue()) {
+      SmallPtrSet<LoadInst *, 4> LoadsRemained(
+          LoadsOrNull->begin(), LoadsOrNull->end());
+      // See if there's a proper ordering of these loads starting from `LI`,
+      // so that they are consecutive.
+      LoadsRemained.erase(LI);
+      LoadInst *CurLoad = LI;
+      Loads = { LI };
+      while (!LoadsRemained.empty()) {
+        auto It = LoadDAG.find(CurLoad);
+        if (It == LoadDAG.end())
+          break;
+        LoadInst *NextLoad = nullptr;
+        for (auto *I : It->second) {
+          auto *LI = cast<LoadInst>(I);
+          if (LoadsRemained.erase(LI)) {
+            NextLoad = LI;
+            break;
+          }
+        }
+        if (!NextLoad)
+          break;
+        Loads.push_back(NextLoad);
+      }
+      if (Loads.size() == OpndPack.size())
+        break;
+    }
+    if (Loads.size() != OpndPack.size())
+      return;
+    Extensions.push_back(VPCtx.createLoadPack(Loads, Elements, Depended));
+    return;
+  }
+
+  if (auto PHIsOrNull = castOperandPack<PHINode>(OpndPack)) {
+    Extensions.push_back(VPCtx.createPhiPack(PHIsOrNull.getValue()));
+    return;
+  }
+
+  // NOTE: We can't extend with Store packs vector stores don't produce
+  // anything...
+
+  // Aux func to enumerate cross product of `LaneMatches`
+  auto EnumeratePacks =
+      [&](const InstBinding *Inst,
+          const std::vector<std::vector<Operation::Match>> &LaneMatches) {
+        unsigned NumLanes = Inst->getLaneOps().size();
+        assert(NumLanes == LaneMatches.size());
+        unsigned N = 1;
+        for (auto &Matches : LaneMatches)
+          N *= Matches.size();
+        for (unsigned i = 0; i < N; i++) {
+          // `i` represent a particular member of the cross product.
+          // Decode `i` here.
+          std::vector<Operation::Match> Lanes;
+          for (auto &Matches : LaneMatches) {
+            unsigned M = Matches.size();
+            assert(M);
+            Lanes.push_back(Matches[i % M]);
+            i /= M;
+          }
+
+          Extensions.push_back(
+              VPCtx.createVectorPack(Lanes, Elements, Depended, Inst));
+        }
+      };
+
+  for (auto *Inst : Insts) {
+    // See if we can pack with this Inst
+    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+    unsigned NumLanes = LaneOps.size();
+    if (NumLanes != OpndPack.size())
+      continue;
+    std::vector<std::vector<Operation::Match>> LaneMatches(NumLanes);
+    bool Feasible = true;
+    unsigned LaneId = 0;
+    for (const auto &LaneOp : LaneOps) {
+      ArrayRef<Operation::Match> Matches = MM.getMatches(LaneOp.getOperation());
+      if (Matches.empty()) {
+        Feasible = false;
+        break;
+      }
+      for (auto &Match : Matches) {
+        if (Match.Output == OpndPack[LaneId]) {
+          LaneMatches[LaneId].push_back(Match);
+        }
+      }
+      LaneId++;
+    }
+    if (!Feasible)
+      continue;
+    EnumeratePacks(Inst, LaneMatches);
+  }
+}
+
 bool GSLP::runOnFunction(Function &F) {
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
@@ -614,7 +760,46 @@ bool GSLP::runOnFunction(Function &F) {
   unsigned ProbPhi = 5;
   unsigned ProbGeneral = 55;
 
-  auto sampleOnePack = [&]() -> bool {
+  auto ExtendOnePack = [&]() -> bool {
+    if (Packs.getNumPacks() == 0)
+      return false;
+    // Sample a random pack to extend
+    auto &VP = Packs.getPack(rand_int(Packs.getNumPacks()));
+    std::vector<VectorPack> Extensions;
+    for (auto &OpndPack : VP.getOperandPacks()) {
+      // Figure out where the scalar operands are produced.
+      // Bail if they are produced in different basic blocks.
+      BasicBlock *BB = nullptr;
+      bool FromSingleBB = true;
+      for (auto *V : OpndPack) {
+        auto *I = dyn_cast<Instruction>(V);
+        if (!I) continue;
+        if (!BB)
+          BB = I->getParent();
+        else if (I->getParent() != BB) {
+          FromSingleBB = false;
+          break;
+        }
+      }
+      // Can't extend from this operand pack
+      if (!FromSingleBB || !BB)
+        break;
+
+      extendWithDef(OpndPack, Extensions,
+          *LoadDAGs[BB], *MMs[BB], *VPCtxs[BB], *LDAs[BB], InstBindings[BB]);
+    }
+    if (Extensions.empty())
+      return false;
+    {
+    auto &VP = Extensions[rand_int(Extensions.size())];
+    bool Added = Packs.tryAdd(VP);
+    if (Added)
+      errs() << "ADDING  " << VP << '\n';
+    return Added;
+    }
+  };
+
+  auto SampleOnePack = [&]() -> bool {
     auto &RandInst =
         *std::next(inst_begin(F), rand_int(F.getInstructionCount()));
     auto *BB = RandInst.getParent();
@@ -670,9 +855,12 @@ bool GSLP::runOnFunction(Function &F) {
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
-#if 0
-  for (int i = 0; i < 100; i++)
-    sampleOnePack();
+#if 1
+  for (int i = 0; i < 100; i++) {
+    SampleOnePack();
+    ExtendOnePack();
+  }
+  auto BestPacks = Packs;
 #else
   const unsigned NumIters = 100000;
   const float Beta = 0.8;
@@ -688,7 +876,7 @@ bool GSLP::runOnFunction(Function &F) {
     if (Packs.getNumPacks() && rand_int(100) < 5) {
       Removed = Packs.removeRandomPack();
     } else {
-      bool Changed = sampleOnePack();
+      bool Changed = SampleOnePack();
       if (!Changed)
         continue;
     }
