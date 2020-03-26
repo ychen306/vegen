@@ -405,7 +405,7 @@ static Optional<VectorPack> sampleStorePack(ConsecutiveAccessDAG &StoreDAG,
                                             VectorPackContext &VPCtx,
                                             LocalDependenceAnalysis &LDA,
                                             unsigned MaxNumStores,
-                                            unsigned NumTrials = 8) {
+                                            unsigned NumTrials = 16) {
   std::vector<StoreInst *> Stores;
   BitVector Elements;
   BitVector Depended;
@@ -543,8 +543,7 @@ castOperandPack(const VectorPack::OperandPack &OpndPack) {
 // Find vector packs that produces operand pack
 static void extendWithDef(const VectorPack::OperandPack &OpndPack,
                           std::vector<VectorPack> &Extensions,
-                          ConsecutiveAccessDAG &LoadDAG,
-                          const MatchManager &MM,
+                          ConsecutiveAccessDAG &LoadDAG, const MatchManager &MM,
                           const VectorPackContext &VPCtx,
                           LocalDependenceAnalysis &LDA,
                           const SmallPtrSet<const InstBinding *, 4> &Insts) {
@@ -580,14 +579,15 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 
   if (auto LoadsOrNull = castOperandPack<LoadInst>(OpndPack)) {
     std::vector<LoadInst *> Loads;
+    SmallPtrSet<LoadInst *, 4> LoadSet(LoadsOrNull->begin(),
+                                       LoadsOrNull->end());
     for (auto *LI : LoadsOrNull.getValue()) {
-      SmallPtrSet<LoadInst *, 4> LoadsRemained(
-          LoadsOrNull->begin(), LoadsOrNull->end());
+      SmallPtrSet<LoadInst *, 4> LoadsRemained = LoadSet;
       // See if there's a proper ordering of these loads starting from `LI`,
       // so that they are consecutive.
       LoadsRemained.erase(LI);
       LoadInst *CurLoad = LI;
-      Loads = { LI };
+      Loads = {LI};
       while (!LoadsRemained.empty()) {
         auto It = LoadDAG.find(CurLoad);
         if (It == LoadDAG.end())
@@ -603,11 +603,12 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
         if (!NextLoad)
           break;
         Loads.push_back(NextLoad);
+        CurLoad = NextLoad;
       }
-      if (Loads.size() == OpndPack.size())
+      if (Loads.size() == LoadSet.size())
         break;
     }
-    if (Loads.size() != OpndPack.size())
+    if (Loads.size() != LoadSet.size())
       return;
     Extensions.push_back(VPCtx.createLoadPack(Loads, Elements, Depended));
     return;
@@ -685,9 +686,11 @@ bool GSLP::runOnFunction(Function &F) {
   // Figure out vector instructions we can use
   std::vector<InstBinding *> SupportedInsts;
 #define USE_INTRINSICS 1
+
 #ifndef USE_INTRINSICS
 #define USE_INTRINSICS 0
 #endif
+
 #if USE_INTRINSICS
   errs() << "Using vector intrinsics.\n";
   std::vector<InstBinding *> AvailableInsts;
@@ -773,7 +776,8 @@ bool GSLP::runOnFunction(Function &F) {
       bool FromSingleBB = true;
       for (auto *V : OpndPack) {
         auto *I = dyn_cast<Instruction>(V);
-        if (!I) continue;
+        if (!I)
+          continue;
         if (!BB)
           BB = I->getParent();
         else if (I->getParent() != BB) {
@@ -785,8 +789,8 @@ bool GSLP::runOnFunction(Function &F) {
       if (!FromSingleBB || !BB)
         break;
 
-      extendWithDef(OpndPack, Extensions,
-          *LoadDAGs[BB], *MMs[BB], *VPCtxs[BB], *LDAs[BB], InstBindings[BB]);
+      extendWithDef(OpndPack, Extensions, *LoadDAGs[BB], *MMs[BB], *VPCtxs[BB],
+                    *LDAs[BB], InstBindings[BB]);
     }
     if (Extensions.empty())
       return false;
@@ -802,13 +806,16 @@ bool GSLP::runOnFunction(Function &F) {
       ProbLoad = 0;
     if (StoreDAGs[BB]->empty())
       ProbStore = 0;
-    unsigned P = rand_int(ProbLoad + ProbStore + ProbPhi + ProbGeneral);
+    unsigned PTotal = ProbLoad + ProbStore + ProbPhi + ProbGeneral;
+    if (!PTotal)
+      return false;
+    unsigned P = rand_int(PTotal);
 
     if (P < ProbLoad) {
       auto &LoadDAG = *LoadDAGs[BB];
       if (LoadDAG.empty())
         return false;
-      auto LoadPackOrNull = sampleLoadPack(LoadDAG, *VPCtxs[BB], *LDAs[BB], 8);
+      auto LoadPackOrNull = sampleLoadPack(LoadDAG, *VPCtxs[BB], *LDAs[BB], 16);
       return LoadPackOrNull && Packs.tryAdd(LoadPackOrNull.getValue());
     }
     P -= ProbLoad;
@@ -818,7 +825,7 @@ bool GSLP::runOnFunction(Function &F) {
       if (StoreDAG.empty())
         return false;
       auto StorePackOrNull =
-          sampleStorePack(StoreDAG, *VPCtxs[BB], *LDAs[BB], 8);
+          sampleStorePack(StoreDAG, *VPCtxs[BB], *LDAs[BB], 16);
       return StorePackOrNull && Packs.tryAdd(StorePackOrNull.getValue());
     }
     P -= ProbStore;
@@ -850,11 +857,30 @@ bool GSLP::runOnFunction(Function &F) {
   };
 
 #if 1
-  for (int i = 0; i < 100; i++) {
-    SampleOnePack();
-    ExtendOnePack();
-  }
   auto BestPacks = Packs;
+  float BestCost = 0;
+  for (int i = 0; i < 1000; i++) {
+    Packs = MCMCVectorPackSet(&F);
+    // bool Sampled = SampleOnePack();
+    SampleOnePack();
+    for (int j = 0; j < 100; j++)
+      ExtendOnePack();
+    float Cost = Packs.getCostSaving(TTI, BFI);
+    // if (Sampled || Cost < BestCost) {
+    //  for (int i = 0; i < Packs.getNumPacks(); i++)
+    //    errs() << Packs.getPack(i) << '\n';
+    //  errs() << F << '\n';
+    //  BestCost = Cost;
+    //  BestPacks = Packs;
+    //  break;
+    //}
+    // break;
+    if (Cost < BestCost) {
+      errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks() << '\n';
+      BestCost = Cost;
+      BestPacks = Packs;
+    }
+  }
 #else
   const unsigned NumIters = 100000;
   const float Beta = 0.8;
@@ -870,7 +896,11 @@ bool GSLP::runOnFunction(Function &F) {
     if (Packs.getNumPacks() && rand_int(100) < 5) {
       Removed = Packs.removeRandomPack();
     } else {
-      bool Changed = SampleOnePack();
+      bool Changed;
+      if (Packs.getNumPacks() && rand_int(10) < 6)
+        Changed = ExtendOnePack();
+      else
+        Changed = SampleOnePack();
       if (!Changed)
         continue;
     }
