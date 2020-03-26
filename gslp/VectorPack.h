@@ -29,11 +29,8 @@ private:
   //////////// Data for the 4 kinds
   PackKind Kind;
   // General
-  struct {
-    // SmallVector<Operation::Match, 4> Matches;
-    std::vector<Operation::Match> Matches;
-    const InstBinding *Producer;
-  };
+  std::vector<Operation::Match> Matches;
+  const InstBinding *Producer;
   // Load
   std::vector<llvm::LoadInst *> Loads;
   // Store

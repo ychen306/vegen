@@ -22,4 +22,4 @@ llvm_map_components_to_libnames(llvm_libs support core transformutils)
 
 include_directories(gslp)
 add_subdirectory(gslp)
-add_subdirectory(test)
+#add_subdirectory(test)
