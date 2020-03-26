@@ -676,7 +676,6 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
