@@ -856,7 +856,7 @@ bool GSLP::runOnFunction(Function &F) {
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
-#if 1
+#if 0
   auto BestPacks = Packs;
   float BestCost = 0;
   for (int i = 0; i < 1000; i++) {
@@ -896,10 +896,10 @@ bool GSLP::runOnFunction(Function &F) {
     if (Packs.getNumPacks() && rand_int(100) < 5) {
       Removed = Packs.removeRandomPack();
     } else {
-      bool Changed;
-      if (Packs.getNumPacks() && rand_int(10) < 6)
+      bool Changed = false;
+      if (Packs.getNumPacks() && rand_int(10) < 7)
         Changed = ExtendOnePack();
-      else
+      if (!Changed)
         Changed = SampleOnePack();
       if (!Changed)
         continue;
