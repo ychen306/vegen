@@ -4,7 +4,7 @@
 using namespace llvm;
 
 VectorPack
-VectorPackContext::createVectorPack(std::vector<Operation::Match> Matches,
+VectorPackContext::createVectorPack(std::vector<Optional<Operation::Match>> Matches,
                                     BitVector Elements, BitVector Depended,
                                     const InstBinding *Producer) const {
   return VectorPack(this, Matches, Elements, Depended, Producer);

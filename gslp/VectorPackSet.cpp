@@ -202,7 +202,6 @@ void VectorPackSet::pop() {
 }
 
 static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
-  return 1.0;
   return float(BFI->getBlockFreq(BB).getFrequency()) /
          float(BFI->getEntryFreq());
 }

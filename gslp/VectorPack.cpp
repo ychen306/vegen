@@ -31,7 +31,7 @@ VectorPack::getOperandPacksForGeneral() const {
         auto &BS = BoundSlices[k];
         if (BS.InputId != i)
           continue;
-        InputValues.push_back({BS, Matches[j].Inputs[k]});
+        InputValues.push_back({BS, Matches[j] ? Matches[j]->Inputs[k] : nullptr});
       }
     }
 
@@ -91,11 +91,19 @@ std::vector<VectorPack::OperandPack> VectorPack::getOperandPacksForPhi() const {
   return UPs;
 }
 
+static Type *getScalarTy(ArrayRef<Optional<Operation::Match>> Matches) {
+  for (auto &M : Matches)
+    if (M)
+      return M->Output->getType();
+  llvm_unreachable("Matches can't be all null");
+  return nullptr;
+}
+
 Value *VectorPack::emitVectorGeneral(ArrayRef<Value *> Operands,
                                      IntrinsicBuilder &Builder) const {
   auto *VecInst = Producer->emit(Operands, Builder);
   // Fix the output type
-  auto *VecType = VectorType::get(Matches[0].Output->getType(), Matches.size());
+  auto *VecType = VectorType::get(getScalarTy(Matches), Matches.size());
   return Builder.CreateBitCast(VecInst, VecType);
 }
 
@@ -238,6 +246,32 @@ int VectorPack::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
   case Phi:
     return 0;
   }
+}
+
+std::vector<Value *> VectorPack::getOrderedValues() const {
+  std::vector<Value *> OrderedValues;
+  switch (Kind) {
+  case General:
+    for (auto &M : Matches)
+      if (M)
+        OrderedValues.push_back(M->Output);
+      else
+        OrderedValues.push_back(nullptr);
+    break;
+  case Load:
+    for (auto *LI : Loads)
+      OrderedValues.push_back(LI);
+    break;
+  case Store:
+    for (auto *SI : Stores)
+      OrderedValues.push_back(SI);
+    break;
+  case Phi:
+    for (auto *PHI : PHIs)
+      OrderedValues.push_back(PHI);
+    break;
+  }
+  return OrderedValues;
 }
 
 // Choose a right place to gather an operand

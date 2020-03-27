@@ -29,7 +29,7 @@ private:
   //////////// Data for the 4 kinds
   PackKind Kind;
   // General
-  std::vector<Operation::Match> Matches;
+  std::vector<llvm::Optional<Operation::Match>> Matches;
   const InstBinding *Producer;
   // Load
   std::vector<llvm::LoadInst *> Loads;
@@ -41,7 +41,7 @@ private:
 
   // Constructor for a generic pack
   VectorPack(const VectorPackContext *VPCtx,
-             llvm::ArrayRef<Operation::Match> Matches, llvm::BitVector Elements,
+             llvm::ArrayRef<llvm::Optional<Operation::Match>> Matches, llvm::BitVector Elements,
              llvm::BitVector Depended, const InstBinding *Producer)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::General), Producer(Producer), Matches(Matches) {}

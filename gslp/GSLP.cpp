@@ -251,29 +251,6 @@ bool isSupported(InstBinding *Inst, const Function &F) {
 
 } // end anonymous namespace
 
-std::vector<Value *> VectorPack::getOrderedValues() const {
-  std::vector<Value *> OrderedValues;
-  switch (Kind) {
-  case General:
-    for (auto &M : Matches)
-      OrderedValues.push_back(M.Output);
-    break;
-  case Load:
-    for (auto *LI : Loads)
-      OrderedValues.push_back(LI);
-    break;
-  case Store:
-    for (auto *SI : Stores)
-      OrderedValues.push_back(SI);
-    break;
-  case Phi:
-    for (auto *PHI : PHIs)
-      OrderedValues.push_back(PHI);
-    break;
-  }
-  return OrderedValues;
-}
-
 // Do a quadratic search to build the access dags
 template <typename MemAccessTy>
 void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
@@ -451,7 +428,7 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
 
     // Fill each lane...
     bool Success = true;
-    std::vector<Operation::Match> Matches;
+    std::vector<llvm::Optional<Operation::Match>> Matches;
     for (auto &LaneOp : Inst->getLaneOps()) {
       // FIXME: need to distinguish between an arithmetic operation and
       // "pass-through" We allow a value to pass through multiple operation. But
@@ -634,7 +611,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
         for (unsigned i = 0; i < N; i++) {
           // `i` represent a particular member of the cross product.
           // Decode `i` here.
-          std::vector<Operation::Match> Lanes;
+          std::vector<Optional<Operation::Match>> Lanes;
           for (auto &Matches : LaneMatches) {
             unsigned M = Matches.size();
             assert(M);
@@ -676,6 +653,8 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  //if (F.getName() != "binvcrhs")
+  //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
@@ -759,9 +738,9 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   unsigned ProbLoad = 20;
-  unsigned ProbStore = 20;
+  unsigned ProbStore = 40;
   unsigned ProbPhi = 5;
-  unsigned ProbGeneral = 55;
+  unsigned ProbGeneral = 35;
 
   auto ExtendOnePack = [&]() -> bool {
     if (Packs.getNumPacks() == 0)
@@ -856,7 +835,7 @@ bool GSLP::runOnFunction(Function &F) {
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
-#if 0
+#if 1
   auto BestPacks = Packs;
   float BestCost = 0;
   for (int i = 0; i < 1000; i++) {
@@ -883,7 +862,7 @@ bool GSLP::runOnFunction(Function &F) {
   }
 #else
   const unsigned NumIters = 100000;
-  const float Beta = 0.8;
+  const float Beta = 0.4;
 
   float BestCost = 0.0;
   VectorPackSet BestPacks(&F);
@@ -893,7 +872,7 @@ bool GSLP::runOnFunction(Function &F) {
       errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks()
              << ", ITER: " << i << '\n';
     std::unique_ptr<VectorPack> Removed;
-    if (Packs.getNumPacks() && rand_int(100) < 5) {
+    if (Packs.getNumPacks() && rand_int(10) < 5) {
       Removed = Packs.removeRandomPack();
     } else {
       bool Changed = false;

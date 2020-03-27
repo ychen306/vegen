@@ -22,7 +22,7 @@ public:
   }
 
   // Create a "General" vector pack
-  VectorPack createVectorPack(std::vector<Operation::Match> Matches,
+  VectorPack createVectorPack(std::vector<llvm::Optional<Operation::Match>> Matches,
                               llvm::BitVector Elements, llvm::BitVector Depended,
                               const InstBinding *Producer) const;
 
