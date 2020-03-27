@@ -209,6 +209,9 @@ static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
 // FIXME: this is a mess
 float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
                                    BlockFrequencyInfo *BFI) const {
+  if (NumPacks == 0)
+    return 0;
+
   int CostSaving = 0;
   assert(AllPacks.size() == NumPacks);
   // Compute arithmetic cost saving

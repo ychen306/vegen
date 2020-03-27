@@ -664,7 +664,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   // Figure out vector instructions we can use
   std::vector<InstBinding *> SupportedInsts;
-#define USE_INTRINSICS 1
+#define USE_INTRINSICS 0
 
 #ifndef USE_INTRINSICS
 #define USE_INTRINSICS 0
@@ -738,9 +738,9 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   unsigned ProbLoad = 20;
-  unsigned ProbStore = 40;
+  unsigned ProbStore = 60;
   unsigned ProbPhi = 5;
-  unsigned ProbGeneral = 35;
+  unsigned ProbGeneral = 15;
 
   auto ExtendOnePack = [&]() -> bool {
     if (Packs.getNumPacks() == 0)
@@ -776,9 +776,11 @@ bool GSLP::runOnFunction(Function &F) {
     return Packs.tryAdd(Extensions[rand_int(Extensions.size())]);
   };
 
+  unsigned NumInsts = F.getInstructionCount();
+
   auto SampleOnePack = [&]() -> bool {
     auto &RandInst =
-        *std::next(inst_begin(F), rand_int(F.getInstructionCount()));
+        *std::next(inst_begin(F), rand_int(NumInsts));
     auto *BB = RandInst.getParent();
 
     if (LoadDAGs[BB]->empty())
@@ -835,7 +837,7 @@ bool GSLP::runOnFunction(Function &F) {
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
-#if 1
+#if 0
   auto BestPacks = Packs;
   float BestCost = 0;
   for (int i = 0; i < 1000; i++) {
@@ -861,7 +863,7 @@ bool GSLP::runOnFunction(Function &F) {
     }
   }
 #else
-  const unsigned NumIters = 100000;
+  const unsigned NumIters = 1000000;
   const float Beta = 0.4;
 
   float BestCost = 0.0;
@@ -872,11 +874,11 @@ bool GSLP::runOnFunction(Function &F) {
       errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks()
              << ", ITER: " << i << '\n';
     std::unique_ptr<VectorPack> Removed;
-    if (Packs.getNumPacks() && rand_int(10) < 5) {
+    if (Packs.getNumPacks() && rand_int(100) < 51) {
       Removed = Packs.removeRandomPack();
     } else {
       bool Changed = false;
-      if (Packs.getNumPacks() && rand_int(10) < 7)
+      if (Packs.getNumPacks() && rand_int(10) < 8)
         Changed = ExtendOnePack();
       if (!Changed)
         Changed = SampleOnePack();
