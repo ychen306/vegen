@@ -559,3 +559,10 @@ void VectorPackSet::copy(const VectorPackSet &Other) {
   assert(NumPacks == AllPacks.size());
   assert(NumPacks == Other.NumPacks);
 }
+
+bool VectorPackSet::isPacked(Instruction *I,
+                             const VectorPackContext &VPCtx) const {
+  BasicBlock *BB = I->getParent();
+  auto It = PackedValues.find(BB);
+  return It != PackedValues.end() && It->second.test(VPCtx.getScalarId(I));
+}

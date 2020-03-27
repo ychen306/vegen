@@ -59,6 +59,8 @@ public:
 
   unsigned getNumPacks() const { return NumPacks; }
 
+  bool isPacked(llvm::Instruction *, const VectorPackContext &) const;
+
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
   bool tryAdd(VectorPack VP);

@@ -314,7 +314,9 @@ float rand_float() {
 // sample indenpdent, consecutive memory accesses
 template <typename MemAccessTy>
 static std::tuple<std::vector<MemAccessTy *>, BitVector, BitVector>
-sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
+sampleAccesses(
+    const VectorPackSet &ExistingPacks,
+    const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
                LocalDependenceAnalysis &LDA, unsigned MaxNumAccesses) {
   // Pick a seed to start the chain
   auto DAGIt = std::next(DAG.begin(), rand_int(DAG.size()));
@@ -331,6 +333,8 @@ sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
     // Find independent candidate to extend this chain of loads
     SmallVector<MemAccessTy *, 4> IndependentAccesses;
     for (auto *A : *NextAccesses) {
+      if (ExistingPacks.isPacked(A, VPCtx))
+        continue;
       auto Depended2 = LDA.getDepended(A);
       unsigned AccessId = VPCtx.getScalarId(A);
       if (Elements.anyCommon(Depended2) || Depended.test(AccessId))
@@ -359,7 +363,9 @@ sampleAccesses(const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
   return {Accesses, Elements, Depended};
 }
 
-static Optional<VectorPack> sampleLoadPack(ConsecutiveAccessDAG &LoadDAG,
+static Optional<VectorPack> sampleLoadPack(
+    const VectorPackSet &ExistingPacks,
+    ConsecutiveAccessDAG &LoadDAG,
                                            VectorPackContext &VPCtx,
                                            LocalDependenceAnalysis &LDA,
                                            unsigned MaxNumLoads,
@@ -369,7 +375,7 @@ static Optional<VectorPack> sampleLoadPack(ConsecutiveAccessDAG &LoadDAG,
   BitVector Depended;
   while (NumTrials--) {
     std::tie(Loads, Elements, Depended) =
-        sampleAccesses<LoadInst>(LoadDAG, VPCtx, LDA, MaxNumLoads);
+        sampleAccesses<LoadInst>(ExistingPacks, LoadDAG, VPCtx, LDA, MaxNumLoads);
     if (Loads.size() > 1)
       break;
   }
@@ -378,7 +384,9 @@ static Optional<VectorPack> sampleLoadPack(ConsecutiveAccessDAG &LoadDAG,
   return VPCtx.createLoadPack(Loads, Elements, Depended);
 }
 
-static Optional<VectorPack> sampleStorePack(ConsecutiveAccessDAG &StoreDAG,
+static Optional<VectorPack> sampleStorePack(
+    const VectorPackSet &ExistingPacks,
+    ConsecutiveAccessDAG &StoreDAG,
                                             VectorPackContext &VPCtx,
                                             LocalDependenceAnalysis &LDA,
                                             unsigned MaxNumStores,
@@ -388,7 +396,7 @@ static Optional<VectorPack> sampleStorePack(ConsecutiveAccessDAG &StoreDAG,
   BitVector Depended;
   while (NumTrials--) {
     std::tie(Stores, Elements, Depended) =
-        sampleAccesses<StoreInst>(StoreDAG, VPCtx, LDA, MaxNumStores);
+        sampleAccesses<StoreInst>(ExistingPacks, StoreDAG, VPCtx, LDA, MaxNumStores);
     if (Stores.size() > 1)
       break;
   }
@@ -416,7 +424,9 @@ samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
 
 // TODO: support NOOP lanes
 //
-static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
+static Optional<VectorPack> sampleVectorPack(
+    const VectorPackSet &ExistingPacks,
+    const MatchManager &MM,
                                              VectorPackContext &VPCtx,
                                              LocalDependenceAnalysis &LDA,
                                              const InstBinding *Inst,
@@ -437,6 +447,9 @@ static Optional<VectorPack> sampleVectorPack(const MatchManager &MM,
       // Figure out available independent packs
       std::vector<const Operation::Match *> IndependentMatches;
       for (auto &M : MM.getMatches(LaneOp.getOperation())) {
+        if (auto *I = dyn_cast<Instruction>(M.Output))
+          if (ExistingPacks.isPacked(I, VPCtx))
+            continue;
         unsigned OutputId = VPCtx.getScalarId(M.Output);
         // This value has already been packed
         if (Elements.test(OutputId))
@@ -731,7 +744,7 @@ bool GSLP::runOnFunction(Function &F) {
   for (auto *Inst : SupportedInsts) {
     for (auto &BB : F) {
       Optional<VectorPack> VPOrNull =
-          sampleVectorPack(*MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 1000);
+          sampleVectorPack(Packs, *MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 1000);
       if (VPOrNull)
         InstBindings[&BB].insert(Inst);
     }
@@ -796,7 +809,7 @@ bool GSLP::runOnFunction(Function &F) {
       auto &LoadDAG = *LoadDAGs[BB];
       if (LoadDAG.empty())
         return false;
-      auto LoadPackOrNull = sampleLoadPack(LoadDAG, *VPCtxs[BB], *LDAs[BB], 16);
+      auto LoadPackOrNull = sampleLoadPack(Packs, LoadDAG, *VPCtxs[BB], *LDAs[BB], 16);
       return LoadPackOrNull && Packs.tryAdd(LoadPackOrNull.getValue());
     }
     P -= ProbLoad;
@@ -806,7 +819,7 @@ bool GSLP::runOnFunction(Function &F) {
       if (StoreDAG.empty())
         return false;
       auto StorePackOrNull =
-          sampleStorePack(StoreDAG, *VPCtxs[BB], *LDAs[BB], 16);
+          sampleStorePack(Packs, StoreDAG, *VPCtxs[BB], *LDAs[BB], 16);
       return StorePackOrNull && Packs.tryAdd(StorePackOrNull.getValue());
     }
     P -= ProbStore;
@@ -833,7 +846,7 @@ bool GSLP::runOnFunction(Function &F) {
     // FIXME: refactor all of these `std::next(... rand_int))` stuff
     auto *Inst = *std::next(Bindings.begin(), rand_int(Bindings.size()));
     Optional<VectorPack> VPOrNull =
-        sampleVectorPack(*MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, 32);
+        sampleVectorPack(Packs, *MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, 32);
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
   };
 
@@ -878,7 +891,7 @@ bool GSLP::runOnFunction(Function &F) {
       Removed = Packs.removeRandomPack();
     } else {
       bool Changed = false;
-      if (Packs.getNumPacks() && rand_int(10) < 8)
+      if (Packs.getNumPacks() && rand_int(8) < 7)
         Changed = ExtendOnePack();
       if (!Changed)
         Changed = SampleOnePack();
