@@ -7,6 +7,17 @@
 
 using namespace llvm;
 
+static Type *getVectorType(const VectorPack::OperandPack &OpndPack) {
+  Type *ScalarTy = nullptr;
+  for (auto *V : OpndPack)
+    if (V) {
+      ScalarTy = V->getType();
+      break;
+    }
+  assert(ScalarTy && "Operand pack can't be all empty");
+  return VectorType::get(ScalarTy, OpndPack.size());
+}
+
 // Get the vector value representing `OpndPack'.
 // If `OpndPack` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
@@ -117,7 +128,7 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
       DefinedBits |= PG.DefinedBits;
     }
   } else {
-    auto *VecTy = VectorType::get(OpndPack[0]->getType(), OpndPack.size());
+    auto *VecTy = getVectorType(OpndPack);
     Acc = UndefValue::get(VecTy);
   }
 
@@ -206,6 +217,15 @@ static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
          float(BFI->getEntryFreq());
 }
 
+static float getBlockWeight(const VectorPack::OperandPack &OpndPack,
+                            BlockFrequencyInfo *BFI) {
+  float weight = 0;
+  for (auto *V : OpndPack)
+    if (auto *I = dyn_cast<Instruction>(V))
+      weight = std::max(weight, getBlockWeight(I->getParent(), BFI));
+  return weight;
+}
+
 // FIXME: this is a mess
 float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
                                    BlockFrequencyInfo *BFI) const {
@@ -252,7 +272,6 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   }
 
   const int GatherCost = 4;
-  const int InsertCost = 3;
   const int PermuteCost = 1;
   const int BroadcastCost = 1;
 
@@ -261,31 +280,32 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   // loops
   for (auto &VP : AllPacks) {
     auto *BB = VP->getBasicBlock();
-    float BBCost = 0;
     for (auto &OpndPack : VP->getOperandPacks()) {
       // special case for broadcast
       if (is_splat(OpndPack)) {
-        BBCost = 1.0;
-        break;
+        CostSaving += getBlockWeight(OpndPack, BFI) * 1.0;
       }
+      float BBCost = 0;
+      auto *VecTy = getVectorType(OpndPack);
       // figure out from where we need to gather
       SmallPtrSet<Value *, 4> SrcScalars;
       SmallPtrSet<const VectorPack *, 4> SrcPacks;
+      unsigned LaneId = 0;
       for (Value *V : OpndPack) {
         auto It = ValueIndex.find(V);
         if (It != ValueIndex.end()) {
           auto &VPIdx = It->second;
           SrcPacks.insert(VPIdx.VP);
         } else {
-          SrcScalars.insert(V);
+          BBCost += TTI->getVectorInstrCost(Instruction::InsertElement, VecTy,
+                                            LaneId);
         }
+        LaneId++;
       }
 
       unsigned NumSrcs = SrcPacks.size() + SrcScalars.size();
       if (NumSrcs > 1) {
-        if (SrcPacks.size() > 0)
-          BBCost += GatherCost * SrcPacks.size();
-        BBCost += InsertCost * SrcScalars.size();
+        BBCost += GatherCost * SrcPacks.size();
       } else if (!SrcPacks.empty()) {
         auto *SrcPack = *SrcPacks.begin();
         // We are selecting a subset of that pack
@@ -307,8 +327,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
             BBCost += PermuteCost;
         }
       }
+      CostSaving += BBCost * getBlockWeight(OpndPack, BFI);
     }
-    CostSaving += BBCost * getBlockWeight(BB, BFI);
   }
 
   std::set<VectorPackIndex> Extractions;

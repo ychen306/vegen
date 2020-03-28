@@ -369,7 +369,7 @@ static Optional<VectorPack> sampleLoadPack(
                                            VectorPackContext &VPCtx,
                                            LocalDependenceAnalysis &LDA,
                                            unsigned MaxNumLoads,
-                                           unsigned NumTrials = 8) {
+                                           unsigned NumTrials = 128) {
   std::vector<LoadInst *> Loads;
   BitVector Elements;
   BitVector Depended;
@@ -390,7 +390,7 @@ static Optional<VectorPack> sampleStorePack(
                                             VectorPackContext &VPCtx,
                                             LocalDependenceAnalysis &LDA,
                                             unsigned MaxNumStores,
-                                            unsigned NumTrials = 16) {
+                                            unsigned NumTrials = 128) {
   std::vector<StoreInst *> Stores;
   BitVector Elements;
   BitVector Depended;
@@ -666,8 +666,6 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  //if (F.getName() != "binvcrhs")
-  //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
@@ -677,7 +675,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   // Figure out vector instructions we can use
   std::vector<InstBinding *> SupportedInsts;
-#define USE_INTRINSICS 0
+#define USE_INTRINSICS 1
 
 #ifndef USE_INTRINSICS
 #define USE_INTRINSICS 0
@@ -877,7 +875,7 @@ bool GSLP::runOnFunction(Function &F) {
   }
 #else
   const unsigned NumIters = 1000000;
-  const float Beta = 0.4;
+  const float Beta = 0.5;
 
   float BestCost = 0.0;
   VectorPackSet BestPacks(&F);
@@ -887,7 +885,7 @@ bool GSLP::runOnFunction(Function &F) {
       errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks()
              << ", ITER: " << i << '\n';
     std::unique_ptr<VectorPack> Removed;
-    if (Packs.getNumPacks() && rand_int(100) < 51) {
+    if (Packs.getNumPacks() && rand_int(100) < 60) {
       Removed = Packs.removeRandomPack();
     } else {
       bool Changed = false;
