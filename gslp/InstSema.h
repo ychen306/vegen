@@ -39,6 +39,12 @@ struct Operation {
     std::vector<llvm::Value *> Inputs;
     // FIXME: make this an Instruction instead
     llvm::Value *Output;
+    bool operator<(const Match &Other) const {
+      return std::tie(Output, Inputs) < std::tie(Other.Output, Other.Inputs);
+    }
+    bool operator==(const Match &Other) const {
+      return Output == Other.Output && Inputs == Other.Inputs;
+    }
   };
   // `match' returns true if `V` is matched.
   // If a match is found, additionally return the matched liveins

@@ -314,9 +314,8 @@ float rand_float() {
 // sample indenpdent, consecutive memory accesses
 template <typename MemAccessTy>
 static std::tuple<std::vector<MemAccessTy *>, BitVector, BitVector>
-sampleAccesses(
-    const VectorPackSet &ExistingPacks,
-    const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
+sampleAccesses(const VectorPackSet &ExistingPacks,
+               const ConsecutiveAccessDAG &DAG, VectorPackContext &VPCtx,
                LocalDependenceAnalysis &LDA, unsigned MaxNumAccesses) {
   // Pick a seed to start the chain
   auto DAGIt = std::next(DAG.begin(), rand_int(DAG.size()));
@@ -328,6 +327,7 @@ sampleAccesses(
 
   std::vector<MemAccessTy *> Accesses{LastAccess};
   assert(Elements.count() == Accesses.size());
+  unsigned NumAccesses = 1 + rand_int(MaxNumAccesses);
   while (Accesses.size() < MaxNumAccesses) {
 
     // Find independent candidate to extend this chain of loads
@@ -363,9 +363,8 @@ sampleAccesses(
   return {Accesses, Elements, Depended};
 }
 
-static Optional<VectorPack> sampleLoadPack(
-    const VectorPackSet &ExistingPacks,
-    ConsecutiveAccessDAG &LoadDAG,
+static Optional<VectorPack> sampleLoadPack(const VectorPackSet &ExistingPacks,
+                                           ConsecutiveAccessDAG &LoadDAG,
                                            VectorPackContext &VPCtx,
                                            LocalDependenceAnalysis &LDA,
                                            unsigned MaxNumLoads,
@@ -374,8 +373,8 @@ static Optional<VectorPack> sampleLoadPack(
   BitVector Elements;
   BitVector Depended;
   while (NumTrials--) {
-    std::tie(Loads, Elements, Depended) =
-        sampleAccesses<LoadInst>(ExistingPacks, LoadDAG, VPCtx, LDA, MaxNumLoads);
+    std::tie(Loads, Elements, Depended) = sampleAccesses<LoadInst>(
+        ExistingPacks, LoadDAG, VPCtx, LDA, MaxNumLoads);
     if (Loads.size() > 1)
       break;
   }
@@ -384,9 +383,8 @@ static Optional<VectorPack> sampleLoadPack(
   return VPCtx.createLoadPack(Loads, Elements, Depended);
 }
 
-static Optional<VectorPack> sampleStorePack(
-    const VectorPackSet &ExistingPacks,
-    ConsecutiveAccessDAG &StoreDAG,
+static Optional<VectorPack> sampleStorePack(const VectorPackSet &ExistingPacks,
+                                            ConsecutiveAccessDAG &StoreDAG,
                                             VectorPackContext &VPCtx,
                                             LocalDependenceAnalysis &LDA,
                                             unsigned MaxNumStores,
@@ -395,8 +393,8 @@ static Optional<VectorPack> sampleStorePack(
   BitVector Elements;
   BitVector Depended;
   while (NumTrials--) {
-    std::tie(Stores, Elements, Depended) =
-        sampleAccesses<StoreInst>(ExistingPacks, StoreDAG, VPCtx, LDA, MaxNumStores);
+    std::tie(Stores, Elements, Depended) = sampleAccesses<StoreInst>(
+        ExistingPacks, StoreDAG, VPCtx, LDA, MaxNumStores);
     if (Stores.size() > 1)
       break;
   }
@@ -424,13 +422,10 @@ samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
 
 // TODO: support NOOP lanes
 //
-static Optional<VectorPack> sampleVectorPack(
-    const VectorPackSet &ExistingPacks,
-    const MatchManager &MM,
-                                             VectorPackContext &VPCtx,
-                                             LocalDependenceAnalysis &LDA,
-                                             const InstBinding *Inst,
-                                             unsigned NumTrials) {
+static Optional<VectorPack>
+sampleVectorPack(const VectorPackSet &ExistingPacks, const MatchManager &MM,
+                 VectorPackContext &VPCtx, LocalDependenceAnalysis &LDA,
+                 const InstBinding *Inst, unsigned NumTrials) {
 
   while (NumTrials--) {
     BitVector Elements(VPCtx.getNumValues());
@@ -666,6 +661,10 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  //if (F.getName() != "adi")
+  //  return false;
+  //if (F.getName() != "binvcrhs")
+  //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
@@ -675,7 +674,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   // Figure out vector instructions we can use
   std::vector<InstBinding *> SupportedInsts;
-#define USE_INTRINSICS 1
+#define USE_INTRINSICS 0
 
 #ifndef USE_INTRINSICS
 #define USE_INTRINSICS 0
@@ -741,8 +740,8 @@ bool GSLP::runOnFunction(Function &F) {
   DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> InstBindings;
   for (auto *Inst : SupportedInsts) {
     for (auto &BB : F) {
-      Optional<VectorPack> VPOrNull =
-          sampleVectorPack(Packs, *MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 1000);
+      Optional<VectorPack> VPOrNull = sampleVectorPack(
+          Packs, *MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 1000);
       if (VPOrNull)
         InstBindings[&BB].insert(Inst);
     }
@@ -753,7 +752,7 @@ bool GSLP::runOnFunction(Function &F) {
   unsigned ProbPhi = 5;
   unsigned ProbGeneral = 15;
 
-  auto ExtendOnePack = [&]() -> bool {
+  auto ExtendOnePack = [&](VectorPackSet &Packs) -> bool {
     if (Packs.getNumPacks() == 0)
       return false;
     // Sample a random pack to extend
@@ -789,36 +788,30 @@ bool GSLP::runOnFunction(Function &F) {
 
   unsigned NumInsts = F.getInstructionCount();
 
-  auto SampleOnePack = [&]() -> bool {
-    auto &RandInst =
-        *std::next(inst_begin(F), rand_int(NumInsts));
-    auto *BB = RandInst.getParent();
-
+  auto SampleOnePackFromBB = [&](VectorPackSet &Packs,
+                                 BasicBlock *BB) -> Optional<VectorPack> {
     if (LoadDAGs[BB]->empty())
       ProbLoad = 0;
     if (StoreDAGs[BB]->empty())
       ProbStore = 0;
     unsigned PTotal = ProbLoad + ProbStore + ProbPhi + ProbGeneral;
     if (!PTotal)
-      return false;
+      return None;
     unsigned P = rand_int(PTotal);
 
     if (P < ProbLoad) {
       auto &LoadDAG = *LoadDAGs[BB];
       if (LoadDAG.empty())
-        return false;
-      auto LoadPackOrNull = sampleLoadPack(Packs, LoadDAG, *VPCtxs[BB], *LDAs[BB], 16);
-      return LoadPackOrNull && Packs.tryAdd(LoadPackOrNull.getValue());
+        return None;
+      return sampleLoadPack(Packs, LoadDAG, *VPCtxs[BB], *LDAs[BB], 16);
     }
     P -= ProbLoad;
 
     if (P < ProbStore) {
       auto &StoreDAG = *StoreDAGs[BB];
       if (StoreDAG.empty())
-        return false;
-      auto StorePackOrNull =
-          sampleStorePack(Packs, StoreDAG, *VPCtxs[BB], *LDAs[BB], 16);
-      return StorePackOrNull && Packs.tryAdd(StorePackOrNull.getValue());
+        return None;
+      return sampleStorePack(Packs, StoreDAG, *VPCtxs[BB], *LDAs[BB], 16);
     }
     P -= ProbStore;
 
@@ -833,19 +826,51 @@ bool GSLP::runOnFunction(Function &F) {
       }
       if (PHIs.empty()) {
         ProbPhi = 0;
-        return false;
+        return None;
       }
-      return Packs.tryAdd(samplePhiPack(PHIs, *VPCtxs[BB], 4));
+      return samplePhiPack(PHIs, *VPCtxs[BB], 4);
     }
 
     const auto &Bindings = InstBindings[BB];
     if (Bindings.empty())
-      return false;
+      return None;
     // FIXME: refactor all of these `std::next(... rand_int))` stuff
     auto *Inst = *std::next(Bindings.begin(), rand_int(Bindings.size()));
-    Optional<VectorPack> VPOrNull =
-        sampleVectorPack(Packs, *MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, 32);
+    return sampleVectorPack(Packs, *MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, 32);
+  };
+
+  auto SampleOnePack = [&](VectorPackSet &Packs) -> bool {
+    auto &RandInst = *std::next(inst_begin(F), rand_int(NumInsts));
+    auto *BB = RandInst.getParent();
+    auto VPOrNull = SampleOnePackFromBB(Packs, BB);
     return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
+  };
+
+  auto EvalSeedPacks = [&](const VectorPackSet &Packs,
+                           unsigned Alpha =
+                               8) -> std::pair<VectorPackSet, float> {
+    unsigned Depth = 8;
+    unsigned NumTrials = Alpha * Packs.getNumPacks();
+    float BestCost = Packs.getCostSaving(TTI, BFI);
+    VectorPackSet BestExtended = Packs;
+    for (unsigned i = 0; i < NumTrials; i++) {
+      VectorPackSet Temp = Packs;
+      for (unsigned i = 0; i < Depth; i++) {
+        ExtendOnePack(Temp);
+      }
+      float Cost = Temp.getCostSaving(TTI, BFI);
+      if (Cost < BestCost) {
+        BestCost = Cost;
+        BestExtended = Temp;
+      }
+    }
+    return {BestExtended, BestCost};
+  };
+
+  auto EvalSeedPack = [&](const VectorPack &VP) -> float {
+    VectorPackSet Packs(&F);
+    Packs.tryAdd(VP);
+    return EvalSeedPacks(Packs).second;
   };
 
 #if 0
@@ -853,10 +878,10 @@ bool GSLP::runOnFunction(Function &F) {
   float BestCost = 0;
   for (int i = 0; i < 1000; i++) {
     Packs = MCMCVectorPackSet(&F);
-    // bool Sampled = SampleOnePack();
-    SampleOnePack();
+    // bool Sampled = SampleOnePack(Packs);
+    SampleOnePack(Packs);
     for (int j = 0; j < 100; j++)
-      ExtendOnePack();
+      ExtendOnePack(Packs);
     float Cost = Packs.getCostSaving(TTI, BFI);
     // if (Sampled || Cost < BestCost) {
     //  for (int i = 0; i < Packs.getNumPacks(); i++)
@@ -873,8 +898,125 @@ bool GSLP::runOnFunction(Function &F) {
       BestPacks = Packs;
     }
   }
-#else
-  const unsigned NumIters = 1000000;
+#endif
+
+#if 1
+  // Sample Seed packs and evaluate their qualities
+  std::map<VectorPack, float> SeedPacks;
+  VectorPackSet EmptyPackSet(&F);
+  for (auto &BB : F) {
+    unsigned NumSamples = BB.size() * 100;
+    for (unsigned i = 0; i < NumSamples; i++) {
+      auto VPOrNull = SampleOnePackFromBB(EmptyPackSet, &BB);
+      if (!VPOrNull)
+        continue;
+      auto &VP = VPOrNull.getValue();
+      if (SeedPacks.count(VP))
+        continue;
+      SeedPacks[VP] = EvalSeedPack(VP);
+    }
+  }
+
+  std::vector<VectorPack> ProfitableSeedPacks;
+  for (auto &VPAndCost : SeedPacks)
+    if (VPAndCost.second < 0)
+      ProfitableSeedPacks.push_back(VPAndCost.first);
+
+  std::sort(ProfitableSeedPacks.begin(),
+      ProfitableSeedPacks.end(),
+      [&](const VectorPack &A, const VectorPack &B) {
+        return SeedPacks[A] < SeedPacks[B];
+      });
+
+  if (ProfitableSeedPacks.empty())
+    return false;
+
+  const unsigned NumIters = 100000;
+  const float Beta = 0.4;
+
+  float BestCost = 0.0;
+  float Cost = 0.0;
+  std::vector<unsigned> SeedPackIds, BestSeedPackIds;
+#if 0
+  for (int i = 0; i < NumIters; i++) {
+    VectorPackSet Packs(&F);
+
+    int RemovedId = -1, AddedId = -1;
+
+    // remove a random seed
+    if (rand_int(10) == 0 && !SeedPackIds.empty()) {
+      std::random_shuffle(SeedPackIds.begin(), SeedPackIds.end(), rand_int);
+      RemovedId = SeedPackIds.back();
+      SeedPackIds.pop_back();
+      for (unsigned Id : SeedPackIds)
+        Packs.tryAdd(ProfitableSeedPacks[Id]);
+    } else {
+      for (unsigned Id : SeedPackIds)
+        Packs.tryAdd(ProfitableSeedPacks[Id]);
+      // add a seed
+      unsigned Fuel = 128;
+      bool Added = false;
+      while (Fuel--) {
+        unsigned SeedId = rand_int(ProfitableSeedPacks.size());
+        auto &VP = ProfitableSeedPacks[SeedId];
+        Added = Packs.tryAdd(VP);
+        if (Added) {
+          AddedId = SeedId;
+          SeedPackIds.push_back(SeedId);
+          break;
+        }
+      }
+      if (!Added)
+        continue;
+    }
+
+    float NewCost = EvalSeedPacks(Packs).second;
+    errs() << "COST: " << Cost << ", CAND COST: " << NewCost
+           << ", NUM SEEDS: " << SeedPackIds.size() << ", ITER: " << i << '\n';
+
+    if (NewCost < Cost - logf(rand_float()) / Beta) {
+      Cost = NewCost;
+      if (Cost < BestCost) {
+        BestCost = Cost;
+        BestSeedPackIds = SeedPackIds;
+      }
+    } else {
+      if (AddedId >= 0)
+        SeedPackIds.pop_back();
+      else {
+        assert(RemovedId >= 0);
+        SeedPackIds.push_back(RemovedId);
+      }
+    }
+  }
+
+  MCMCVectorPackSet BestSeedPacks(&F);
+  for (unsigned Id : BestSeedPackIds)
+    BestSeedPacks.tryAdd(ProfitableSeedPacks[Id]);
+  auto BestPacks = EvalSeedPacks(BestSeedPacks, 128).first;
+#endif
+
+  VectorPackSet BestPacks(&F);
+  Cost = 0.0;
+  errs() << "NUM PROFITABLE SEEDS: " << ProfitableSeedPacks.size() << '\n';
+  for (auto &VP : ProfitableSeedPacks) {
+    errs() << "COST !!! " << SeedPacks[VP] << '\n';
+    if (!BestPacks.tryAdd(VP))
+      continue;
+    float NewCost = EvalSeedPacks(BestPacks, 32).second;
+    errs() << "!! " << NewCost << ", " << SeedPacks[VP] << '\n';
+    if (NewCost > Cost)
+      BestPacks.pop();
+    else
+      Cost = NewCost;
+  }
+  errs() << "COST: " << Cost << '\n';
+  BestPacks = EvalSeedPacks(BestPacks, 128).first;
+
+#endif
+
+#if 0
+  const unsigned NumIters = 100000;
   const float Beta = 0.5;
 
   float BestCost = 0.0;
@@ -890,9 +1032,9 @@ bool GSLP::runOnFunction(Function &F) {
     } else {
       bool Changed = false;
       if (Packs.getNumPacks() && rand_int(8) < 7)
-        Changed = ExtendOnePack();
+        Changed = ExtendOnePack(Packs);
       if (!Changed)
-        Changed = SampleOnePack();
+        Changed = SampleOnePack(Packs);
       if (!Changed)
         continue;
     }

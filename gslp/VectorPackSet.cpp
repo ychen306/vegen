@@ -157,7 +157,7 @@ void VectorPackSet::add(const VectorPack &VP) {
   NumPacks++;
 }
 
-bool VectorPackSet::tryAdd(VectorPack VP) {
+bool VectorPackSet::tryAdd(const VectorPack &VP) {
   auto *BB = VP.getBasicBlock();
   // Abort if one of the value we want to produce is produced by another pack
   if (PackedValues[BB].anyCommon(VP.getElements())) {
@@ -284,11 +284,12 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
       // special case for broadcast
       if (is_splat(OpndPack)) {
         CostSaving += getBlockWeight(OpndPack, BFI) * 1.0;
+        continue;
       }
+
       float BBCost = 0;
       auto *VecTy = getVectorType(OpndPack);
       // figure out from where we need to gather
-      SmallPtrSet<Value *, 4> SrcScalars;
       SmallPtrSet<const VectorPack *, 4> SrcPacks;
       unsigned LaneId = 0;
       for (Value *V : OpndPack) {
@@ -303,15 +304,14 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
         LaneId++;
       }
 
-      unsigned NumSrcs = SrcPacks.size() + SrcScalars.size();
-      if (NumSrcs > 1) {
+      if (SrcPacks.size() > 1) {
         BBCost += GatherCost * SrcPacks.size();
       } else if (!SrcPacks.empty()) {
         auto *SrcPack = *SrcPacks.begin();
         // We are selecting a subset of that pack
-        if (SrcPack->getElements().count() != OpndPack.size())
+        if (SrcPack->getElements().count() != OpndPack.size()) {
           BBCost += GatherCost;
-        else {
+        } else {
           // Now see if we need to permute
           unsigned i = 0;
           bool InOrder = true;
@@ -323,8 +323,9 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
             }
             i++;
           }
-          if (!InOrder)
+          if (!InOrder) {
             BBCost += PermuteCost;
+          }
         }
       }
       CostSaving += BBCost * getBlockWeight(OpndPack, BFI);

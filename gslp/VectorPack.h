@@ -20,6 +20,7 @@ public:
 
 private:
   friend class VectorPackContext;
+  friend bool operator<(const VectorPack &A, const VectorPack &B);
 
   const VectorPackContext *VPCtx;
   llvm::BitVector Elements;
@@ -30,7 +31,7 @@ private:
   PackKind Kind;
   // General
   std::vector<llvm::Optional<Operation::Match>> Matches;
-  const InstBinding *Producer;
+  const InstBinding *Producer = nullptr;
   // Load
   std::vector<llvm::LoadInst *> Loads;
   // Store
@@ -124,5 +125,7 @@ public:
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
+bool operator<(const VectorPack &A, const VectorPack &B);
+
 
 #endif // VECTOR_PACK_H

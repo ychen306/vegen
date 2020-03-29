@@ -232,7 +232,7 @@ class RuleBundleIndex:
 def declare_operation(op_name, bound_operation):
   return f'''
 class : public Operation {{
-  virtual bool match(
+  __attribute__((optnone)) bool match(
     Value *V, std::vector<Match> &Matches) const override {{
     { bound_operation.get_matching_code() }
   }}

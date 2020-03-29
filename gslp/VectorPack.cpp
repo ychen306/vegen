@@ -2,6 +2,16 @@
 
 using namespace llvm;
 
+
+bool operator<(const VectorPack &A, const VectorPack &B) {
+  auto getCompKey = [](const VectorPack &VP) {
+    return std::tie(VP.Kind, VP.Producer, VP.Matches, VP.Stores, VP.Loads,
+                    VP.PHIs);
+  };
+
+  return getCompKey(A) < getCompKey(B);
+}
+
 // FIXME: we need to generalize the definition of an operand pack
 // because some of the input lanes are "DONT CARES" (e.g. _mm_div_pd)
 std::vector<VectorPack::OperandPack>
@@ -31,7 +41,8 @@ VectorPack::getOperandPacksForGeneral() const {
         auto &BS = BoundSlices[k];
         if (BS.InputId != i)
           continue;
-        InputValues.push_back({BS, Matches[j] ? Matches[j]->Inputs[k] : nullptr});
+        InputValues.push_back(
+            {BS, Matches[j] ? Matches[j]->Inputs[k] : nullptr});
       }
     }
 

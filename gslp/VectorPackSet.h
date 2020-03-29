@@ -63,7 +63,7 @@ public:
 
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
-  bool tryAdd(VectorPack VP);
+  bool tryAdd(const VectorPack &VP);
 
   // Remove the one we just add
   void pop();
