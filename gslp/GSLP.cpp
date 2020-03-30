@@ -527,6 +527,7 @@ castOperandPack(const VectorPack::OperandPack &OpndPack) {
 
 // Find vector packs that produces operand pack
 static void extendWithDef(const VectorPack::OperandPack &OpndPack,
+                          const VectorPackSet &ExistingPacks,
                           std::vector<VectorPack> &Extensions,
                           ConsecutiveAccessDAG &LoadDAG, const MatchManager &MM,
                           const VectorPackContext &VPCtx,
@@ -595,12 +596,16 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     }
     if (Loads.size() != LoadSet.size())
       return;
-    Extensions.push_back(VPCtx.createLoadPack(Loads, Elements, Depended));
+    auto Ext = VPCtx.createLoadPack(Loads, Elements, Depended);
+    if (ExistingPacks.isCompatibleWith(Ext))
+      Extensions.push_back(Ext);
     return;
   }
 
   if (auto PHIsOrNull = castOperandPack<PHINode>(OpndPack)) {
-    Extensions.push_back(VPCtx.createPhiPack(PHIsOrNull.getValue()));
+    auto Ext = VPCtx.createPhiPack(PHIsOrNull.getValue());
+    if (ExistingPacks.isCompatibleWith(Ext))
+      Extensions.push_back(Ext);
     return;
   }
 
@@ -627,8 +632,9 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
             i /= M;
           }
 
-          Extensions.push_back(
-              VPCtx.createVectorPack(Lanes, Elements, Depended, Inst));
+          auto Ext = VPCtx.createVectorPack(Lanes, Elements, Depended, Inst);
+          if (ExistingPacks.isCompatibleWith(Ext))
+            Extensions.push_back(Ext);
         }
       };
 
@@ -661,8 +667,8 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  //if (F.getName() != "adi")
-  //  return false;
+   //if (F.getName() != "adi")
+   // return false;
   //if (F.getName() != "binvcrhs")
   //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
@@ -752,12 +758,9 @@ bool GSLP::runOnFunction(Function &F) {
   unsigned ProbPhi = 5;
   unsigned ProbGeneral = 15;
 
-  auto ExtendOnePack = [&](VectorPackSet &Packs) -> bool {
-    if (Packs.getNumPacks() == 0)
-      return false;
-    // Sample a random pack to extend
-    auto &VP = Packs.getPack(rand_int(Packs.getNumPacks()));
-    std::vector<VectorPack> Extensions;
+  auto FindExtensionForOnePack = [&](const VectorPack &VP,
+                                     const VectorPackSet &Packs,
+                                     std::vector<VectorPack> &Extensions) {
     for (auto &OpndPack : VP.getOperandPacks()) {
       // Figure out where the scalar operands are produced.
       // Bail if they are produced in different basic blocks.
@@ -778,9 +781,18 @@ bool GSLP::runOnFunction(Function &F) {
       if (!FromSingleBB || !BB)
         break;
 
-      extendWithDef(OpndPack, Extensions, *LoadDAGs[BB], *MMs[BB], *VPCtxs[BB],
-                    *LDAs[BB], InstBindings[BB]);
+      extendWithDef(OpndPack, Packs, Extensions, *LoadDAGs[BB], *MMs[BB],
+                    *VPCtxs[BB], *LDAs[BB], InstBindings[BB]);
     }
+  };
+
+  auto ExtendOnePack = [&](VectorPackSet &Packs) -> bool {
+    if (Packs.getNumPacks() == 0)
+      return false;
+    // Sample a random pack to extend
+    auto &VP = Packs.getPack(rand_int(Packs.getNumPacks()));
+    std::vector<VectorPack> Extensions;
+    FindExtensionForOnePack(VP, Packs, Extensions);
     if (Extensions.empty())
       return false;
     return Packs.tryAdd(Extensions[rand_int(Extensions.size())]);
@@ -811,7 +823,7 @@ bool GSLP::runOnFunction(Function &F) {
       auto &StoreDAG = *StoreDAGs[BB];
       if (StoreDAG.empty())
         return None;
-      return sampleStorePack(Packs, StoreDAG, *VPCtxs[BB], *LDAs[BB], 16);
+      return sampleStorePack(Packs, StoreDAG, *VPCtxs[BB], *LDAs[BB], 8);
     }
     P -= ProbStore;
 
@@ -848,16 +860,22 @@ bool GSLP::runOnFunction(Function &F) {
 
   auto EvalSeedPacks = [&](const VectorPackSet &Packs,
                            unsigned Alpha =
-                               8) -> std::pair<VectorPackSet, float> {
-    unsigned Depth = 8;
+                               4) -> std::pair<VectorPackSet, float> {
     unsigned NumTrials = Alpha * Packs.getNumPacks();
     float BestCost = Packs.getCostSaving(TTI, BFI);
     VectorPackSet BestExtended = Packs;
     for (unsigned i = 0; i < NumTrials; i++) {
       VectorPackSet Temp = Packs;
-      for (unsigned i = 0; i < Depth; i++) {
-        ExtendOnePack(Temp);
-      }
+      bool Changed;
+      do {
+        Changed = false;
+        std::vector<VectorPack> Extensions;
+        for (unsigned i = 0; i < Temp.getNumPacks(); i++)
+          FindExtensionForOnePack(Temp.getPack(i), Temp, Extensions);
+        random_shuffle(Extensions.begin(), Extensions.end(), rand_int);
+        for (auto &VP : Extensions)
+          Changed |= Temp.tryAdd(VP);
+      } while (Changed);
       float Cost = Temp.getCostSaving(TTI, BFI);
       if (Cost < BestCost) {
         BestCost = Cost;
@@ -905,12 +923,37 @@ bool GSLP::runOnFunction(Function &F) {
   std::map<VectorPack, float> SeedPacks;
   VectorPackSet EmptyPackSet(&F);
   for (auto &BB : F) {
+    // if (BB.getName() != "for.body7.i.i")
+    //  continue;
     unsigned NumSamples = BB.size() * 100;
+    errs() << "NUM SAMPLES: " << NumSamples << '\n';
     for (unsigned i = 0; i < NumSamples; i++) {
       auto VPOrNull = SampleOnePackFromBB(EmptyPackSet, &BB);
       if (!VPOrNull)
         continue;
       auto &VP = VPOrNull.getValue();
+
+#if 0
+      bool Found = false;
+      for (auto *V : VP.elementValues()) {
+        auto *SI = dyn_cast<StoreInst>(V);
+        if (SI && SI->getValueOperand()->getName() == "mul162.i.i") {
+          Found = true;
+          break;
+        }
+      }
+      if (Found) {
+        errs() << "Found seed, cost = " << SeedPacks[VP] << ": " << VP << '\n';
+        VectorPackSet Packs(&F);
+        Packs.tryAdd(VP);
+        auto Extensions = EvalSeedPacks(Packs).second;
+        errs() << "EXTENSIONS: {\n";
+        for (unsigned i = 0; i < Packs.getNumPacks(); i++)
+          errs() << Packs.getPack(i);
+        errs() << "} // END EXTENSIONS\n";
+      } else continue;
+#endif
+
       if (SeedPacks.count(VP))
         continue;
       SeedPacks[VP] = EvalSeedPack(VP);
@@ -922,17 +965,16 @@ bool GSLP::runOnFunction(Function &F) {
     if (VPAndCost.second < 0)
       ProfitableSeedPacks.push_back(VPAndCost.first);
 
-  std::sort(ProfitableSeedPacks.begin(),
-      ProfitableSeedPacks.end(),
-      [&](const VectorPack &A, const VectorPack &B) {
-        return SeedPacks[A] < SeedPacks[B];
-      });
+  std::sort(ProfitableSeedPacks.begin(), ProfitableSeedPacks.end(),
+            [&](const VectorPack &A, const VectorPack &B) {
+              return SeedPacks[A] < SeedPacks[B];
+            });
 
   if (ProfitableSeedPacks.empty())
     return false;
 
   const unsigned NumIters = 100000;
-  const float Beta = 0.4;
+  const float Beta = 0.8;
 
   float BestCost = 0.0;
   float Cost = 0.0;
@@ -944,7 +986,7 @@ bool GSLP::runOnFunction(Function &F) {
     int RemovedId = -1, AddedId = -1;
 
     // remove a random seed
-    if (rand_int(10) == 0 && !SeedPackIds.empty()) {
+    if (rand_int(2) == 0 && !SeedPackIds.empty()) {
       std::random_shuffle(SeedPackIds.begin(), SeedPackIds.end(), rand_int);
       RemovedId = SeedPackIds.back();
       SeedPackIds.pop_back();
@@ -970,7 +1012,7 @@ bool GSLP::runOnFunction(Function &F) {
         continue;
     }
 
-    float NewCost = EvalSeedPacks(Packs).second;
+    float NewCost = EvalSeedPacks(Packs, 32).second;
     errs() << "COST: " << Cost << ", CAND COST: " << NewCost
            << ", NUM SEEDS: " << SeedPackIds.size() << ", ITER: " << i << '\n';
 
@@ -994,24 +1036,25 @@ bool GSLP::runOnFunction(Function &F) {
   for (unsigned Id : BestSeedPackIds)
     BestSeedPacks.tryAdd(ProfitableSeedPacks[Id]);
   auto BestPacks = EvalSeedPacks(BestSeedPacks, 128).first;
-#endif
+#else
 
   VectorPackSet BestPacks(&F);
   Cost = 0.0;
   errs() << "NUM PROFITABLE SEEDS: " << ProfitableSeedPacks.size() << '\n';
   for (auto &VP : ProfitableSeedPacks) {
-    errs() << "COST !!! " << SeedPacks[VP] << '\n';
     if (!BestPacks.tryAdd(VP))
       continue;
-    float NewCost = EvalSeedPacks(BestPacks, 32).second;
-    errs() << "!! " << NewCost << ", " << SeedPacks[VP] << '\n';
-    if (NewCost > Cost)
+    float NewCost = EvalSeedPacks(BestPacks, 8).second;
+    errs() << "NEW COST: " << NewCost << ", BEST COST: " << Cost
+           << ", NUM SEED PACKS: " << BestPacks.getNumPacks() << '\n';
+    if (NewCost >= Cost)
       BestPacks.pop();
     else
       Cost = NewCost;
   }
   errs() << "COST: " << Cost << '\n';
   BestPacks = EvalSeedPacks(BestPacks, 128).first;
+#endif
 
 #endif
 

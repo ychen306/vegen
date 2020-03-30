@@ -18,6 +18,12 @@ static Type *getVectorType(const VectorPack::OperandPack &OpndPack) {
   return VectorType::get(ScalarTy, OpndPack.size());
 }
 
+static Type *getVectorType(const VectorPack &VP) {
+  unsigned NumLanes = VP.getElements().count();
+  auto *FirstLane = *VP.elementValues().begin();
+  return VectorType::get(FirstLane->getType(), NumLanes);
+}
+
 // Get the vector value representing `OpndPack'.
 // If `OpndPack` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
@@ -157,10 +163,11 @@ void VectorPackSet::add(const VectorPack &VP) {
   NumPacks++;
 }
 
-bool VectorPackSet::tryAdd(const VectorPack &VP) {
+bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
   auto *BB = VP.getBasicBlock();
   // Abort if one of the value we want to produce is produced by another pack
-  if (PackedValues[BB].anyCommon(VP.getElements())) {
+  auto It = PackedValues.find(BB);
+  if (It != PackedValues.end() && It->second.anyCommon(VP.getElements())) {
     return false;
   }
 
@@ -189,7 +196,12 @@ bool VectorPackSet::tryAdd(const VectorPack &VP) {
       Worklist.push_back(It->second);
     }
   }
+  return true;
+}
 
+bool VectorPackSet::tryAdd(const VectorPack &VP) {
+  if (!isCompatibleWith(VP))
+    return false;
   add(VP);
   return true;
 }
@@ -283,7 +295,9 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     for (auto &OpndPack : VP->getOperandPacks()) {
       // special case for broadcast
       if (is_splat(OpndPack)) {
-        CostSaving += getBlockWeight(OpndPack, BFI) * 1.0;
+        float Weight =
+            std::min(getBlockWeight(OpndPack, BFI), getBlockWeight(BB, BFI));
+        CostSaving += Weight * 1.0;
         continue;
       }
 
@@ -340,15 +354,17 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
       continue;
     for (Value *V : I.operands()) {
       auto It = ValueIndex.find(V);
-      if (It != ValueIndex.end())
+      if (It != ValueIndex.end()) {
         Extractions.insert(It->second);
+      }
     }
   }
 
-  const unsigned ExtractCost = 4;
-
   for (auto &VPIdx : Extractions) {
     auto *BB = VPIdx.VP->getBasicBlock();
+    auto *VecTy = getVectorType(*VPIdx.VP);
+    float ExtractCost =
+        TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, VPIdx.Idx);
     CostSaving += ExtractCost * getBlockWeight(BB, BFI);
   }
 

@@ -61,6 +61,8 @@ public:
 
   bool isPacked(llvm::Instruction *, const VectorPackContext &) const;
 
+  bool isCompatibleWith(const VectorPack &VP) const;
+
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
   bool tryAdd(const VectorPack &VP);
