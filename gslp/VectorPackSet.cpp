@@ -36,8 +36,8 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
     unsigned DestIndex;
   };
 
-  std::map<const VectorPack *, SmallVector<GatherEdge, 4>> SrcPacks;
-  std::map<Value *, SmallVector<unsigned, 4>> SrcScalars;
+  DenseMap<const VectorPack *, SmallVector<GatherEdge, 4>> SrcPacks;
+  DenseMap<Value *, SmallVector<unsigned, 4>> SrcScalars;
 
   // Figure out sources of the values in `OpndPack`
   const unsigned NumValues = OpndPack.size();
@@ -150,10 +150,10 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   return Acc;
 }
 
-void VectorPackSet::add(const VectorPack &VP) {
-  auto *BB = VP.getBasicBlock();
-  PackedValues[BB] |= VP.getElements();
-  AllPacks.push_back(std::make_unique<VectorPack>(VP));
+void VectorPackSet::add(std::unique_ptr<VectorPack> VP) {
+  auto *BB = VP->getBasicBlock();
+  PackedValues[BB] |= VP->getElements();
+  AllPacks.push_back(std::move(VP));
 
   auto *NewVP = AllPacks.back().get();
   for (Value *V : NewVP->elementValues())
@@ -171,6 +171,7 @@ bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
     return false;
   }
 
+#if 0
   SmallPtrSet<Value *, 8> NewValues;
   for (auto *V : VP.elementValues())
     NewValues.insert(V);
@@ -196,13 +197,14 @@ bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
       Worklist.push_back(It->second);
     }
   }
+#endif
   return true;
 }
 
-bool VectorPackSet::tryAdd(const VectorPack &VP) {
-  if (!isCompatibleWith(VP))
+bool VectorPackSet::tryAdd(std::unique_ptr<VectorPack> VP) {
+  if (!isCompatibleWith(*VP))
     return false;
-  add(VP);
+  add(std::move(VP));
   return true;
 }
 
@@ -225,6 +227,7 @@ void VectorPackSet::pop() {
 }
 
 static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
+  return 1.0;
   return float(BFI->getBlockFreq(BB).getFrequency()) /
          float(BFI->getEntryFreq());
 }
@@ -284,8 +287,6 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   }
 
   const int GatherCost = 4;
-  const int PermuteCost = 1;
-  const int BroadcastCost = 1;
 
   // FIXME:
   // use of block frequency is pessimistic when we can hoist gathers out of
@@ -293,16 +294,19 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   for (auto &VP : AllPacks) {
     auto *BB = VP->getBasicBlock();
     for (auto &OpndPack : VP->getOperandPacks()) {
+      auto *VecTy = getVectorType(OpndPack);
+
       // special case for broadcast
       if (is_splat(OpndPack)) {
         float Weight =
             std::min(getBlockWeight(OpndPack, BFI), getBlockWeight(BB, BFI));
-        CostSaving += Weight * 1.0;
+        float SplatCost =
+            TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
+        CostSaving += Weight * SplatCost;
         continue;
       }
 
       float BBCost = 0;
-      auto *VecTy = getVectorType(OpndPack);
       // figure out from where we need to gather
       SmallPtrSet<const VectorPack *, 4> SrcPacks;
       unsigned LaneId = 0;
@@ -338,7 +342,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
             i++;
           }
           if (!InOrder) {
-            BBCost += PermuteCost;
+            BBCost += TTI->getShuffleCost(
+                TargetTransformInfo::SK_PermuteSingleSrc, VecTy);
           }
         }
       }
@@ -592,7 +597,7 @@ void VectorPackSet::copy(const VectorPackSet &Other) {
   PackedValues.clear();
   ValueToPackMap.clear();
   for (auto &VP : Other.AllPacks)
-    add(*VP);
+    add(std::make_unique<VectorPack>(*VP));
   assert(NumPacks == AllPacks.size());
   assert(NumPacks == Other.NumPacks);
 }

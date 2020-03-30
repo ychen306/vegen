@@ -14,13 +14,12 @@ bool operator<(const VectorPack &A, const VectorPack &B) {
 
 // FIXME: we need to generalize the definition of an operand pack
 // because some of the input lanes are "DONT CARES" (e.g. _mm_div_pd)
-std::vector<VectorPack::OperandPack>
-VectorPack::getOperandPacksForGeneral() const {
+void VectorPack::computeOperandPacksForGeneral() {
   auto &Sig = Producer->getSignature();
   unsigned NumInputs = Sig.numInputs();
   auto LaneOps = Producer->getLaneOps();
   unsigned NumLanes = LaneOps.size();
-  std::vector<OperandPack> OperandPacks(NumInputs);
+  OperandPacks.resize(NumInputs);
 
   struct BoundInput {
     InputSlice Slice;
@@ -68,41 +67,36 @@ VectorPack::getOperandPacksForGeneral() const {
     }
     assert(OpndPack.size() * Stride == InputSize);
   }
-  return OperandPacks;
 }
 
-std::vector<VectorPack::OperandPack>
-VectorPack::getOperandPacksForLoad() const {
+void VectorPack::computeOperandPacksForLoad() {
   // Only need the single *scalar* pointer, doesn't need packed operand
-  return std::vector<OperandPack>();
+  OperandPacks.clear();
 }
 
-std::vector<VectorPack::OperandPack>
-VectorPack::getOperandPacksForStore() const {
-  std::vector<OperandPack> UPs(1);
-  auto &OpndPack = UPs[0];
+void VectorPack::computeOperandPacksForStore() {
+  OperandPacks.resize(1);
+  auto &OpndPack = OperandPacks[0];
   // Don't care about the pointers,
   // only the values being stored need to be packed first
   for (auto *S : Stores)
     OpndPack.push_back(S->getValueOperand());
-  return UPs;
 }
 
-std::vector<VectorPack::OperandPack> VectorPack::getOperandPacksForPhi() const {
+void VectorPack::computeOperandPacksForPhi() {
   auto *FirstPHI = PHIs[0];
   unsigned NumIncomings = FirstPHI->getNumIncomingValues();
   // We need as many packs as there are incoming edges
-  std::vector<OperandPack> UPs(NumIncomings);
+  OperandPacks.resize(NumIncomings);
   for (unsigned i = 0; i < NumIncomings; i++) {
     auto *BB = FirstPHI->getIncomingBlock(i);
     // all of the values coming from BB should be packed
     for (auto *PH : PHIs)
-      UPs[i].push_back(PH->getIncomingValueForBlock(BB));
+      OperandPacks[i].push_back(PH->getIncomingValueForBlock(BB));
   }
-  return UPs;
 }
 
-static Type *getScalarTy(ArrayRef<Optional<Operation::Match>> Matches) {
+static Type *getScalarTy(ArrayRef<const Operation::Match *> Matches) {
   for (auto &M : Matches)
     if (M)
       return M->Output->getType();
@@ -207,16 +201,20 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
   return VecPHI;
 }
 
-const std::vector<VectorPack::OperandPack> VectorPack::getOperandPacks() const {
+void VectorPack::computeOperandPacks() {
   switch (Kind) {
   case General:
-    return getOperandPacksForGeneral();
+    computeOperandPacksForGeneral();
+    break;
   case Load:
-    return getOperandPacksForLoad();
+    computeOperandPacksForLoad();
+    break;
   case Store:
-    return getOperandPacksForStore();
+    computeOperandPacksForStore();
+    break;
   case Phi:
-    return getOperandPacksForPhi();
+    computeOperandPacksForPhi();
+    break;
   }
 }
 
@@ -259,11 +257,10 @@ int VectorPack::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
   }
 }
 
-std::vector<Value *> VectorPack::getOrderedValues() const {
-  std::vector<Value *> OrderedValues;
+void VectorPack::computeOrderedValues() {
   switch (Kind) {
   case General:
-    for (auto &M : Matches)
+    for (auto *M : Matches)
       if (M)
         OrderedValues.push_back(M->Output);
       else
@@ -282,7 +279,6 @@ std::vector<Value *> VectorPack::getOrderedValues() const {
       OrderedValues.push_back(PHI);
     break;
   }
-  return OrderedValues;
 }
 
 // Choose a right place to gather an operand

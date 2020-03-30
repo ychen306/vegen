@@ -19,7 +19,7 @@ public:
   LocalDependenceAnalysis(llvm::AliasAnalysis *AA, llvm::BasicBlock *BB,
                           VectorPackContext *VPCtx);
 
-  llvm::BitVector getDepended(llvm::Instruction *I) const {
+  const llvm::BitVector &getDepended(llvm::Instruction *I) const {
     auto It = TransitiveClosure.find(I);
     assert(It != TransitiveClosure.end());
     return It->second;

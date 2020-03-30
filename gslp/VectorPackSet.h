@@ -46,7 +46,7 @@ protected:
 
   void copy(const VectorPackSet &Other);
 
-  void add(const VectorPack &VP);
+  void add(std::unique_ptr<VectorPack> VP);
 
 public:
   VectorPackSet(const VectorPackSet &Other) { copy(Other); }
@@ -65,7 +65,7 @@ public:
 
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
-  bool tryAdd(const VectorPack &VP);
+  bool tryAdd(std::unique_ptr<VectorPack> VP);
 
   // Remove the one we just add
   void pop();

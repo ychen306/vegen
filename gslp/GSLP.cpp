@@ -363,7 +363,7 @@ sampleAccesses(const VectorPackSet &ExistingPacks,
   return {Accesses, Elements, Depended};
 }
 
-static Optional<VectorPack> sampleLoadPack(const VectorPackSet &ExistingPacks,
+static std::unique_ptr<VectorPack> sampleLoadPack(const VectorPackSet &ExistingPacks,
                                            ConsecutiveAccessDAG &LoadDAG,
                                            VectorPackContext &VPCtx,
                                            LocalDependenceAnalysis &LDA,
@@ -379,11 +379,11 @@ static Optional<VectorPack> sampleLoadPack(const VectorPackSet &ExistingPacks,
       break;
   }
   if (Loads.size() <= 1)
-    return None;
+    return nullptr;
   return VPCtx.createLoadPack(Loads, Elements, Depended);
 }
 
-static Optional<VectorPack> sampleStorePack(const VectorPackSet &ExistingPacks,
+static std::unique_ptr<VectorPack> sampleStorePack(const VectorPackSet &ExistingPacks,
                                             ConsecutiveAccessDAG &StoreDAG,
                                             VectorPackContext &VPCtx,
                                             LocalDependenceAnalysis &LDA,
@@ -399,11 +399,11 @@ static Optional<VectorPack> sampleStorePack(const VectorPackSet &ExistingPacks,
       break;
   }
   if (Stores.size() <= 1)
-    return None;
+    return nullptr;
   return VPCtx.createStorePack(Stores, Elements, Depended);
 }
 
-static VectorPack
+static std::unique_ptr<VectorPack>
 samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
               VectorPackContext &VPCtx, unsigned MaxNumPHIs) {
   // NOTE: All phi nodes within a basic block are always locally independent
@@ -422,7 +422,7 @@ samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
 
 // TODO: support NOOP lanes
 //
-static Optional<VectorPack>
+static std::unique_ptr<VectorPack>
 sampleVectorPack(const VectorPackSet &ExistingPacks, const MatchManager &MM,
                  VectorPackContext &VPCtx, LocalDependenceAnalysis &LDA,
                  const InstBinding *Inst, unsigned NumTrials) {
@@ -433,7 +433,7 @@ sampleVectorPack(const VectorPackSet &ExistingPacks, const MatchManager &MM,
 
     // Fill each lane...
     bool Success = true;
-    std::vector<llvm::Optional<Operation::Match>> Matches;
+    std::vector<const Operation::Match *> Matches;
     for (auto &LaneOp : Inst->getLaneOps()) {
       // FIXME: need to distinguish between an arithmetic operation and
       // "pass-through" We allow a value to pass through multiple operation. But
@@ -467,17 +467,15 @@ sampleVectorPack(const VectorPackSet &ExistingPacks, const MatchManager &MM,
       auto *SelectedM = IndependentMatches[rand_int(IndependentMatches.size())];
       Elements.set(VPCtx.getScalarId(SelectedM->Output));
       Depended |= LDA.getDepended(cast<Instruction>(SelectedM->Output));
-      Matches.push_back(*SelectedM);
+      Matches.push_back(SelectedM);
       assert(Elements.count() == Matches.size());
     }
 
-    if (Success) {
-      auto VP = VPCtx.createVectorPack(Matches, Elements, Depended, Inst);
-      return VP;
-    }
+    if (Success)
+      return VPCtx.createVectorPack(Matches, Elements, Depended, Inst);
   }
 
-  return None;
+  return nullptr;
 }
 
 // Erase stuff from a vector when we don't care about ordering within the vector
@@ -528,7 +526,7 @@ castOperandPack(const VectorPack::OperandPack &OpndPack) {
 // Find vector packs that produces operand pack
 static void extendWithDef(const VectorPack::OperandPack &OpndPack,
                           const VectorPackSet &ExistingPacks,
-                          std::vector<VectorPack> &Extensions,
+                          std::vector<std::unique_ptr<VectorPack>> &Extensions,
                           ConsecutiveAccessDAG &LoadDAG, const MatchManager &MM,
                           const VectorPackContext &VPCtx,
                           LocalDependenceAnalysis &LDA,
@@ -596,16 +594,12 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     }
     if (Loads.size() != LoadSet.size())
       return;
-    auto Ext = VPCtx.createLoadPack(Loads, Elements, Depended);
-    if (ExistingPacks.isCompatibleWith(Ext))
-      Extensions.push_back(Ext);
+    Extensions.push_back(VPCtx.createLoadPack(Loads, Elements, Depended));
     return;
   }
 
   if (auto PHIsOrNull = castOperandPack<PHINode>(OpndPack)) {
-    auto Ext = VPCtx.createPhiPack(PHIsOrNull.getValue());
-    if (ExistingPacks.isCompatibleWith(Ext))
-      Extensions.push_back(Ext);
+    Extensions.push_back(VPCtx.createPhiPack(PHIsOrNull.getValue()));
     return;
   }
 
@@ -615,7 +609,8 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
   // Aux func to enumerate cross product of `LaneMatches`
   auto EnumeratePacks =
       [&](const InstBinding *Inst,
-          const std::vector<std::vector<Operation::Match>> &LaneMatches) {
+          const std::vector<std::vector<const Operation::Match *>>
+              &LaneMatches) {
         unsigned NumLanes = Inst->getLaneOps().size();
         assert(NumLanes == LaneMatches.size());
         unsigned N = 1;
@@ -624,7 +619,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
         for (unsigned i = 0; i < N; i++) {
           // `i` represent a particular member of the cross product.
           // Decode `i` here.
-          std::vector<Optional<Operation::Match>> Lanes;
+          std::vector<const Operation::Match *> Lanes;
           for (auto &Matches : LaneMatches) {
             unsigned M = Matches.size();
             assert(M);
@@ -632,9 +627,8 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
             i /= M;
           }
 
-          auto Ext = VPCtx.createVectorPack(Lanes, Elements, Depended, Inst);
-          if (ExistingPacks.isCompatibleWith(Ext))
-            Extensions.push_back(Ext);
+          Extensions.push_back(
+              VPCtx.createVectorPack(Lanes, Elements, Depended, Inst));
         }
       };
 
@@ -644,7 +638,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     unsigned NumLanes = LaneOps.size();
     if (NumLanes != OpndPack.size())
       continue;
-    std::vector<std::vector<Operation::Match>> LaneMatches(NumLanes);
+    std::vector<std::vector<const Operation::Match *>> LaneMatches(NumLanes);
     bool Feasible = true;
     unsigned LaneId = 0;
     for (const auto &LaneOp : LaneOps) {
@@ -655,7 +649,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
       }
       for (auto &Match : Matches) {
         if (Match.Output == OpndPack[LaneId]) {
-          LaneMatches[LaneId].push_back(Match);
+          LaneMatches[LaneId].push_back(&Match);
         }
       }
       LaneId++;
@@ -667,9 +661,9 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 }
 
 bool GSLP::runOnFunction(Function &F) {
-   //if (F.getName() != "adi")
-   // return false;
-  //if (F.getName() != "binvcrhs")
+   if (F.getName() != "adi")
+   return false;
+  // if (F.getName() != "binvcrhs")
   //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
@@ -746,7 +740,7 @@ bool GSLP::runOnFunction(Function &F) {
   DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> InstBindings;
   for (auto *Inst : SupportedInsts) {
     for (auto &BB : F) {
-      Optional<VectorPack> VPOrNull = sampleVectorPack(
+      auto VPOrNull = sampleVectorPack(
           Packs, *MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, 1000);
       if (VPOrNull)
         InstBindings[&BB].insert(Inst);
@@ -760,7 +754,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   auto FindExtensionForOnePack = [&](const VectorPack &VP,
                                      const VectorPackSet &Packs,
-                                     std::vector<VectorPack> &Extensions) {
+                                     std::vector<std::unique_ptr<VectorPack>> &Extensions) {
     for (auto &OpndPack : VP.getOperandPacks()) {
       // Figure out where the scalar operands are produced.
       // Bail if they are produced in different basic blocks.
@@ -791,30 +785,27 @@ bool GSLP::runOnFunction(Function &F) {
       return false;
     // Sample a random pack to extend
     auto &VP = Packs.getPack(rand_int(Packs.getNumPacks()));
-    std::vector<VectorPack> Extensions;
+    std::vector<std::unique_ptr<VectorPack>> Extensions;
     FindExtensionForOnePack(VP, Packs, Extensions);
     if (Extensions.empty())
       return false;
-    return Packs.tryAdd(Extensions[rand_int(Extensions.size())]);
+    return Packs.tryAdd(std::move(Extensions[rand_int(Extensions.size())]));
   };
 
   unsigned NumInsts = F.getInstructionCount();
 
+  // FIXME: shouldn't reset the Prob* parameters
   auto SampleOnePackFromBB = [&](VectorPackSet &Packs,
-                                 BasicBlock *BB) -> Optional<VectorPack> {
-    if (LoadDAGs[BB]->empty())
-      ProbLoad = 0;
-    if (StoreDAGs[BB]->empty())
-      ProbStore = 0;
+                                 BasicBlock *BB) -> std::unique_ptr<VectorPack> {
     unsigned PTotal = ProbLoad + ProbStore + ProbPhi + ProbGeneral;
     if (!PTotal)
-      return None;
+      return nullptr;
     unsigned P = rand_int(PTotal);
 
     if (P < ProbLoad) {
       auto &LoadDAG = *LoadDAGs[BB];
       if (LoadDAG.empty())
-        return None;
+        return nullptr;
       return sampleLoadPack(Packs, LoadDAG, *VPCtxs[BB], *LDAs[BB], 16);
     }
     P -= ProbLoad;
@@ -822,7 +813,7 @@ bool GSLP::runOnFunction(Function &F) {
     if (P < ProbStore) {
       auto &StoreDAG = *StoreDAGs[BB];
       if (StoreDAG.empty())
-        return None;
+        return nullptr;
       return sampleStorePack(Packs, StoreDAG, *VPCtxs[BB], *LDAs[BB], 8);
     }
     P -= ProbStore;
@@ -836,16 +827,14 @@ bool GSLP::runOnFunction(Function &F) {
           continue;
         PHIs[PHI.getType()].push_back(&PHI);
       }
-      if (PHIs.empty()) {
-        ProbPhi = 0;
-        return None;
-      }
+      if (PHIs.empty())
+        return nullptr;
       return samplePhiPack(PHIs, *VPCtxs[BB], 4);
     }
 
     const auto &Bindings = InstBindings[BB];
     if (Bindings.empty())
-      return None;
+      return nullptr;
     // FIXME: refactor all of these `std::next(... rand_int))` stuff
     auto *Inst = *std::next(Bindings.begin(), rand_int(Bindings.size()));
     return sampleVectorPack(Packs, *MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, 32);
@@ -855,9 +844,10 @@ bool GSLP::runOnFunction(Function &F) {
     auto &RandInst = *std::next(inst_begin(F), rand_int(NumInsts));
     auto *BB = RandInst.getParent();
     auto VPOrNull = SampleOnePackFromBB(Packs, BB);
-    return VPOrNull && Packs.tryAdd(VPOrNull.getValue());
+    return VPOrNull && Packs.tryAdd(std::move(VPOrNull));
   };
 
+  std::vector<std::unique_ptr<VectorPack>> Extensions;
   auto EvalSeedPacks = [&](const VectorPackSet &Packs,
                            unsigned Alpha =
                                4) -> std::pair<VectorPackSet, float> {
@@ -867,14 +857,16 @@ bool GSLP::runOnFunction(Function &F) {
     for (unsigned i = 0; i < NumTrials; i++) {
       VectorPackSet Temp = Packs;
       bool Changed;
+      unsigned FirstUnprocessedPackId = 0;
       do {
         Changed = false;
-        std::vector<VectorPack> Extensions;
-        for (unsigned i = 0; i < Temp.getNumPacks(); i++)
+        Extensions.clear();
+        for (unsigned i = FirstUnprocessedPackId; i < Temp.getNumPacks(); i++)
           FindExtensionForOnePack(Temp.getPack(i), Temp, Extensions);
+        FirstUnprocessedPackId = Temp.getNumPacks() - 1;
         random_shuffle(Extensions.begin(), Extensions.end(), rand_int);
         for (auto &VP : Extensions)
-          Changed |= Temp.tryAdd(VP);
+          Changed |= Temp.tryAdd(std::move(VP));
       } while (Changed);
       float Cost = Temp.getCostSaving(TTI, BFI);
       if (Cost < BestCost) {
@@ -887,7 +879,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   auto EvalSeedPack = [&](const VectorPack &VP) -> float {
     VectorPackSet Packs(&F);
-    Packs.tryAdd(VP);
+    Packs.tryAdd(std::make_unique<VectorPack>(VP));
     return EvalSeedPacks(Packs).second;
   };
 
@@ -931,7 +923,7 @@ bool GSLP::runOnFunction(Function &F) {
       auto VPOrNull = SampleOnePackFromBB(EmptyPackSet, &BB);
       if (!VPOrNull)
         continue;
-      auto &VP = VPOrNull.getValue();
+      auto &VP = *VPOrNull;
 
 #if 0
       bool Found = false;
@@ -1042,7 +1034,7 @@ bool GSLP::runOnFunction(Function &F) {
   Cost = 0.0;
   errs() << "NUM PROFITABLE SEEDS: " << ProfitableSeedPacks.size() << '\n';
   for (auto &VP : ProfitableSeedPacks) {
-    if (!BestPacks.tryAdd(VP))
+    if (!BestPacks.tryAdd(std::make_unique<VectorPack>(VP)))
       continue;
     float NewCost = EvalSeedPacks(BestPacks, 8).second;
     errs() << "NEW COST: " << NewCost << ", BEST COST: " << Cost

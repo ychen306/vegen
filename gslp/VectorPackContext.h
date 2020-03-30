@@ -22,20 +22,20 @@ public:
   }
 
   // Create a "General" vector pack
-  VectorPack createVectorPack(std::vector<llvm::Optional<Operation::Match>> Matches,
+  std::unique_ptr<VectorPack> createVectorPack(std::vector<const Operation::Match *> Matches,
                               llvm::BitVector Elements, llvm::BitVector Depended,
                               const InstBinding *Producer) const;
 
   // Create a vectorized load
-  VectorPack createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
+  std::unique_ptr<VectorPack> createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
                             llvm::BitVector Depended) const;
 
   // Create a vectorized store
-  VectorPack createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
+  std::unique_ptr<VectorPack> createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
                              llvm::BitVector Depended) const;
 
   // Create a vectorized phi
-  VectorPack createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs) const;
+  std::unique_ptr<VectorPack> createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs) const;
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());

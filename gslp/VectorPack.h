@@ -30,48 +30,68 @@ private:
   //////////// Data for the 4 kinds
   PackKind Kind;
   // General
-  std::vector<llvm::Optional<Operation::Match>> Matches;
+  llvm::SmallVector<const Operation::Match *, 4> Matches;
   const InstBinding *Producer = nullptr;
   // Load
-  std::vector<llvm::LoadInst *> Loads;
+  llvm::SmallVector<llvm::LoadInst *, 4> Loads;
   // Store
-  std::vector<llvm::StoreInst *> Stores;
+  llvm::SmallVector<llvm::StoreInst *, 4> Stores;
   // PHI
-  std::vector<llvm::PHINode *> PHIs;
+  llvm::SmallVector<llvm::PHINode *, 4> PHIs;
   ///////////////
+
+  llvm::SmallVector<llvm::Value *, 4> OrderedValues;
+  llvm::SmallVector<OperandPack, 4> OperandPacks;
 
   // Constructor for a generic pack
   VectorPack(const VectorPackContext *VPCtx,
-             llvm::ArrayRef<llvm::Optional<Operation::Match>> Matches, llvm::BitVector Elements,
-             llvm::BitVector Depended, const InstBinding *Producer)
+             llvm::ArrayRef<const Operation::Match *> Matches,
+             llvm::BitVector Elements, llvm::BitVector Depended,
+             const InstBinding *Producer)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::General), Producer(Producer), Matches(Matches) {}
+        Kind(PackKind::General), Producer(Producer),
+        Matches(Matches.begin(), Matches.end()) {
+    computeOperandPacks();
+    computeOrderedValues();
+  }
 
   // Load Pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
              llvm::BitVector Depended)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Load), Loads(Loads) {}
+        Kind(PackKind::Load), Loads(Loads.begin(), Loads.end()) {
+    computeOperandPacks();
+    computeOrderedValues();
+  }
 
   // Store Pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
              llvm::BitVector Depended)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Store), Stores(Stores) {}
+        Kind(PackKind::Store), Stores(Stores.begin(), Stores.end()) {
+    computeOperandPacks();
+    computeOrderedValues();
+  }
 
   // Load Pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<llvm::PHINode *> PHIs, llvm::BitVector Elements,
              llvm::BitVector Depended)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Phi), PHIs(PHIs) {}
+        Kind(PackKind::Phi), PHIs(PHIs.begin(), PHIs.end()) {
+    computeOperandPacks();
+    computeOrderedValues();
+  }
 
-  std::vector<OperandPack> getOperandPacksForGeneral() const;
-  std::vector<OperandPack> getOperandPacksForLoad() const;
-  std::vector<OperandPack> getOperandPacksForStore() const;
-  std::vector<OperandPack> getOperandPacksForPhi() const;
+  void computeOperandPacksForGeneral();
+  void computeOperandPacksForLoad();
+  void computeOperandPacksForStore();
+  void computeOperandPacksForPhi();
+
+  void computeOperandPacks();
+  void computeOrderedValues();
 
   llvm::Value *emitVectorGeneral(llvm::ArrayRef<llvm::Value *> Operands,
                                  IntrinsicBuilder &Builder) const;
@@ -104,7 +124,7 @@ public:
 
   llvm::BasicBlock *getBasicBlock() const { return VPCtx->getBasicBlock(); }
 
-  std::vector<llvm::Value *> getOrderedValues() const;
+  llvm::ArrayRef<llvm::Value *> getOrderedValues() const { return OrderedValues; }
 
   unsigned numElements() const { return Elements.count(); }
 
@@ -112,7 +132,7 @@ public:
 
   const llvm::BitVector &getElements() const { return Elements; }
 
-  const std::vector<OperandPack> getOperandPacks() const;
+  llvm::ArrayRef<OperandPack> getOperandPacks() const { return OperandPacks; }
 
   llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                     IntrinsicBuilder &Builder) const;
@@ -126,6 +146,5 @@ public:
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
 bool operator<(const VectorPack &A, const VectorPack &B);
-
 
 #endif // VECTOR_PACK_H
