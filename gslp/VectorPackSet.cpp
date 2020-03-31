@@ -244,6 +244,46 @@ static float getBlockWeight(const VectorPack::OperandPack &OpndPack,
   return weight;
 }
 
+struct TableEntry {
+  const Value *V;
+  const VectorPack *VP;
+  unsigned LaneId;
+  TableEntry(const Value *V, const VectorPack *VP, unsigned LaneId)
+    : V(V), VP(VP), LaneId(LaneId) {}
+};
+bool operator<(const TableEntry &E1, const TableEntry &E2) {
+  return E1.V < E2.V;
+}
+bool operator<(const TableEntry &E, const Value *V) { return E.V < V; }
+bool operator<(const Value *V, const TableEntry &E) { return V < E.V; }
+
+class ValueToPackTable {
+  std::vector<TableEntry> Index;
+
+  public:
+  ValueToPackTable(ArrayRef<const VectorPack *> VPs) {
+    for (auto *VP : VPs) {
+      unsigned i = 0;
+      for (auto *V : VP->getOrderedValues())
+        Index.emplace_back(V, VP, i++);
+    }
+    std::sort(Index.begin(), Index.end());
+  }
+
+  using iterator = decltype(Index)::const_iterator;
+  iterator begin() const { return Index.begin(); }
+  iterator end() const { return Index.end(); }
+
+  unsigned size() { return Index.size(); }
+  const TableEntry *lookup(const Value *V) const {
+    auto It = std::lower_bound(Index.begin(), Index.end(), V);
+    if (It == end() || It->V != V)
+      return nullptr;
+    return &*It;
+  }
+  bool contains(const Value *V) const { return lookup(V); }
+};
+
 // FIXME: this is a mess
 float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
                                    BlockFrequencyInfo *BFI) const {
@@ -262,12 +302,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
 
   // FIXME: the code below accounts for most of the overhead...
   // First figure out which values are now in vectors
-  ValueIndexTy ValueIndex;
-  for (auto &VP : AllPacks) {
-    unsigned i = 0;
-    for (auto *V : VP->getOrderedValues())
-      ValueIndex[V] = {VP, i++};
-  }
+  ValueToPackTable ValueIndex(AllPacks);
 
   const int GatherCost = 4;
 
@@ -294,10 +329,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
       SmallPtrSet<const VectorPack *, 4> SrcPacks;
       unsigned LaneId = 0;
       for (Value *V : OpndPack) {
-        auto It = ValueIndex.find(V);
-        if (It != ValueIndex.end()) {
-          auto &VPIdx = It->second;
-          SrcPacks.insert(VPIdx.VP);
+        if (auto *Entry = ValueIndex.lookup(V)) {
+          SrcPacks.insert(Entry->VP);
         } else {
           BBCost += TTI->getVectorInstrCost(Instruction::InsertElement, VecTy,
                                             LaneId);
@@ -317,8 +350,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
           unsigned i = 0;
           bool InOrder = true;
           for (Value *V : OpndPack) {
-            auto It = ValueIndex.find(V);
-            if (It == ValueIndex.end() || It->second.Idx != i) {
+            auto *Entry = ValueIndex.lookup(V);
+            if (!Entry || Entry->LaneId != i) {
               InOrder = false;
               break;
             }
@@ -349,12 +382,10 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   //    }
   //  }
   //}
-  for (auto &ValueAndIdx : ValueIndex) {
-    auto *V = ValueAndIdx.first;
-    auto &VPIdx = ValueAndIdx.second;
-    for (const User *U : V->users()) {
-      if (!ValueIndex.count(U)) {
-        Extractions.push_back(VPIdx);
+  for (auto &Entry : ValueIndex) {
+    for (const User *U : Entry.V->users()) {
+      if (!ValueIndex.contains(U)) {
+        Extractions.push_back({Entry.VP, Entry.LaneId});
         break;
       }
     }
