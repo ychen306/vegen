@@ -252,13 +252,14 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   int CostSaving = 0;
   assert(AllPacks.size() == NumPacks);
   // Compute arithmetic cost saving
-  for (auto &VP : AllPacks) {
+  for (auto *VP : AllPacks) {
     auto *BB = VP->getBasicBlock();
     CostSaving += VP->getCost() * getBlockWeight(BB, BFI);
   }
 
   // Update cost to consider shuffles
 
+  // FIXME: the code below accounts for most of the overhead...
   // First figure out which values are now in vectors
   ValueIndexTy ValueIndex;
   for (auto &VP : AllPacks) {
@@ -332,6 +333,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     }
   }
 
+  // FIXME: this seems to be the bottleneck.  fix it.
   std::vector<VectorPackIndex> Extractions;
   Extractions.reserve(ValueIndex.size());
   // Now consider scalar use of vector output

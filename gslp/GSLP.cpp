@@ -522,6 +522,7 @@ castOperandPack(const VectorPack::OperandPack &OpndPack) {
   return Ret;
 }
 
+// FIXME: ignore lane order here.
 // Find vector packs that produces operand pack
 static void extendWithDef(const VectorPack::OperandPack &OpndPack,
                           const VectorPackSet &ExistingPacks,
@@ -647,6 +648,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
         Feasible = false;
         break;
       }
+      // FIXME: need an index to make this run faster
       for (auto &Match : Matches) {
         if (Match.Output == OpndPack[LaneId]) {
           LaneMatches[LaneId].push_back(&Match);
