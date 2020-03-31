@@ -23,19 +23,25 @@ public:
 
   // Create a "General" vector pack
   VectorPack *createVectorPack(std::vector<const Operation::Match *> Matches,
-                              llvm::BitVector Elements, llvm::BitVector Depended,
-                              const InstBinding *Producer, llvm::TargetTransformInfo *TTI) const;
+                               llvm::BitVector Elements,
+                               llvm::BitVector Depended,
+                               const InstBinding *Producer,
+                               llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized load
-  VectorPack *createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
-                            llvm::BitVector Depended, llvm::TargetTransformInfo *TTI) const;
+  VectorPack *createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads,
+                             llvm::BitVector Elements, llvm::BitVector Depended,
+                             llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized store
-  VectorPack *createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
-                             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI) const;
+  VectorPack *createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores,
+                              llvm::BitVector Elements,
+                              llvm::BitVector Depended,
+                              llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized phi
-  VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs, llvm::TargetTransformInfo *TTI) const;
+  VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
+                            llvm::TargetTransformInfo *TTI) const;
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());
@@ -80,7 +86,8 @@ public:
     bool operator!=(const value_iterator &It) { return Handle != It.Handle; }
   };
 
-  llvm::iterator_range<value_iterator> iter_values(const llvm::BitVector &Ids) const {
+  llvm::iterator_range<value_iterator>
+  iter_values(const llvm::BitVector &Ids) const {
     value_iterator Begin(this, Ids.set_bits_begin()),
         End(this, Ids.set_bits_end());
     return llvm::make_range(Begin, End);

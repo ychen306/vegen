@@ -2,7 +2,6 @@
 
 using namespace llvm;
 
-
 // FIXME: we need to generalize the definition of an operand pack
 // because some of the input lanes are "DONT CARES" (e.g. _mm_div_pd)
 void VectorPack::computeOperandPacksForGeneral() {
@@ -259,11 +258,11 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     int Saving;
     if (auto *LI = dyn_cast<LoadInst>(I)) {
       Saving = TTI->getMemoryOpCost(Instruction::Load, LI->getType(),
-          MaybeAlign(LI->getAlignment()), 0, LI);
+                                    MaybeAlign(LI->getAlignment()), 0, LI);
     } else if (auto *SI = dyn_cast<StoreInst>(I))
       Saving = TTI->getMemoryOpCost(Instruction::Store,
-          SI->getValueOperand()->getType(),
-          MaybeAlign(SI->getAlignment()), 0, SI);
+                                    SI->getValueOperand()->getType(),
+                                    MaybeAlign(SI->getAlignment()), 0, SI);
     else if (isa<PHINode>(I))
       Saving = 0;
     else

@@ -363,13 +363,11 @@ sampleAccesses(const VectorPackSet &ExistingPacks,
   return {Accesses, Elements, Depended};
 }
 
-static VectorPack *sampleLoadPack(const VectorPackSet &ExistingPacks,
-                                           ConsecutiveAccessDAG &LoadDAG,
-                                           VectorPackContext &VPCtx,
-                                           LocalDependenceAnalysis &LDA,
-                                           TargetTransformInfo *TTI,
-                                           unsigned MaxNumLoads,
-                                           unsigned NumTrials = 128) {
+static VectorPack *
+sampleLoadPack(const VectorPackSet &ExistingPacks,
+               ConsecutiveAccessDAG &LoadDAG, VectorPackContext &VPCtx,
+               LocalDependenceAnalysis &LDA, TargetTransformInfo *TTI,
+               unsigned MaxNumLoads, unsigned NumTrials = 128) {
   std::vector<LoadInst *> Loads;
   BitVector Elements;
   BitVector Depended;
@@ -384,13 +382,11 @@ static VectorPack *sampleLoadPack(const VectorPackSet &ExistingPacks,
   return VPCtx.createLoadPack(Loads, Elements, Depended, TTI);
 }
 
-static VectorPack *sampleStorePack(const VectorPackSet &ExistingPacks,
-                                            ConsecutiveAccessDAG &StoreDAG,
-                                            VectorPackContext &VPCtx,
-                                            LocalDependenceAnalysis &LDA,
-                                            TargetTransformInfo *TTI,
-                                            unsigned MaxNumStores,
-                                            unsigned NumTrials = 128) {
+static VectorPack *
+sampleStorePack(const VectorPackSet &ExistingPacks,
+                ConsecutiveAccessDAG &StoreDAG, VectorPackContext &VPCtx,
+                LocalDependenceAnalysis &LDA, TargetTransformInfo *TTI,
+                unsigned MaxNumStores, unsigned NumTrials = 128) {
   std::vector<StoreInst *> Stores;
   BitVector Elements;
   BitVector Depended;
@@ -407,7 +403,8 @@ static VectorPack *sampleStorePack(const VectorPackSet &ExistingPacks,
 
 static VectorPack *
 samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
-              VectorPackContext &VPCtx, TargetTransformInfo *TTI, unsigned MaxNumPHIs) {
+              VectorPackContext &VPCtx, TargetTransformInfo *TTI,
+              unsigned MaxNumPHIs) {
   // NOTE: All phi nodes within a basic block are always locally independent
   // so we don't need to query the dependence analysis.
 
@@ -427,7 +424,8 @@ samplePhiPack(DenseMap<Type *, SmallVector<PHINode *, 4>> &PHIs,
 static VectorPack *
 sampleVectorPack(const VectorPackSet &ExistingPacks, const MatchManager &MM,
                  VectorPackContext &VPCtx, LocalDependenceAnalysis &LDA,
-                 const InstBinding *Inst, TargetTransformInfo *TTI, unsigned NumTrials) {
+                 const InstBinding *Inst, TargetTransformInfo *TTI,
+                 unsigned NumTrials) {
 
   while (NumTrials--) {
     BitVector Elements(VPCtx.getNumValues());
@@ -665,7 +663,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 bool GSLP::runOnFunction(Function &F) {
   // if (F.getName() != "adi")
   // return false;
-   if (F.getName() != "binvcrhs")
+  if (F.getName() != "binvcrhs")
     return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
@@ -742,8 +740,8 @@ bool GSLP::runOnFunction(Function &F) {
   DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> InstBindings;
   for (auto *Inst : SupportedInsts) {
     for (auto &BB : F) {
-      auto VPOrNull = sampleVectorPack(
-          Packs, *MMs[&BB], *VPCtxs[&BB], *LDAs[&BB], Inst, TTI, 1000);
+      auto VPOrNull = sampleVectorPack(Packs, *MMs[&BB], *VPCtxs[&BB],
+                                       *LDAs[&BB], Inst, TTI, 1000);
       if (VPOrNull)
         InstBindings[&BB].insert(Inst);
     }
@@ -839,7 +837,8 @@ bool GSLP::runOnFunction(Function &F) {
       return nullptr;
     // FIXME: refactor all of these `std::next(... rand_int))` stuff
     auto *Inst = *std::next(Bindings.begin(), rand_int(Bindings.size()));
-    return sampleVectorPack(Packs, *MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, TTI, 32);
+    return sampleVectorPack(Packs, *MMs[BB], *VPCtxs[BB], *LDAs[BB], Inst, TTI,
+                            32);
   };
 
   auto SampleOnePack = [&](VectorPackSet &Packs) -> bool {

@@ -132,7 +132,9 @@ public:
 
   llvm::BasicBlock *getBasicBlock() const { return VPCtx->getBasicBlock(); }
 
-  llvm::ArrayRef<llvm::Value *> getOrderedValues() const { return OrderedValues; }
+  llvm::ArrayRef<llvm::Value *> getOrderedValues() const {
+    return OrderedValues;
+  }
 
   unsigned numElements() const { return Elements.count(); }
 

@@ -170,9 +170,9 @@ bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
     return false;
   }
 
- // FIXME: add another function to ensure there's no circular dependence before codegen
- // It's fine to speculate during optimization that there's no circular dependence
- // because it's very rare.
+  // FIXME: add another function to ensure there's no circular dependence before
+  // codegen It's fine to speculate during optimization that there's no circular
+  // dependence because it's very rare.
 #if 0
   SmallPtrSet<Value *, 8> NewValues;
   for (auto *V : VP.elementValues())
