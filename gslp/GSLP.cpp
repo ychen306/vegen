@@ -197,27 +197,45 @@ public:
 // matching the same operation twice on the same value
 class MatchManager {
   // record matches for each operation
-  DenseMap<const Operation *, std::vector<Operation::Match>> Matches;
-
-public:
-  MatchManager(ArrayRef<InstBinding *> Insts) {
-    for (auto &Inst : Insts)
-      for (auto &LaneOp : Inst->getLaneOps())
-        Matches.FindAndConstruct(LaneOp.getOperation());
-  }
+  DenseMap<const Operation *, std::vector<Operation::Match>> OpMatches;
 
   void match(Value *V) {
-    for (auto &KV : Matches) {
+    for (auto &KV : OpMatches) {
       const Operation *Op = KV.first;
-      std::vector<Operation::Match> &Matches = KV.second;
-      Op->match(V, Matches);
+      Op->match(V, KV.second);
+    }
+  }
+
+  static bool sortByOutput(const Operation::Match &A, const Operation::Match &B) {
+    return A.Output < B.Output;
+  }
+
+public:
+  MatchManager(ArrayRef<InstBinding *> Insts, BasicBlock &BB) {
+    for (auto &Inst : Insts)
+      for (auto &LaneOp : Inst->getLaneOps())
+        OpMatches.FindAndConstruct(LaneOp.getOperation());
+    for (auto &I : BB)
+      match(&I);
+
+    for (auto &KV : OpMatches) {
+      auto &Matches = KV.second;
+      std::sort(Matches.begin(), Matches.end(), sortByOutput);
     }
   }
 
   llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const {
-    auto It = Matches.find(Op);
-    assert(It != Matches.end());
+    auto It = OpMatches.find(Op);
+    assert(It != OpMatches.end());
     return It->second;
+  }
+
+  llvm::ArrayRef<Operation::Match> getMatchesForOutput(const Operation *Op, Value *Output) const {
+    auto Matches = getMatches(Op);
+    Operation::Match DummyMatch {{}, Output};
+    auto LowerIt = std::lower_bound(Matches.begin(), Matches.end(), DummyMatch, sortByOutput);
+    auto UpperIt = std::upper_bound(Matches.begin(), Matches.end(), DummyMatch, sortByOutput);
+    return Matches.slice(LowerIt-Matches.begin(), UpperIt-LowerIt);
   }
 };
 
@@ -643,16 +661,20 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     bool Feasible = true;
     unsigned LaneId = 0;
     for (const auto &LaneOp : LaneOps) {
-      ArrayRef<Operation::Match> Matches = MM.getMatches(LaneOp.getOperation());
+      //ArrayRef<Operation::Match> Matches = MM.getMatches(LaneOp.getOperation());
+      ArrayRef<Operation::Match> Matches = MM.getMatchesForOutput(LaneOp.getOperation(), OpndPack[LaneId]);
       if (Matches.empty()) {
         Feasible = false;
         break;
       }
-      // FIXME: need an index to make this run faster
+      //// FIXME: need an index to make this run faster
+      //for (auto &Match : Matches) {
+      //  if (Match.Output == OpndPack[LaneId]) {
+      //    LaneMatches[LaneId].push_back(&Match);
+      //  }
+      //}
       for (auto &Match : Matches) {
-        if (Match.Output == OpndPack[LaneId]) {
-          LaneMatches[LaneId].push_back(&Match);
-        }
+        LaneMatches[LaneId].push_back(&Match);
       }
       LaneId++;
     }
@@ -709,9 +731,8 @@ bool GSLP::runOnFunction(Function &F) {
     std::vector<LoadInst *> Loads;
     std::vector<StoreInst *> Stores;
     // Find packable instructions
-    auto MM = std::make_unique<MatchManager>(SupportedInsts);
+    auto MM = std::make_unique<MatchManager>(SupportedInsts, BB);
     for (auto &I : BB) {
-      MM->match(&I);
       if (auto *LI = dyn_cast<LoadInst>(&I)) {
         if (LI->isSimple())
           Loads.push_back(LI);
