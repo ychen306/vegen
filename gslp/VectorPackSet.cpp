@@ -236,6 +236,7 @@ static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
 
 static float getBlockWeight(const VectorPack::OperandPack &OpndPack,
                             BlockFrequencyInfo *BFI) {
+  return 1.0;
   float weight = 0;
   for (auto *V : OpndPack)
     if (auto *I = dyn_cast<Instruction>(V))

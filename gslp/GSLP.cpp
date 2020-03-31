@@ -545,15 +545,20 @@ castOperandPack(const VectorPack::OperandPack &OpndPack) {
 static void extendWithDef(const VectorPack::OperandPack &OpndPack,
                           const VectorPackSet &ExistingPacks,
                           std::vector<VectorPack *> &Extensions,
-                          ConsecutiveAccessDAG &LoadDAG, const MatchManager &MM,
-                          const VectorPackContext &VPCtx,
-                          LocalDependenceAnalysis &LDA,
-                          const SmallPtrSet<const InstBinding *, 4> &Insts,
+                          DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
+                          DenseMap<BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
+                          DenseMap<BasicBlock *, std::unique_ptr<VectorPackContext>> &VPCtxs,
+                          DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs,
+                          DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> &Insts,
                           TargetTransformInfo *TTI) {
-  auto *BB = VPCtx.getBasicBlock();
+  BitVector Elements;
+  BitVector Depended;
 
-  BitVector Elements(VPCtx.getNumValues());
-  BitVector Depended(VPCtx.getNumValues());
+  BasicBlock *BB = nullptr;
+
+  VectorPackContext *VPCtx = nullptr;
+  MatchManager *MM = nullptr;
+  ConsecutiveAccessDAG *LoadDAG = nullptr;
 
   // First, check if the operand pack is indepdendent.
   // We can't extend if it's not independent.
@@ -562,15 +567,26 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     auto *I = dyn_cast<Instruction>(V);
     if (!I)
       return;
-    if (I->getParent() != BB)
+    if (!BB) {
+      BB = I->getParent();
+
+      VPCtx = VPCtxs[BB].get();
+      MM = MMs[BB].get();
+      LoadDAG = LoadDAGs[BB].get();
+
+      Elements = BitVector(VPCtx->getNumValues());
+      Depended = BitVector(VPCtx->getNumValues());
+    } else if (I->getParent() != BB)
       return;
 
+    assert(VPCtx);
+
     // Check dependence
-    unsigned ValueId = VPCtx.getScalarId(I);
+    unsigned ValueId = VPCtx->getScalarId(I);
     if (Elements.test(ValueId))
       return;
 
-    BitVector Depended2 = LDA.getDepended(I);
+    BitVector Depended2 = LDAs[BB]->getDepended(I);
     if (Depended.test(ValueId))
       return;
     if (Depended2.anyCommon(Elements))
@@ -592,8 +608,8 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
       LoadInst *CurLoad = LI;
       Loads = {LI};
       while (!LoadsRemained.empty()) {
-        auto It = LoadDAG.find(CurLoad);
-        if (It == LoadDAG.end())
+        auto It = LoadDAG->find(CurLoad);
+        if (It == LoadDAG->end())
           break;
         LoadInst *NextLoad = nullptr;
         for (auto *I : It->second) {
@@ -613,12 +629,12 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     }
     if (Loads.size() != LoadSet.size())
       return;
-    Extensions.push_back(VPCtx.createLoadPack(Loads, Elements, Depended, TTI));
+    Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
     return;
   }
 
   if (auto PHIsOrNull = castOperandPack<PHINode>(OpndPack)) {
-    Extensions.push_back(VPCtx.createPhiPack(PHIsOrNull.getValue(), TTI));
+    Extensions.push_back(VPCtx->createPhiPack(PHIsOrNull.getValue(), TTI));
     return;
   }
 
@@ -646,11 +662,11 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
           }
 
           Extensions.push_back(
-              VPCtx.createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+              VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
         }
       };
   std::vector<ArrayRef<Operation::Match>> LaneMatches;
-  for (auto *Inst : Insts) {
+  for (auto *Inst : Insts[BB]) {
     // See if we can pack with this Inst
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
     unsigned NumLanes = LaneOps.size();
@@ -660,7 +676,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     bool Feasible = true;
     unsigned LaneId = 0;
     for (const auto &LaneOp : LaneOps) {
-      ArrayRef<Operation::Match> Matches = MM.getMatchesForOutput(LaneOp.getOperation(), OpndPack[LaneId]);
+      ArrayRef<Operation::Match> Matches = MM->getMatchesForOutput(LaneOp.getOperation(), OpndPack[LaneId]);
       if (Matches.empty()) {
         Feasible = false;
         break;
@@ -787,8 +803,8 @@ bool GSLP::runOnFunction(Function &F) {
       if (!FromSingleBB || !BB)
         break;
 
-      extendWithDef(OpndPack, Packs, Extensions, *LoadDAGs[BB], *MMs[BB],
-                    *VPCtxs[BB], *LDAs[BB], InstBindings[BB], TTI);
+      extendWithDef(OpndPack, Packs, Extensions, LoadDAGs, MMs,
+                    VPCtxs, LDAs, InstBindings, TTI);
     }
   };
 
