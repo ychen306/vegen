@@ -849,33 +849,36 @@ bool GSLP::runOnFunction(Function &F) {
   };
 
   std::vector<VectorPack *> Extensions;
+  VectorPackSet ScratchPacks(&F), BestExtended(&F);
   auto EvalSeedPacks = [&](const VectorPackSet &Packs,
                            unsigned Alpha =
-                               4) -> std::pair<VectorPackSet, float> {
+                               4) -> std::pair<VectorPackSet *, float> {
     unsigned NumTrials = Alpha * Packs.getNumPacks();
     float BestCost = Packs.getCostSaving(TTI, BFI);
-    VectorPackSet BestExtended = Packs;
+    BestExtended = Packs;
     for (unsigned i = 0; i < NumTrials; i++) {
-      VectorPackSet Temp = Packs;
+      ScratchPacks = Packs;
       bool Changed;
       unsigned FirstUnprocessedPackId = 0;
       do {
         Changed = false;
         Extensions.clear();
-        for (unsigned i = FirstUnprocessedPackId; i < Temp.getNumPacks(); i++)
-          FindExtensionForOnePack(Temp.getPack(i), Temp, Extensions);
-        FirstUnprocessedPackId = Temp.getNumPacks() - 1;
+        for (unsigned i = FirstUnprocessedPackId;
+             i < ScratchPacks.getNumPacks(); i++)
+          FindExtensionForOnePack(ScratchPacks.getPack(i), ScratchPacks,
+                                  Extensions);
+        FirstUnprocessedPackId = ScratchPacks.getNumPacks() - 1;
         random_shuffle(Extensions.begin(), Extensions.end(), rand_int);
-        for (auto &VP : Extensions)
-          Changed |= Temp.tryAdd(VP);
+        for (auto *VP : Extensions)
+          Changed |= ScratchPacks.tryAdd(VP);
       } while (Changed);
-      float Cost = Temp.getCostSaving(TTI, BFI);
+      float Cost = ScratchPacks.getCostSaving(TTI, BFI);
       if (Cost < BestCost) {
         BestCost = Cost;
-        BestExtended = Temp;
+        BestExtended = ScratchPacks;
       }
     }
-    return {BestExtended, BestCost};
+    return {&BestExtended, BestCost};
   };
 
   auto EvalSeedPack = [&](const VectorPack &VP) -> float {
@@ -1045,7 +1048,7 @@ bool GSLP::runOnFunction(Function &F) {
       Cost = NewCost;
   }
   errs() << "COST: " << Cost << '\n';
-  BestPacks = EvalSeedPacks(BestPacks, 128).first;
+  BestPacks = *EvalSeedPacks(BestPacks, 128).first;
 #endif
 
 #endif
