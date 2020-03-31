@@ -20,7 +20,7 @@ public:
 
 private:
   friend class VectorPackContext;
-  friend bool operator<(const VectorPack &A, const VectorPack &B);
+  friend class VectorPackCache;
 
   const VectorPackContext *VPCtx;
   llvm::BitVector Elements;
@@ -43,46 +43,54 @@ private:
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
   llvm::SmallVector<OperandPack, 4> OperandPacks;
 
+  int Cost;
+
+  void computeCost(llvm::TargetTransformInfo *TTI);
+
   // Constructor for a generic pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<const Operation::Match *> Matches,
              llvm::BitVector Elements, llvm::BitVector Depended,
-             const InstBinding *Producer)
+             const InstBinding *Producer, llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::General), Producer(Producer),
         Matches(Matches.begin(), Matches.end()) {
     computeOperandPacks();
     computeOrderedValues();
+    computeCost(TTI);
   }
 
   // Load Pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
-             llvm::BitVector Depended)
+             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::Load), Loads(Loads.begin(), Loads.end()) {
     computeOperandPacks();
     computeOrderedValues();
+    computeCost(TTI);
   }
 
   // Store Pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
-             llvm::BitVector Depended)
+             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::Store), Stores(Stores.begin(), Stores.end()) {
     computeOperandPacks();
     computeOrderedValues();
+    computeCost(TTI);
   }
 
   // Load Pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<llvm::PHINode *> PHIs, llvm::BitVector Elements,
-             llvm::BitVector Depended)
+             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::Phi), PHIs(PHIs.begin(), PHIs.end()) {
     computeOperandPacks();
     computeOrderedValues();
+    computeCost(TTI);
   }
 
   void computeOperandPacksForGeneral();
@@ -137,7 +145,7 @@ public:
   llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                     IntrinsicBuilder &Builder) const;
 
-  int getCost(llvm::TargetTransformInfo *TTI, llvm::LLVMContext &Ctx) const;
+  int getCost() const { return Cost; }
 
   // Choose a right place to gather an operand
   void setOperandGatherPoint(unsigned OperandId,
@@ -145,6 +153,5 @@ public:
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
-bool operator<(const VectorPack &A, const VectorPack &B);
 
 #endif // VECTOR_PACK_H

@@ -3,15 +3,6 @@
 using namespace llvm;
 
 
-bool operator<(const VectorPack &A, const VectorPack &B) {
-  auto getCompKey = [](const VectorPack &VP) {
-    return std::tie(VP.Kind, VP.Producer, VP.Matches, VP.Stores, VP.Loads,
-                    VP.PHIs);
-  };
-
-  return getCompKey(A) < getCompKey(B);
-}
-
 // FIXME: we need to generalize the definition of an operand pack
 // because some of the input lanes are "DONT CARES" (e.g. _mm_div_pd)
 void VectorPack::computeOperandPacksForGeneral() {
@@ -235,25 +226,49 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
   }
 }
 
-int VectorPack::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
+void VectorPack::computeCost(TargetTransformInfo *TTI) {
+  // 1) First figure out cost of the vector instruction
   switch (Kind) {
   case General:
-    return Producer->getCost(TTI, Ctx);
+    Cost = Producer->getCost(TTI, getBasicBlock()->getContext());
+    break;
   case Load: {
     auto *LI = Loads[0];
     MaybeAlign Alignment(LI->getAlignment());
     auto *VecTy = VectorType::get(LI->getType(), Loads.size());
-    return TTI->getMemoryOpCost(Instruction::Load, VecTy, Alignment, 0, LI);
+    Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, Alignment, 0, LI);
+    break;
   }
   case Store: {
     auto *SI = Stores[0];
     MaybeAlign Alignment(SI->getAlignment());
     auto *VecTy =
         VectorType::get(SI->getValueOperand()->getType(), Stores.size());
-    return TTI->getMemoryOpCost(Instruction::Store, VecTy, Alignment, 0, SI);
+    Cost = TTI->getMemoryOpCost(Instruction::Store, VecTy, Alignment, 0, SI);
+    break;
   }
   case Phi:
-    return 0;
+    Cost = 0;
+  }
+
+  // 2) Then figure out savings from removing scalar instructions
+  // FIXME: this is undercounting for more general vector instruction
+  // (e.g., fmadd)
+  for (Value *V : elementValues()) {
+    auto *I = cast<Instruction>(V);
+    int Saving;
+    if (auto *LI = dyn_cast<LoadInst>(I)) {
+      Saving = TTI->getMemoryOpCost(Instruction::Load, LI->getType(),
+          MaybeAlign(LI->getAlignment()), 0, LI);
+    } else if (auto *SI = dyn_cast<StoreInst>(I))
+      Saving = TTI->getMemoryOpCost(Instruction::Store,
+          SI->getValueOperand()->getType(),
+          MaybeAlign(SI->getAlignment()), 0, SI);
+    else if (isa<PHINode>(I))
+      Saving = 0;
+    else
+      Saving = TTI->getArithmeticInstrCost(I->getOpcode(), I->getType());
+    Cost -= Saving;
   }
 }
 

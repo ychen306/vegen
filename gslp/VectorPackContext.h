@@ -10,32 +10,32 @@
 // vector packs. Basically we want to store vector packs are a bitvector, and we
 // need this class to manage the mapping between a value and its integer id
 class VectorPack;
+class VectorPackCache;
 class VectorPackContext {
   llvm::BasicBlock *BB;
   std::vector<llvm::Value *> Scalars;
 
+  std::unique_ptr<VectorPackCache> PackCache;
+
 public:
-  VectorPackContext(llvm::BasicBlock *BB) : BB(BB) {
-    for (auto &I : *BB)
-      Scalars.push_back(&I);
-    std::sort(Scalars.begin(), Scalars.end());
-  }
+  VectorPackContext(llvm::BasicBlock *BB);
+  ~VectorPackContext();
 
   // Create a "General" vector pack
-  std::unique_ptr<VectorPack> createVectorPack(std::vector<const Operation::Match *> Matches,
+  VectorPack *createVectorPack(std::vector<const Operation::Match *> Matches,
                               llvm::BitVector Elements, llvm::BitVector Depended,
-                              const InstBinding *Producer) const;
+                              const InstBinding *Producer, llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized load
-  std::unique_ptr<VectorPack> createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
-                            llvm::BitVector Depended) const;
+  VectorPack *createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
+                            llvm::BitVector Depended, llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized store
-  std::unique_ptr<VectorPack> createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
-                             llvm::BitVector Depended) const;
+  VectorPack *createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
+                             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized phi
-  std::unique_ptr<VectorPack> createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs) const;
+  VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs, llvm::TargetTransformInfo *TTI) const;
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());

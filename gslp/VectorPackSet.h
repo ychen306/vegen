@@ -14,11 +14,11 @@ class VectorPackSet {
 protected:
   unsigned NumPacks;
   llvm::Function *F;
-  std::vector<std::unique_ptr<VectorPack>> AllPacks;
+  std::vector<const VectorPack *> AllPacks;
   // FIXME : rename Packs to BB2Packs;
-  llvm::DenseMap<llvm::BasicBlock *, std::vector<VectorPack *>> Packs;
+  llvm::DenseMap<llvm::BasicBlock *, std::vector<const VectorPack *>> Packs;
   llvm::DenseMap<llvm::BasicBlock *, llvm::BitVector> PackedValues;
-  llvm::DenseMap<llvm::Value *, VectorPack *> ValueToPackMap;
+  llvm::DenseMap<llvm::Value *, const VectorPack *> ValueToPackMap;
 
   // This tells us where a value is located in a pack
   struct VectorPackIndex {
@@ -27,6 +27,9 @@ protected:
 
     bool operator<(const VectorPackIndex &Other) const {
       return std::tie(VP, Idx) < std::tie(Other.VP, Other.Idx);
+    }
+    bool operator==(const VectorPackIndex &Other) const {
+      return VP == Other.VP && Idx == Other.Idx;
     }
   };
 
@@ -42,11 +45,11 @@ protected:
                                         IntrinsicBuilder &Builder);
 
   // Clear auxiliary data structure storing a vector pack
-  void removeAux(VectorPack *);
+  void removeAux(const VectorPack *);
 
   void copy(const VectorPackSet &Other);
 
-  void add(std::unique_ptr<VectorPack> VP);
+  void add(const VectorPack *VP);
 
 public:
   VectorPackSet(const VectorPackSet &Other) { copy(Other); }
@@ -65,7 +68,7 @@ public:
 
   // Add VP to this set if it doesn't conflict with existing packs.
   // return if successful
-  bool tryAdd(std::unique_ptr<VectorPack> VP);
+  bool tryAdd(const VectorPack *VP);
 
   // Remove the one we just add
   void pop();
@@ -79,7 +82,7 @@ public:
                llvm::DenseMap<llvm::BasicBlock *,
                               std::unique_ptr<LocalDependenceAnalysis>> &LDAs);
 
-  VectorPack &getPack(unsigned i) {
+  const VectorPack &getPack(unsigned i) {
     assert(i < NumPacks);
     return *AllPacks[i];
   }

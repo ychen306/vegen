@@ -150,15 +150,14 @@ Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
   return Acc;
 }
 
-void VectorPackSet::add(std::unique_ptr<VectorPack> VP) {
+void VectorPackSet::add(const VectorPack *VP) {
   auto *BB = VP->getBasicBlock();
   PackedValues[BB] |= VP->getElements();
-  AllPacks.push_back(std::move(VP));
+  AllPacks.push_back(VP);
 
-  auto *NewVP = AllPacks.back().get();
-  for (Value *V : NewVP->elementValues())
-    ValueToPackMap[V] = NewVP;
-  Packs[BB].push_back(NewVP);
+  for (Value *V : VP->elementValues())
+    ValueToPackMap[V] = VP;
+  Packs[BB].push_back(VP);
 
   NumPacks++;
 }
@@ -171,6 +170,9 @@ bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
     return false;
   }
 
+ // FIXME: add another function to ensure there's no circular dependence before codegen
+ // It's fine to speculate during optimization that there's no circular dependence
+ // because it's very rare.
 #if 0
   SmallPtrSet<Value *, 8> NewValues;
   for (auto *V : VP.elementValues())
@@ -201,14 +203,14 @@ bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
   return true;
 }
 
-bool VectorPackSet::tryAdd(std::unique_ptr<VectorPack> VP) {
+bool VectorPackSet::tryAdd(const VectorPack *VP) {
   if (!isCompatibleWith(*VP))
     return false;
-  add(std::move(VP));
+  add(VP);
   return true;
 }
 
-void VectorPackSet::removeAux(VectorPack *VP) {
+void VectorPackSet::removeAux(const VectorPack *VP) {
   auto *BB = VP->getBasicBlock();
   PackedValues[BB] ^= VP->getElements();
 
@@ -219,8 +221,8 @@ void VectorPackSet::removeAux(VectorPack *VP) {
 void VectorPackSet::pop() {
   auto &VP = AllPacks.back();
   auto *BB = VP->getBasicBlock();
-  assert(Packs[BB].back() == VP.get());
-  removeAux(VP.get());
+  assert(Packs[BB].back() == VP);
+  removeAux(VP);
   Packs[BB].pop_back();
   AllPacks.pop_back();
   NumPacks--;
@@ -252,28 +254,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   // Compute arithmetic cost saving
   for (auto &VP : AllPacks) {
     auto *BB = VP->getBasicBlock();
-    float BBCostSaving = 0;
-    // FIXME: this is undercounting for more general vector instruction
-    // (e.g., fmadd)
-    for (Value *V : VP->elementValues()) {
-      auto *I = cast<Instruction>(V);
-      int Saving;
-      if (auto *LI = dyn_cast<LoadInst>(I)) {
-        Saving = TTI->getMemoryOpCost(Instruction::Load, LI->getType(),
-                                      MaybeAlign(LI->getAlignment()), 0, LI);
-      } else if (auto *SI = dyn_cast<StoreInst>(I))
-        Saving = TTI->getMemoryOpCost(Instruction::Store,
-                                      SI->getValueOperand()->getType(),
-                                      MaybeAlign(SI->getAlignment()), 0, SI);
-      else if (isa<PHINode>(I))
-        Saving = 0;
-      else
-        Saving = TTI->getArithmeticInstrCost(I->getOpcode(), I->getType());
-      BBCostSaving -= Saving;
-    }
-    BBCostSaving += VP->getCost(TTI, F->getContext());
-
-    CostSaving += BBCostSaving * getBlockWeight(BB, BFI);
+    CostSaving += VP->getCost() * getBlockWeight(BB, BFI);
   }
 
   // Update cost to consider shuffles
@@ -283,7 +264,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   for (auto &VP : AllPacks) {
     unsigned i = 0;
     for (auto *V : VP->getOrderedValues())
-      ValueIndex[V] = {VP.get(), i++};
+      ValueIndex[V] = {VP, i++};
   }
 
   const int GatherCost = 4;
@@ -351,7 +332,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     }
   }
 
-  std::set<VectorPackIndex> Extractions;
+  std::vector<VectorPackIndex> Extractions;
+  Extractions.reserve(ValueIndex.size());
   // Now consider scalar use of vector output
   // THIS DOES NOT WORK IN GENERAL...
   for (auto &I : make_range(inst_begin(F), inst_end(F))) {
@@ -360,17 +342,24 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     for (Value *V : I.operands()) {
       auto It = ValueIndex.find(V);
       if (It != ValueIndex.end()) {
-        Extractions.insert(It->second);
+        Extractions.push_back(It->second);
       }
     }
   }
 
+  std::sort(Extractions.begin(), Extractions.end());
+
+  VectorPackIndex *Prev = nullptr;
+
   for (auto &VPIdx : Extractions) {
+    if (Prev && VPIdx == *Prev)
+      continue;
     auto *BB = VPIdx.VP->getBasicBlock();
     auto *VecTy = getVectorType(*VPIdx.VP);
     float ExtractCost =
         TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, VPIdx.Idx);
     CostSaving += ExtractCost * getBlockWeight(BB, BFI);
+    Prev = &VPIdx;
   }
 
   return CostSaving;
@@ -383,7 +372,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
 // just insert the vector instruction immediately after the last
 // instruction that you are replacing.
 static std::vector<const VectorPack *>
-sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<VectorPack *> Packs,
+sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
                        LocalDependenceAnalysis &LDA) {
   if (Packs.empty())
     return std::vector<const VectorPack *>();
@@ -597,7 +586,7 @@ void VectorPackSet::copy(const VectorPackSet &Other) {
   PackedValues.clear();
   ValueToPackMap.clear();
   for (auto &VP : Other.AllPacks)
-    add(std::make_unique<VectorPack>(*VP));
+    add(VP);
   assert(NumPacks == AllPacks.size());
   assert(NumPacks == Other.NumPacks);
 }
