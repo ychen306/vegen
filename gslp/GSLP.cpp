@@ -628,7 +628,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
   // Aux func to enumerate cross product of `LaneMatches`
   auto EnumeratePacks =
       [&](const InstBinding *Inst,
-          const std::vector<std::vector<const Operation::Match *>>
+          const std::vector<ArrayRef<Operation::Match>>
               &LaneMatches) {
         unsigned NumLanes = Inst->getLaneOps().size();
         assert(NumLanes == LaneMatches.size());
@@ -641,8 +641,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
           std::vector<const Operation::Match *> Lanes;
           for (auto &Matches : LaneMatches) {
             unsigned M = Matches.size();
-            assert(M);
-            Lanes.push_back(Matches[i % M]);
+            Lanes.push_back(&Matches[i % M]);
             i /= M;
           }
 
@@ -650,37 +649,27 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
               VPCtx.createVectorPack(Lanes, Elements, Depended, Inst, TTI));
         }
       };
-
+  std::vector<ArrayRef<Operation::Match>> LaneMatches;
   for (auto *Inst : Insts) {
     // See if we can pack with this Inst
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
     unsigned NumLanes = LaneOps.size();
     if (NumLanes != OpndPack.size())
       continue;
-    std::vector<std::vector<const Operation::Match *>> LaneMatches(NumLanes);
+    LaneMatches.resize(NumLanes);
     bool Feasible = true;
     unsigned LaneId = 0;
     for (const auto &LaneOp : LaneOps) {
-      //ArrayRef<Operation::Match> Matches = MM.getMatches(LaneOp.getOperation());
       ArrayRef<Operation::Match> Matches = MM.getMatchesForOutput(LaneOp.getOperation(), OpndPack[LaneId]);
       if (Matches.empty()) {
         Feasible = false;
         break;
       }
-      //// FIXME: need an index to make this run faster
-      //for (auto &Match : Matches) {
-      //  if (Match.Output == OpndPack[LaneId]) {
-      //    LaneMatches[LaneId].push_back(&Match);
-      //  }
-      //}
-      for (auto &Match : Matches) {
-        LaneMatches[LaneId].push_back(&Match);
-      }
+      LaneMatches[LaneId] = Matches;
       LaneId++;
     }
-    if (!Feasible)
-      continue;
-    EnumeratePacks(Inst, LaneMatches);
+    if (Feasible)
+      EnumeratePacks(Inst, LaneMatches);
   }
 }
 

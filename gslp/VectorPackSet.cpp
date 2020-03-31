@@ -337,14 +337,24 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   std::vector<VectorPackIndex> Extractions;
   Extractions.reserve(ValueIndex.size());
   // Now consider scalar use of vector output
-  // THIS DOES NOT WORK IN GENERAL...
-  for (auto &I : make_range(inst_begin(F), inst_end(F))) {
-    if (ValueIndex.count(&I))
-      continue;
-    for (Value *V : I.operands()) {
-      auto It = ValueIndex.find(V);
-      if (It != ValueIndex.end()) {
-        Extractions.push_back(It->second);
+  // FIXME: THIS DOES NOT WORK IN GENERAL... (e.g., FMA)
+  //for (auto &I : make_range(inst_begin(F), inst_end(F))) {
+  //  if (ValueIndex.count(&I))
+  //    continue;
+  //  for (Value *V : I.operands()) {
+  //    auto It = ValueIndex.find(V);
+  //    if (It != ValueIndex.end()) {
+  //      Extractions.push_back(It->second);
+  //    }
+  //  }
+  //}
+  for (auto &ValueAndIdx : ValueIndex) {
+    auto *V = ValueAndIdx.first;
+    auto &VPIdx = ValueAndIdx.second;
+    for (const User *U : V->users()) {
+      if (!ValueIndex.count(U)) {
+        Extractions.push_back(VPIdx);
+        break;
       }
     }
   }
