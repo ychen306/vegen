@@ -578,19 +578,6 @@ void VectorPackSet::codegen(
   }
 }
 
-void VectorPackSet::copy(const VectorPackSet &Other) {
-  NumPacks = 0;
-  F = Other.F;
-  AllPacks.clear();
-  Packs.clear();
-  PackedValues.clear();
-  ValueToPackMap.clear();
-  for (auto &VP : Other.AllPacks)
-    add(VP);
-  assert(NumPacks == AllPacks.size());
-  assert(NumPacks == Other.NumPacks);
-}
-
 bool VectorPackSet::isPacked(Instruction *I,
                              const VectorPackContext &VPCtx) const {
   BasicBlock *BB = I->getParent();

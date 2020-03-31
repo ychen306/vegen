@@ -510,9 +510,9 @@ const VectorPack *MCMCVectorPackSet::removeRandomPack() {
 }
 
 template <typename InstTy>
-Optional<std::vector<InstTy *>>
+Optional<SmallVector<InstTy *, 4>>
 castOperandPack(const VectorPack::OperandPack &OpndPack) {
-  std::vector<InstTy *> Ret;
+  SmallVector<InstTy *, 4> Ret;
   for (auto *V : OpndPack) {
     auto *I = dyn_cast<InstTy>(V);
     if (!I)
