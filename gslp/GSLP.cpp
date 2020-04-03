@@ -206,7 +206,8 @@ class MatchManager {
     }
   }
 
-  static bool sortByOutput(const Operation::Match &A, const Operation::Match &B) {
+  static bool sortByOutput(const Operation::Match &A,
+                           const Operation::Match &B) {
     return A.Output < B.Output;
   }
 
@@ -230,12 +231,15 @@ public:
     return It->second;
   }
 
-  llvm::ArrayRef<Operation::Match> getMatchesForOutput(const Operation *Op, Value *Output) const {
+  llvm::ArrayRef<Operation::Match> getMatchesForOutput(const Operation *Op,
+                                                       Value *Output) const {
     auto Matches = getMatches(Op);
-    Operation::Match DummyMatch {{}, Output};
-    auto LowerIt = std::lower_bound(Matches.begin(), Matches.end(), DummyMatch, sortByOutput);
-    auto UpperIt = std::upper_bound(Matches.begin(), Matches.end(), DummyMatch, sortByOutput);
-    return Matches.slice(LowerIt-Matches.begin(), UpperIt-LowerIt);
+    Operation::Match DummyMatch{{}, Output};
+    auto LowerIt = std::lower_bound(Matches.begin(), Matches.end(), DummyMatch,
+                                    sortByOutput);
+    auto UpperIt = std::upper_bound(Matches.begin(), Matches.end(), DummyMatch,
+                                    sortByOutput);
+    return Matches.slice(LowerIt - Matches.begin(), UpperIt - LowerIt);
   }
 };
 
@@ -542,15 +546,15 @@ castOperandPack(const VectorPack::OperandPack &OpndPack) {
 
 // FIXME: ignore lane order here.
 // Find vector packs that produces operand pack
-static void extendWithDef(const VectorPack::OperandPack &OpndPack,
-                          const VectorPackSet &ExistingPacks,
-                          std::vector<VectorPack *> &Extensions,
-                          DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
-                          DenseMap<BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
-                          DenseMap<BasicBlock *, std::unique_ptr<VectorPackContext>> &VPCtxs,
-                          DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs,
-                          DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> &Insts,
-                          TargetTransformInfo *TTI) {
+static void extendWithDef(
+    const VectorPack::OperandPack &OpndPack, const VectorPackSet &ExistingPacks,
+    std::vector<VectorPack *> &Extensions,
+    DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
+    DenseMap<BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
+    DenseMap<BasicBlock *, std::unique_ptr<VectorPackContext>> &VPCtxs,
+    DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs,
+    DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> &Insts,
+    TargetTransformInfo *TTI) {
   BitVector Elements;
   BitVector Depended;
 
@@ -644,8 +648,7 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
   // Aux func to enumerate cross product of `LaneMatches`
   auto EnumeratePacks =
       [&](const InstBinding *Inst,
-          const std::vector<ArrayRef<Operation::Match>>
-              &LaneMatches) {
+          const std::vector<ArrayRef<Operation::Match>> &LaneMatches) {
         unsigned NumLanes = Inst->getLaneOps().size();
         assert(NumLanes == LaneMatches.size());
         unsigned N = 1;
@@ -654,11 +657,12 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
         for (unsigned i = 0; i < N; i++) {
           // `i` represent a particular member of the cross product.
           // Decode `i` here.
+          unsigned Encoded = i;
           std::vector<const Operation::Match *> Lanes;
           for (auto &Matches : LaneMatches) {
             unsigned M = Matches.size();
-            Lanes.push_back(&Matches[i % M]);
-            i /= M;
+            Lanes.push_back(&Matches[Encoded % M]);
+            Encoded /= M;
           }
 
           Extensions.push_back(
@@ -676,7 +680,8 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
     bool Feasible = true;
     unsigned LaneId = 0;
     for (const auto &LaneOp : LaneOps) {
-      ArrayRef<Operation::Match> Matches = MM->getMatchesForOutput(LaneOp.getOperation(), OpndPack[LaneId]);
+      ArrayRef<Operation::Match> Matches =
+          MM->getMatchesForOutput(LaneOp.getOperation(), OpndPack[LaneId]);
       if (Matches.empty()) {
         Feasible = false;
         break;
@@ -691,9 +696,9 @@ static void extendWithDef(const VectorPack::OperandPack &OpndPack,
 
 bool GSLP::runOnFunction(Function &F) {
   // if (F.getName() != "adi")
-  // return false;
-  if (F.getName() != "binvcrhs")
-    return false;
+  //  return false;
+  // if (F.getName() != "binvcrhs")
+  //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
@@ -803,8 +808,8 @@ bool GSLP::runOnFunction(Function &F) {
       if (!FromSingleBB || !BB)
         break;
 
-      extendWithDef(OpndPack, Packs, Extensions, LoadDAGs, MMs,
-                    VPCtxs, LDAs, InstBindings, TTI);
+      extendWithDef(OpndPack, Packs, Extensions, LoadDAGs, MMs, VPCtxs, LDAs,
+                    InstBindings, TTI);
     }
   };
 

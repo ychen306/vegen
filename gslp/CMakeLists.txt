@@ -5,6 +5,8 @@ add_library(GSLP MODULE
 # expose the auxiliary code for testing
 add_library(GSLP_AUX STATIC ShuffleSema.cpp)
 
+SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)
+
 set_target_properties(GSLP PROPERTIES
     COMPILE_FLAGS "-fno-rtti"
 )
