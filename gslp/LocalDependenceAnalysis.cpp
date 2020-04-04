@@ -91,7 +91,6 @@ LocalDependenceAnalysis::LocalDependenceAnalysis(llvm::AliasAnalysis *AA,
     for (auto *Src : Dependencies[&I]) {
       assert(TransitiveClosure.count(Src));
       Depended.set(VPCtx->getScalarId(Src));
-      unsigned Count = Depended.count();
       Depended |= TransitiveClosure[Src];
     }
 

@@ -3,6 +3,7 @@
 #include "VectorPack.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
+#include "IRModel.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -70,7 +71,7 @@ public:
       : Opcode(Opcode), Bitwidth(Bitwidth) {}
   std::string getName() const { return Instruction::getOpcodeName(Opcode); }
   unsigned getBitwidth() const { return Bitwidth; }
-  const Instruction::BinaryOps getOpcode() const { return Opcode; }
+  Instruction::BinaryOps getOpcode() const { return Opcode; }
   bool match(llvm::Value *V, std::vector<Match> &Matches) const override {
     auto *BinOp = dyn_cast<BinaryOperator>(V);
     bool Matched =
@@ -305,7 +306,7 @@ IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
   assert(VectorWidth % ElemWidth == 0);
   unsigned NumLanes = VectorWidth / ElemWidth;
   std::vector<BoundOperation> LaneOps;
-  for (int i = 0; i < NumLanes; i++) {
+  for (unsigned i = 0; i < NumLanes; i++) {
     unsigned Lo = i * ElemWidth, Hi = Lo + ElemWidth;
     LaneOps.push_back(BoundOperation(Op,
                                      // input binding
@@ -349,7 +350,6 @@ sampleAccesses(const VectorPackSet &ExistingPacks,
 
   std::vector<MemAccessTy *> Accesses{LastAccess};
   assert(Elements.count() == Accesses.size());
-  unsigned NumAccesses = 1 + rand_int(MaxNumAccesses);
   while (Accesses.size() < MaxNumAccesses) {
 
     // Find independent candidate to extend this chain of loads
@@ -649,8 +649,7 @@ static void extendWithDef(
   auto EnumeratePacks =
       [&](const InstBinding *Inst,
           const std::vector<ArrayRef<Operation::Match>> &LaneMatches) {
-        unsigned NumLanes = Inst->getLaneOps().size();
-        assert(NumLanes == LaneMatches.size());
+        assert(Inst->getLaneOps().size() == LaneMatches.size());
         unsigned N = 1;
         for (auto &Matches : LaneMatches)
           N *= Matches.size();
@@ -708,7 +707,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   // Figure out vector instructions we can use
   std::vector<InstBinding *> SupportedInsts;
-#define USE_INTRINSICS 0
+#define USE_INTRINSICS 1
 
 #ifndef USE_INTRINSICS
 #define USE_INTRINSICS 0

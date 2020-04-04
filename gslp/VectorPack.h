@@ -20,7 +20,7 @@ public:
 
 private:
   friend class VectorPackContext;
-  friend class VectorPackCache;
+  friend struct VectorPackCache;
 
   const VectorPackContext *VPCtx;
   llvm::BitVector Elements;
@@ -30,8 +30,8 @@ private:
   //////////// Data for the 4 kinds
   PackKind Kind;
   // General
-  llvm::SmallVector<const Operation::Match *, 4> Matches;
   const InstBinding *Producer = nullptr;
+  llvm::SmallVector<const Operation::Match *, 4> Matches;
   // Load
   llvm::SmallVector<llvm::LoadInst *, 4> Loads;
   // Store

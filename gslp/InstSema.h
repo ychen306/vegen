@@ -35,6 +35,7 @@ struct InputSlice {
 
 // Interface that abstractly defines an operation
 struct Operation {
+  virtual ~Operation() {}
   struct Match {
     std::vector<llvm::Value *> Inputs;
     // FIXME: make this an Instruction instead
@@ -143,15 +144,16 @@ class InstBinding {
   std::vector<BoundOperation> LaneOps;
 
 public:
+  InstBinding(std::string Name, std::vector<std::string> TargetFeatures,
+              InstSignature Sig, std::vector<BoundOperation> LaneOps)
+      : Sig(Sig), Name(Name), TargetFeatures(TargetFeatures), LaneOps(LaneOps) {
+  }
+  virtual ~InstBinding() {}
   virtual int getCost(llvm::TargetTransformInfo *, llvm::LLVMContext &) const {
     return 1;
   }
   llvm::ArrayRef<std::string> getTargetFeatures() const {
     return TargetFeatures;
-  }
-  InstBinding(std::string Name, std::vector<std::string> TargetFeatures,
-              InstSignature Sig, std::vector<BoundOperation> LaneOps)
-      : Name(Name), TargetFeatures(TargetFeatures), Sig(Sig), LaneOps(LaneOps) {
   }
   const InstSignature &getSignature() const { return Sig; }
   llvm::ArrayRef<BoundOperation> getLaneOps() const { return LaneOps; }
@@ -162,7 +164,7 @@ public:
   llvm::StringRef getName() const { return Name; }
 };
 
-static bool hasBitWidth(const llvm::Value *V, unsigned BitWidth) {
+static inline bool hasBitWidth(const llvm::Value *V, unsigned BitWidth) {
   auto *Ty = V->getType();
   if (Ty->isIntegerTy())
     return Ty->getIntegerBitWidth() == BitWidth;

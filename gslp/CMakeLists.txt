@@ -1,15 +1,18 @@
 add_library(GSLP MODULE
   GSLP.cpp InstSema.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
+  #IRModel.cpp
   LocalDependenceAnalysis.cpp)
-# expose the auxiliary code for testing
-add_library(GSLP_AUX STATIC ShuffleSema.cpp)
+
+find_package(Torch REQUIRED)
+
+SET_SOURCE_FILES_PROPERTIES(IRModel.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+
+target_link_libraries(GSLP ${TORCH_LIBRARIES})
 
 SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)
 
-set_target_properties(GSLP PROPERTIES
-    COMPILE_FLAGS "-fno-rtti"
-)
+set_target_properties(GSLP PROPERTIES COMPILE_FLAGS "-frtti")
 
 # THANKS AJAY!
 set(INST_WRAPPERS "${CMAKE_BINARY_DIR}/InstWrappers.bc")

@@ -10,7 +10,7 @@
 // vector packs. Basically we want to store vector packs are a bitvector, and we
 // need this class to manage the mapping between a value and its integer id
 class VectorPack;
-class VectorPackCache;
+struct VectorPackCache;
 class VectorPackContext {
   llvm::BasicBlock *BB;
   std::vector<llvm::Value *> Scalars;

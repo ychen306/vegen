@@ -15,8 +15,8 @@ set(LLVM_BUILD_TOOLS ON)
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
-add_definitions(-fno-rtti)
-add_definitions(-std=c++11)
+add_definitions(-frtti)
+add_definitions(-std=c++14)
 
 llvm_map_components_to_libnames(llvm_libs support core transformutils)
 
