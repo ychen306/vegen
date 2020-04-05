@@ -1,7 +1,7 @@
 add_library(GSLP MODULE
   GSLP.cpp InstSema.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
-  #IRModel.cpp
+  IRModel.cpp
   LocalDependenceAnalysis.cpp)
 
 find_package(Torch REQUIRED)

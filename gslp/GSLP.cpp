@@ -4,6 +4,7 @@
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
 #include "IRModel.h"
+#include "Util.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -132,7 +133,7 @@ public:
     AU.addRequired<BlockFrequencyInfoWrapperPass>();
   }
 
-  bool runOnFunction(Function &) override;
+  bool runOnFunction(llvm::Function &) override;
 
   virtual bool doInitialization(Module &M) override {
     SMDiagnostic Err;
@@ -245,27 +246,19 @@ public:
 };
 
 struct MCMCVectorPackSet : public VectorPackSet {
-  MCMCVectorPackSet(Function *F) : VectorPackSet(F) {}
+  MCMCVectorPackSet(llvm::Function *F) : VectorPackSet(F) {}
   const VectorPack *removeRandomPack();
 };
 
-// Mapping a load/store -> a set of consecutive loads/stores
-//
-// This is basically a generalization of a store/load chain.
-// We use a DAG because a load, for example, might have multiple
-// "next" candidate.
-using ConsecutiveAccessDAG =
-    DenseMap<Instruction *, SmallPtrSet<Instruction *, 4>>;
-
 bool isScalarType(Type *Ty) { return Ty->getScalarType() == Ty; }
 
-bool hasFeature(const Function &F, std::string Feature) {
+bool hasFeature(const llvm::Function &F, std::string Feature) {
   Attribute Features = F.getFnAttribute("target-features");
   return !Features.hasAttribute(Attribute::None) &&
          Features.getValueAsString().contains("+" + Feature);
 }
 
-bool isSupported(InstBinding *Inst, const Function &F) {
+bool isSupported(InstBinding *Inst, const llvm::Function &F) {
   for (auto &Feature : Inst->getTargetFeatures())
     if (!hasFeature(F, Feature))
       return false;
@@ -693,7 +686,7 @@ static void extendWithDef(
   }
 }
 
-bool GSLP::runOnFunction(Function &F) {
+bool GSLP::runOnFunction(llvm::Function &F) {
   // if (F.getName() != "adi")
   //  return false;
   // if (F.getName() != "binvcrhs")
