@@ -689,8 +689,8 @@ static void extendWithDef(
 bool GSLP::runOnFunction(llvm::Function &F) {
   // if (F.getName() != "adi")
   //  return false;
-  // if (F.getName() != "binvcrhs")
-  //  return false;
+  //if (F.getName() != "binvcrhs")
+  // return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
@@ -700,7 +700,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   // Figure out vector instructions we can use
   std::vector<InstBinding *> SupportedInsts;
-#define USE_INTRINSICS 1
+#define USE_INTRINSICS 0
 
 #ifndef USE_INTRINSICS
 #define USE_INTRINSICS 0
@@ -756,6 +756,12 @@ bool GSLP::runOnFunction(llvm::Function &F) {
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
+
+  IR2Vec Model(32);
+  IRIndex Index(F);
+  Model.forward(Index, LoadDAGs, StoreDAGs);
+
+  return false;
 
   MCMCVectorPackSet Packs(&F);
   std::srand(42);
