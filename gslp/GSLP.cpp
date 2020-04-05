@@ -757,7 +757,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
 
-  IR2Vec Model(32);
+  PackModel Model(32, SupportedInsts);
   IRIndex Index(F);
   Model.forward(Index, LoadDAGs, StoreDAGs);
 
