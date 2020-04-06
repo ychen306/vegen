@@ -333,15 +333,11 @@ PackSample PackDistribution::sample(
   const unsigned NopId = Index.getNumValues();
 
   if (auto *SI = dyn_cast<StoreInst>(Focus)) {
-    auto *BB = SI->getParent();
-    auto &StoreDAG = *StoreDAGs[BB];
-
     // Can't figure out how to convert a `0` literal to tensor...
     torch::Tensor Zero = torch::zeros({1}).sum();
 
-    // We can't pack if there are no consecutive stores next to this one.
-    if (!StoreDAG.count(SI))
-      return PackSample{nullptr, Zero};
+    auto *BB = SI->getParent();
+    auto &StoreDAG = *StoreDAGs[BB];
 
     // If the focus is a store then we only have two options:
     // <no pack> and <store pack>
@@ -349,8 +345,10 @@ PackSample PackDistribution::sample(
     unsigned OpId;
     std::vector<int64_t> Options{OpcodeNoPack, OpcodeStore};
     std::tie(OpId, OpLogProb) = sampleFromSubset(OpProb[FocusId], Options);
-    if (OpId == OpcodeNoPack)
+    // We also can't pack if there are no consecutive stores next to this one.
+    if (OpId == OpcodeNoPack || StoreDAG.count(SI))
       return PackSample{nullptr, OpLogProb};
+
     auto &VPCtx = *VPCtxs[BB];
     auto &LDA = *LDAs[BB];
 
@@ -436,7 +434,7 @@ PackSample PackDistribution::sample(
     }
     // Abort if there's no available matches
     if (MatchOutputs.empty())
-      return PackSample{nullptr, OpLogProb};
+      return PackSample{nullptr, VPLogProb};
 
     // Sample from the available matches
     unsigned InstId;
@@ -445,7 +443,7 @@ PackSample PackDistribution::sample(
     VPLogProb += LaneLogProb;
     // FIXME: support nop lane
     if (InstId == NopId)
-      return PackSample{nullptr, OpLogProb};
+      return PackSample{nullptr, VPLogProb};
     llvm::ArrayRef<Operation::Match> MatchesWithOutput =
         MM.getMatchesForOutput(LaneOps[i].getOperation(), Index.get(InstId));
     // FIXME: deal with the fact that you can have multiple matches with the
