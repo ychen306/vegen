@@ -1,8 +1,10 @@
 #include "IRModel.h"
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/InstIterator.h>
-#include <llvm/IR/Instructions.h>
+#include "MatchManager.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Instructions.h"
 #include <map>
 #include <torch/nn/module.h>
 #include <torch/torch.h>
@@ -85,6 +87,27 @@ torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
       CooIndices, torch::ones({(long long)Edges.size()}), {N, N});
 }
 
+// Sample from a subset and return (re-normalized) log-prob of the sample
+std::pair<unsigned, torch::Tensor>
+sampleFromSubset(torch::Tensor Probs, std::vector<int64_t> &SubsetIndices) {
+  auto Indices =
+      torch::from_blob(SubsetIndices.data(), {(long long)SubsetIndices.size()},
+                       TensorOptions().dtype(torch::kInt64));
+  auto SubsetProbs = Probs.index({Indices});
+  auto i = torch::multinomial(SubsetProbs, 1).item<int64_t>();
+  // Need to renormalize the probability
+  auto Prob = SubsetProbs[i] / SubsetProbs.sum();
+  return {SubsetIndices[i], Prob.log()};
+}
+
+template <typename OutStreamTy>
+void dumpShape(torch::Tensor X, OutStreamTy &Os) {
+  for (auto N : X.sizes()) {
+    Os << " " << N;
+  }
+  Os << '\n';
+}
+
 } // end anonymous namespace
 
 std::vector<unsigned> OpcodeTable::Bitwidths = {8, 16, 32, 64};
@@ -135,6 +158,8 @@ static torch::Tensor buildUseGraph1(const IRIndex &Index) {
     auto *I = dyn_cast<Instruction>(V);
     if (!I)
       continue;
+    if (I->getNumOperands() < 1)
+      continue;
     Edges.emplace_back(Index.getValueId(I), Index.getValueId(I->getOperand(0)));
   }
   return buildAdjacencyMat(Edges, N);
@@ -147,6 +172,8 @@ static torch::Tensor buildUseGraph2(const IRIndex &Index) {
     auto *V = Index.get(i);
     auto *I = dyn_cast<Instruction>(V);
     if (!I || isa<LoadInst>(I))
+      continue;
+    if (I->getNumOperands() < 2)
       continue;
     Edges.emplace_back(Index.getValueId(I), Index.getValueId(I->getOperand(1)));
   }
@@ -202,7 +229,8 @@ static torch::Tensor getValueTypes(const IRIndex &Index) {
   return ValueTypes;
 }
 
-PackModel::PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts) : EmbSize(EmbSize), Insts(Insts) {
+PackModel::PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts)
+    : EmbSize(EmbSize), Insts(Insts) {
   // lstm : <operand 1> x <operand 2> x <left mem refs> x <right mem refs> ->
   // (h, c)
   auto GRUOpt =
@@ -210,7 +238,7 @@ PackModel::PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts) : Em
 
   // # of possible pack opcode : <no pack> + <# of general packs> + store
   // TODO: support phi and load
-  unsigned NumInsts = Insts.size() + 1 + 1;
+  unsigned NumPackOps = Insts.size() + 1 + 1;
 
   GRU = register_module("lstm", nn::GRU(GRUOpt));
   OpcodeEmb = register_module(
@@ -220,7 +248,8 @@ PackModel::PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts) : Em
   StateToUseMsg2 = register_module("state2msg2", nn::Linear(EmbSize, EmbSize));
   StateToMemMsg = register_module("state2mem", nn::Linear(EmbSize, EmbSize));
   StateToEmb = register_module("state2out", nn::Linear(EmbSize, EmbSize));
-  StateToInst = register_module("state2inst", nn::Linear(EmbSize, NumInsts));
+  StateToNop = register_module("state2nop", nn::Linear(EmbSize, EmbSize));
+  StateToInst = register_module("state2inst", nn::Linear(EmbSize, NumPackOps));
 }
 
 PackDistribution PackModel::forward(
@@ -260,7 +289,172 @@ PackDistribution PackModel::forward(
   H = H.view({N, EmbSize});
   // std::cerr << H << '\n';
 
-  auto InstProb = StateToInst->forward(H).softmax(1 /*dim*/);
+  auto OpProb = StateToInst->forward(H).softmax(1 /*dim*/);
   auto Emb = StateToEmb->forward(H);
-  return PackDistribution(InstProb, Emb);
+  auto Nop = StateToNop->forward(H);
+  return PackDistribution(OpProb, Emb, Nop);
+}
+
+static const unsigned OpcodeNoPack = 0;
+static const unsigned OpcodeStore = 1;
+
+static const unsigned MaxNumLoads = 8;
+
+// Check if `I` is checkIndependence from things in `Elements`, which depends on
+// `Depended`.
+static bool checkIndependence(const LocalDependenceAnalysis &LDA,
+                              const VectorPackContext &VPCtx, Instruction *I,
+                              const BitVector &Elements,
+                              const BitVector &Depended) {
+  auto Depended2 = LDA.getDepended(I);
+  unsigned Id = VPCtx.getScalarId(I);
+  return !Elements.test(Id) && !Elements.anyCommon(Depended2) &&
+         !Depended.test(Id);
+}
+
+PackSample PackDistribution::sample(
+    const IRIndex &Index, Instruction *Focus,
+    const VectorPackSet &ExistingPacks, llvm::ArrayRef<InstBinding *> Insts,
+    DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs,
+    DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
+    DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &StoreDAGs,
+    DenseMap<BasicBlock *, std::unique_ptr<VectorPackContext>> &VPCtxs,
+    DenseMap<BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
+    TargetTransformInfo *TTI) const {
+
+  unsigned FocusId = Index.getValueId(Focus);
+
+  // Append with nop
+  auto EmbWithNop =
+      torch::cat({Emb, Nop[Index.getValueId(Focus)].view({1, -1})});
+  // Prob ~= similarity
+  auto InstProb =
+      EmbWithNop.mv(Emb[Index.getValueId(Focus)]).softmax(0 /*dim*/);
+  const unsigned NopId = Index.getNumValues();
+
+  if (auto *SI = dyn_cast<StoreInst>(Focus)) {
+    auto *BB = SI->getParent();
+    auto &StoreDAG = *StoreDAGs[BB];
+
+    // Can't figure out how to convert a `0` literal to tensor...
+    torch::Tensor Zero = torch::zeros({1}).sum();
+
+    // We can't pack if there are no consecutive stores next to this one.
+    if (!StoreDAG.count(SI))
+      return PackSample{nullptr, Zero};
+
+    // If the focus is a store then we only have two options:
+    // <no pack> and <store pack>
+    torch::Tensor OpLogProb;
+    unsigned OpId;
+    std::vector<int64_t> Options{OpcodeNoPack, OpcodeStore};
+    std::tie(OpId, OpLogProb) = sampleFromSubset(OpProb[FocusId], Options);
+    if (OpId == OpcodeNoPack)
+      return PackSample{nullptr, OpLogProb};
+    auto &VPCtx = *VPCtxs[BB];
+    auto &LDA = *LDAs[BB];
+
+    BitVector Elements(VPCtx.getNumValues());
+    BitVector Depended = LDA.getDepended(Focus);
+    Elements.set(VPCtx.getScalarId(Focus));
+
+    std::vector<StoreInst *> Stores = {SI};
+    std::vector<int64_t> AvailableStores;
+
+    torch::Tensor VPLogProb = OpLogProb;
+    // Samples lanes to build a vector pack
+    for (unsigned i = 0; i < MaxNumLoads; i++) {
+      // Find the next set of adjacent
+      auto It = StoreDAG.find(SI);
+      if (It == StoreDAG.end())
+        break;
+      auto &Next = It->second;
+      AvailableStores = {NopId};
+      for (auto *SI2 : Next) {
+        if (!checkIndependence(LDA, VPCtx, SI2, Elements, Depended))
+          continue;
+        if (ExistingPacks.isPacked(SI2, VPCtx))
+          continue;
+        AvailableStores.push_back(Index.getValueId(SI2));
+      }
+      torch::Tensor LaneLogProb;
+      unsigned InstId;
+      std::tie(InstId, LaneLogProb) =
+          sampleFromSubset(InstProb, AvailableStores);
+      if (InstId == NopId)
+        break;
+      VPLogProb += LaneLogProb;
+      auto *NextSI = cast<StoreInst>(Index.get(InstId));
+      Stores.push_back(NextSI);
+      Elements.set(VPCtx.getScalarId(NextSI));
+      Depended |= LDA.getDepended(NextSI);
+      SI = NextSI;
+    }
+    auto *VP = VPCtx.createStorePack(Stores, Elements, Depended, TTI);
+    return PackSample{VP, VPLogProb};
+  }
+
+  auto *BB = Focus->getParent();
+  auto &VPCtx = *VPCtxs[BB];
+  auto &LDA = *LDAs[BB];
+  auto &MM = *MMs[BB];
+
+  // Sample a general vector pack
+  // 1) Sample the vector opcode
+  // FIXME: hoist `OpcodeIds` out. it's static
+  std::vector<int64_t> OpcodeIds(Insts.size() + 1);
+  OpcodeIds[0] = OpcodeNoPack;
+  for (unsigned i = 0; i < Insts.size(); i++)
+    // FIXME: abstract out these +2/-2 expressions
+    OpcodeIds[i + 1] = i + 2;
+  unsigned OpcodeId;
+  torch::Tensor OpLogProb;
+  std::tie(OpcodeId, OpLogProb) = sampleFromSubset(OpProb[FocusId], OpcodeIds);
+  if (OpcodeId == OpcodeNoPack)
+    return PackSample{nullptr, OpLogProb};
+
+  torch::Tensor VPLogProb = OpLogProb;
+  const InstBinding *Inst = Insts[OpcodeId - 2];
+  // 2) Sample the lanes
+  llvm::ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+  unsigned NumLanes = LaneOps.size();
+  BitVector Elements(VPCtx.getNumValues());
+  BitVector Depended = LDA.getDepended(Focus);
+
+  std::vector<int64_t> MatchOutputs;
+  std::vector<const Operation::Match *> Matches;
+  for (unsigned i = 0; i < NumLanes; i++) {
+    // Find all of the matches we can use first.
+    MatchOutputs = {NopId};
+    for (auto &Match : MM.getMatches(LaneOps[i].getOperation())) {
+      auto *I = cast<Instruction>(Match.Output);
+      if (!checkIndependence(LDA, VPCtx, I, Elements, Depended))
+        continue;
+      if (ExistingPacks.isPacked(I, VPCtx))
+        continue;
+      MatchOutputs.push_back(Index.getValueId(I));
+    }
+    // Abort if there's no available matches
+    if (MatchOutputs.empty())
+      return PackSample{nullptr, OpLogProb};
+
+    // Sample from the available matches
+    unsigned InstId;
+    torch::Tensor LaneLogProb;
+    std::tie(InstId, LaneLogProb) = sampleFromSubset(InstProb, MatchOutputs);
+    VPLogProb += LaneLogProb;
+    // FIXME: support nop lane
+    if (InstId == NopId)
+      return PackSample{nullptr, OpLogProb};
+    llvm::ArrayRef<Operation::Match> MatchesWithOutput =
+        MM.getMatchesForOutput(LaneOps[i].getOperation(), Index.get(InstId));
+    // FIXME: deal with the fact that you can have multiple matches with the
+    // same output
+    auto *Match = &MatchesWithOutput[0];
+    Matches.push_back(Match);
+    Elements.set(VPCtx.getScalarId(Match->Output));
+    Depended |= LDA.getDepended(cast<Instruction>(Match->Output));
+  }
+  auto *VP = VPCtx.createVectorPack(Matches, Elements, Depended, Inst, TTI);
+  return PackSample{VP, VPLogProb};
 }

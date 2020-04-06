@@ -2,6 +2,9 @@
 #define IR_MODEL_H
 
 #include "Util.h"
+#include "LocalDependenceAnalysis.h"
+#include "VectorPackContext.h"
+#include "VectorPackSet.h"
 #include <llvm/ADT/DenseMap.h>
 #include <torch/torch.h>
 
@@ -10,7 +13,10 @@ class InstBinding;
 namespace llvm {
 class Function;
 class BasicBlock;
+class Instruction;
 class Value;
+
+class TargetTransformInfo;
 } // namespace llvm
 
 class IRIndex {
@@ -28,29 +34,49 @@ public:
 class VectorPack;
 struct PackSample {
   VectorPack *VP;
-  torch::Tensor Prob;
+  torch::Tensor LogProb;
 };
 
+// FIXME: PLEASE wrap these classes together
 class VectorPackContext;
+class VectorPackSet;
+class LocalDependenceAnalysis;
+class MatchManager;
+
 struct PackDistribution {
-  torch::Tensor InstProb;
+  torch::Tensor OpProb;
   torch::Tensor Emb;
-  PackDistribution(torch::Tensor InstProb, torch::Tensor Emb) 
-    : InstProb(InstProb), Emb(Emb) {}
-  PackSample sample(llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<VectorPackContext>> &VPCtxs);
+  torch::Tensor Nop;
+  PackDistribution(torch::Tensor OpProb, torch::Tensor Emb, torch::Tensor Nop) 
+    : OpProb(OpProb), Emb(Emb), Nop(Nop) {}
+  PackSample sample(
+      const IRIndex &Index,
+      llvm::Instruction *Focus,
+      const VectorPackSet &ExistingPacks,
+      llvm::ArrayRef<InstBinding *> Insts,
+      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs,
+      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
+          &LoadDAG,
+      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
+          &StoreDAG,
+      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<VectorPackContext>> &VPCtxs,
+      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
+      llvm::TargetTransformInfo *TTI) const;
 };
 
 class PackModel : torch::nn::Module {
   unsigned EmbSize;
   llvm::ArrayRef<InstBinding *> Insts;
 
-  torch::nn::GRU GRU = nullptr;
   torch::nn::Embedding OpcodeEmb = nullptr;
+
+  torch::nn::GRU GRU = nullptr;
   torch::nn::Linear StateToUseMsg1 = nullptr;
   torch::nn::Linear StateToUseMsg2 = nullptr;
   torch::nn::Linear StateToMemMsg = nullptr;
   torch::nn::Linear StateToInst = nullptr;
   torch::nn::Linear StateToEmb = nullptr;
+  torch::nn::Linear StateToNop = nullptr;
 
 public:
   PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts);

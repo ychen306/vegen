@@ -1,4 +1,5 @@
 #include "InstSema.h"
+#include "MatchManager.h"
 #include "LocalDependenceAnalysis.h"
 #include "VectorPack.h"
 #include "VectorPackContext.h"
@@ -193,57 +194,6 @@ public:
   ArrayRef<InstBinding *> getBindings() const { return Bindings; }
 
 } VecBindingTable;
-
-// This class pulls all operation that we are interested in
-// and tries to match all of them while trying to avoid
-// matching the same operation twice on the same value
-class MatchManager {
-  // record matches for each operation
-  DenseMap<const Operation *, std::vector<Operation::Match>> OpMatches;
-
-  void match(Value *V) {
-    for (auto &KV : OpMatches) {
-      const Operation *Op = KV.first;
-      Op->match(V, KV.second);
-    }
-  }
-
-  static bool sortByOutput(const Operation::Match &A,
-                           const Operation::Match &B) {
-    return A.Output < B.Output;
-  }
-
-public:
-  MatchManager(ArrayRef<InstBinding *> Insts, BasicBlock &BB) {
-    for (auto &Inst : Insts)
-      for (auto &LaneOp : Inst->getLaneOps())
-        OpMatches.FindAndConstruct(LaneOp.getOperation());
-    for (auto &I : BB)
-      match(&I);
-
-    for (auto &KV : OpMatches) {
-      auto &Matches = KV.second;
-      std::sort(Matches.begin(), Matches.end(), sortByOutput);
-    }
-  }
-
-  llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const {
-    auto It = OpMatches.find(Op);
-    assert(It != OpMatches.end());
-    return It->second;
-  }
-
-  llvm::ArrayRef<Operation::Match> getMatchesForOutput(const Operation *Op,
-                                                       Value *Output) const {
-    auto Matches = getMatches(Op);
-    Operation::Match DummyMatch{{}, Output};
-    auto LowerIt = std::lower_bound(Matches.begin(), Matches.end(), DummyMatch,
-                                    sortByOutput);
-    auto UpperIt = std::upper_bound(Matches.begin(), Matches.end(), DummyMatch,
-                                    sortByOutput);
-    return Matches.slice(LowerIt - Matches.begin(), UpperIt - LowerIt);
-  }
-};
 
 struct MCMCVectorPackSet : public VectorPackSet {
   MCMCVectorPackSet(llvm::Function *F) : VectorPackSet(F) {}
@@ -757,14 +707,27 @@ bool GSLP::runOnFunction(llvm::Function &F) {
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
 
+  MCMCVectorPackSet Packs(&F);
+  std::srand(42);
+
   PackModel Model(32, SupportedInsts);
   IRIndex Index(F);
-  Model.forward(Index, LoadDAGs, StoreDAGs);
+  auto PackDistr = Model.forward(Index, LoadDAGs, StoreDAGs);
+  for (auto &BB : F) {
+    for (auto &I : BB)
+    PackDistr.sample(
+    Index, &I,
+    Packs,
+    SupportedInsts,
+    LDAs,
+    LoadDAGs,
+    StoreDAGs,
+    VPCtxs,
+    MMs, TTI);
+  }
 
   return false;
 
-  MCMCVectorPackSet Packs(&F);
-  std::srand(42);
 
   // First find out if which vector instruction we can emit.
   // E.g. sometimes there is simply no `fadd` in a basic block..
