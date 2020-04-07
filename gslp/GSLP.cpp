@@ -1,11 +1,11 @@
+#include "IRModel.h"
 #include "InstSema.h"
-#include "MatchManager.h"
 #include "LocalDependenceAnalysis.h"
+#include "MatchManager.h"
+#include "Util.h"
 #include "VectorPack.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
-#include "IRModel.h"
-#include "Util.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -640,7 +640,9 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   // if (F.getName() != "adi")
   //  return false;
   //if (F.getName() != "binvcrhs")
-  // return false;
+  //return false;
+  //if (F.getName() != "cmul_many")
+  //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
@@ -709,25 +711,6 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   MCMCVectorPackSet Packs(&F);
   std::srand(42);
-
-  PackModel Model(32, SupportedInsts);
-  IRIndex Index(F);
-  auto PackDistr = Model.forward(Index, LoadDAGs, StoreDAGs);
-  for (auto &BB : F) {
-    for (auto &I : BB)
-    PackDistr.sample(
-    Index, &I,
-    Packs,
-    SupportedInsts,
-    LDAs,
-    LoadDAGs,
-    StoreDAGs,
-    VPCtxs,
-    MMs, TTI);
-  }
-
-  return false;
-
 
   // First find out if which vector instruction we can emit.
   // E.g. sometimes there is simply no `fadd` in a basic block..
@@ -880,6 +863,57 @@ bool GSLP::runOnFunction(llvm::Function &F) {
     Packs.tryAdd(&VP);
     return EvalSeedPacks(Packs).second;
   };
+
+  /////////
+  const unsigned BatchSize = 4096;
+
+  torch::Device Device(torch::kCPU);
+  PackModel Model(32, SupportedInsts);
+  Model->to(Device);
+  IRIndex Index(F);
+  torch::optim::Adam Optimizer(Model->parameters(), torch::optim::AdamOptions(1e-3));
+  std::vector<Instruction *> InstPool;
+  for (auto &BB : F)
+    for (auto &I : BB)
+      InstPool.push_back(&I);
+  for (int epoch = 0; epoch < 10000; epoch++) {
+    auto PackDistr = Model->forward(Index, LoadDAGs, StoreDAGs);
+    std::vector<torch::Tensor> Losses;
+    float TotalCost = 0;
+    for (unsigned i = 0; i < BatchSize; i++) {
+      auto *I = InstPool[rand_int(InstPool.size())];
+      VectorPackSet Packs(&F);
+      torch::Tensor LogProb = torch::zeros({1}).sum();
+      //for (auto &BB : F) {
+      //  for (auto &I : BB) {
+      //    PackSample PS = PackDistr.sample(Index, &I, Packs, SupportedInsts, LDAs,
+      //        LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
+      //    LogProb += PS.LogProb;
+      //    if (PS.VP)
+      //      Packs.tryAdd(PS.VP);
+      //  }
+      //}
+      PackSample PS = PackDistr.sample(Index, I, Packs, SupportedInsts, LDAs,
+          LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
+      LogProb += PS.LogProb;
+      if (PS.VP)
+        Packs.tryAdd(PS.VP);
+
+      float Cost = EvalSeedPacks(Packs, 4).second;
+      TotalCost += Cost;
+      Losses.push_back(LogProb * Cost);
+    }
+    torch::Tensor Loss = torch::stack(Losses).mean();
+    std::cerr << "!!! Average Cost: " << TotalCost / (float)BatchSize << '\n';
+    std::cerr << "!! LOSS : " << Loss << '\n';
+
+    Optimizer.zero_grad();
+    Loss.backward();
+    Optimizer.step();
+  }
+
+  return false;
+
 
 #if 0
   auto BestPacks = Packs;

@@ -92,8 +92,8 @@ std::pair<unsigned, torch::Tensor>
 sampleFromSubset(torch::Tensor Probs, std::vector<int64_t> &SubsetIndices) {
   auto Indices =
       torch::from_blob(SubsetIndices.data(), {(long long)SubsetIndices.size()},
-                       TensorOptions().dtype(torch::kInt64));
-  auto SubsetProbs = Probs.index({Indices});
+                       TensorOptions().dtype(torch::kInt64)).clone();
+  auto SubsetProbs = Probs.index_select(0, Indices);
   auto i = torch::multinomial(SubsetProbs, 1).item<int64_t>();
   // Need to renormalize the probability
   auto Prob = SubsetProbs[i] / SubsetProbs.sum();
@@ -229,7 +229,7 @@ static torch::Tensor getValueTypes(const IRIndex &Index) {
   return ValueTypes;
 }
 
-PackModel::PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts)
+PackModelImpl::PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts)
     : EmbSize(EmbSize), Insts(Insts) {
   // lstm : <operand 1> x <operand 2> x <left mem refs> x <right mem refs> ->
   // (h, c)
@@ -252,7 +252,7 @@ PackModel::PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts)
   StateToInst = register_module("state2inst", nn::Linear(EmbSize, NumPackOps));
 }
 
-PackDistribution PackModel::forward(
+PackDistribution PackModelImpl::forward(
     const IRIndex &Index,
     DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
     DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &StoreDAGs,
@@ -346,7 +346,7 @@ PackSample PackDistribution::sample(
     std::vector<int64_t> Options{OpcodeNoPack, OpcodeStore};
     std::tie(OpId, OpLogProb) = sampleFromSubset(OpProb[FocusId], Options);
     // We also can't pack if there are no consecutive stores next to this one.
-    if (OpId == OpcodeNoPack || StoreDAG.count(SI))
+    if (OpId == OpcodeNoPack || !StoreDAG.count(SI))
       return PackSample{nullptr, OpLogProb};
 
     auto &VPCtx = *VPCtxs[BB];
@@ -430,6 +430,7 @@ PackSample PackDistribution::sample(
         continue;
       if (ExistingPacks.isPacked(I, VPCtx))
         continue;
+      // FIXME: make sure `MatchOutputs` don't have duplicates
       MatchOutputs.push_back(Index.getValueId(I));
     }
     // Abort if there's no available matches

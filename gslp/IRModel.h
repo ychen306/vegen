@@ -64,7 +64,7 @@ struct PackDistribution {
       llvm::TargetTransformInfo *TTI) const;
 };
 
-class PackModel : torch::nn::Module {
+class PackModelImpl : public torch::nn::Module {
   unsigned EmbSize;
   llvm::ArrayRef<InstBinding *> Insts;
 
@@ -79,7 +79,7 @@ class PackModel : torch::nn::Module {
   torch::nn::Linear StateToNop = nullptr;
 
 public:
-  PackModel(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts);
+  PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts);
   PackDistribution forward(
       const IRIndex &Index,
       llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
@@ -88,5 +88,7 @@ public:
           &StoreDAG,
       unsigned NumIters = 8);
 };
+
+TORCH_MODULE(PackModel);
 
 #endif // IR_MODEL_H
