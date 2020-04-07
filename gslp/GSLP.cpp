@@ -487,6 +487,7 @@ castOperandPack(const VectorPack::OperandPack &OpndPack) {
   return Ret;
 }
 
+// FIXME: remove Insts and take the list of all supported instruction instead
 // FIXME: ignore lane order here.
 // Find vector packs that produces operand pack
 static void extendWithDef(
@@ -636,12 +637,131 @@ static void extendWithDef(
   }
 }
 
+class Packer {
+  // FIXME: fuse all of these together into a single map
+  DenseMap<BasicBlock *, std::unique_ptr<MatchManager>> MMs;
+  DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> LDAs;
+  DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> LoadDAGs;
+  DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> StoreDAGs;
+  DenseMap<BasicBlock *, std::unique_ptr<VectorPackContext>> VPCtxs;
+
+  std::vector<InstBinding *> SupportedInsts;
+
+  TargetTransformInfo *TTI;
+  BlockFrequencyInfo *BFI;
+
+  // First find out if which vector instruction we can emit.
+  // E.g. sometimes there is simply no `fadd` in a basic block..
+  DenseMap<BasicBlock *, SmallPtrSet<const InstBinding *, 4>> InstBindings;
+
+public:
+  Packer(ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
+         AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
+         TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
+      : SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
+    // Setup analyses and determine search space
+    for (auto &BB : F) {
+      std::vector<LoadInst *> Loads;
+      std::vector<StoreInst *> Stores;
+      // Find packable instructions
+      auto MM = std::make_unique<MatchManager>(SupportedInsts, BB);
+      for (auto &I : BB) {
+        if (auto *LI = dyn_cast<LoadInst>(&I)) {
+          if (LI->isSimple())
+            Loads.push_back(LI);
+        } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
+          if (SI->isSimple())
+            Stores.push_back(SI);
+        }
+      }
+
+      auto VPCtx = std::make_unique<VectorPackContext>(&BB);
+      auto LoadDAG = std::make_unique<ConsecutiveAccessDAG>();
+      auto StoreDAG = std::make_unique<ConsecutiveAccessDAG>();
+      buildAccessDAG<LoadInst>(*LoadDAG, Loads, DL, SE);
+      buildAccessDAG<StoreInst>(*StoreDAG, Stores, DL, SE);
+
+      MMs[&BB] = std::move(MM);
+      LDAs[&BB] =
+          std::make_unique<LocalDependenceAnalysis>(AA, &BB, VPCtx.get());
+      VPCtxs[&BB] = std::move(VPCtx);
+      LoadDAGs[&BB] = std::move(LoadDAG);
+      StoreDAGs[&BB] = std::move(StoreDAG);
+    }
+
+    VectorPackSet TempPacks(&F);
+    for (auto *Inst : SupportedInsts) {
+      for (auto &BB : F) {
+        auto VPOrNull = sampleVectorPack(TempPacks, *MMs[&BB], *VPCtxs[&BB],
+                                         *LDAs[&BB], Inst, TTI, 1000);
+        if (VPOrNull)
+          InstBindings[&BB].insert(Inst);
+      }
+    }
+  }
+
+  void findExtensionForOnePack(const VectorPack &VP, const VectorPackSet &Packs,
+                               std::vector<VectorPack *> &Extensions) {
+    for (auto &OpndPack : VP.getOperandPacks()) {
+      // Figure out where the scalar operands are produced.
+      // Bail if they are produced in different basic blocks.
+      BasicBlock *BB = nullptr;
+      bool FromSingleBB = true;
+      for (auto *V : OpndPack) {
+        auto *I = dyn_cast<Instruction>(V);
+        if (!I)
+          continue;
+        if (!BB)
+          BB = I->getParent();
+        else if (I->getParent() != BB) {
+          FromSingleBB = false;
+          break;
+        }
+      }
+      // Can't extend from this operand pack
+      if (!FromSingleBB || !BB)
+        break;
+
+      extendWithDef(OpndPack, Packs, Extensions, LoadDAGs, MMs, VPCtxs, LDAs,
+                    InstBindings, TTI);
+    }
+  }
+
+  float evalSeedPacks(const VectorPackSet &Packs, unsigned Alpha = 4) {
+    unsigned NumTrials = Alpha * Packs.getNumPacks();
+    float BestCost = Packs.getCostSaving(TTI, BFI);
+    std::vector<VectorPack *> Extensions;
+    for (unsigned i = 0; i < NumTrials; i++) {
+      VectorPackSet ScratchPacks = Packs;
+      bool Changed;
+      unsigned FirstUnprocessedPackId = 0;
+      do {
+        Changed = false;
+        Extensions.clear();
+        for (unsigned i = FirstUnprocessedPackId;
+             i < ScratchPacks.getNumPacks(); i++)
+          findExtensionForOnePack(ScratchPacks.getPack(i), ScratchPacks,
+                                  Extensions);
+        FirstUnprocessedPackId = ScratchPacks.getNumPacks() - 1;
+        random_shuffle(Extensions.begin(), Extensions.end(), rand_int);
+        for (auto *VP : Extensions)
+          Changed |= ScratchPacks.tryAdd(VP);
+      } while (Changed);
+      float Cost = ScratchPacks.getCostSaving(TTI, BFI);
+      if (Cost < BestCost) {
+        BestCost = Cost;
+      }
+    }
+    return BestCost;
+  };
+};
+
 bool GSLP::runOnFunction(llvm::Function &F) {
   // if (F.getName() != "adi")
   //  return false;
-  //if (F.getName() != "binvcrhs")
-  //return false;
-  //if (F.getName() != "cmul_many")
+  // if (F.getName() != "binvcrhs")
+  // return false;
+  // if (F.getName() != "cmul_many")
   //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
@@ -867,11 +987,14 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   /////////
   const unsigned BatchSize = 4096;
 
+  Packer Packer(SupportedInsts, F, AA, DL, SE, TTI, BFI);
+
   torch::Device Device(torch::kCPU);
   PackModel Model(32, SupportedInsts);
   Model->to(Device);
   IRIndex Index(F);
-  torch::optim::Adam Optimizer(Model->parameters(), torch::optim::AdamOptions(1e-3));
+  torch::optim::Adam Optimizer(Model->parameters(),
+                               torch::optim::AdamOptions(1e-3));
   std::vector<Instruction *> InstPool;
   for (auto &BB : F)
     for (auto &I : BB)
@@ -884,9 +1007,10 @@ bool GSLP::runOnFunction(llvm::Function &F) {
       auto *I = InstPool[rand_int(InstPool.size())];
       VectorPackSet Packs(&F);
       torch::Tensor LogProb = torch::zeros({1}).sum();
-      //for (auto &BB : F) {
+      // for (auto &BB : F) {
       //  for (auto &I : BB) {
-      //    PackSample PS = PackDistr.sample(Index, &I, Packs, SupportedInsts, LDAs,
+      //    PackSample PS = PackDistr.sample(Index, &I, Packs, SupportedInsts,
+      //    LDAs,
       //        LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
       //    LogProb += PS.LogProb;
       //    if (PS.VP)
@@ -894,12 +1018,12 @@ bool GSLP::runOnFunction(llvm::Function &F) {
       //  }
       //}
       PackSample PS = PackDistr.sample(Index, I, Packs, SupportedInsts, LDAs,
-          LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
+                                       LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
       LogProb += PS.LogProb;
       if (PS.VP)
         Packs.tryAdd(PS.VP);
 
-      float Cost = EvalSeedPacks(Packs, 4).second;
+      float Cost = Packer.evalSeedPacks(Packs, 4);
       TotalCost += Cost;
       Losses.push_back(LogProb * Cost);
     }
@@ -913,7 +1037,6 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   }
 
   return false;
-
 
 #if 0
   auto BestPacks = Packs;
