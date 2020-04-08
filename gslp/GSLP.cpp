@@ -1,12 +1,13 @@
-#include "IRModel.h"
+#include "IRModel.h" // NOTE: this file has to be included first because of namespace conflict with libtorch
+#include "IRVec.h"
 #include "InstSema.h"
 #include "LocalDependenceAnalysis.h"
 #include "MatchManager.h"
+#include "Packer.h"
 #include "Util.h"
 #include "VectorPack.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
-#include "Packer.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -52,73 +53,6 @@ void initializeGSLPPass(PassRegistry &);
 
 namespace {
 
-bool isFloat(Instruction::BinaryOps Opcode) {
-  switch (Opcode) {
-  case Instruction::FAdd:
-  case Instruction::FSub:
-  case Instruction::FMul:
-  case Instruction::FDiv:
-  case Instruction::FRem:
-    return true;
-  default:
-    return false;
-  }
-}
-
-class BinaryIROperation : public Operation {
-  const Instruction::BinaryOps Opcode;
-  unsigned Bitwidth;
-
-public:
-  BinaryIROperation(Instruction::BinaryOps Opcode, unsigned Bitwidth)
-      : Opcode(Opcode), Bitwidth(Bitwidth) {}
-  std::string getName() const { return Instruction::getOpcodeName(Opcode); }
-  unsigned getBitwidth() const { return Bitwidth; }
-  Instruction::BinaryOps getOpcode() const { return Opcode; }
-  bool match(llvm::Value *V, std::vector<Match> &Matches) const override {
-    auto *BinOp = dyn_cast<BinaryOperator>(V);
-    bool Matched =
-        BinOp && BinOp->getOpcode() == Opcode && hasBitWidth(BinOp, Bitwidth);
-    if (Matched)
-      Matches.push_back({// live ins of this operation
-                         {BinOp->getOperand(0), BinOp->getOperand(1)},
-                         V});
-    return Matched;
-  }
-};
-
-class IRVectorBinding : public InstBinding {
-  const BinaryIROperation *Op;
-
-  IRVectorBinding(const BinaryIROperation *Op, std::string Name,
-                  InstSignature Sig, std::vector<BoundOperation> LaneOps)
-      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
-        Op(Op) {}
-
-public:
-  static IRVectorBinding Create(const BinaryIROperation *Op,
-                                unsigned VectorWidth);
-  virtual Value *emit(ArrayRef<llvm::Value *> Operands,
-                      IntrinsicBuilder &Builder) const override;
-  int getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const override {
-    Type *ScalarTy;
-    unsigned ElemWidth = Op->getBitwidth();
-    auto Opcode = Op->getOpcode();
-    if (isFloat(Opcode)) {
-      assert(ElemWidth == 32 || ElemWidth == 64);
-      if (ElemWidth == 32)
-        ScalarTy = Type::getFloatTy(Ctx);
-      else
-        ScalarTy = Type::getDoubleTy(Ctx);
-    } else {
-      ScalarTy = IntegerType::get(Ctx, ElemWidth);
-    }
-    unsigned NumElems = getLaneOps().size();
-    auto *VecTy = VectorType::get(ScalarTy, NumElems);
-    return TTI->getArithmeticInstrCost(Opcode, VecTy);
-  }
-};
-
 class GSLP : public FunctionPass {
   std::unique_ptr<Module> InstWrappers;
 
@@ -148,53 +82,7 @@ public:
   }
 };
 
-std::vector<Instruction::BinaryOps> VectorizableOpcodes = {
-    Instruction::BinaryOps::Add,  Instruction::BinaryOps::FAdd,
-    Instruction::BinaryOps::Sub,  Instruction::BinaryOps::FSub,
-    Instruction::BinaryOps::Mul,  Instruction::BinaryOps::FMul,
-    Instruction::BinaryOps::UDiv, Instruction::BinaryOps::SDiv,
-    Instruction::BinaryOps::FDiv, Instruction::BinaryOps::URem,
-    Instruction::BinaryOps::SRem, Instruction::BinaryOps::FRem,
-    Instruction::BinaryOps::Shl,  Instruction::BinaryOps::LShr,
-    Instruction::BinaryOps::AShr, Instruction::BinaryOps::And,
-    Instruction::BinaryOps::Or,   Instruction::BinaryOps::Xor};
-
-// Aux class enumerating vector ir that we can emit
-class VectorizableTable {
-  std::vector<BinaryIROperation> VectorizableOps;
-  std::vector<IRVectorBinding> VectorInsts;
-
-  std::vector<InstBinding *> Bindings;
-
-public:
-  VectorizableTable() {
-    // enumerate vectorizable scalar ops
-    std::vector<unsigned> ScalarBitwidths = {8, 16, 32, 64};
-    for (auto Opcode : VectorizableOpcodes)
-      for (unsigned SB : ScalarBitwidths) {
-        if (isFloat(Opcode) && SB != 32 && SB != 64)
-          continue;
-        VectorizableOps.emplace_back(Opcode, SB);
-      }
-
-    // enumerate vector insts
-    std::vector<unsigned> VectorBitwidths = {64, 128, 256};
-    for (auto &Op : VectorizableOps) {
-      for (unsigned VB : VectorBitwidths) {
-        // Skip singleton pack
-        if (VB / Op.getBitwidth() == 1)
-          continue;
-        VectorInsts.emplace_back(IRVectorBinding::Create(&Op, VB));
-      }
-    }
-
-    for (auto &Binding : VectorInsts)
-      Bindings.push_back(&Binding);
-  }
-
-  ArrayRef<InstBinding *> getBindings() const { return Bindings; }
-
-} VecBindingTable;
+static IRInstTable VecBindingTable;
 
 struct MCMCVectorPackSet : public VectorPackSet {
   MCMCVectorPackSet(llvm::Function *F) : VectorPackSet(F) {}
@@ -215,37 +103,6 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
 }
 
 } // end anonymous namespace
-
-IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
-                                        unsigned VectorWidth) {
-  // Compute the signature of this BINARY vector inst
-  InstSignature Sig = {// bitwidths of the inputs
-                       {VectorWidth, VectorWidth},
-                       // bitwidth of the output
-                       {VectorWidth},
-                       // has imm8?
-                       false};
-
-  unsigned ElemWidth = Op->getBitwidth();
-  assert(VectorWidth % ElemWidth == 0);
-  unsigned NumLanes = VectorWidth / ElemWidth;
-  std::vector<BoundOperation> LaneOps;
-  for (unsigned i = 0; i < NumLanes; i++) {
-    unsigned Lo = i * ElemWidth, Hi = Lo + ElemWidth;
-    LaneOps.push_back(BoundOperation(Op,
-                                     // input binding
-                                     {{0, Lo, Hi}, {1, Lo, Hi}}));
-  }
-
-  return IRVectorBinding(Op, Op->getName(), Sig, LaneOps);
-}
-
-Value *IRVectorBinding::emit(llvm::ArrayRef<llvm::Value *> Operands,
-                             IntrinsicBuilder &Builder) const {
-  assert(Operands.size() == 2);
-  Instruction::BinaryOps Opcode = Op->getOpcode();
-  return Builder.CreateBinOp(Opcode, Operands[0], Operands[1]);
-}
 
 char GSLP::ID = 0;
 

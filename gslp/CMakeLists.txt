@@ -3,6 +3,7 @@ add_library(Packing STATIC
   InstSema.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IRModel.cpp Packer.cpp
+  IRVec.cpp
   LocalDependenceAnalysis.cpp)
 
 # #xpose libPacking as a clang plugin
@@ -16,7 +17,7 @@ find_package(Torch REQUIRED)
 SET_SOURCE_FILES_PROPERTIES(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 
-llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils)
+llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader)
 
 target_link_libraries(Packing ${TORCH_LIBRARIES})
 target_link_libraries(GSLP Packing ${TORCH_LIBRARIES})

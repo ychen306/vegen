@@ -9,7 +9,11 @@
 #include "VectorPackContext.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/BlockFrequencyInfo.h"
+#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Function.h"
+#include "llvm/InitializePasses.h"
 
 namespace llvm {
 class ScalarEvolution;
