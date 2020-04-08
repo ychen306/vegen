@@ -18,8 +18,6 @@ link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(-frtti)
 add_definitions(-std=c++14)
 
-llvm_map_components_to_libnames(llvm_libs support core transformutils)
-
 include_directories(gslp)
 add_subdirectory(gslp)
 #add_subdirectory(test)
