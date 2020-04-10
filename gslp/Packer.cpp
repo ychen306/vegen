@@ -6,7 +6,7 @@ using namespace llvm;
 Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
-    : SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI), Index(F) {
+    : F(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI), Index(F) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<LoadInst *> Loads;

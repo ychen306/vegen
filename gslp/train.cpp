@@ -9,6 +9,7 @@
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
@@ -74,6 +75,29 @@ INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(PackerBuilder, "pic", "pic", false, false)
 
+static float trainOnPacker(PackModel &Model, Packer &Packer,
+                           std::vector<torch::Tensor> &Losses,
+                           int SamplesPerInst = 4) {
+  auto PackDistr = Packer.runModel(Model);
+  auto *F = Packer.getFunction();
+  float TotalCost = 0;
+  int NumSamples = 0;
+  for (auto &I : make_range(inst_begin(*F), inst_end(*F))) {
+    for (int i = 0; i < SamplesPerInst; i++) {
+      VectorPackSet Packs(F);
+      PackSample PS = Packer.samplePackForInst(&I, Packs, PackDistr);
+      if (PS.VP)
+        Packs.tryAdd(PS.VP);
+      float Cost = Packer.evalSeedPacks(Packs, 4);
+      TotalCost += Cost;
+      Losses.push_back(PS.LogProb * Cost);
+      NumSamples += SamplesPerInst;
+    }
+  }
+
+  return TotalCost / NumSamples;
+}
+
 int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
 
@@ -121,7 +145,34 @@ int main(int argc, char **argv) {
   Passes.add(createBasicAAWrapperPass());
   Passes.add(new PackerBuilder());
 
+  PackModel Model(32, VecBindingTable.getBindings());
+  torch::optim::Adam Optimizer(Model->parameters(),
+                               torch::optim::AdamOptions(1e-3));
+  Optimizer.zero_grad();
+
   for (auto &M : Modules)
     Passes.run(*M);
-  errs() << "!!! num packers: " << PackerBuilder::Packers.size() << '\n';
+
+  errs() << "Num packers: " << PackerBuilder::Packers.size() << '\n';
+  errs() << "Num vector insts: " << VecBindingTable.getBindings().size() << '\n';
+
+  int NumEpochs = 100;
+
+  std::vector<torch::Tensor> Losses;
+  for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
+    float EpochCost = 0;
+    for (std::unique_ptr<Packer> &Packer : PackerBuilder::Packers) {
+      Losses.clear();
+      float AvgCost = trainOnPacker(Model, *Packer, Losses);
+      errs() << "AvgCost: " << AvgCost << '\n';
+      EpochCost += AvgCost;
+
+      auto Loss = torch::stack(Losses).mean();
+      Loss.backward();
+    }
+    errs() << "EPOCH COST: " << EpochCost / PackerBuilder::Packers.size() << '\n';
+    Optimizer.step();
+    Optimizer.zero_grad();
+  }
+  return 0;
 }

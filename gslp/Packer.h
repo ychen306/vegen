@@ -58,6 +58,8 @@ void extendWithDef(
     llvm::TargetTransformInfo *TTI);
 
 class Packer {
+  llvm::Function *F;
+
   // FIXME: fuse all of these together into a single map
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> MMs;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>>
@@ -96,6 +98,12 @@ public:
     return PackDistr.sample(Index, I, ExistingPacks, SupportedInsts, LDAs,
                             LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
   }
+
+  PackDistribution runModel(PackModel &Model) {
+    return Model->forward(Index, LoadDAGs, StoreDAGs);
+  }
+
+  llvm::Function *getFunction() const { return F; }
 };
 
 #endif // PACKER

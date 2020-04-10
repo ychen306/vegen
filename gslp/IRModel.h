@@ -71,6 +71,7 @@ class PackModelImpl : public torch::nn::Module {
   torch::nn::Embedding OpcodeEmb = nullptr;
 
   torch::nn::GRU GRU = nullptr;
+  torch::nn::Linear StateToUserMsg = nullptr;
   torch::nn::Linear StateToUseMsg1 = nullptr;
   torch::nn::Linear StateToUseMsg2 = nullptr;
   torch::nn::Linear StateToMemMsg = nullptr;

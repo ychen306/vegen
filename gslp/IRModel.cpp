@@ -150,6 +150,22 @@ IRIndex::IRIndex(llvm::Function &F) {
   }
 }
 
+// u->v === v using u
+static torch::Tensor buildInvUseGraph(const IRIndex &Index) {
+  std::vector<DiEdge> Edges;
+  unsigned N = Index.getNumValues();
+  for (unsigned i = 0; i < N; i++) {
+    auto *V = Index.get(i);
+    auto *I = dyn_cast<Instruction>(V);
+    if (!I)
+      continue;
+    for (Value *Operand : I->operands())
+      Edges.emplace_back(Index.getValueId(I), Index.getValueId(Operand));
+  }
+  return buildAdjacencyMat(Edges, N);
+}
+
+// u->v === u using v
 static torch::Tensor buildUseGraph1(const IRIndex &Index) {
   std::vector<DiEdge> Edges;
   unsigned N = Index.getNumValues();
@@ -165,6 +181,7 @@ static torch::Tensor buildUseGraph1(const IRIndex &Index) {
   return buildAdjacencyMat(Edges, N);
 }
 
+// u->v === u using v
 static torch::Tensor buildUseGraph2(const IRIndex &Index) {
   std::vector<DiEdge> Edges;
   unsigned N = Index.getNumValues();
@@ -231,10 +248,10 @@ static torch::Tensor getValueTypes(const IRIndex &Index) {
 
 PackModelImpl::PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts)
     : EmbSize(EmbSize), Insts(Insts) {
-  // lstm : <operand 1> x <operand 2> x <left mem refs> x <right mem refs> ->
+  // lstm : <user> x <operand 1> x <operand 2> x <left mem refs> x <right mem refs> ->
   // (h, c)
   auto GRUOpt =
-      nn::GRUOptions(EmbSize * 4, EmbSize).layers(1).batch_first(true);
+      nn::GRUOptions(EmbSize * 5, EmbSize).layers(1).batch_first(true);
 
   // # of possible pack opcode : <no pack> + <# of general packs> + store
   // TODO: support phi and load
@@ -244,6 +261,7 @@ PackModelImpl::PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Ins
   OpcodeEmb = register_module(
       "opcode_embedding",
       nn::Embedding(nn::EmbeddingOptions(OpTable.getNumValueTypes(), EmbSize)));
+  StateToUserMsg = register_module("state2user", nn::Linear(EmbSize, EmbSize));
   StateToUseMsg1 = register_module("state2msg1", nn::Linear(EmbSize, EmbSize));
   StateToUseMsg2 = register_module("state2msg2", nn::Linear(EmbSize, EmbSize));
   StateToMemMsg = register_module("state2mem", nn::Linear(EmbSize, EmbSize));
@@ -258,6 +276,7 @@ PackDistribution PackModelImpl::forward(
     DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &StoreDAGs,
     unsigned NumIters) {
   // FIXME: hoist these out
+  auto InvUseGraph = buildInvUseGraph(Index);
   auto UseGraph1 = buildUseGraph1(Index);
   auto UseGraph2 = buildUseGraph2(Index);
   auto LeftMemRefGraph = buildLeftMemRefGraph(Index, LoadDAGs, StoreDAGs);
@@ -273,12 +292,13 @@ PackDistribution PackModelImpl::forward(
     H = H.view({N, EmbSize});
     auto MemMsg = StateToMemMsg->forward(H);
 
+    auto UserMsg = torch::mm(InvUseGraph, StateToUserMsg->forward(H));
     auto Msg1 = torch::mm(UseGraph1, StateToUseMsg1->forward(H));
     auto Msg2 = torch::mm(UseGraph2, StateToUseMsg2->forward(H));
     auto LeftMemMsg = torch::mm(LeftMemRefGraph, MemMsg);
     auto RightMemMsg = torch::mm(RightMemRefGraph, MemMsg);
 
-    return torch::cat({Msg1, Msg2, LeftMemMsg, RightMemMsg}, 1 /*dim*/);
+    return torch::cat({UserMsg, Msg1, Msg2, LeftMemMsg, RightMemMsg}, 1 /*dim*/);
   };
 
   for (unsigned i = 0; i < NumIters; i++) {
@@ -324,12 +344,13 @@ PackSample PackDistribution::sample(
 
   unsigned FocusId = Index.getValueId(Focus);
 
-  // Append with nop
-  auto EmbWithNop =
-      torch::cat({Emb, Nop[Index.getValueId(Focus)].view({1, -1})});
-  // Prob ~= similarity
-  auto InstProb =
-      EmbWithNop.mv(Emb[Index.getValueId(Focus)]).softmax(0 /*dim*/);
+  auto NopEmb = Nop[FocusId];
+  auto InstEmb = Emb[FocusId];
+  auto Similarity = torch::cat({
+      Emb.mv(InstEmb),
+      NopEmb.dot(InstEmb).view({1})
+      });
+  auto InstProb = Similarity.softmax(0 /*dim*/);
   const unsigned NopId = Index.getNumValues();
 
   if (auto *SI = dyn_cast<StoreInst>(Focus)) {
