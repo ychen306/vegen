@@ -95,7 +95,7 @@ static float trainOnPacker(PackModel &Model, Packer &Packer,
     }
   }
 
-  return TotalCost / NumSamples;
+  return TotalCost;
 }
 
 int main(int argc, char **argv) {
@@ -158,21 +158,20 @@ int main(int argc, char **argv) {
 
   int NumEpochs = 100;
 
-  std::vector<torch::Tensor> Losses;
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
     float EpochCost = 0;
+    std::vector<torch::Tensor> Losses;
     for (std::unique_ptr<Packer> &Packer : PackerBuilder::Packers) {
-      Losses.clear();
       float AvgCost = trainOnPacker(Model, *Packer, Losses);
       errs() << "AvgCost: " << AvgCost << '\n';
       EpochCost += AvgCost;
 
-      auto Loss = torch::stack(Losses).mean();
-      Loss.backward();
     }
-    errs() << "EPOCH COST: " << EpochCost / PackerBuilder::Packers.size() << '\n';
-    Optimizer.step();
+    errs() << "EPOCH COST: " << EpochCost / (float)Losses.size() << '\n';
     Optimizer.zero_grad();
+    auto Loss = torch::stack(Losses).mean();
+    Loss.backward();
+    Optimizer.step();
   }
   return 0;
 }

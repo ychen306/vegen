@@ -160,7 +160,8 @@ static torch::Tensor buildInvUseGraph(const IRIndex &Index) {
     if (!I)
       continue;
     for (Value *Operand : I->operands())
-      Edges.emplace_back(Index.getValueId(I), Index.getValueId(Operand));
+      // Value -> user
+      Edges.emplace_back(Index.getValueId(Operand), Index.getValueId(I));
   }
   return buildAdjacencyMat(Edges, N);
 }
