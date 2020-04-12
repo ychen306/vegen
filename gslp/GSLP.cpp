@@ -160,7 +160,7 @@ sampleAccesses(const VectorPackSet &ExistingPacks,
     assert(Elements.count() == Accesses.size());
   }
 
-  return {Accesses, Elements, Depended};
+  return std::tuple<std::vector<MemAccessTy *>, BitVector, BitVector>(Accesses, Elements, Depended);
 }
 
 static VectorPack *

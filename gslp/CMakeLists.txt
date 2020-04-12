@@ -1,5 +1,5 @@
 # The main "lib packing"
-add_library(Packing STATIC
+add_library(Packing SHARED
   InstSema.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IRModel.cpp Packer.cpp
@@ -14,7 +14,7 @@ add_executable(train train.cpp)
 
 find_package(Torch REQUIRED)
 
-SET_SOURCE_FILES_PROPERTIES(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+SET_SOURCE_FILES_PROPERTIES(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS})
 
 
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader)

@@ -19,7 +19,7 @@
 
 using namespace llvm;
 
-cl::opt<std::string>
+static cl::opt<std::string>
     TrainDir(cl::Positional,
              cl::desc("Specify a train directory of bitcode files"),
              cl::value_desc("train directory"));

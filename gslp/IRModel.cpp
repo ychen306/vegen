@@ -72,26 +72,26 @@ struct DiEdge {
 
 torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
                                 bool Flip = false) {
-  auto CooIndices = torch::empty({2, (long long)Edges.size()},
+  auto CooIndices = torch::empty({2, (int64_t)Edges.size()},
                                  TensorOptions().dtype(torch::kInt64));
   for (unsigned i = 0; i < Edges.size(); i++) {
     if (Flip) {
-      CooIndices[0][i] = (long long)Edges[i].Src;
-      CooIndices[1][i] = (long long)Edges[i].Dest;
+      CooIndices[0][i] = (int64_t)Edges[i].Src;
+      CooIndices[1][i] = (int64_t)Edges[i].Dest;
     } else {
-      CooIndices[1][i] = (long long)Edges[i].Src;
-      CooIndices[0][i] = (long long)Edges[i].Dest;
+      CooIndices[1][i] = (int64_t)Edges[i].Src;
+      CooIndices[0][i] = (int64_t)Edges[i].Dest;
     }
   }
   return torch::sparse_coo_tensor(
-      CooIndices, torch::ones({(long long)Edges.size()}), {N, N});
+      CooIndices, torch::ones({(int64_t)Edges.size()}), {N, N});
 }
 
 // Sample from a subset and return (re-normalized) log-prob of the sample
 std::pair<unsigned, torch::Tensor>
 sampleFromSubset(torch::Tensor Probs, std::vector<int64_t> &SubsetIndices) {
   auto Indices =
-      torch::from_blob(SubsetIndices.data(), {(long long)SubsetIndices.size()},
+      torch::from_blob(SubsetIndices.data(), {(int64_t)SubsetIndices.size()},
                        TensorOptions().dtype(torch::kInt64)).clone();
   auto SubsetProbs = Probs.index_select(0, Indices);
   auto i = torch::multinomial(SubsetProbs, 1).item<int64_t>();
@@ -243,7 +243,7 @@ static torch::Tensor getValueTypes(const IRIndex &Index) {
   unsigned N = Index.getNumValues();
   auto ValueTypes = torch::empty({N}, TensorOptions().dtype(torch::kInt64));
   for (unsigned i = 0; i < N; i++)
-    ValueTypes[i] = (long long)OpTable.getValueTypeId(Index.get(i));
+    ValueTypes[i] = (int64_t)OpTable.getValueTypeId(Index.get(i));
   return ValueTypes;
 }
 
@@ -252,7 +252,7 @@ PackModelImpl::PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Ins
   // lstm : <user> x <operand 1> x <operand 2> x <left mem refs> x <right mem refs> ->
   // (h, c)
   auto GRUOpt =
-      nn::GRUOptions(EmbSize * 5, EmbSize).layers(1).batch_first(true);
+      nn::GRUOptions(EmbSize * 5, EmbSize).num_layers(1).batch_first(true);
 
   // # of possible pack opcode : <no pack> + <# of general packs> + store
   // TODO: support phi and load
@@ -304,7 +304,7 @@ PackDistribution PackModelImpl::forward(
 
   for (unsigned i = 0; i < NumIters; i++) {
     auto Msg = GetMessages(H);
-    H = GRU->forward(Msg.view({N, 1, -1}), H).state;
+    H = std::get<1>(GRU->forward(Msg.view({N, 1, -1}), H));
   }
 
   H = H.view({N, EmbSize});
