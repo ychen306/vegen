@@ -252,13 +252,13 @@ PackModelImpl::PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Ins
   // lstm : <user> x <operand 1> x <operand 2> x <left mem refs> x <right mem refs> ->
   // (h, c)
   auto GRUOpt =
-      nn::GRUOptions(EmbSize * 5, EmbSize).num_layers(1).batch_first(true);
+      nn::GRUCellOptions(EmbSize * 5, EmbSize);
 
   // # of possible pack opcode : <no pack> + <# of general packs> + store
   // TODO: support phi and load
   unsigned NumPackOps = Insts.size() + 1 + 1;
 
-  GRU = register_module("lstm", nn::GRU(GRUOpt));
+  GRU = register_module("rnn", nn::GRUCell(GRUOpt));
   OpcodeEmb = register_module(
       "opcode_embedding",
       nn::Embedding(nn::EmbeddingOptions(OpTable.getNumValueTypes(), EmbSize)));
@@ -287,10 +287,9 @@ PackDistribution PackModelImpl::forward(
 
   // Initialize the states
   auto ValueTypes = getValueTypes(Index);
-  auto H = OpcodeEmb->forward(ValueTypes).view({1, N, EmbSize});
+  auto H = OpcodeEmb->forward(ValueTypes).view({N, EmbSize});
 
   auto GetMessages = [&](torch::Tensor H) -> torch::Tensor {
-    H = H.view({N, EmbSize});
     auto MemMsg = StateToMemMsg->forward(H);
 
     auto UserMsg = torch::mm(InvUseGraph, StateToUserMsg->forward(H));
@@ -302,10 +301,8 @@ PackDistribution PackModelImpl::forward(
     return torch::cat({UserMsg, Msg1, Msg2, LeftMemMsg, RightMemMsg}, 1 /*dim*/);
   };
 
-  for (unsigned i = 0; i < NumIters; i++) {
-    auto Msg = GetMessages(H);
-    H = std::get<1>(GRU->forward(Msg.view({N, 1, -1}), H));
-  }
+  for (unsigned i = 0; i < NumIters; i++)
+    H = GRU->forward(GetMessages(H), H);
 
   H = H.view({N, EmbSize});
   // std::cerr << H << '\n';
