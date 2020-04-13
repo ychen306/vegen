@@ -93,7 +93,7 @@ sampleFromSubset(torch::Tensor Probs, std::vector<int64_t> &SubsetIndices) {
   auto Indices =
       torch::from_blob(SubsetIndices.data(), {(int64_t)SubsetIndices.size()},
                        TensorOptions().dtype(torch::kInt64)).clone();
-  auto SubsetProbs = Probs.index_select(0, Indices);
+  auto SubsetProbs = Probs.index_select(0, Indices) + 0.001;
   auto i = torch::multinomial(SubsetProbs, 1).item<int64_t>();
   // Need to renormalize the probability
   auto Prob = SubsetProbs[i] / SubsetProbs.sum();

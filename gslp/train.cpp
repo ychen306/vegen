@@ -78,7 +78,7 @@ INITIALIZE_PASS_END(PackerBuilder, "pic", "pic", false, false)
 static float trainOnPacker(PackModel &Model, Packer &Packer,
                            std::vector<torch::Tensor> &Losses,
                            int SamplesPerInst = 4) {
-  auto PackDistr = Packer.runModel(Model);
+  auto PackDistr = Packer.runModel(Model, 32);
   auto *F = Packer.getFunction();
   float TotalCost = 0;
   int NumSamples = 0;
@@ -145,9 +145,9 @@ int main(int argc, char **argv) {
   Passes.add(createBasicAAWrapperPass());
   Passes.add(new PackerBuilder());
 
-  PackModel Model(32, VecBindingTable.getBindings());
+  PackModel Model(64, VecBindingTable.getBindings());
   torch::optim::Adam Optimizer(Model->parameters(),
-                               torch::optim::AdamOptions(1e-3));
+                               torch::optim::AdamOptions(1e-2));
   Optimizer.zero_grad();
 
   for (auto &M : Modules)
