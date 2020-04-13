@@ -75,10 +75,10 @@ INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(PackerBuilder, "pic", "pic", false, false)
 
-static float trainOnPacker(PackModel &Model, Packer &Packer,
+static float trainOnPacker(torch::Device Device, PackModel &Model, Packer &Packer,
                            std::vector<torch::Tensor> &Losses,
                            int SamplesPerInst = 4) {
-  auto PackDistr = Packer.runModel(Model, 8);
+  auto PackDistr = Packer.runModel(Device, Model, 8);
   auto *F = Packer.getFunction();
   float TotalCost = 0;
   int NumSamples = 0;
@@ -93,8 +93,6 @@ static float trainOnPacker(PackModel &Model, Packer &Packer,
       Losses.push_back(PS.LogProb * Cost);
       NumSamples += SamplesPerInst;
     }
-    if (NumSamples >= 4096)
-      break;
   }
 
   return TotalCost;
@@ -148,6 +146,12 @@ int main(int argc, char **argv) {
   Passes.add(new PackerBuilder());
 
   PackModel Model(32, VecBindingTable.getBindings());
+  torch::Device Device(torch::kCPU);
+  if (torch::cuda::is_available())
+    Device = torch::Device(torch::kCUDA);
+
+  Model->to(Device);
+
   torch::optim::Adam Optimizer(Model->parameters(),
                                torch::optim::AdamOptions(1e-2));
   Optimizer.zero_grad();
@@ -165,7 +169,7 @@ int main(int argc, char **argv) {
     std::vector<torch::Tensor> Losses;
     int NumSamples = 0;
     for (std::unique_ptr<Packer> &Packer : PackerBuilder::Packers) {
-      float AvgCost = trainOnPacker(Model, *Packer, Losses);
+      float AvgCost = trainOnPacker(Device, Model, *Packer, Losses);
       errs() << "AvgCost: " << AvgCost << '\n';
       EpochCost += AvgCost;
 

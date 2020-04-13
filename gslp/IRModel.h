@@ -81,6 +81,7 @@ class PackModelImpl : public torch::nn::Module {
 public:
   PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts);
   PackDistribution forward(
+      torch::Device &Device,
       const IRIndex &Index,
       llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
           &LoadDAG,

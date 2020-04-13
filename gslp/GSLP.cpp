@@ -553,7 +553,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
     for (auto &I : BB)
       InstPool.push_back(&I);
   for (int epoch = 0; epoch < 10000; epoch++) {
-    auto PackDistr = Packer.runModel(Model);
+    auto PackDistr = Packer.runModel(torch::Device(torch::kCPU), Model);
     std::vector<torch::Tensor> Losses;
     float TotalCost = 0;
     for (unsigned i = 0; i < BatchSize; i++) {

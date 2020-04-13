@@ -93,7 +93,7 @@ sampleFromSubset(torch::Tensor Probs, std::vector<int64_t> &SubsetIndices) {
   auto Indices =
       torch::from_blob(SubsetIndices.data(), {(int64_t)SubsetIndices.size()},
                        TensorOptions().dtype(torch::kInt64))
-          .clone();
+          .clone().to(Probs.device());
   auto SubsetProbs = Probs.index_select(0, Indices) + 0.001;
   auto i = torch::multinomial(SubsetProbs, 1).item<int64_t>();
   // Renormalize the probability
@@ -273,21 +273,22 @@ PackModelImpl::PackModelImpl(unsigned EmbSize,
 }
 
 PackDistribution PackModelImpl::forward(
+    torch::Device &Device,
     const IRIndex &Index,
     DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
     DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &StoreDAGs,
     unsigned NumIters) {
   // FIXME: hoist these out
-  auto InvUseGraph = buildInvUseGraph(Index);
-  auto UseGraph1 = buildUseGraph1(Index);
-  auto UseGraph2 = buildUseGraph2(Index);
-  auto LeftMemRefGraph = buildLeftMemRefGraph(Index, LoadDAGs, StoreDAGs);
-  auto RightMemRefGraph = buildRightMemRefGraph(Index, LoadDAGs, StoreDAGs);
+  auto InvUseGraph = buildInvUseGraph(Index).to(Device);
+  auto UseGraph1 = buildUseGraph1(Index).to(Device);
+  auto UseGraph2 = buildUseGraph2(Index).to(Device);
+  auto LeftMemRefGraph = buildLeftMemRefGraph(Index, LoadDAGs, StoreDAGs).to(Device);
+  auto RightMemRefGraph = buildRightMemRefGraph(Index, LoadDAGs, StoreDAGs).to(Device);
 
   unsigned N = Index.getNumValues();
 
   // Initialize the states
-  auto ValueTypes = getValueTypes(Index);
+  auto ValueTypes = getValueTypes(Index).to(Device);
   auto H = OpcodeEmb->forward(ValueTypes).view({N, EmbSize});
 
   auto GetMessages = [&](torch::Tensor H) -> torch::Tensor {

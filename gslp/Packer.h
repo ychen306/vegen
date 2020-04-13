@@ -99,8 +99,8 @@ public:
                             LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
   }
 
-  PackDistribution runModel(PackModel &Model, int NumIters=8) {
-    return Model->forward(Index, LoadDAGs, StoreDAGs, NumIters);
+  PackDistribution runModel(torch::Device Device, PackModel &Model, int NumIters=8) {
+    return Model->forward(Device, Index, LoadDAGs, StoreDAGs, NumIters);
   }
 
   llvm::Function *getFunction() const { return F; }
