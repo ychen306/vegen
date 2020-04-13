@@ -8,7 +8,7 @@ set(LIB_PACKING_SRC
 
 if(APPLE)
   add_library(Packing STATIC ${LIB_PACKING_SRC})
-else(APPLE)
+else()
   add_library(Packing SHARED ${LIB_PACKING_SRC})
 endif(APPLE)
 
