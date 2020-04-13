@@ -83,8 +83,8 @@ torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
       CooIndices[0][i] = (int64_t)Edges[i].Dest;
     }
   }
-  return torch::sparse_coo_tensor(
-      CooIndices, torch::ones({(int64_t)Edges.size()}), {N, N});
+  return torch::sparse_coo_tensor(CooIndices,
+                                  torch::ones({(int64_t)Edges.size()}), {N, N});
 }
 
 // Sample from a subset and return (re-normalized) log-prob of the sample
@@ -92,10 +92,11 @@ std::pair<unsigned, torch::Tensor>
 sampleFromSubset(torch::Tensor Probs, std::vector<int64_t> &SubsetIndices) {
   auto Indices =
       torch::from_blob(SubsetIndices.data(), {(int64_t)SubsetIndices.size()},
-                       TensorOptions().dtype(torch::kInt64)).clone();
+                       TensorOptions().dtype(torch::kInt64))
+          .clone();
   auto SubsetProbs = Probs.index_select(0, Indices) + 0.001;
   auto i = torch::multinomial(SubsetProbs, 1).item<int64_t>();
-  // Need to renormalize the probability
+  // Renormalize the probability
   auto Prob = SubsetProbs[i] / SubsetProbs.sum();
   return {SubsetIndices[i], Prob.log()};
 }
@@ -247,12 +248,12 @@ static torch::Tensor getValueTypes(const IRIndex &Index) {
   return ValueTypes;
 }
 
-PackModelImpl::PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts)
+PackModelImpl::PackModelImpl(unsigned EmbSize,
+                             llvm::ArrayRef<InstBinding *> Insts)
     : EmbSize(EmbSize), Insts(Insts) {
-  // lstm : <user> x <operand 1> x <operand 2> x <left mem refs> x <right mem refs> ->
-  // (h, c)
-  auto GRUOpt =
-      nn::GRUCellOptions(EmbSize * 5, EmbSize);
+  // lstm : <user> x <operand 1> x <operand 2> x <left mem refs> x <right mem
+  // refs> -> (h, c)
+  auto GRUOpt = nn::GRUCellOptions(EmbSize * 5, EmbSize);
 
   // # of possible pack opcode : <no pack> + <# of general packs> + store
   // TODO: support phi and load
@@ -267,7 +268,7 @@ PackModelImpl::PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Ins
   StateToUseMsg2 = register_module("state2msg2", nn::Linear(EmbSize, EmbSize));
   StateToMemMsg = register_module("state2mem", nn::Linear(EmbSize, EmbSize));
   StateToEmb = register_module("state2out", nn::Linear(EmbSize, EmbSize));
-  StateToNop = register_module("state2nop", nn::Linear(EmbSize, EmbSize));
+  StateToNop = register_module("state2nop", nn::Linear(EmbSize, 1));
   StateToInst = register_module("state2inst", nn::Linear(EmbSize, NumPackOps));
 }
 
@@ -298,19 +299,21 @@ PackDistribution PackModelImpl::forward(
     auto LeftMemMsg = torch::mm(LeftMemRefGraph, MemMsg);
     auto RightMemMsg = torch::mm(RightMemRefGraph, MemMsg);
 
-    return torch::cat({UserMsg, Msg1, Msg2, LeftMemMsg, RightMemMsg}, 1 /*dim*/);
+    return torch::cat({UserMsg, Msg1, Msg2, LeftMemMsg, RightMemMsg},
+                      1 /*dim*/);
   };
 
   for (unsigned i = 0; i < NumIters; i++)
     H = GRU->forward(GetMessages(H), H);
 
-  H = H.view({N, EmbSize});
-  // std::cerr << H << '\n';
-
   auto OpProb = StateToInst->forward(H).softmax(1 /*dim*/);
   auto Emb = StateToEmb->forward(H);
-  auto Nop = StateToNop->forward(H);
-  return PackDistribution(OpProb, Emb, Nop);
+  auto InstSimilarity = Emb.mm(Emb.t());
+  auto NopSimilarity = StateToNop->forward(H);
+  auto InstProbs =
+      torch::cat({InstSimilarity, NopSimilarity}, 1 /*dim*/)
+          .softmax(1);
+  return PackDistribution(OpProb, InstProbs);
 }
 
 static const unsigned OpcodeNoPack = 0;
@@ -341,20 +344,12 @@ PackSample PackDistribution::sample(
     TargetTransformInfo *TTI) const {
 
   unsigned FocusId = Index.getValueId(Focus);
-
-  auto NopEmb = Nop[FocusId];
-  auto InstEmb = Emb[FocusId];
-  auto Similarity = torch::cat({
-      Emb.mv(InstEmb),
-      NopEmb.dot(InstEmb).view({1})
-      });
-  auto InstProb = Similarity.softmax(0 /*dim*/);
   const unsigned NopId = Index.getNumValues();
+
+  auto InstProb = InstProbs[FocusId];
 
   if (auto *SI = dyn_cast<StoreInst>(Focus)) {
     // Can't figure out how to convert a `0` literal to tensor...
-    torch::Tensor Zero = torch::zeros({1}).sum();
-
     auto *BB = SI->getParent();
     auto &StoreDAG = *StoreDAGs[BB];
 
@@ -400,7 +395,7 @@ PackSample PackDistribution::sample(
           sampleFromSubset(InstProb, AvailableStores);
       if (InstId == NopId)
         break;
-      VPLogProb += LaneLogProb;
+      VPLogProb = VPLogProb + LaneLogProb;
       auto *NextSI = cast<StoreInst>(Index.get(InstId));
       Stores.push_back(NextSI);
       Elements.set(VPCtx.getScalarId(NextSI));
@@ -460,7 +455,7 @@ PackSample PackDistribution::sample(
     unsigned InstId;
     torch::Tensor LaneLogProb;
     std::tie(InstId, LaneLogProb) = sampleFromSubset(InstProb, MatchOutputs);
-    VPLogProb += LaneLogProb;
+    VPLogProb = VPLogProb + LaneLogProb;
     // FIXME: support nop lane
     if (InstId == NopId)
       return PackSample{nullptr, VPLogProb};

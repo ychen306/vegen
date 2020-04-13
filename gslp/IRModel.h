@@ -45,10 +45,9 @@ class MatchManager;
 
 struct PackDistribution {
   torch::Tensor OpProb;
-  torch::Tensor Emb;
-  torch::Tensor Nop;
-  PackDistribution(torch::Tensor OpProb, torch::Tensor Emb, torch::Tensor Nop) 
-    : OpProb(OpProb), Emb(Emb), Nop(Nop) {}
+  torch::Tensor InstProbs;
+  PackDistribution(torch::Tensor OpProb, torch::Tensor InstProbs) 
+    : OpProb(OpProb), InstProbs(InstProbs) {}
   PackSample sample(
       const IRIndex &Index,
       llvm::Instruction *Focus,

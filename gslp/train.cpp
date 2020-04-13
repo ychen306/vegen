@@ -78,7 +78,7 @@ INITIALIZE_PASS_END(PackerBuilder, "pic", "pic", false, false)
 static float trainOnPacker(PackModel &Model, Packer &Packer,
                            std::vector<torch::Tensor> &Losses,
                            int SamplesPerInst = 4) {
-  auto PackDistr = Packer.runModel(Model, 32);
+  auto PackDistr = Packer.runModel(Model, 8);
   auto *F = Packer.getFunction();
   float TotalCost = 0;
   int NumSamples = 0;
@@ -93,6 +93,8 @@ static float trainOnPacker(PackModel &Model, Packer &Packer,
       Losses.push_back(PS.LogProb * Cost);
       NumSamples += SamplesPerInst;
     }
+    if (NumSamples >= 4096)
+      break;
   }
 
   return TotalCost;
@@ -145,7 +147,7 @@ int main(int argc, char **argv) {
   Passes.add(createBasicAAWrapperPass());
   Passes.add(new PackerBuilder());
 
-  PackModel Model(64, VecBindingTable.getBindings());
+  PackModel Model(32, VecBindingTable.getBindings());
   torch::optim::Adam Optimizer(Model->parameters(),
                                torch::optim::AdamOptions(1e-2));
   Optimizer.zero_grad();
@@ -161,17 +163,22 @@ int main(int argc, char **argv) {
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
     float EpochCost = 0;
     std::vector<torch::Tensor> Losses;
+    int NumSamples = 0;
     for (std::unique_ptr<Packer> &Packer : PackerBuilder::Packers) {
       float AvgCost = trainOnPacker(Model, *Packer, Losses);
       errs() << "AvgCost: " << AvgCost << '\n';
       EpochCost += AvgCost;
 
+      Optimizer.zero_grad();
+      auto Loss = torch::stack(Losses).mean();
+      Loss.backward();
+      Optimizer.step();
+
+      NumSamples += Losses.size();
+      Losses.clear();
+
     }
-    errs() << "EPOCH COST: " << EpochCost / (float)Losses.size() << '\n';
-    Optimizer.zero_grad();
-    auto Loss = torch::stack(Losses).mean();
-    Loss.backward();
-    Optimizer.step();
+    errs() << "EPOCH COST: " << EpochCost / (float)NumSamples << '\n';
   }
   return 0;
 }
