@@ -5,6 +5,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/Support/FormatVariadic.h"
 #include <map>
 #include <torch/nn/module.h>
 #include <torch/torch.h>
@@ -93,7 +94,8 @@ sampleFromSubset(torch::Tensor Probs, std::vector<int64_t> &SubsetIndices) {
   auto Indices =
       torch::from_blob(SubsetIndices.data(), {(int64_t)SubsetIndices.size()},
                        TensorOptions().dtype(torch::kInt64))
-          .clone().to(Probs.device());
+          .clone()
+          .to(Probs.device());
   auto SubsetProbs = Probs.index_select(0, Indices) + 0.001;
   auto i = torch::multinomial(SubsetProbs, 1).item<int64_t>();
   // Renormalize the probability
@@ -249,7 +251,8 @@ static torch::Tensor getValueTypes(const IRIndex &Index) {
 }
 
 PackModelImpl::PackModelImpl(unsigned EmbSize,
-                             llvm::ArrayRef<InstBinding *> Insts)
+                             llvm::ArrayRef<InstBinding *> Insts,
+                             unsigned MaxNumLanes)
     : EmbSize(EmbSize), Insts(Insts) {
   // lstm : <user> x <operand 1> x <operand 2> x <left mem refs> x <right mem
   // refs> -> (h, c)
@@ -270,11 +273,14 @@ PackModelImpl::PackModelImpl(unsigned EmbSize,
   StateToEmb = register_module("state2out", nn::Linear(EmbSize, EmbSize));
   StateToNop = register_module("state2nop", nn::Linear(EmbSize, 1));
   StateToInst = register_module("state2inst", nn::Linear(EmbSize, NumPackOps));
+  for (unsigned i = 0; i < MaxNumLanes; i++) {
+    StateToLaneEmbs.push_back(register_module(formatv("state2lane{0}", i),
+                                              nn::Linear(EmbSize, EmbSize)));
+  }
 }
 
 PackDistribution PackModelImpl::forward(
-    torch::Device &Device,
-    const IRIndex &Index,
+    torch::Device &Device, const IRIndex &Index,
     DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
     DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &StoreDAGs,
     unsigned NumIters) {
@@ -282,8 +288,10 @@ PackDistribution PackModelImpl::forward(
   auto InvUseGraph = buildInvUseGraph(Index).to(Device);
   auto UseGraph1 = buildUseGraph1(Index).to(Device);
   auto UseGraph2 = buildUseGraph2(Index).to(Device);
-  auto LeftMemRefGraph = buildLeftMemRefGraph(Index, LoadDAGs, StoreDAGs).to(Device);
-  auto RightMemRefGraph = buildRightMemRefGraph(Index, LoadDAGs, StoreDAGs).to(Device);
+  auto LeftMemRefGraph =
+      buildLeftMemRefGraph(Index, LoadDAGs, StoreDAGs).to(Device);
+  auto RightMemRefGraph =
+      buildRightMemRefGraph(Index, LoadDAGs, StoreDAGs).to(Device);
 
   unsigned N = Index.getNumValues();
 
@@ -309,12 +317,14 @@ PackDistribution PackModelImpl::forward(
 
   auto OpProb = StateToInst->forward(H).softmax(1 /*dim*/);
   auto Emb = StateToEmb->forward(H);
-  auto InstSimilarity = Emb.mm(Emb.t());
   auto NopSimilarity = StateToNop->forward(H);
-  auto InstProbs =
-      torch::cat({InstSimilarity, NopSimilarity}, 1 /*dim*/)
-          .softmax(1);
-  return PackDistribution(OpProb, InstProbs);
+  std::vector<torch::Tensor> LaneProbs;
+  for (auto &StateToLane : StateToLaneEmbs) {
+    auto InstSimilarity = StateToLane(H).mm(Emb.t());
+    LaneProbs.push_back(
+        torch::cat({InstSimilarity, NopSimilarity}, 1 /*dim*/).softmax(1));
+  }
+  return PackDistribution(OpProb, LaneProbs);
 }
 
 static const unsigned OpcodeNoPack = 0;
@@ -346,8 +356,6 @@ PackSample PackDistribution::sample(
 
   unsigned FocusId = Index.getValueId(Focus);
   const unsigned NopId = Index.getNumValues();
-
-  auto InstProb = InstProbs[FocusId];
 
   if (auto *SI = dyn_cast<StoreInst>(Focus)) {
     // Can't figure out how to convert a `0` literal to tensor...
@@ -393,7 +401,7 @@ PackSample PackDistribution::sample(
       torch::Tensor LaneLogProb;
       unsigned InstId;
       std::tie(InstId, LaneLogProb) =
-          sampleFromSubset(InstProb, AvailableStores);
+          sampleFromSubset(LaneProbs[i][FocusId], AvailableStores);
       if (InstId == NopId)
         break;
       VPLogProb = VPLogProb + LaneLogProb;
@@ -445,6 +453,9 @@ PackSample PackDistribution::sample(
         continue;
       if (ExistingPacks.isPacked(I, VPCtx))
         continue;
+      // Focus inst must also be in the first lane
+      if (i == 0 && Match.Output != Focus)
+        continue;
       // FIXME: make sure `MatchOutputs` don't have duplicates
       MatchOutputs.push_back(Index.getValueId(I));
     }
@@ -455,7 +466,7 @@ PackSample PackDistribution::sample(
     // Sample from the available matches
     unsigned InstId;
     torch::Tensor LaneLogProb;
-    std::tie(InstId, LaneLogProb) = sampleFromSubset(InstProb, MatchOutputs);
+    std::tie(InstId, LaneLogProb) = sampleFromSubset(LaneProbs[i][FocusId], MatchOutputs);
     VPLogProb = VPLogProb + LaneLogProb;
     // FIXME: support nop lane
     if (InstId == NopId)

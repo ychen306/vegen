@@ -45,9 +45,9 @@ class MatchManager;
 
 struct PackDistribution {
   torch::Tensor OpProb;
-  torch::Tensor InstProbs;
-  PackDistribution(torch::Tensor OpProb, torch::Tensor InstProbs) 
-    : OpProb(OpProb), InstProbs(InstProbs) {}
+  std::vector<torch::Tensor> LaneProbs;
+  PackDistribution(torch::Tensor OpProb, std::vector<torch::Tensor> LaneProbs) 
+    : OpProb(OpProb), LaneProbs(LaneProbs) {}
   PackSample sample(
       const IRIndex &Index,
       llvm::Instruction *Focus,
@@ -77,9 +77,10 @@ class PackModelImpl : public torch::nn::Module {
   torch::nn::Linear StateToInst = nullptr;
   torch::nn::Linear StateToEmb = nullptr;
   torch::nn::Linear StateToNop = nullptr;
+  std::vector<torch::nn::Linear> StateToLaneEmbs;
 
 public:
-  PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts);
+  PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts, unsigned MaxNumLanes=64);
   PackDistribution forward(
       torch::Device &Device,
       const IRIndex &Index,
