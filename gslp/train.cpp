@@ -98,6 +98,30 @@ static float trainOnPacker(torch::Device Device, PackModel &Model, Packer &Packe
   return TotalCost;
 }
 
+static float trainOnPackerHolistic(torch::Device Device, PackModel &Model, Packer &Packer,
+                           std::vector<torch::Tensor> &Losses,
+                           int NumSamples = 32) {
+  auto PackDistr = Packer.runModel(Device, Model, 8);
+  auto *F = Packer.getFunction();
+  float TotalCost = 0;
+  std::vector<torch::Tensor> LogProbs;
+  for (int i = 0; i < NumSamples ; i++) {
+    VectorPackSet Packs(F);
+    for (auto &I : make_range(inst_begin(*F), inst_end(*F))) {
+      PackSample PS = Packer.samplePackForInst(&I, Packs, PackDistr);
+      if (PS.VP)
+        Packs.tryAdd(PS.VP);
+      LogProbs.push_back(PS.LogProb);
+    }
+
+    float Cost = Packer.evalSeedPacks(Packs, 1);
+    TotalCost += Cost;
+    Losses.push_back(torch::stack(LogProbs).sum() * Cost);
+  }
+
+  return TotalCost / float(NumSamples);
+}
+
 int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
 
@@ -153,7 +177,7 @@ int main(int argc, char **argv) {
   Model->to(Device);
 
   torch::optim::Adam Optimizer(Model->parameters(),
-                               torch::optim::AdamOptions(1e-2));
+                               torch::optim::AdamOptions(1e-4));
   Optimizer.zero_grad();
 
   for (auto &M : Modules)
@@ -163,13 +187,20 @@ int main(int argc, char **argv) {
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size() << '\n';
 
   int NumEpochs = 100;
+  int NumBootstrapEpochs = 10;
 
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
     float EpochCost = 0;
     std::vector<torch::Tensor> Losses;
     int NumSamples = 0;
     for (std::unique_ptr<Packer> &Packer : PackerBuilder::Packers) {
-      float AvgCost = trainOnPacker(Device, Model, *Packer, Losses);
+      float AvgCost;
+      if (Epoch < NumBootstrapEpochs) {
+        AvgCost = trainOnPacker(Device, Model, *Packer, Losses);
+      } else {
+        AvgCost = trainOnPackerHolistic(Device, Model, *Packer, Losses);
+      }
+
       errs() << "AvgCost: " << AvgCost << '\n';
       EpochCost += AvgCost;
 
@@ -182,7 +213,13 @@ int main(int argc, char **argv) {
       Losses.clear();
 
     }
-    errs() << "EPOCH COST: " << EpochCost / (float)NumSamples << '\n';
+    if (Epoch < NumBootstrapEpochs)
+      errs() << "Booststrapping, \n";
+    else
+      errs() << "Sampling whole seed packs\n";
+    
+    errs() << "Epoch " << Epoch
+      << ", cost: " << EpochCost / (float)NumSamples << '\n';
   }
   return 0;
 }
