@@ -36,6 +36,10 @@ static cl::opt<unsigned>
     EmbeddingSize("emb-size", cl::desc("Specify size of the embedding"),
                   cl::value_desc("model embedding sizes"), cl::init(32));
 
+static cl::opt<float>
+  LearningRate("lr", cl::desc("Specify learning rate"),
+      cl::value_desc("learning rate"), cl::init(1e-3));
+
 namespace llvm {
 void initializePackerBuilderPass(PassRegistry &);
 }
@@ -174,7 +178,7 @@ int main(int argc, char **argv) {
   Model->to(Device);
 
   torch::optim::Adam Optimizer(Model->parameters(),
-                               torch::optim::AdamOptions(1e-4));
+                               torch::optim::AdamOptions(LearningRate));
   Optimizer.zero_grad();
 
   for (auto &M : Modules)
