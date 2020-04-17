@@ -24,6 +24,11 @@ static cl::opt<std::string>
              cl::desc("Specify a train directory of bitcode files"),
              cl::value_desc("train directory"));
 
+static cl::opt<std::string>
+    OutModelPath("o",
+        cl::desc("Specify a file path for the trained model"),
+        cl::value_desc("output model path"));
+
 namespace llvm {
 void initializePackerBuilderPass(PassRegistry &);
 }
@@ -49,6 +54,12 @@ public:
 } // namespace
 
 std::vector<std::unique_ptr<Packer>> PackerBuilder::Packers = {};
+
+static void saveModel(PackModel &Model, std::string ModelPath) {
+  torch::serialize::OutputArchive Archive;
+  Model->save(Archive);
+  Archive.save_to(ModelPath);
+}
 
 static IRInstTable VecBindingTable;
 
@@ -96,30 +107,6 @@ static float trainOnPacker(torch::Device Device, PackModel &Model, Packer &Packe
   }
 
   return TotalCost;
-}
-
-static float trainOnPackerHolistic(torch::Device Device, PackModel &Model, Packer &Packer,
-                           std::vector<torch::Tensor> &Losses,
-                           int NumSamples = 32) {
-  auto PackDistr = Packer.runModel(Device, Model, 8);
-  auto *F = Packer.getFunction();
-  float TotalCost = 0;
-  std::vector<torch::Tensor> LogProbs;
-  for (int i = 0; i < NumSamples ; i++) {
-    VectorPackSet Packs(F);
-    for (auto &I : make_range(inst_begin(*F), inst_end(*F))) {
-      PackSample PS = Packer.samplePackForInst(&I, Packs, PackDistr);
-      if (PS.VP)
-        Packs.tryAdd(PS.VP);
-      LogProbs.push_back(PS.LogProb);
-    }
-
-    float Cost = Packer.evalSeedPacks(Packs, 1);
-    TotalCost += Cost;
-    Losses.push_back(torch::stack(LogProbs).sum() * Cost);
-  }
-
-  return TotalCost / float(NumSamples);
 }
 
 int main(int argc, char **argv) {
@@ -187,19 +174,13 @@ int main(int argc, char **argv) {
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size() << '\n';
 
   int NumEpochs = 100;
-  int NumBootstrapEpochs = 10;
 
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
     float EpochCost = 0;
     std::vector<torch::Tensor> Losses;
     int NumSamples = 0;
     for (std::unique_ptr<Packer> &Packer : PackerBuilder::Packers) {
-      float AvgCost;
-      if (Epoch < NumBootstrapEpochs) {
-        AvgCost = trainOnPacker(Device, Model, *Packer, Losses);
-      } else {
-        AvgCost = trainOnPackerHolistic(Device, Model, *Packer, Losses);
-      }
+      float AvgCost = trainOnPacker(Device, Model, *Packer, Losses);
 
       errs() << "AvgCost: " << AvgCost << '\n';
       EpochCost += AvgCost;
@@ -211,15 +192,12 @@ int main(int argc, char **argv) {
 
       NumSamples += Losses.size();
       Losses.clear();
-
     }
-    if (Epoch < NumBootstrapEpochs)
-      errs() << "Booststrapping, \n";
-    else
-      errs() << "Sampling whole seed packs\n";
-    
+
     errs() << "Epoch " << Epoch
       << ", cost: " << EpochCost / (float)NumSamples << '\n';
+
+    saveModel(Model, OutModelPath);
   }
   return 0;
 }
