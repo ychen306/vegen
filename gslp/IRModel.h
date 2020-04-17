@@ -93,4 +93,6 @@ public:
 
 TORCH_MODULE(PackModel);
 
+void loadModel(PackModel &PackModel, std::string ModelPath);
+
 #endif // IR_MODEL_H

@@ -28,6 +28,10 @@ static cl::opt<std::string>
     OutModelPath("o", cl::desc("Specify a file path for the trained model"),
                  cl::value_desc("output model path"), cl::init("pack.pt"));
 
+static cl::opt<std::string>
+  InitModelPath("init", cl::desc("Specify a file path to initialize the model"),
+      cl::value_desc("init model path"), cl::init(""));
+
 static cl::opt<unsigned>
     EmbeddingSize("emb-size", cl::desc("Specify size of the embedding"),
                   cl::value_desc("model embedding sizes"), cl::init(32));
@@ -158,6 +162,11 @@ int main(int argc, char **argv) {
   Passes.add(new PackerBuilder());
 
   PackModel Model(EmbeddingSize, VecBindingTable.getBindings());
+  if (!InitModelPath.empty()) {
+    errs() << "Initializing model using " << InitModelPath << '\n';
+    loadModel(Model, InitModelPath);
+  }
+
   torch::Device Device(torch::kCPU);
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);

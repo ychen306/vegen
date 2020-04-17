@@ -483,3 +483,7 @@ PackSample PackDistribution::sample(
   auto *VP = VPCtx.createVectorPack(Matches, Elements, Depended, Inst, TTI);
   return PackSample{VP, VPLogProb};
 }
+
+void loadModel(PackModel &PackModel, std::string ModelPath) {
+  torch::load(PackModel, ModelPath);
+}
