@@ -485,5 +485,5 @@ PackSample PackDistribution::sample(
 }
 
 void loadModel(PackModel &PackModel, std::string ModelPath) {
-  torch::load(PackModel, ModelPath);
+  torch::load(PackModel, ModelPath, torch::Device(torch::kCPU));
 }
