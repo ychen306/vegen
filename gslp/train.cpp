@@ -7,9 +7,9 @@
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/InstIterator.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
@@ -25,9 +25,12 @@ static cl::opt<std::string>
              cl::value_desc("train directory"));
 
 static cl::opt<std::string>
-    OutModelPath("o",
-        cl::desc("Specify a file path for the trained model"),
-        cl::value_desc("output model path"));
+    OutModelPath("o", cl::desc("Specify a file path for the trained model"),
+                 cl::value_desc("output model path"), cl::init("pack.pt"));
+
+static cl::opt<unsigned>
+    EmbeddingSize("emb-size", cl::desc("Specify size of the embedding"),
+                  cl::value_desc("model embedding sizes"), cl::init(32));
 
 namespace llvm {
 void initializePackerBuilderPass(PassRegistry &);
@@ -56,9 +59,7 @@ public:
 std::vector<std::unique_ptr<Packer>> PackerBuilder::Packers = {};
 
 static void saveModel(PackModel &Model, std::string ModelPath) {
-  torch::serialize::OutputArchive Archive;
-  Model->save(Archive);
-  Archive.save_to(ModelPath);
+  torch::save(Model, ModelPath);
 }
 
 static IRInstTable VecBindingTable;
@@ -86,8 +87,8 @@ INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(PackerBuilder, "pic", "pic", false, false)
 
-static float trainOnPacker(torch::Device Device, PackModel &Model, Packer &Packer,
-                           std::vector<torch::Tensor> &Losses,
+static float trainOnPacker(torch::Device Device, PackModel &Model,
+                           Packer &Packer, std::vector<torch::Tensor> &Losses,
                            int SamplesPerInst = 4) {
   auto PackDistr = Packer.runModel(Device, Model, 8);
   auto *F = Packer.getFunction();
@@ -156,7 +157,7 @@ int main(int argc, char **argv) {
   Passes.add(createBasicAAWrapperPass());
   Passes.add(new PackerBuilder());
 
-  PackModel Model(32, VecBindingTable.getBindings());
+  PackModel Model(EmbeddingSize, VecBindingTable.getBindings());
   torch::Device Device(torch::kCPU);
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);
@@ -171,7 +172,8 @@ int main(int argc, char **argv) {
     Passes.run(*M);
 
   errs() << "Num packers: " << PackerBuilder::Packers.size() << '\n';
-  errs() << "Num vector insts: " << VecBindingTable.getBindings().size() << '\n';
+  errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
+         << '\n';
 
   int NumEpochs = 100;
 
@@ -194,8 +196,8 @@ int main(int argc, char **argv) {
       Losses.clear();
     }
 
-    errs() << "Epoch " << Epoch
-      << ", cost: " << EpochCost / (float)NumSamples << '\n';
+    errs() << "Epoch " << Epoch << ", cost: " << EpochCost / (float)NumSamples
+           << '\n';
 
     saveModel(Model, OutModelPath);
   }
