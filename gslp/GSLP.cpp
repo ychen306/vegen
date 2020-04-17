@@ -47,6 +47,10 @@ cl::opt<std::string> InstWrappersPath("inst-wrappers",
 cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                              cl::init(false));
 
+static cl::opt<std::string>
+    ModelPath("model", cl::desc("Specify a file path for the trained model"),
+                 cl::value_desc("output model path"), cl::init("pack.pt"));
+
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
 }
@@ -542,117 +546,20 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   Packer Packer(SupportedInsts, F, AA, DL, SE, TTI, BFI);
 
-  torch::Device Device(torch::kCPU);
+  // FIXME: make sure ths supported insts we are using here syncs up with the model
   PackModel Model(32, SupportedInsts);
-  Model->to(Device);
-  IRIndex Index(F);
-  torch::optim::Adam Optimizer(Model->parameters(),
-                               torch::optim::AdamOptions(1e-3));
-  std::vector<Instruction *> InstPool;
-  for (auto &BB : F)
-    for (auto &I : BB)
-      InstPool.push_back(&I);
-  for (int epoch = 0; epoch < 10000; epoch++) {
-    auto PackDistr = Packer.runModel(torch::Device(torch::kCPU), Model);
-    std::vector<torch::Tensor> Losses;
-    float TotalCost = 0;
-    for (unsigned i = 0; i < BatchSize; i++) {
-      auto *I = InstPool[rand_int(InstPool.size())];
-      VectorPackSet Packs(&F);
-      torch::Tensor LogProb = torch::zeros({1}).sum();
-      // for (auto &BB : F) {
-      //  for (auto &I : BB) {
-      //    PackSample PS = PackDistr.sample(Index, &I, Packs, SupportedInsts,
-      //    LDAs,
-      //        LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
-      //    LogProb += PS.LogProb;
-      //    if (PS.VP)
-      //      Packs.tryAdd(PS.VP);
-      //  }
-      //}
-      PackSample PS = Packer.samplePackForInst(I, Packs, PackDistr);
-      LogProb += PS.LogProb;
-      if (PS.VP)
-        Packs.tryAdd(PS.VP);
+  loadModel(Model, ModelPath);
 
-      float Cost = Packer.evalSeedPacks(Packs, 4);
-      TotalCost += Cost;
-      Losses.push_back(LogProb * Cost);
-    }
-    torch::Tensor Loss = torch::stack(Losses).mean();
-    std::cerr << "!!! Average Cost: " << TotalCost / (float)BatchSize << '\n';
-    std::cerr << "!! LOSS : " << Loss << '\n';
-
-    Optimizer.zero_grad();
-    Loss.backward();
-    Optimizer.step();
-  }
-
-  return false;
-
-#if 0
-  auto BestPacks = Packs;
-  float BestCost = 0;
-  for (int i = 0; i < 1000; i++) {
-    Packs = MCMCVectorPackSet(&F);
-    // bool Sampled = SampleOnePack(Packs);
-    SampleOnePack(Packs);
-    for (int j = 0; j < 100; j++)
-      ExtendOnePack(Packs);
-    float Cost = Packs.getCostSaving(TTI, BFI);
-    // if (Sampled || Cost < BestCost) {
-    //  for (int i = 0; i < Packs.getNumPacks(); i++)
-    //    errs() << Packs.getPack(i) << '\n';
-    //  errs() << F << '\n';
-    //  BestCost = Cost;
-    //  BestPacks = Packs;
-    //  break;
-    //}
-    // break;
-    if (Cost < BestCost) {
-      errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks() << '\n';
-      BestCost = Cost;
-      BestPacks = Packs;
-    }
-  }
-#endif
+  auto PackDistr = Packer.runModel(torch::Device(torch::kCPU), Model, 8);
 
 #if 1
   // Sample Seed packs and evaluate their qualities
   std::map<const VectorPack *, float> SeedPacks;
   VectorPackSet EmptyPackSet(&F);
-  for (auto &BB : F) {
-    // if (BB.getName() != "for.body7.i.i")
-    //  continue;
-    unsigned NumSamples = BB.size() * 100;
-    errs() << "NUM SAMPLES: " << NumSamples << '\n';
-    for (unsigned i = 0; i < NumSamples; i++) {
-      const auto *VP = SampleOnePackFromBB(EmptyPackSet, &BB);
-      if (!VP)
-        continue;
-
-#if 0
-      bool Found = false;
-      for (auto *V : VP.elementValues()) {
-        auto *SI = dyn_cast<StoreInst>(V);
-        if (SI && SI->getValueOperand()->getName() == "mul162.i.i") {
-          Found = true;
-          break;
-        }
-      }
-      if (Found) {
-        errs() << "Found seed, cost = " << SeedPacks[VP] << ": " << VP << '\n';
-        VectorPackSet Packs(&F);
-        Packs.tryAdd(VP);
-        auto Extensions = EvalSeedPacks(Packs).second;
-        errs() << "EXTENSIONS: {\n";
-        for (unsigned i = 0; i < Packs.getNumPacks(); i++)
-          errs() << Packs.getPack(i);
-        errs() << "} // END EXTENSIONS\n";
-      } else continue;
-#endif
-
-      if (SeedPacks.count(VP))
+  for (auto &I : make_range(inst_begin(F), inst_end(F))) {
+    for (int i = 0; i < 8; i++) {
+      auto *VP = Packer.samplePackForInst(&I, Packs, PackDistr).VP;
+      if (!VP || SeedPacks.count(VP))
         continue;
       SeedPacks[VP] = EvalSeedPack(*VP);
     }
