@@ -484,6 +484,13 @@ PackSample PackDistribution::sample(
   return PackSample{VP, VPLogProb};
 }
 
+torch::Tensor PackDistribution::entropy() const {
+  std::vector<torch::Tensor> LaneEntropy;
+  for (auto LaneProb : LaneProbs)
+    LaneEntropy.push_back(torch::sum(-LaneProb.log() * LaneProb, 1/*dim*/).mean());
+  return torch::stack(LaneEntropy).mean();
+}
+
 void loadModel(PackModel &PackModel, std::string ModelPath) {
   torch::load(PackModel, ModelPath, torch::Device(torch::kCPU));
 }

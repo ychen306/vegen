@@ -557,7 +557,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   std::map<const VectorPack *, float> SeedPacks;
   VectorPackSet EmptyPackSet(&F);
   for (auto &I : make_range(inst_begin(F), inst_end(F))) {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
       auto *VP = Packer.samplePackForInst(&I, Packs, PackDistr).VP;
       if (!VP || SeedPacks.count(VP))
         continue;

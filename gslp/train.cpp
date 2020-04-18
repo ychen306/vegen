@@ -99,6 +99,7 @@ static float trainOnPacker(torch::Device Device, PackModel &Model,
                            Packer &Packer, std::vector<torch::Tensor> &Losses,
                            int SamplesPerInst = 4) {
   auto PackDistr = Packer.runModel(Device, Model, 8);
+  auto Entropy = PackDistr.entropy();
   auto *F = Packer.getFunction();
   float TotalCost = 0;
   int NumSamples = 0;
@@ -110,7 +111,8 @@ static float trainOnPacker(torch::Device Device, PackModel &Model,
         Packs.tryAdd(PS.VP);
       float Cost = Packer.evalSeedPacks(Packs, 4);
       TotalCost += Cost;
-      Losses.push_back(PS.LogProb * Cost);
+      // Ensure exploration by pumping up entropy
+      Losses.push_back(PS.LogProb * Cost - Entropy * 0.1);
       NumSamples += SamplesPerInst;
     }
   }

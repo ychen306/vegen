@@ -46,8 +46,10 @@ class MatchManager;
 struct PackDistribution {
   torch::Tensor OpProb;
   std::vector<torch::Tensor> LaneProbs;
+
   PackDistribution(torch::Tensor OpProb, std::vector<torch::Tensor> LaneProbs) 
     : OpProb(OpProb), LaneProbs(LaneProbs) {}
+
   PackSample sample(
       const IRIndex &Index,
       llvm::Instruction *Focus,
@@ -61,6 +63,8 @@ struct PackDistribution {
       llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<VectorPackContext>> &VPCtxs,
       llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
       llvm::TargetTransformInfo *TTI) const;
+
+  torch::Tensor entropy() const;
 };
 
 class PackModelImpl : public torch::nn::Module {
