@@ -330,7 +330,7 @@ PackDistribution PackModelImpl::forward(
 static const unsigned OpcodeNoPack = 0;
 static const unsigned OpcodeStore = 1;
 
-static const unsigned MaxNumLoads = 8;
+static const unsigned MaxNumStores = 8;
 
 // Check if `I` is checkIndependence from things in `Elements`, which depends on
 // `Depended`.
@@ -384,7 +384,7 @@ PackSample PackDistribution::sample(
 
     torch::Tensor VPLogProb = OpLogProb;
     // Samples lanes to build a vector pack
-    for (unsigned i = 0; i < MaxNumLoads; i++) {
+    for (unsigned i = 0; i < MaxNumStores; i++) {
       // Find the next set of adjacent
       auto It = StoreDAG.find(SI);
       if (It == StoreDAG.end())

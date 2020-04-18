@@ -523,14 +523,18 @@ bool GSLP::runOnFunction(llvm::Function &F) {
                                   Extensions);
         FirstUnprocessedPackId = ScratchPacks.getNumPacks() - 1;
         random_shuffle(Extensions.begin(), Extensions.end(), rand_int);
-        for (auto *VP : Extensions)
-          Changed |= ScratchPacks.tryAdd(VP);
+        for (auto *VP : Extensions) {
+          bool Added = ScratchPacks.tryAdd(VP);
+          Changed |= Added;
+          if (Added) {
+            float Cost = ScratchPacks.getCostSaving(TTI, BFI);
+            if (Cost < BestCost) {
+              BestCost = Cost;
+              BestExtended = ScratchPacks;
+            }
+          }
+        }
       } while (Changed);
-      float Cost = ScratchPacks.getCostSaving(TTI, BFI);
-      if (Cost < BestCost) {
-        BestCost = Cost;
-        BestExtended = ScratchPacks;
-      }
     }
     return {&BestExtended, BestCost};
   };
@@ -552,18 +556,36 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   auto PackDistr = Packer.runModel(torch::Device(torch::kCPU), Model, 8);
 
-#if 1
   // Sample Seed packs and evaluate their qualities
   std::map<const VectorPack *, float> SeedPacks;
   VectorPackSet EmptyPackSet(&F);
+
+#if 1
   for (auto &I : make_range(inst_begin(F), inst_end(F))) {
     for (int i = 0; i < 16; i++) {
-      auto *VP = Packer.samplePackForInst(&I, Packs, PackDistr).VP;
+      auto *VP = Packer.samplePackForInst(&I, EmptyPackSet, PackDistr).VP;
       if (!VP || SeedPacks.count(VP))
         continue;
       SeedPacks[VP] = EvalSeedPack(*VP);
     }
   }
+#else
+  for (auto &BB : F) {
+    // if (BB.getName() != "for.body7.i.i")
+    //  continue;
+    unsigned NumSamples = BB.size() * 100;
+    errs() << "NUM SAMPLES: " << NumSamples << '\n';
+    for (unsigned i = 0; i < NumSamples; i++) {
+      const auto *VP = SampleOnePackFromBB(EmptyPackSet, &BB);
+      if (!VP)
+        continue;
+
+      if (SeedPacks.count(VP))
+        continue;
+      SeedPacks[VP] = EvalSeedPack(*VP);
+    }
+  }
+#endif
 
   std::vector<const VectorPack *> ProfitableSeedPacks;
   for (auto &VPAndCost : SeedPacks)
@@ -584,64 +606,6 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   float BestCost = 0.0;
   float Cost = 0.0;
   std::vector<unsigned> SeedPackIds, BestSeedPackIds;
-#if 0
-  for (int i = 0; i < NumIters; i++) {
-    VectorPackSet Packs(&F);
-
-    int RemovedId = -1, AddedId = -1;
-
-    // remove a random seed
-    if (rand_int(2) == 0 && !SeedPackIds.empty()) {
-      std::random_shuffle(SeedPackIds.begin(), SeedPackIds.end(), rand_int);
-      RemovedId = SeedPackIds.back();
-      SeedPackIds.pop_back();
-      for (unsigned Id : SeedPackIds)
-        Packs.tryAdd(ProfitableSeedPacks[Id]);
-    } else {
-      for (unsigned Id : SeedPackIds)
-        Packs.tryAdd(ProfitableSeedPacks[Id]);
-      // add a seed
-      unsigned Fuel = 128;
-      bool Added = false;
-      while (Fuel--) {
-        unsigned SeedId = rand_int(ProfitableSeedPacks.size());
-        auto &VP = ProfitableSeedPacks[SeedId];
-        Added = Packs.tryAdd(VP);
-        if (Added) {
-          AddedId = SeedId;
-          SeedPackIds.push_back(SeedId);
-          break;
-        }
-      }
-      if (!Added)
-        continue;
-    }
-
-    float NewCost = EvalSeedPacks(Packs, 32).second;
-    errs() << "COST: " << Cost << ", CAND COST: " << NewCost
-           << ", NUM SEEDS: " << SeedPackIds.size() << ", ITER: " << i << '\n';
-
-    if (NewCost < Cost - logf(rand_float()) / Beta) {
-      Cost = NewCost;
-      if (Cost < BestCost) {
-        BestCost = Cost;
-        BestSeedPackIds = SeedPackIds;
-      }
-    } else {
-      if (AddedId >= 0)
-        SeedPackIds.pop_back();
-      else {
-        assert(RemovedId >= 0);
-        SeedPackIds.push_back(RemovedId);
-      }
-    }
-  }
-
-  MCMCVectorPackSet BestSeedPacks(&F);
-  for (unsigned Id : BestSeedPackIds)
-    BestSeedPacks.tryAdd(ProfitableSeedPacks[Id]);
-  auto BestPacks = EvalSeedPacks(BestSeedPacks, 128).first;
-#else
 
   VectorPackSet BestPacks(&F);
   Cost = 0.0;
@@ -654,53 +618,13 @@ bool GSLP::runOnFunction(llvm::Function &F) {
            << ", NUM SEED PACKS: " << BestPacks.getNumPacks() << '\n';
     if (NewCost >= Cost)
       BestPacks.pop();
-    else
+    else {
+      errs() << "Using seed pack: " << *VP << '\n';
       Cost = NewCost;
+    }
   }
   errs() << "COST: " << Cost << '\n';
-  BestPacks = *EvalSeedPacks(BestPacks, 128).first;
-#endif
-
-#endif
-
-#if 0
-  const unsigned NumIters = 100000;
-  const float Beta = 0.5;
-
-  float BestCost = 0.0;
-  VectorPackSet BestPacks(&F);
-  float Cost = 0.0;
-  for (int i = 0; i < NumIters; i++) {
-    if (i % 1000 == 0)
-      errs() << "COST: " << Cost << ", NUM PACKS: " << Packs.getNumPacks()
-             << ", ITER: " << i << '\n';
-    std::unique_ptr<VectorPack> Removed;
-    if (Packs.getNumPacks() && rand_int(100) < 60) {
-      Removed = Packs.removeRandomPack();
-    } else {
-      bool Changed = false;
-      if (Packs.getNumPacks() && rand_int(8) < 7)
-        Changed = ExtendOnePack(Packs);
-      if (!Changed)
-        Changed = SampleOnePack(Packs);
-      if (!Changed)
-        continue;
-    }
-    float NewCost = Packs.getCostSaving(TTI, BFI);
-    if (NewCost < Cost - logf(rand_float()) / Beta) {
-      Cost = NewCost;
-      if (Cost < BestCost) {
-        BestCost = Cost;
-        BestPacks = Packs;
-      }
-    } else {
-      if (Removed)
-        Packs.tryAdd(*Removed);
-      else
-        Packs.pop();
-    }
-  }
-#endif
+  BestPacks = *EvalSeedPacks(BestPacks, 8).first;
 
   IntrinsicBuilder Builder(*InstWrappers);
   BestPacks.codegen(Builder, LDAs);

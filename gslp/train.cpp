@@ -97,7 +97,7 @@ INITIALIZE_PASS_END(PackerBuilder, "pic", "pic", false, false)
 
 static float trainOnPacker(torch::Device Device, PackModel &Model,
                            Packer &Packer, std::vector<torch::Tensor> &Losses,
-                           int SamplesPerInst = 4) {
+                           int SamplesPerInst = 8) {
   auto PackDistr = Packer.runModel(Device, Model, 8);
   auto Entropy = PackDistr.entropy();
   auto *F = Packer.getFunction();

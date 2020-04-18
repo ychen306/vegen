@@ -239,13 +239,17 @@ float Packer::evalSeedPacks(const VectorPackSet &Packs, unsigned Alpha) {
                                 Extensions);
       FirstUnprocessedPackId = ScratchPacks.getNumPacks() - 1;
       random_shuffle(Extensions.begin(), Extensions.end(), rand_int);
-      for (auto *VP : Extensions)
-        Changed |= ScratchPacks.tryAdd(VP);
+      for (auto *VP : Extensions) {
+        bool Added = ScratchPacks.tryAdd(VP);
+        Changed |= Added;
+        if (Added) {
+          float Cost = ScratchPacks.getCostSaving(TTI, BFI);
+          if (Cost < BestCost) {
+            BestCost = Cost;
+          }
+        }
+      }
     } while (Changed);
-    float Cost = ScratchPacks.getCostSaving(TTI, BFI);
-    if (Cost < BestCost) {
-      BestCost = Cost;
-    }
   }
   return BestCost;
 };

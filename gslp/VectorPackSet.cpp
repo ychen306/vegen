@@ -244,6 +244,13 @@ static float getBlockWeight(const VectorPack::OperandPack &OpndPack,
   return weight;
 }
 
+static float isConstantPack(const VectorPack::OperandPack &OpndPack) {
+  for (auto *V : OpndPack)
+    if (!isa<Constant>(V))
+      return false;
+  return true;
+}
+
 // FIXME: this is a mess
 float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
                                    BlockFrequencyInfo *BFI) const {
@@ -278,6 +285,10 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     auto *BB = VP->getBasicBlock();
     for (auto &OpndPack : VP->getOperandPacks()) {
       auto *VecTy = getVectorType(OpndPack);
+
+      // No cost for constant pack
+      if (isConstantPack(OpndPack))
+        continue;
 
       // special case for broadcast
       if (is_splat(OpndPack)) {
