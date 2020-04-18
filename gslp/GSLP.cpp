@@ -618,10 +618,8 @@ bool GSLP::runOnFunction(llvm::Function &F) {
            << ", NUM SEED PACKS: " << BestPacks.getNumPacks() << '\n';
     if (NewCost >= Cost)
       BestPacks.pop();
-    else {
-      errs() << "Using seed pack: " << *VP << '\n';
+    else
       Cost = NewCost;
-    }
   }
   errs() << "COST: " << Cost << '\n';
   BestPacks = *EvalSeedPacks(BestPacks, 8).first;
