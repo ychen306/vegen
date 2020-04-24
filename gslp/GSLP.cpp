@@ -137,7 +137,7 @@ sampleAccesses(const VectorPackSet &ExistingPacks,
     // Find independent candidate to extend this chain of loads
     SmallVector<MemAccessTy *, 4> IndependentAccesses;
     for (auto *A : *NextAccesses) {
-      if (ExistingPacks.isPacked(A, VPCtx))
+      if (ExistingPacks.contains(A, VPCtx))
         continue;
       auto Depended2 = LDA.getDepended(A);
       unsigned AccessId = VPCtx.getScalarId(A);
@@ -247,7 +247,7 @@ sampleVectorPack(const VectorPackSet &ExistingPacks, const MatchManager &MM,
       std::vector<const Operation::Match *> IndependentMatches;
       for (auto &M : MM.getMatches(LaneOp.getOperation())) {
         if (auto *I = dyn_cast<Instruction>(M.Output))
-          if (ExistingPacks.isPacked(I, VPCtx))
+          if (ExistingPacks.contains(I, VPCtx))
             continue;
         unsigned OutputId = VPCtx.getScalarId(M.Output);
         // This value has already been packed

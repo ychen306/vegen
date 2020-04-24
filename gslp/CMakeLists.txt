@@ -3,6 +3,7 @@ set(LIB_PACKING_SRC
   InstSema.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IRModel.cpp Packer.cpp
+  Solver.cpp
   IRVec.cpp
   LocalDependenceAnalysis.cpp)
 

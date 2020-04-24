@@ -156,4 +156,8 @@ public:
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
 
+llvm::Type *getVectorType(const VectorPack::OperandPack &OpndPack);
+
+llvm::Type *getVectorType(const VectorPack &VP);
+
 #endif // VECTOR_PACK_H

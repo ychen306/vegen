@@ -49,6 +49,10 @@ protected:
 
   void add(const VectorPack *VP);
 
+  // Similar to adding a vector pack...
+  // We do this to basically assert that this scalar should never be packed.
+  void addScalar(llvm::Instruction *, const VectorPackContext &);
+
 public:
   VectorPackSet(llvm::Function *F) : NumPacks(0), F(F) {}
   VectorPackSet(const VectorPackSet &Other) = default;
@@ -56,7 +60,7 @@ public:
 
   unsigned getNumPacks() const { return NumPacks; }
 
-  bool isPacked(llvm::Instruction *, const VectorPackContext &) const;
+  bool contains(llvm::Instruction *, const VectorPackContext &) const;
 
   bool isCompatibleWith(const VectorPack &VP) const;
 
@@ -76,7 +80,7 @@ public:
                llvm::DenseMap<llvm::BasicBlock *,
                               std::unique_ptr<LocalDependenceAnalysis>> &LDAs);
 
-  const VectorPack &getPack(unsigned i) {
+  const VectorPack &getPack(unsigned i) const {
     assert(i < NumPacks);
     return *AllPacks[i];
   }

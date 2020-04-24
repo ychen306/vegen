@@ -319,3 +319,20 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   OS << ")\n";
   return OS;
 }
+
+Type *getVectorType(const VectorPack::OperandPack &OpndPack) {
+  Type *ScalarTy = nullptr;
+  for (auto *V : OpndPack)
+    if (V) {
+      ScalarTy = V->getType();
+      break;
+    }
+  assert(ScalarTy && "Operand pack can't be all empty");
+  return VectorType::get(ScalarTy, OpndPack.size());
+}
+
+Type *getVectorType(const VectorPack &VP) {
+  unsigned NumLanes = VP.getElements().count();
+  auto *FirstLane = *VP.elementValues().begin();
+  return VectorType::get(FirstLane->getType(), NumLanes);
+}

@@ -394,7 +394,7 @@ PackSample PackDistribution::sample(
       for (auto *SI2 : Next) {
         if (!checkIndependence(LDA, VPCtx, SI2, Elements, Depended))
           continue;
-        if (ExistingPacks.isPacked(SI2, VPCtx))
+        if (ExistingPacks.contains(SI2, VPCtx))
           continue;
         AvailableStores.push_back(Index.getValueId(SI2));
       }
@@ -451,7 +451,7 @@ PackSample PackDistribution::sample(
       auto *I = cast<Instruction>(Match.Output);
       if (!checkIndependence(LDA, VPCtx, I, Elements, Depended))
         continue;
-      if (ExistingPacks.isPacked(I, VPCtx))
+      if (ExistingPacks.contains(I, VPCtx))
         continue;
       // Focus inst must also be in the first lane
       if (i == 0 && Match.Output != Focus)

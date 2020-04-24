@@ -7,23 +7,6 @@
 
 using namespace llvm;
 
-static Type *getVectorType(const VectorPack::OperandPack &OpndPack) {
-  Type *ScalarTy = nullptr;
-  for (auto *V : OpndPack)
-    if (V) {
-      ScalarTy = V->getType();
-      break;
-    }
-  assert(ScalarTy && "Operand pack can't be all empty");
-  return VectorType::get(ScalarTy, OpndPack.size());
-}
-
-static Type *getVectorType(const VectorPack &VP) {
-  unsigned NumLanes = VP.getElements().count();
-  auto *FirstLane = *VP.elementValues().begin();
-  return VectorType::get(FirstLane->getType(), NumLanes);
-}
-
 // Get the vector value representing `OpndPack'.
 // If `OpndPack` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
@@ -350,7 +333,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   Extractions.reserve(ValueIndex.size());
   // Now consider scalar use of vector output
   // FIXME: THIS DOES NOT WORK IN GENERAL... (e.g., FMA)
-  //for (auto &I : make_range(inst_begin(F), inst_end(F))) {
+  // for (auto &I : make_range(inst_begin(F), inst_end(F))) {
   //  if (ValueIndex.count(&I))
   //    continue;
   //  for (Value *V : I.operands()) {
@@ -602,7 +585,14 @@ void VectorPackSet::codegen(
   }
 }
 
-bool VectorPackSet::isPacked(Instruction *I,
+void VectorPackSet::addScalar(Instruction *I, const VectorPackContext &VPCtx) {
+  BasicBlock *BB = I->getParent();
+  assert(!PackedValues[BB].test(VPCtx.getScalarId(I)) &&
+         "trying to add an already packed value");
+  PackedValues[BB].set(VPCtx.getScalarId(I));
+}
+
+bool VectorPackSet::contains(Instruction *I,
                              const VectorPackContext &VPCtx) const {
   BasicBlock *BB = I->getParent();
   auto It = PackedValues.find(BB);

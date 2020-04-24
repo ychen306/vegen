@@ -87,6 +87,12 @@ public:
          llvm::ScalarEvolution *SE, llvm::TargetTransformInfo *TTI,
          llvm::BlockFrequencyInfo *BFI);
 
+  VectorPackContext *getContext(llvm::BasicBlock *BB) const {
+    auto It = VPCtxs.find(BB);
+    assert(It != VPCtxs.end());
+    return It->second.get();
+  }
+
   void findExtensionForOnePack(const VectorPack &VP, const VectorPackSet &Packs,
                                std::vector<VectorPack *> &Extensions);
 

@@ -21,6 +21,11 @@ using ConsecutiveAccessDAG =
 // Sample an integer between 0 and N.
 static inline unsigned rand_int(int N) { return std::rand() % N; }
 
+template <typename T>
+T &choose(std::vector<T> &Xs) {
+  return Xs[rand_int(Xs.size())];
+}
+
 template <typename InstTy>
 llvm::Optional<llvm::SmallVector<InstTy *, 4>>
 castOperandPack(const VectorPack::OperandPack &OpndPack) {
