@@ -44,7 +44,7 @@ class Frontier {
 
   void freezeOneInst(unsigned);
   bool resolveOperandPack(const VectorPack &VP, UnresolvedOperandPack &UP);
-
+  void advanceBBIt();
   bool isFreeInst(llvm::Instruction *I) {
     return FreeInsts[VPCtx->getScalarId(I)];
   }

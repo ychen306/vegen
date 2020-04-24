@@ -44,15 +44,18 @@ void Frontier::freezeOneInst(unsigned InstId) {
   UnresolvedScalars[InstId] = false;
 }
 
+void Frontier::advanceBBIt() {
+  if (auto *NextFreeInst = getNextFreeInst())
+    BBIt = BasicBlock::reverse_iterator(NextFreeInst);
+  else
+    BBIt = BB->rend();
+}
+
 Frontier Frontier::advance(Instruction *I, float &Cost, TargetTransformInfo *TTI) const {
   Frontier Next = *this;
 
   Next.freezeOneInst(VPCtx->getScalarId(I));
-
-  if (auto *NextFreeInst = Next.getNextFreeInst())
-    Next.BBIt = BasicBlock::reverse_iterator(NextFreeInst);
-  else
-    Next.BBIt = BB->rend();
+  Next.advanceBBIt();
 
   // Go over unresolved packs and see if we've resolved any lanes
   Cost = 0;
@@ -137,6 +140,7 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost, TargetTransformInf
 
     Next.freezeOneInst(InstId);
   }
+  Next.advanceBBIt();
 
   SmallVector<unsigned, 2> ResolvedPackIds;
   for (unsigned i = 0; i < Next.UnresolvedPacks.size(); i++) {
