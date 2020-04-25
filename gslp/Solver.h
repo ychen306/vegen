@@ -60,8 +60,79 @@ public:
     };
     return CmpKey(*this) < CmpKey(Other);
   }
-  Frontier advance(const VectorPack *, float &Cost, llvm::TargetTransformInfo *TTI) const;
-  Frontier advance(llvm::Instruction *, float &Cost, llvm::TargetTransformInfo *TTI) const;
+  Frontier advance(const VectorPack *, float &Cost,
+                   llvm::TargetTransformInfo *TTI) const;
+  Frontier advance(llvm::Instruction *, float &Cost,
+                   llvm::TargetTransformInfo *TTI) const;
   llvm::Instruction *getNextFreeInst() const;
+  std::vector<const VectorPack *>
+      nextAvailablePacks(llvm::ArrayRef<InstBinding *>) const;
 };
+
+class UCTNode;
+class UCTNodeFactory {
+  std::map<Frontier, UCTNode> Nodes;
+
+public:
+  UCTNode *getNode(Frontier &&Frontier);
+};
+
+class UCTNode {
+public:
+  // The next action state pair
+  struct OutEdge {
+    const VectorPack *VP; // NULL means we choose Frt->getNextFreeInst();
+    UCTNode *Next;
+    float Cost; // Reward
+  };
+
+private:
+  friend class UCTNodeFactory;
+
+  // State
+  const Frontier *Frt;
+  // Return
+  float TotalCost;
+  uint64_t Count;
+
+  std::vector<OutEdge> OutEdges;
+
+  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {}
+
+public:
+  // Fill out the out edge
+  void expand(UCTNodeFactory *Factory, llvm::ArrayRef<InstBinding *> Insts,
+              llvm::TargetTransformInfo *);
+  bool expanded() { return OutEdges.empty() && !isTerminal(); }
+  bool isTerminal() const { return !Frt->getNextFreeInst(); }
+  llvm::ArrayRef<OutEdge> next() const { return OutEdges; }
+  // The classic UCT score
+  float score(unsigned ParentCount, float C) const {
+    return (-TotalCost / float(Count)) +
+           C * sqrtf(logf(ParentCount) / float(Count));
+  }
+  uint64_t visitCount() const { return Count; }
+  void update(float Cost) {
+    TotalCost += Cost;
+    Count++;
+  }
+};
+
+class UCTSearch {
+  // The exploration factor in UCT
+  float C;
+  llvm::ArrayRef<InstBinding *> InstPool;
+  UCTNodeFactory *Factory;
+  llvm::TargetTransformInfo *TTI;
+
+public:
+  UCTSearch(float C, llvm::ArrayRef<InstBinding *> InstPool,
+            UCTNodeFactory *Factory, llvm::TargetTransformInfo *TTI)
+      : C(C), InstPool(InstPool), Factory(Factory), TTI(TTI) {}
+  // Run MCTS for one iteration
+  void refineSearchTree(UCTNode *Root);
+  // E.g., value function or rollout
+  virtual float evalLeafNode(UCTNode *) = 0;
+};
+
 #endif

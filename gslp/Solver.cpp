@@ -3,9 +3,9 @@
 using namespace llvm;
 
 Frontier::Frontier(BasicBlock *BB, const VectorPackContext *VPCtx)
-  : BB(BB), VPCtx(VPCtx), BBIt(BB->rbegin()),
-  UnresolvedScalars(VPCtx->getNumValues(), false),
-  FreeInsts(VPCtx->getNumValues(), true) {
+    : BB(BB), VPCtx(VPCtx), BBIt(BB->rbegin()),
+      UnresolvedScalars(VPCtx->getNumValues(), false),
+      FreeInsts(VPCtx->getNumValues(), true) {
   // Find external uses of any instruction `I` in `BB`
   // and mark `I` as an unresolved scalar.
   for (auto &I : *BB) {
@@ -28,7 +28,7 @@ Instruction *Frontier::getNextFreeInst() const {
 
 namespace {
 
-template<typename T>
+template <typename T>
 void removeAndSort(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
   for (unsigned i : ToRemove) {
     std::swap(X[i], X.back());
@@ -37,7 +37,7 @@ void removeAndSort(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
   std::sort(X.begin(), X.end());
 }
 
-}
+} // namespace
 
 void Frontier::freezeOneInst(unsigned InstId) {
   FreeInsts[InstId] = false;
@@ -51,7 +51,8 @@ void Frontier::advanceBBIt() {
     BBIt = BB->rend();
 }
 
-Frontier Frontier::advance(Instruction *I, float &Cost, TargetTransformInfo *TTI) const {
+Frontier Frontier::advance(Instruction *I, float &Cost,
+                           TargetTransformInfo *TTI) const {
   Frontier Next = *this;
 
   Next.freezeOneInst(VPCtx->getScalarId(I));
@@ -75,7 +76,8 @@ Frontier Frontier::advance(Instruction *I, float &Cost, TargetTransformInfo *TTI
       if ((*UP.Pack)[LaneId] != I)
         continue;
       // Pay the insert cost
-      Cost += TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, LaneId);
+      Cost +=
+          TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, LaneId);
       UP.resolveOneLane(LaneId);
     }
     if (UP.resolved())
@@ -100,7 +102,8 @@ Frontier Frontier::advance(Instruction *I, float &Cost, TargetTransformInfo *TTI
 
 // Check whether there are lanes in `OpndPack` that are produced by `VP`.
 // Also resolve those lanes if exist.
-bool Frontier::resolveOperandPack(const VectorPack &VP, UnresolvedOperandPack &UP) {
+bool Frontier::resolveOperandPack(const VectorPack &VP,
+                                  UnresolvedOperandPack &UP) {
   bool Produced = false;
   for (unsigned LaneId = 0; LaneId < UP.Pack->size(); LaneId++) {
     auto *V = (*UP.Pack)[LaneId];
@@ -116,13 +119,16 @@ bool Frontier::resolveOperandPack(const VectorPack &VP, UnresolvedOperandPack &U
 }
 
 // Return the cost of gathering from `VP` to `OpndPack`
-static unsigned
-getGatherCost(const VectorPack &VP, const VectorPack::OperandPack &OpndPack, TargetTransformInfo *TTI) {
+static unsigned getGatherCost(const VectorPack &VP,
+                              const VectorPack::OperandPack &OpndPack,
+                              TargetTransformInfo *TTI) {
   return 2;
 }
 
-// FIXME: this doesn't work when there are lanes in VP that cover multiple instructions.
-Frontier Frontier::advance(const VectorPack *VP, float &Cost, TargetTransformInfo *TTI) const {
+// FIXME: this doesn't work when there are lanes in VP that cover multiple
+// instructions.
+Frontier Frontier::advance(const VectorPack *VP, float &Cost,
+                           TargetTransformInfo *TTI) const {
   Frontier Next = *this;
 
   Cost = VP->getCost();
@@ -136,7 +142,8 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost, TargetTransformInf
 
     // Pay the extract cost
     if (Next.UnresolvedScalars[InstId])
-      Cost += TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
+      Cost +=
+          TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
 
     Next.freezeOneInst(InstId);
   }
@@ -163,7 +170,8 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost, TargetTransformInf
       auto *I = dyn_cast<Instruction>(V);
       if (!I || I->getParent() != BB) {
         // Assume I is always scalar and pay the insert cost.
-        Cost += TTI->getVectorInstrCost(Instruction::ExtractElement, OperandTy, LaneId);
+        Cost += TTI->getVectorInstrCost(Instruction::ExtractElement, OperandTy,
+                                        LaneId);
         UP.resolveOneLane(LaneId);
       } else if (Next.isFreeInst(I))
         UP.resolveOneLane(LaneId);
@@ -176,4 +184,73 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost, TargetTransformInf
   removeAndSort(Next.UnresolvedPacks, ResolvedPackIds);
 
   return Next;
+}
+
+// If we already have a UCTNode for the same frontier, reuse that node.
+UCTNode *UCTNodeFactory::getNode(Frontier &&Frt) {
+  decltype(Nodes)::iterator It;
+  bool Inserted;
+  std::tie(It, Inserted) = Nodes.emplace(Frt, UCTNode(nullptr));
+  if (Inserted) {
+    It->second.Frt = &It->first;
+  }
+  return &It->second;
+}
+
+// Fill out the children node
+void UCTNode::expand(UCTNodeFactory *Factory, ArrayRef<InstBinding *> Insts,
+                     llvm::TargetTransformInfo *TTI) {
+  assert(OutEdges.empty() && "expanded already");
+  float Cost;
+
+  // Consider keeping the next free inst scalar
+  auto *Next =
+      Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
+  OutEdges.push_back(OutEdge{nullptr, Next, Cost});
+
+  for (auto *VP : Frt->nextAvailablePacks(Insts)) {
+    auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
+    OutEdges.push_back(OutEdge{VP, Next, Cost});
+  }
+}
+
+// Do one iteration of MCTS
+void UCTSearch::refineSearchTree(UCTNode *Root) {
+  // ========= 1) Selection ==========
+  UCTNode *CurNode = Root;
+  std::vector<const UCTNode::OutEdge *> Path;
+  // Traverse down to a leaf node.
+  while (CurNode->expanded()) {
+    // Compare out-going edges by UCT score
+    unsigned VisitCount = CurNode->visitCount();
+    auto compareEdge = [VisitCount, this](const UCTNode::OutEdge &A,
+                           const UCTNode::OutEdge &B) {
+      return -A.Cost + A.Next->score(VisitCount, C) <
+             -B.Cost + B.Next->score(VisitCount, C);
+    };
+
+    auto OutEdges = CurNode->next();
+
+    // Select the node maximizing the UCT formula
+    auto It = std::max_element(OutEdges.begin(), OutEdges.end(), compareEdge);
+    Path.push_back(&*It);
+    CurNode = It->Next;
+  }
+
+  float LeafCost = 0;
+  // ========= 2) Expansion ==========
+  if (!CurNode->isTerminal()) {
+    // ======= 3) Evaluation/Simulation =======
+    LeafCost = evalLeafNode(CurNode);
+    CurNode->expand(Factory, InstPool, TTI);
+  }
+
+  // ========= 4) Backpropagation ===========
+  CurNode->update(LeafCost);
+  float TotalCost = LeafCost;
+  for (int i = Path.size()-2; i >= 0; i--) {
+    auto *Edge = Path[i];
+    TotalCost += Path[i+1]->Cost;
+    Edge->Next->update(TotalCost);
+  }
 }
