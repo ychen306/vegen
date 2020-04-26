@@ -123,6 +123,24 @@ bool Frontier::resolveOperandPack(const VectorPack &VP,
 static unsigned getGatherCost(const VectorPack &VP,
                               const VectorPack::OperandPack &OpndPack,
                               TargetTransformInfo *TTI) {
+  // Best case:
+  // If `VP` produces `OpndPack` exactly then we don't pay any thing
+  auto VPVals = VP.getOrderedValues();
+  if (VPVals.size() == OpndPack.size()) {
+    bool Exact = true;
+    for (unsigned i = 0; i < VPVals.size(); i++)
+      Exact &= (VPVals[i] == OpndPack[i]);
+
+    if (Exact)
+      return 0;
+
+    // Second best case:
+    // `VP` produces a permutation of `OpndPack`
+    if (std::is_permutation(VPVals.begin(), VPVals.end(), OpndPack.begin()))
+      return TTI->getShuffleCost(TargetTransformInfo::SK_PermuteSingleSrc,
+                                 getVectorType(VP));
+  }
+
   return 2;
 }
 
@@ -133,7 +151,6 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
   Frontier Next = *this;
 
   Cost = VP->getCost();
-
   auto *VecTy = getVectorType(*VP);
 
   auto OutputLanes = VP->getOrderedValues();
@@ -191,13 +208,15 @@ class PackEnumerator {
   const std::vector<bool> &FreeInsts;
   const VectorPackContext &VPCtx;
   const LocalDependenceAnalysis &LDA;
+  const ConsecutiveAccessDAG &LoadDAG;
+  const ConsecutiveAccessDAG &StoreDAG;
   TargetTransformInfo *TTI;
 
   void
   enumeratePacksRec(const InstBinding *Inst,
                     const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
-                    std::vector<VectorPack *> &Enumerated, BitVector &Elements,
-                    BitVector &Depended,
+                    std::vector<const VectorPack *> &Enumerated,
+                    BitVector &Elements, BitVector &Depended,
                     std::vector<const Operation::Match *> &Lanes) const {
     // The lane we are enumerating
     const unsigned LaneId = Lanes.size();
@@ -243,18 +262,25 @@ class PackEnumerator {
 public:
   PackEnumerator(const std::vector<bool> &FreeInsts,
                  const VectorPackContext &VPCtx,
-                 const LocalDependenceAnalysis &LDA, TargetTransformInfo *TTI)
-      : FreeInsts(FreeInsts), VPCtx(VPCtx), LDA(LDA), TTI(TTI) {}
+                 const LocalDependenceAnalysis &LDA,
+                 const ConsecutiveAccessDAG &LoadDAG,
+                 const ConsecutiveAccessDAG &StoreDAG, TargetTransformInfo *TTI)
+      : FreeInsts(FreeInsts), VPCtx(VPCtx), LDA(LDA), LoadDAG(LoadDAG),
+        StoreDAG(StoreDAG), TTI(TTI) {}
   void
   enumeratePacks(const InstBinding *Inst,
                  const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
-                 std::vector<VectorPack *> &Enumerated) const {
+                 std::vector<const VectorPack *> &Enumerated) const {
     std::vector<const Operation::Match *> EmptyPrefix;
     BitVector Elements(VPCtx.getNumValues());
     BitVector Depended(VPCtx.getNumValues());
     enumeratePacksRec(Inst, LaneMatches, Enumerated, Elements, Depended,
                       EmptyPrefix);
   }
+
+  void enumerateLoadPack(std::vector<const VectorPack *> &Enumerated) {}
+
+  void enumerateStorePack(std::vector<const VectorPack *> &Enumeraed) {}
 };
 
 std::vector<const VectorPack *>
@@ -273,46 +299,9 @@ Frontier::nextAvailablePacks(Packer *Packer) const {
   if (auto *SI = dyn_cast<StoreInst>(I)) {
   }
 
-  std::vector<VectorPack *> AvailablePacks;
-  auto EnumeratePacks =
-      [&](const InstBinding *Inst,
-          const std::vector<ArrayRef<Operation::Match>> &LaneMatches) {
-        assert(Inst->getLaneOps().size() == LaneMatches.size());
-        unsigned N = 1;
-        for (auto &Matches : LaneMatches)
-          N *= Matches.size();
+  std::vector<const VectorPack *> AvailablePacks;
 
-        BitVector Elements(VPCtx->getNumValues());
-        BitVector Depended(VPCtx->getNumValues());
-        for (unsigned i = 0; i < N; i++) {
-          // `i` represent a particular member of the cross product.
-          // Decode `i` here.
-          unsigned Encoded = i;
-          std::vector<const Operation::Match *> Lanes;
-          for (auto &Matches : LaneMatches) {
-            unsigned M = Matches.size();
-            auto &Match = Matches[Encoded % M];
-
-            // Make sure adding Match doesn't violate any dependence constraint
-            bool Independent =
-                checkIndependence(LDA, *VPCtx, cast<Instruction>(Match.Output),
-                                  Elements, Depended);
-            if (!Independent)
-              break;
-
-            Lanes.push_back(&Match);
-            Encoded /= M;
-          }
-
-          if (Lanes.size() != Inst->getLaneOps().size())
-            continue;
-
-          AvailablePacks.push_back(
-              VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
-        }
-      };
-
-  PackEnumerator PackEnum(FreeInsts, *VPCtx, LDA, TTI);
+  PackEnumerator Enumerator(FreeInsts, *VPCtx, LDA, LoadDAG, StoreDAG, TTI);
 
   for (auto *Inst : Insts) {
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
@@ -333,9 +322,11 @@ Frontier::nextAvailablePacks(Packer *Packer) const {
           break;
         LaneMatches.push_back(Matches);
       }
-      PackEnum.enumeratePacks(Inst, LaneMatches, AvailablePacks);
+      Enumerator.enumeratePacks(Inst, LaneMatches, AvailablePacks);
     }
   }
+
+  return AvailablePacks;
 }
 
 // If we already have a UCTNode for the same frontier, reuse that node.
