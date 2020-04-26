@@ -105,11 +105,29 @@ public:
                             LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
   }
 
-  PackDistribution runModel(torch::Device Device, PackModel &Model, int NumIters=8) {
+  PackDistribution runModel(torch::Device Device, PackModel &Model,
+                            int NumIters = 8) {
     return Model->forward(Device, Index, LoadDAGs, StoreDAGs, NumIters);
   }
 
+  llvm::ArrayRef<InstBinding *> getInsts() const { return SupportedInsts; }
+
+  MatchManager &getMatchManager(llvm::BasicBlock *BB) { return *MMs[BB]; }
+  ConsecutiveAccessDAG &getLoadDAG(llvm::BasicBlock *BB) {
+    return *LoadDAGs[BB];
+  }
+  ConsecutiveAccessDAG &getStoreDAG(llvm::BasicBlock *BB) {
+    return *StoreDAGs[BB];
+  }
+  LocalDependenceAnalysis &getLDA(llvm::BasicBlock *BB) { return *LDAs[BB]; }
+  llvm::TargetTransformInfo *getTTI() const { return TTI; }
+
   llvm::Function *getFunction() const { return F; }
 };
+
+bool checkIndependence(const LocalDependenceAnalysis &LDA,
+                       const VectorPackContext &VPCtx, llvm::Instruction *I,
+                       const llvm::BitVector &Elements,
+                       const llvm::BitVector &Depended);
 
 #endif // PACKER

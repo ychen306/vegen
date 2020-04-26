@@ -1,4 +1,5 @@
 #include "IRModel.h"
+#include "Packer.h"
 #include "MatchManager.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Constants.h"
@@ -331,18 +332,6 @@ static const unsigned OpcodeNoPack = 0;
 static const unsigned OpcodeStore = 1;
 
 static const unsigned MaxNumStores = 8;
-
-// Check if `I` is checkIndependence from things in `Elements`, which depends on
-// `Depended`.
-static bool checkIndependence(const LocalDependenceAnalysis &LDA,
-                              const VectorPackContext &VPCtx, Instruction *I,
-                              const BitVector &Elements,
-                              const BitVector &Depended) {
-  auto Depended2 = LDA.getDepended(I);
-  unsigned Id = VPCtx.getScalarId(I);
-  return !Elements.test(Id) && !Elements.anyCommon(Depended2) &&
-         !Depended.test(Id);
-}
 
 PackSample PackDistribution::sample(
     const IRIndex &Index, Instruction *Focus,

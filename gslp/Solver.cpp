@@ -1,4 +1,5 @@
 #include "Solver.h"
+#include "MatchManager.h"
 
 using namespace llvm;
 
@@ -186,6 +187,157 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
   return Next;
 }
 
+class PackEnumerator {
+  const std::vector<bool> &FreeInsts;
+  const VectorPackContext &VPCtx;
+  const LocalDependenceAnalysis &LDA;
+  TargetTransformInfo *TTI;
+
+  void
+  enumeratePacksRec(const InstBinding *Inst,
+                    const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
+                    std::vector<VectorPack *> &Enumerated, BitVector &Elements,
+                    BitVector &Depended,
+                    std::vector<const Operation::Match *> &Lanes) const {
+    // The lane we are enumerating
+    const unsigned LaneId = Lanes.size();
+
+    auto BackupElements = Elements;
+    auto BackupDepended = Depended;
+
+    // Try out all matched operation for this line
+    Lanes.push_back(nullptr);
+    for (auto &Match : LaneMatches[LaneId]) {
+      unsigned OutId = VPCtx.getScalarId(Match.Output);
+      // Make sure we are allowed to use the matched instruction
+      if (!FreeInsts[OutId])
+        continue;
+      // Make sure adding this `Match` doesn't violate any dependence constraint
+      bool Independent = checkIndependence(
+          LDA, VPCtx, cast<Instruction>(Match.Output), Elements, Depended);
+      if (!Independent)
+        continue;
+
+      // Select this match.
+      Elements.set(OutId);
+      Depended |= LDA.getDepended(cast<Instruction>(Match.Output));
+      Lanes.back() = &Match;
+
+      if (LaneId < LaneMatches.size() - 1) {
+        // Recursivly fill out the next lane
+        enumeratePacksRec(Inst, LaneMatches, Enumerated, Elements, Depended,
+                          Lanes);
+      } else {
+        // We are at the last lane.
+        Enumerated.push_back(
+            VPCtx.createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+      }
+
+      // Revert the change before we try out the next match
+      Elements = BackupElements;
+      Depended = BackupDepended;
+    }
+    Lanes.pop_back();
+  }
+
+public:
+  PackEnumerator(const std::vector<bool> &FreeInsts,
+                 const VectorPackContext &VPCtx,
+                 const LocalDependenceAnalysis &LDA, TargetTransformInfo *TTI)
+      : FreeInsts(FreeInsts), VPCtx(VPCtx), LDA(LDA), TTI(TTI) {}
+  void
+  enumeratePacks(const InstBinding *Inst,
+                 const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
+                 std::vector<VectorPack *> &Enumerated) const {
+    std::vector<const Operation::Match *> EmptyPrefix;
+    BitVector Elements(VPCtx.getNumValues());
+    BitVector Depended(VPCtx.getNumValues());
+    enumeratePacksRec(Inst, LaneMatches, Enumerated, Elements, Depended,
+                      EmptyPrefix);
+  }
+};
+
+std::vector<const VectorPack *>
+Frontier::nextAvailablePacks(Packer *Packer) const {
+  Instruction *I = getNextFreeInst();
+  ArrayRef<InstBinding *> Insts = Packer->getInsts();
+  auto &MM = Packer->getMatchManager(BB);
+  auto &LDA = Packer->getLDA(BB);
+  auto &LoadDAG = Packer->getLoadDAG(BB);
+  auto &StoreDAG = Packer->getStoreDAG(BB);
+  auto *TTI = Packer->getTTI();
+
+  if (auto *LI = dyn_cast<LoadInst>(I)) {
+  }
+
+  if (auto *SI = dyn_cast<StoreInst>(I)) {
+  }
+
+  std::vector<VectorPack *> AvailablePacks;
+  auto EnumeratePacks =
+      [&](const InstBinding *Inst,
+          const std::vector<ArrayRef<Operation::Match>> &LaneMatches) {
+        assert(Inst->getLaneOps().size() == LaneMatches.size());
+        unsigned N = 1;
+        for (auto &Matches : LaneMatches)
+          N *= Matches.size();
+
+        BitVector Elements(VPCtx->getNumValues());
+        BitVector Depended(VPCtx->getNumValues());
+        for (unsigned i = 0; i < N; i++) {
+          // `i` represent a particular member of the cross product.
+          // Decode `i` here.
+          unsigned Encoded = i;
+          std::vector<const Operation::Match *> Lanes;
+          for (auto &Matches : LaneMatches) {
+            unsigned M = Matches.size();
+            auto &Match = Matches[Encoded % M];
+
+            // Make sure adding Match doesn't violate any dependence constraint
+            bool Independent =
+                checkIndependence(LDA, *VPCtx, cast<Instruction>(Match.Output),
+                                  Elements, Depended);
+            if (!Independent)
+              break;
+
+            Lanes.push_back(&Match);
+            Encoded /= M;
+          }
+
+          if (Lanes.size() != Inst->getLaneOps().size())
+            continue;
+
+          AvailablePacks.push_back(
+              VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+        }
+      };
+
+  PackEnumerator PackEnum(FreeInsts, *VPCtx, LDA, TTI);
+
+  for (auto *Inst : Insts) {
+    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+    unsigned NumLanes = LaneOps.size();
+    // Iterate over all combination of packs, fixing `I` at the `i`'th lane
+    for (unsigned i = 0; i < NumLanes; i++) {
+      std::vector<ArrayRef<Operation::Match>> LaneMatches;
+      for (unsigned LaneId = 0; LaneId < NumLanes; LaneId++) {
+        ArrayRef<Operation::Match> Matches;
+        if (LaneId == i)
+          Matches = MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
+        else
+          Matches = MM.getMatches(LaneOps[i].getOperation());
+
+        // if we can't find matches for any given lanes, then we can't use
+        // `Inst`
+        if (Matches.empty())
+          break;
+        LaneMatches.push_back(Matches);
+      }
+      PackEnum.enumeratePacks(Inst, LaneMatches, AvailablePacks);
+    }
+  }
+}
+
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(Frontier &&Frt) {
   decltype(Nodes)::iterator It;
@@ -198,7 +350,7 @@ UCTNode *UCTNodeFactory::getNode(Frontier &&Frt) {
 }
 
 // Fill out the children node
-void UCTNode::expand(UCTNodeFactory *Factory, ArrayRef<InstBinding *> Insts,
+void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
                      llvm::TargetTransformInfo *TTI) {
   assert(OutEdges.empty() && "expanded already");
   float Cost;
@@ -208,7 +360,7 @@ void UCTNode::expand(UCTNodeFactory *Factory, ArrayRef<InstBinding *> Insts,
       Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
   OutEdges.push_back(OutEdge{nullptr, Next, Cost});
 
-  for (auto *VP : Frt->nextAvailablePacks(Insts)) {
+  for (auto *VP : Frt->nextAvailablePacks(Packer)) {
     auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
     OutEdges.push_back(OutEdge{VP, Next, Cost});
   }
@@ -224,7 +376,14 @@ void UCTSearch::refineSearchTree(UCTNode *Root) {
     // Compare out-going edges by UCT score
     unsigned VisitCount = CurNode->visitCount();
     auto compareEdge = [VisitCount, this](const UCTNode::OutEdge &A,
-                           const UCTNode::OutEdge &B) {
+                                          const UCTNode::OutEdge &B) {
+      // If we haven't visited the dest of A, then give it infinite weight
+      if (A.Next->visitCount() == 0)
+        return false;
+      // If we haven't visited the dest of B ...
+      if (B.Next->visitCount() == 0)
+        return true;
+
       return -A.Cost + A.Next->score(VisitCount, C) <
              -B.Cost + B.Next->score(VisitCount, C);
     };
@@ -242,15 +401,15 @@ void UCTSearch::refineSearchTree(UCTNode *Root) {
   if (!CurNode->isTerminal()) {
     // ======= 3) Evaluation/Simulation =======
     LeafCost = evalLeafNode(CurNode);
-    CurNode->expand(Factory, InstPool, TTI);
+    CurNode->expand(Factory, Packer, TTI);
   }
 
   // ========= 4) Backpropagation ===========
   CurNode->update(LeafCost);
   float TotalCost = LeafCost;
-  for (int i = Path.size()-2; i >= 0; i--) {
+  for (int i = Path.size() - 2; i >= 0; i--) {
     auto *Edge = Path[i];
-    TotalCost += Path[i+1]->Cost;
+    TotalCost += Path[i + 1]->Cost;
     Edge->Next->update(TotalCost);
   }
 }

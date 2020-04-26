@@ -3,6 +3,7 @@
 
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
+#include "Packer.h"
 #include "llvm/ADT/ArrayRef.h"
 #include <bitset>
 
@@ -33,6 +34,7 @@ struct UnresolvedOperandPack {
   }
 };
 
+class MatchManager;
 class Frontier {
   llvm::BasicBlock *BB;
   const VectorPackContext *VPCtx;
@@ -65,8 +67,7 @@ public:
   Frontier advance(llvm::Instruction *, float &Cost,
                    llvm::TargetTransformInfo *TTI) const;
   llvm::Instruction *getNextFreeInst() const;
-  std::vector<const VectorPack *>
-      nextAvailablePacks(llvm::ArrayRef<InstBinding *>) const;
+  std::vector<const VectorPack *> nextAvailablePacks(Packer *) const;
 };
 
 class UCTNode;
@@ -101,8 +102,8 @@ private:
 
 public:
   // Fill out the out edge
-  void expand(UCTNodeFactory *Factory, llvm::ArrayRef<InstBinding *> Insts,
-              llvm::TargetTransformInfo *);
+  void expand(UCTNodeFactory *Factory, Packer *Packer, 
+      llvm::TargetTransformInfo *);
   bool expanded() { return OutEdges.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
   llvm::ArrayRef<OutEdge> next() const { return OutEdges; }
@@ -121,14 +122,14 @@ public:
 class UCTSearch {
   // The exploration factor in UCT
   float C;
-  llvm::ArrayRef<InstBinding *> InstPool;
   UCTNodeFactory *Factory;
+  Packer *Packer;
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, llvm::ArrayRef<InstBinding *> InstPool,
-            UCTNodeFactory *Factory, llvm::TargetTransformInfo *TTI)
-      : C(C), InstPool(InstPool), Factory(Factory), TTI(TTI) {}
+  UCTSearch(float C, UCTNodeFactory *Factory, class Packer *Packer, 
+            llvm::TargetTransformInfo *TTI)
+      : C(C), Factory(Factory), Packer(Packer), TTI(TTI) {}
   // Run MCTS for one iteration
   void refineSearchTree(UCTNode *Root);
   // E.g., value function or rollout

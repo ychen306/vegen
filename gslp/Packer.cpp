@@ -6,7 +6,8 @@ using namespace llvm;
 Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
-    : F(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI), Index(F) {
+    : F(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI),
+      Index(F) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<LoadInst *> Loads;
@@ -253,3 +254,14 @@ float Packer::evalSeedPacks(const VectorPackSet &Packs, unsigned Alpha) {
   }
   return BestCost;
 };
+
+// Check if `I` is independent from things in `Elements`, which depends on
+// `Depended`.
+bool checkIndependence(const LocalDependenceAnalysis &LDA,
+                       const VectorPackContext &VPCtx, Instruction *I,
+                       const BitVector &Elements, const BitVector &Depended) {
+  auto Depended2 = LDA.getDepended(I);
+  unsigned Id = VPCtx.getScalarId(I);
+  return !Elements.test(Id) && !Elements.anyCommon(Depended2) &&
+         !Depended.test(Id);
+}
