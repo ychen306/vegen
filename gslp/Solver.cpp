@@ -102,7 +102,7 @@ Frontier Frontier::advance(Instruction *I, float &Cost,
 }
 
 // Check whether there are lanes in `OpndPack` that are produced by `VP`.
-// Also resolve those lanes if exist.
+// Also resolve such lanes.
 bool Frontier::resolveOperandPack(const VectorPack &VP,
                                   UnresolvedOperandPack &UP) {
   bool Produced = false;
@@ -123,14 +123,14 @@ bool Frontier::resolveOperandPack(const VectorPack &VP,
 static unsigned getGatherCost(const VectorPack &VP,
                               const VectorPack::OperandPack &OpndPack,
                               TargetTransformInfo *TTI) {
-  // Best case:
-  // If `VP` produces `OpndPack` exactly then we don't pay any thing
   auto VPVals = VP.getOrderedValues();
   if (VPVals.size() == OpndPack.size()) {
     bool Exact = true;
     for (unsigned i = 0; i < VPVals.size(); i++)
       Exact &= (VPVals[i] == OpndPack[i]);
 
+    // Best case:
+    // If `VP` produces `OpndPack` exactly then we don't pay any thing
     if (Exact)
       return 0;
 
@@ -217,46 +217,18 @@ class PackEnumerator {
                     const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
                     std::vector<const VectorPack *> &Enumerated,
                     BitVector &Elements, BitVector &Depended,
-                    std::vector<const Operation::Match *> &Lanes) const {
-    // The lane we are enumerating
-    const unsigned LaneId = Lanes.size();
+                    std::vector<const Operation::Match *> &Lanes) const;
 
-    auto BackupElements = Elements;
-    auto BackupDepended = Depended;
+  // Find the set of memory accesses that can lead to `FocusAccess`
+  // by following the store or load chain
+  SmallPtrSet<Instruction *, 16>
+  findSeedMemAccesses(Instruction *FocusAccess) const;
 
-    // Try out all matched operation for this line
-    Lanes.push_back(nullptr);
-    for (auto &Match : LaneMatches[LaneId]) {
-      unsigned OutId = VPCtx.getScalarId(Match.Output);
-      // Make sure we are allowed to use the matched instruction
-      if (!FreeInsts[OutId])
-        continue;
-      // Make sure adding this `Match` doesn't violate any dependence constraint
-      bool Independent = checkIndependence(
-          LDA, VPCtx, cast<Instruction>(Match.Output), Elements, Depended);
-      if (!Independent)
-        continue;
-
-      // Select this match.
-      Elements.set(OutId);
-      Depended |= LDA.getDepended(cast<Instruction>(Match.Output));
-      Lanes.back() = &Match;
-
-      if (LaneId < LaneMatches.size() - 1) {
-        // Recursivly fill out the next lane
-        enumeratePacksRec(Inst, LaneMatches, Enumerated, Elements, Depended,
-                          Lanes);
-      } else {
-        // We are at the last lane.
-        Enumerated.push_back(
-            VPCtx.createVectorPack(Lanes, Elements, Depended, Inst, TTI));
-      }
-
-      // Revert the change before we try out the next match
-      Elements = BackupElements;
-      Depended = BackupDepended;
-    }
-    Lanes.pop_back();
+  template <typename AccessType>
+  VectorPack *createMemAccessPack(ArrayRef<AccessType *> Accesses,
+                                  BitVector &Elements, BitVector &Depended,
+                                  TargetTransformInfo *) const {
+    return nullptr;
   }
 
 public:
@@ -278,10 +250,207 @@ public:
                       EmptyPrefix);
   }
 
-  void enumerateLoadPack(std::vector<const VectorPack *> &Enumerated) {}
-
-  void enumerateStorePack(std::vector<const VectorPack *> &Enumeraed) {}
+  template <typename AccessType>
+  void enumerateMemAccesses(AccessType *LI,
+                            std::vector<const VectorPack *> &Enumerated) const;
 };
+
+void PackEnumerator::enumeratePacksRec(
+    const InstBinding *Inst,
+    const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
+    std::vector<const VectorPack *> &Enumerated, BitVector &Elements,
+    BitVector &Depended, std::vector<const Operation::Match *> &Lanes) const {
+  // The lane we are enumerating
+  const unsigned LaneId = Lanes.size();
+
+  auto BackupElements = Elements;
+  auto BackupDepended = Depended;
+
+  // Try out all matched operation for this line
+  Lanes.push_back(nullptr);
+  for (auto &Match : LaneMatches[LaneId]) {
+    unsigned OutId = VPCtx.getScalarId(Match.Output);
+    // Make sure we are allowed to use the matched instruction
+    if (!FreeInsts[OutId])
+      continue;
+    // Make sure adding this `Match` doesn't violate any dependence constraint
+    bool Independent = checkIndependence(
+        LDA, VPCtx, cast<Instruction>(Match.Output), Elements, Depended);
+    if (!Independent)
+      continue;
+
+    // Select this match.
+    Elements.set(OutId);
+    Depended |= LDA.getDepended(cast<Instruction>(Match.Output));
+    Lanes.back() = &Match;
+
+    if (LaneId < LaneMatches.size() - 1) {
+      // Recursivly fill out the next lane
+      enumeratePacksRec(Inst, LaneMatches, Enumerated, Elements, Depended,
+                        Lanes);
+    } else {
+      // We've filled the last lane
+      Enumerated.push_back(
+          VPCtx.createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+    }
+
+    // Revert the change before we try out the next match
+    Elements = BackupElements;
+    Depended = BackupDepended;
+  }
+  Lanes.pop_back();
+}
+
+SmallPtrSet<Instruction *, 16>
+PackEnumerator::findSeedMemAccesses(Instruction *FocusAccess) const {
+  DenseSet<Instruction *> Visited;
+  SmallPtrSet<Instruction *, 16> Seeds;
+
+  const ConsecutiveAccessDAG *AccessDAG = nullptr;
+  if (isa<LoadInst>(FocusAccess))
+    AccessDAG = &LoadDAG;
+  else if (isa<StoreInst>(FocusAccess))
+    AccessDAG = &StoreDAG;
+
+  assert(AccessDAG && "FocusAccess should either be a load or store");
+
+  std::function<bool(Instruction *)> CanReachFocus =
+      [&](Instruction *I) -> bool {
+    if (I == FocusAccess)
+      return true;
+
+    bool Inserted = Visited.insert(I).second;
+    if (!Inserted)
+      return Seeds.count(I);
+
+    if (!FreeInsts[VPCtx.getScalarId(I)])
+      return false;
+
+    auto It = AccessDAG->find(I);
+    // `I` is at the end of the load chain
+    if (It == AccessDAG->end())
+      return false;
+
+    for (auto *Next : It->second) {
+      if (CanReachFocus(Next)) {
+        Seeds.insert(I);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  for (auto &AccessAndNext : *AccessDAG) {
+    CanReachFocus(AccessAndNext.first);
+  }
+
+  return Seeds;
+}
+
+// Explicit specialization for creating load packs
+template <>
+VectorPack *
+PackEnumerator::createMemAccessPack(ArrayRef<LoadInst *> Loads,
+                                    BitVector &Elements, BitVector &Depended,
+                                    TargetTransformInfo *TTI) const {
+  return VPCtx.createLoadPack(Loads, Elements, Depended, TTI);
+}
+
+// Explicit specialization for creating store packs
+template <>
+VectorPack *
+PackEnumerator::createMemAccessPack(ArrayRef<StoreInst *> Stores,
+                                    BitVector &Elements, BitVector &Depended,
+                                    TargetTransformInfo *TTI) const {
+  return VPCtx.createStorePack(Stores, Elements, Depended, TTI);
+}
+
+template <typename AccessType>
+void PackEnumerator::enumerateMemAccesses(
+    AccessType *Focus, std::vector<const VectorPack *> &Enumerated) const {
+  auto Seeds = findSeedMemAccesses(Focus);
+
+  const ConsecutiveAccessDAG *AccessDAG = nullptr;
+  if (std::is_same<AccessType, LoadInst>::value)
+    AccessDAG = &LoadDAG;
+  else
+    AccessDAG = &StoreDAG;
+
+  SmallVector<AccessType *, 8> AccessChain;
+  std::function<void(Instruction *, BitVector &&, BitVector &&, bool)>
+      EnumerateRec = [&](Instruction *I, BitVector &&Elements,
+                         BitVector &&Depended, bool EncounteredFocus) {
+        // Include this prefix if we've included the focus.
+        if (AccessChain.size() > 1 && EncounteredFocus) {
+          Enumerated.push_back(createMemAccessPack<AccessType>(
+              AccessChain, Elements, Depended, TTI));
+        }
+
+        // Extend this load chain
+        auto It = AccessDAG->find(I);
+        if (It == AccessDAG->end())
+          return;
+
+        // If the next set of loads contains the focus
+        // then we choose that unconditionally.
+        if (It->second.count(Focus)) {
+          AccessChain.push_back(Focus);
+          EncounteredFocus = true;
+          // Note that we don't need to update Elements and Depended because
+          // they are initialized with `FocusLoad`'s data already.
+          EnumerateRec(Focus, std::move(Elements), std::move(Depended),
+                       EncounteredFocus);
+          AccessChain.pop_back();
+          return;
+        }
+
+        for (auto *Next : It->second) {
+          unsigned NextId = VPCtx.getScalarId(Next);
+          if (!FreeInsts[NextId])
+            continue;
+
+          bool Independent =
+              checkIndependence(LDA, VPCtx, Next, Elements, Depended);
+          if (!Independent)
+            continue;
+
+          // Include `Next` into the chain of load/store that we will vectorize
+          auto ElementsExt = Elements;
+          auto DependedExt = Depended;
+          AccessChain.push_back(cast<AccessType>(Next));
+          ElementsExt.set(NextId);
+          DependedExt |= LDA.getDepended(Next);
+          // Recursively build up the chain
+          EnumerateRec(Next, std::move(ElementsExt), std::move(DependedExt),
+                       EncounteredFocus);
+          AccessChain.pop_back();
+        }
+      };
+
+  BitVector Elements(VPCtx.getNumValues());
+  Elements.set(VPCtx.getScalarId(Focus));
+  BitVector Depended = LDA.getDepended(Focus);
+  for (auto *Seed : Seeds) {
+
+    if (Seed != Focus) {
+      bool Independent =
+          checkIndependence(LDA, VPCtx, Seed, Elements, Depended);
+      if (!Independent)
+        continue;
+    }
+
+    auto ElementsExt = Elements;
+    auto DependedExt = Depended;
+    AccessChain.push_back(cast<AccessType>(Seed));
+    ElementsExt.set(VPCtx.getScalarId(Seed));
+    DependedExt |= LDA.getDepended(Seed);
+    // Recursively build up the load chain
+    EnumerateRec(Seed, std::move(ElementsExt), std::move(DependedExt),
+                 Seed == Focus);
+    AccessChain.pop_back();
+  }
+}
 
 std::vector<const VectorPack *>
 Frontier::nextAvailablePacks(Packer *Packer) const {
@@ -293,15 +462,18 @@ Frontier::nextAvailablePacks(Packer *Packer) const {
   auto &StoreDAG = Packer->getStoreDAG(BB);
   auto *TTI = Packer->getTTI();
 
+  std::vector<const VectorPack *> AvailablePacks;
+  PackEnumerator Enumerator(FreeInsts, *VPCtx, LDA, LoadDAG, StoreDAG, TTI);
+
   if (auto *LI = dyn_cast<LoadInst>(I)) {
+    Enumerator.enumerateMemAccesses(LI, AvailablePacks);
+    return AvailablePacks;
   }
 
   if (auto *SI = dyn_cast<StoreInst>(I)) {
+    Enumerator.enumerateMemAccesses(SI, AvailablePacks);
+    return AvailablePacks;
   }
-
-  std::vector<const VectorPack *> AvailablePacks;
-
-  PackEnumerator Enumerator(FreeInsts, *VPCtx, LDA, LoadDAG, StoreDAG, TTI);
 
   for (auto *Inst : Insts) {
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
