@@ -260,8 +260,7 @@ float Packer::evalSeedPacks(const VectorPackSet &Packs, unsigned Alpha) {
 bool checkIndependence(const LocalDependenceAnalysis &LDA,
                        const VectorPackContext &VPCtx, Instruction *I,
                        const BitVector &Elements, const BitVector &Depended) {
-  auto Depended2 = LDA.getDepended(I);
   unsigned Id = VPCtx.getScalarId(I);
-  return !Elements.test(Id) && !Elements.anyCommon(Depended2) &&
+  return !Elements.test(Id) && !Elements.anyCommon(LDA.getDepended(I)) &&
          !Depended.test(Id);
 }

@@ -31,6 +31,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Timer.h"
 // For pass building
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -555,11 +556,18 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   UCTNodeFactory Factory;
   UCTNode *Root = Factory.getNode(Frontier(EntryBB, VPCtx));
 
+  Timer T("mcts", "time takes to run 1000 iter of MCTS");
+
+  T.startTimer();
   UCTSearch MCTS(2, &Factory, &Packer, TTI);
   for (unsigned i = 0; i < 1000; i++) {
     errs() << "!!! iter = " << i << '\n';
     MCTS.run(Root);
   }
+  T.stopTimer();
+  errs() << "!!! Time elapsed:\n";
+  auto Elapsed = T.getTotalTime();
+  Elapsed.print(Elapsed, errs());
 
   return false;
 
