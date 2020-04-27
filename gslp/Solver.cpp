@@ -238,8 +238,7 @@ class PackEnumerator {
   }
 
 public:
-  PackEnumerator(const BitVector &FreeInsts,
-                 const VectorPackContext &VPCtx,
+  PackEnumerator(const BitVector &FreeInsts, const VectorPackContext &VPCtx,
                  const LocalDependenceAnalysis &LDA,
                  const ConsecutiveAccessDAG &LoadDAG,
                  const ConsecutiveAccessDAG &StoreDAG, TargetTransformInfo *TTI)
@@ -516,7 +515,8 @@ UCTNode *UCTNodeFactory::getNode(Frontier Frt) {
   auto FrtOwned = std::make_unique<Frontier>(std::move(Frt));
   decltype(FrontierToNodeMap)::iterator It;
   bool Inserted;
-  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(FrtOwned.get(), nullptr);
+  std::tie(It, Inserted) =
+      FrontierToNodeMap.try_emplace(FrtOwned.get(), nullptr);
   if (Inserted) {
     It->first = FrtOwned.get();
     auto *NewNode = new UCTNode(FrtOwned.get());
