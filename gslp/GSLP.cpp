@@ -4,11 +4,11 @@
 #include "LocalDependenceAnalysis.h"
 #include "MatchManager.h"
 #include "Packer.h"
+#include "Solver.h"
 #include "Util.h"
 #include "VectorPack.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
-#include "Solver.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -50,7 +50,7 @@ cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
 
 static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path for the trained model"),
-                 cl::value_desc("output model path"), cl::init("pack.pt"));
+              cl::value_desc("output model path"), cl::init("pack.pt"));
 
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
@@ -165,7 +165,8 @@ sampleAccesses(const VectorPackSet &ExistingPacks,
     assert(Elements.count() == Accesses.size());
   }
 
-  return std::tuple<std::vector<MemAccessTy *>, BitVector, BitVector>(Accesses, Elements, Depended);
+  return std::tuple<std::vector<MemAccessTy *>, BitVector, BitVector>(
+      Accesses, Elements, Depended);
 }
 
 static VectorPack *
@@ -318,7 +319,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   // if (F.getName() != "adi")
   //  return false;
   if (F.getName() != "binvcrhs")
-  return false;
+    return false;
   // if (F.getName() != "cmul_many")
   //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
@@ -553,7 +554,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   auto *VPCtx = Packer.getContext(EntryBB);
   UCTNodeFactory Factory;
   UCTNode *Root = Factory.getNode(Frontier(EntryBB, VPCtx));
-  
+
   UCTSearch MCTS(2, &Factory, &Packer, TTI);
   for (unsigned i = 0; i < 1000; i++) {
     errs() << "!!! iter = " << i << '\n';
@@ -562,7 +563,8 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   return false;
 
-  // FIXME: make sure ths supported insts we are using here syncs up with the model
+  // FIXME: make sure ths supported insts we are using here syncs up with the
+  // model
   PackModel Model(32, SupportedInsts);
   loadModel(Model, ModelPath);
 

@@ -152,7 +152,7 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
 
   Cost = VP->getCost();
   Type *VecTy;
-  // It doesn't make sense to get the value type of a store, 
+  // It doesn't make sense to get the value type of a store,
   // which returns nothing.
   if (!VP->isStore())
     VecTy = getVectorType(*VP);
@@ -171,7 +171,7 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
   }
   Next.advanceBBIt();
 
-  SmallVector<unsigned, 2> ResolvedPackIds; 
+  SmallVector<unsigned, 2> ResolvedPackIds;
   if (!VP->isStore()) {
     for (unsigned i = 0; i < Next.UnresolvedPacks.size(); i++) {
       auto &UP = Next.UnresolvedPacks[i];
