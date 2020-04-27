@@ -8,6 +8,7 @@
 #include "VectorPack.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
+#include "Solver.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -316,8 +317,8 @@ const VectorPack *MCMCVectorPackSet::removeRandomPack() {
 bool GSLP::runOnFunction(llvm::Function &F) {
   // if (F.getName() != "adi")
   //  return false;
-  // if (F.getName() != "binvcrhs")
-  // return false;
+  if (F.getName() != "binvcrhs")
+  return false;
   // if (F.getName() != "cmul_many")
   //  return false;
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
@@ -546,9 +547,20 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   };
 
   /////////
-  const unsigned BatchSize = 4096;
-
   Packer Packer(SupportedInsts, F, AA, DL, SE, TTI, BFI);
+
+  BasicBlock *EntryBB = &F.getEntryBlock();
+  auto *VPCtx = Packer.getContext(EntryBB);
+  UCTNodeFactory Factory;
+  UCTNode *Root = Factory.getNode(Frontier(EntryBB, VPCtx));
+  
+  UCTSearch MCTS(2, &Factory, &Packer, TTI);
+  for (unsigned i = 0; i < 1000; i++) {
+    errs() << "!!! iter = " << i << '\n';
+    MCTS.run(Root);
+  }
+
+  return false;
 
   // FIXME: make sure ths supported insts we are using here syncs up with the model
   PackModel Model(32, SupportedInsts);

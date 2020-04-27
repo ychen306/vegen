@@ -130,6 +130,8 @@ public:
     return VPCtx->iter_values(Depended);
   }
 
+  bool isStore() const { return Kind == Store; }
+
   llvm::BasicBlock *getBasicBlock() const { return VPCtx->getBasicBlock(); }
 
   llvm::ArrayRef<llvm::Value *> getOrderedValues() const {

@@ -1,9 +1,9 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
+#include "Packer.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
-#include "Packer.h"
 #include "llvm/ADT/ArrayRef.h"
 #include <bitset>
 
@@ -102,9 +102,9 @@ private:
 
 public:
   // Fill out the out edge
-  void expand(UCTNodeFactory *Factory, Packer *Packer, 
-      llvm::TargetTransformInfo *);
-  bool expanded() { return OutEdges.empty() && !isTerminal(); }
+  void expand(UCTNodeFactory *Factory, Packer *Packer,
+              llvm::TargetTransformInfo *);
+  bool expanded() { return !OutEdges.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
   llvm::ArrayRef<OutEdge> next() const { return OutEdges; }
   // The classic UCT score
@@ -127,13 +127,13 @@ class UCTSearch {
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, UCTNodeFactory *Factory, class Packer *Packer, 
+  UCTSearch(float C, UCTNodeFactory *Factory, class Packer *Packer,
             llvm::TargetTransformInfo *TTI)
       : C(C), Factory(Factory), Packer(Packer), TTI(TTI) {}
   // Run MCTS for one iteration
-  void refineSearchTree(UCTNode *Root);
+  void run(UCTNode *Root);
   // E.g., value function or rollout
-  virtual float evalLeafNode(UCTNode *) = 0;
+  virtual float evalLeafNode(UCTNode *) { return 0; }
 };
 
 #endif

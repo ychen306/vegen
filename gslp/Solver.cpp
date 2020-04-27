@@ -151,7 +151,11 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
   Frontier Next = *this;
 
   Cost = VP->getCost();
-  auto *VecTy = getVectorType(*VP);
+  Type *VecTy;
+  // It doesn't make sense to get the value type of a store, 
+  // which returns nothing.
+  if (!VP->isStore())
+    VecTy = getVectorType(*VP);
 
   auto OutputLanes = VP->getOrderedValues();
   for (unsigned LaneId = 0; LaneId < OutputLanes.size(); LaneId++) {
@@ -167,13 +171,15 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
   }
   Next.advanceBBIt();
 
-  SmallVector<unsigned, 2> ResolvedPackIds;
-  for (unsigned i = 0; i < Next.UnresolvedPacks.size(); i++) {
-    auto &UP = Next.UnresolvedPacks[i];
-    if (bool PartiallyResolved = Next.resolveOperandPack(*VP, UP)) {
-      Cost += getGatherCost(*VP, *UP.Pack, TTI);
-      if (UP.resolved())
-        ResolvedPackIds.push_back(i);
+  SmallVector<unsigned, 2> ResolvedPackIds; 
+  if (!VP->isStore()) {
+    for (unsigned i = 0; i < Next.UnresolvedPacks.size(); i++) {
+      auto &UP = Next.UnresolvedPacks[i];
+      if (bool PartiallyResolved = Next.resolveOperandPack(*VP, UP)) {
+        Cost += getGatherCost(*VP, *UP.Pack, TTI);
+        if (UP.resolved())
+          ResolvedPackIds.push_back(i);
+      }
     }
   }
 
@@ -494,6 +500,10 @@ Frontier::nextAvailablePacks(Packer *Packer) const {
           break;
         LaneMatches.push_back(Matches);
       }
+
+      // Skip if we can't find a single match for some lane.
+      if (LaneMatches.size() != NumLanes)
+        continue;
       Enumerator.enumeratePacks(Inst, LaneMatches, AvailablePacks);
     }
   }
@@ -530,7 +540,7 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
 }
 
 // Do one iteration of MCTS
-void UCTSearch::refineSearchTree(UCTNode *Root) {
+void UCTSearch::run(UCTNode *Root) {
   // ========= 1) Selection ==========
   UCTNode *CurNode = Root;
   std::vector<const UCTNode::OutEdge *> Path;
