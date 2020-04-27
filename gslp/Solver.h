@@ -5,6 +5,7 @@
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/Hashing.h"
 #include <bitset>
 
 // A lightweight wrapper around VectorPack::OperandPack
@@ -32,17 +33,22 @@ struct UnresolvedOperandPack {
     auto RL2 = ResolvedLanes.to_ullong();
     return std::tie(Pack, RL) < std::tie(Other.Pack, RL2);
   }
+
+  bool operator==(const UnresolvedOperandPack &Other) const {
+    return Pack == Other.Pack && ResolvedLanes == Other.ResolvedLanes;
+  }
 };
 
 class MatchManager;
 class Frontier {
+  friend struct FrontierHashInfo;
   llvm::BasicBlock *BB;
   const VectorPackContext *VPCtx;
   llvm::BasicBlock::reverse_iterator BBIt;
   std::vector<UnresolvedOperandPack> UnresolvedPacks;
-  std::vector<bool> UnresolvedScalars;
+  llvm::BitVector UnresolvedScalars;
   // Instructions we haven't assigned yet.
-  std::vector<bool> FreeInsts;
+  llvm::BitVector FreeInsts;
 
   void freezeOneInst(unsigned);
   bool resolveOperandPack(const VectorPack &VP, UnresolvedOperandPack &UP);
@@ -54,14 +60,6 @@ class Frontier {
 public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, const VectorPackContext *VPCtx);
-
-  bool operator<(const Frontier &Other) const {
-    auto CmpKey = [](const Frontier &Frt) {
-      return std::tie(Frt.FreeInsts, Frt.UnresolvedScalars,
-                      Frt.UnresolvedPacks);
-    };
-    return CmpKey(*this) < CmpKey(Other);
-  }
   Frontier advance(const VectorPack *, float &Cost,
                    llvm::TargetTransformInfo *TTI) const;
   Frontier advance(llvm::Instruction *, float &Cost,
@@ -70,12 +68,65 @@ public:
   std::vector<const VectorPack *> nextAvailablePacks(Packer *) const;
 };
 
+// Hashing support for `Frontier`
+struct FrontierHashInfo {
+  static inline Frontier *getEmptyKey() {
+    return nullptr;
+  }
+
+  static inline Frontier *getTombstoneKey() {
+    return reinterpret_cast<Frontier *>(1);
+  }
+
+  static inline unsigned getHashValue(const Frontier *Frt) {
+    using namespace llvm;
+
+    if (Frt == getEmptyKey()) {
+      return hash_combine(reinterpret_cast<BasicBlock *>(0), 
+          ArrayRef<uint64_t>(),
+          ArrayRef<uint64_t>(),
+          ArrayRef<uint64_t>());
+    } else if (Frt == getTombstoneKey()) {
+      return hash_combine(reinterpret_cast<BasicBlock *>(1), 
+          ArrayRef<uint64_t>(),
+          ArrayRef<uint64_t>(),
+          ArrayRef<uint64_t>());
+    }
+
+    // Interpret unresolvedOperandPack as a uint64_t array...
+    ArrayRef<uint64_t> UPRaw(
+      reinterpret_cast<const uint64_t *>(Frt->UnresolvedPacks.data()),
+      Frt->UnresolvedPacks.size() * 2);
+
+    return hash_combine(Frt->BB, 
+        Frt->UnresolvedScalars.getData(),
+        Frt->FreeInsts.getData(),
+        UPRaw);
+  }
+
+  static bool isTombstoneOrEmpty(const Frontier *Frt) {
+    return Frt == getTombstoneKey() || Frt == getEmptyKey();
+  }
+
+  static bool isEqual(const Frontier *A, const Frontier *B) {
+    if (isTombstoneOrEmpty(A) || isTombstoneOrEmpty(B))
+      return A == B;
+
+    return A->BB == B->BB &&
+      A->UnresolvedScalars == B->UnresolvedScalars &&
+      A->FreeInsts == B->FreeInsts &&
+      A->UnresolvedPacks == B->UnresolvedPacks;
+  }
+};
+
 class UCTNode;
 class UCTNodeFactory {
-  std::map<Frontier, UCTNode> Nodes;
+  std::vector<std::unique_ptr<Frontier>> Frontiers;
+  std::vector<std::unique_ptr<UCTNode>> Nodes;
+  llvm::DenseMap<Frontier *, UCTNode *, FrontierHashInfo> FrontierToNodeMap;
 
 public:
-  UCTNode *getNode(Frontier &&Frontier);
+  UCTNode *getNode(Frontier Frontier);
 };
 
 class UCTNode {

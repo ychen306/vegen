@@ -13,7 +13,7 @@ Frontier::Frontier(BasicBlock *BB, const VectorPackContext *VPCtx)
     for (User *U : I.users()) {
       auto UserInst = dyn_cast<Instruction>(U);
       if (UserInst && UserInst->getParent() != BB) {
-        UnresolvedScalars[VPCtx->getScalarId(&I)] = true;
+        UnresolvedScalars.set(VPCtx->getScalarId(&I));
         break;
       }
     }
@@ -22,7 +22,7 @@ Frontier::Frontier(BasicBlock *BB, const VectorPackContext *VPCtx)
 
 Instruction *Frontier::getNextFreeInst() const {
   for (auto I = BBIt, E = BB->rend(); I != E; ++I)
-    if (FreeInsts[VPCtx->getScalarId(&*I)])
+    if (FreeInsts.test(VPCtx->getScalarId(&*I)))
       return &*I;
   return nullptr;
 }
@@ -41,8 +41,8 @@ void removeAndSort(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
 } // namespace
 
 void Frontier::freezeOneInst(unsigned InstId) {
-  FreeInsts[InstId] = false;
-  UnresolvedScalars[InstId] = false;
+  FreeInsts.reset(InstId);
+  UnresolvedScalars.reset(InstId);
 }
 
 void Frontier::advanceBBIt() {
@@ -92,8 +92,8 @@ Frontier Frontier::advance(Instruction *I, float &Cost,
     if (!I2 || I2->getParent() != BB)
       continue;
     unsigned InstId = VPCtx->getScalarId(I2);
-    if (Next.FreeInsts[InstId])
-      Next.UnresolvedScalars[InstId] = true;
+    if (Next.FreeInsts.test(InstId))
+      Next.UnresolvedScalars.set(InstId);
   }
 
   removeAndSort(Next.UnresolvedPacks, ResolvedPackIds);
@@ -163,7 +163,7 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
     unsigned InstId = VPCtx->getScalarId(I);
 
     // Pay the extract cost
-    if (Next.UnresolvedScalars[InstId])
+    if (Next.UnresolvedScalars.test(InstId))
       Cost +=
           TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
 
@@ -211,7 +211,7 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
 }
 
 class PackEnumerator {
-  const std::vector<bool> &FreeInsts;
+  const BitVector &FreeInsts;
   const VectorPackContext &VPCtx;
   const LocalDependenceAnalysis &LDA;
   const ConsecutiveAccessDAG &LoadDAG;
@@ -238,7 +238,7 @@ class PackEnumerator {
   }
 
 public:
-  PackEnumerator(const std::vector<bool> &FreeInsts,
+  PackEnumerator(const BitVector &FreeInsts,
                  const VectorPackContext &VPCtx,
                  const LocalDependenceAnalysis &LDA,
                  const ConsecutiveAccessDAG &LoadDAG,
@@ -277,7 +277,7 @@ void PackEnumerator::enumeratePacksRec(
   for (auto &Match : LaneMatches[LaneId]) {
     unsigned OutId = VPCtx.getScalarId(Match.Output);
     // Make sure we are allowed to use the matched instruction
-    if (!FreeInsts[OutId])
+    if (!FreeInsts.test(OutId))
       continue;
     // Make sure adding this `Match` doesn't violate any dependence constraint
     bool Independent = checkIndependence(
@@ -329,7 +329,7 @@ PackEnumerator::findSeedMemAccesses(Instruction *FocusAccess) const {
     if (!Inserted)
       return Seeds.count(I);
 
-    if (!FreeInsts[VPCtx.getScalarId(I)])
+    if (!FreeInsts.test(VPCtx.getScalarId(I)))
       return false;
 
     auto It = AccessDAG->find(I);
@@ -413,7 +413,7 @@ void PackEnumerator::enumerateMemAccesses(
 
         for (auto *Next : It->second) {
           unsigned NextId = VPCtx.getScalarId(Next);
-          if (!FreeInsts[NextId])
+          if (!FreeInsts.test(NextId))
             continue;
 
           bool Independent =
@@ -512,14 +512,19 @@ Frontier::nextAvailablePacks(Packer *Packer) const {
 }
 
 // If we already have a UCTNode for the same frontier, reuse that node.
-UCTNode *UCTNodeFactory::getNode(Frontier &&Frt) {
-  decltype(Nodes)::iterator It;
+UCTNode *UCTNodeFactory::getNode(Frontier Frt) {
+  auto FrtOwned = std::make_unique<Frontier>(std::move(Frt));
+  decltype(FrontierToNodeMap)::iterator It;
   bool Inserted;
-  std::tie(It, Inserted) = Nodes.emplace(Frt, UCTNode(nullptr));
+  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(FrtOwned.get(), nullptr);
   if (Inserted) {
-    It->second.Frt = &It->first;
+    It->first = FrtOwned.get();
+    auto *NewNode = new UCTNode(FrtOwned.get());
+    Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+    It->second = NewNode;
+    Frontiers.push_back(std::move(FrtOwned));
   }
-  return &It->second;
+  return It->second;
 }
 
 // Fill out the children node
