@@ -11,11 +11,7 @@
 // A vector pack is an *ordered* set of values,
 // these values should come from the same basic block
 class VectorPack {
-
 public:
-  // Use this to model input operands
-  using OperandPack = llvm::SmallVector<llvm::Value *, 8>;
-
   enum PackKind { General, Phi, Load, Store };
 
 private:
@@ -41,7 +37,7 @@ private:
   ///////////////
 
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
-  llvm::SmallVector<OperandPack, 4> OperandPacks;
+  llvm::SmallVector<OperandPack *, 4> OperandPacks;
 
   int Cost;
 
@@ -93,10 +89,15 @@ private:
     computeCost(TTI);
   }
 
-  void computeOperandPacksForGeneral();
-  void computeOperandPacksForLoad();
-  void computeOperandPacksForStore();
-  void computeOperandPacksForPhi();
+  std::vector<OperandPack> computeOperandPacksForGeneral();
+  std::vector<OperandPack> computeOperandPacksForLoad();
+  std::vector<OperandPack> computeOperandPacksForStore();
+  std::vector<OperandPack> computeOperandPacksForPhi();
+
+  void canonicalizeOperandPacks(std::vector<OperandPack> OPs) {
+    for (auto &OP : OPs)
+      OperandPacks.push_back(VPCtx->getCanonicalOperandPack(std::move(OP)));
+  }
 
   void computeOperandPacks();
   void computeOrderedValues();
@@ -144,7 +145,7 @@ public:
 
   const llvm::BitVector &getElements() const { return Elements; }
 
-  llvm::ArrayRef<OperandPack> getOperandPacks() const { return OperandPacks; }
+  llvm::ArrayRef<OperandPack *> getOperandPacks() const { return OperandPacks; }
 
   llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                     IntrinsicBuilder &Builder) const;
@@ -158,7 +159,7 @@ public:
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
 
-llvm::VectorType *getVectorType(const VectorPack::OperandPack &OpndPack);
+llvm::VectorType *getVectorType(const OperandPack &OpndPack);
 
 llvm::VectorType *getVectorType(const VectorPack &VP);
 

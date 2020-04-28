@@ -4,12 +4,12 @@ using namespace llvm;
 
 // FIXME: we need to generalize the definition of an operand pack
 // because some of the input lanes are "DONT CARES" (e.g. _mm_div_pd)
-void VectorPack::computeOperandPacksForGeneral() {
+std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
   auto &Sig = Producer->getSignature();
   unsigned NumInputs = Sig.numInputs();
   auto LaneOps = Producer->getLaneOps();
   unsigned NumLanes = LaneOps.size();
-  OperandPacks.resize(NumInputs);
+  std::vector<OperandPack> OperandPacks(NumInputs);
 
   struct BoundInput {
     InputSlice Slice;
@@ -57,33 +57,37 @@ void VectorPack::computeOperandPacksForGeneral() {
     }
     assert(OpndPack.size() * Stride == InputSize);
   }
+
+  return OperandPacks;
 }
 
-void VectorPack::computeOperandPacksForLoad() {
+std::vector<OperandPack> VectorPack::computeOperandPacksForLoad() {
   // Only need the single *scalar* pointer, doesn't need packed operand
-  OperandPacks.clear();
+  return {};
 }
 
-void VectorPack::computeOperandPacksForStore() {
-  OperandPacks.resize(1);
+std::vector<OperandPack> VectorPack::computeOperandPacksForStore() {
+  std::vector<OperandPack> OperandPacks(1);
   auto &OpndPack = OperandPacks[0];
   // Don't care about the pointers,
   // only the values being stored need to be packed first
   for (auto *S : Stores)
     OpndPack.push_back(S->getValueOperand());
+  return OperandPacks;
 }
 
-void VectorPack::computeOperandPacksForPhi() {
+std::vector<OperandPack> VectorPack::computeOperandPacksForPhi() {
   auto *FirstPHI = PHIs[0];
   unsigned NumIncomings = FirstPHI->getNumIncomingValues();
   // We need as many packs as there are incoming edges
-  OperandPacks.resize(NumIncomings);
+  std::vector<OperandPack> OperandPacks(NumIncomings);
   for (unsigned i = 0; i < NumIncomings; i++) {
     auto *BB = FirstPHI->getIncomingBlock(i);
     // all of the values coming from BB should be packed
     for (auto *PH : PHIs)
       OperandPacks[i].push_back(PH->getIncomingValueForBlock(BB));
   }
+  return OperandPacks;
 }
 
 static Type *getScalarTy(ArrayRef<const Operation::Match *> Matches) {
@@ -194,16 +198,16 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
 void VectorPack::computeOperandPacks() {
   switch (Kind) {
   case General:
-    computeOperandPacksForGeneral();
+    canonicalizeOperandPacks(computeOperandPacksForGeneral());
     break;
   case Load:
-    computeOperandPacksForLoad();
+    canonicalizeOperandPacks(computeOperandPacksForLoad());
     break;
   case Store:
-    computeOperandPacksForStore();
+    canonicalizeOperandPacks(computeOperandPacksForStore());
     break;
   case Phi:
-    computeOperandPacksForPhi();
+    canonicalizeOperandPacks(computeOperandPacksForPhi());
     break;
   }
 }
@@ -320,7 +324,7 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   return OS;
 }
 
-VectorType *getVectorType(const VectorPack::OperandPack &OpndPack) {
+VectorType *getVectorType(const OperandPack &OpndPack) {
   Type *ScalarTy = nullptr;
   for (auto *V : OpndPack)
     if (V) {

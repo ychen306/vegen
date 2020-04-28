@@ -44,7 +44,7 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG,
 // FIXME: ignore lane order here.
 // Find vector packs that produces operand pack
 void extendWithDef(
-    const VectorPack::OperandPack &OpndPack, const VectorPackSet &ExistingPacks,
+    const OperandPack &OpndPack, const VectorPackSet &ExistingPacks,
     std::vector<VectorPack *> &Extensions,
     llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
         &LoadDAGs,

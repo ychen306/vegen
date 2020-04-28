@@ -50,6 +50,13 @@ void Frontier::advanceBBIt() {
     }
 }
 
+bool Frontier::resolved(const OperandPack &OP) const {
+  for (Value *V : OP)
+    if (FreeInsts[VPCtx->getScalarId(V)])
+      return false;
+  return true;
+}
+
 std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
                                             TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
@@ -61,25 +68,24 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
   Cost = 0;
   SmallVector<unsigned, 2> ResolvedPackIds;
   for (unsigned i = 0; i < Next->UnresolvedPacks.size(); i++) {
-    auto &UP = Next->UnresolvedPacks[i];
-    auto *VecTy = getVectorType(*UP.Pack);
+    auto *OP = Next->UnresolvedPacks[i];
+    auto *VecTy = getVectorType(*OP);
 
-    // Special case: we can build UP by broadcasting `I`.
-    if (is_splat(*UP.Pack)) {
+    // Special case: we can build OP by broadcasting `I`.
+    if (is_splat(*OP)) {
       Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
       ResolvedPackIds.push_back(i);
       continue;
     }
 
-    for (unsigned LaneId = 0; LaneId < UP.Pack->size(); LaneId++) {
-      if ((*UP.Pack)[LaneId] != I)
+    for (unsigned LaneId = 0; LaneId < OP->size(); LaneId++) {
+      if ((*OP)[LaneId] != I)
         continue;
       // Pay the insert cost
       Cost +=
           TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, LaneId);
-      UP.resolveOneLane(LaneId);
     }
-    if (UP.resolved())
+    if (resolved(*OP))
       ResolvedPackIds.push_back(i);
   }
 
@@ -95,6 +101,7 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
   }
 
   remove(Next->UnresolvedPacks, ResolvedPackIds);
+  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
 
   return Next;
 }
@@ -102,15 +109,14 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
 // Check whether there are lanes in `OpndPack` that are produced by `VP`.
 // Also resolve such lanes.
 bool Frontier::resolveOperandPack(const VectorPack &VP,
-                                  UnresolvedOperandPack &UP) {
+                                  const OperandPack &OP) {
   bool Produced = false;
-  for (unsigned LaneId = 0; LaneId < UP.Pack->size(); LaneId++) {
-    auto *V = (*UP.Pack)[LaneId];
+  for (unsigned LaneId = 0; LaneId < OP.size(); LaneId++) {
+    auto *V = OP[LaneId];
     auto *I = dyn_cast<Instruction>(V);
     if (!I || I->getParent() != BB)
       continue;
     if (VP.getElements().test(VPCtx->getScalarId(I))) {
-      UP.resolveOneLane(LaneId);
       Produced = true;
     }
   }
@@ -119,7 +125,7 @@ bool Frontier::resolveOperandPack(const VectorPack &VP,
 
 // Return the cost of gathering from `VP` to `OpndPack`
 static unsigned getGatherCost(const VectorPack &VP,
-                              const VectorPack::OperandPack &OpndPack,
+                              const OperandPack &OpndPack,
                               TargetTransformInfo *TTI) {
   auto VPVals = VP.getOrderedValues();
   if (VPVals.size() == OpndPack.size()) {
@@ -155,6 +161,7 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
   if (!VP->isStore())
     VecTy = getVectorType(*VP);
 
+  // Tick off instructions taking part in `VP` and pay the scalar extract cost.
   auto OutputLanes = VP->getOrderedValues();
   for (unsigned LaneId = 0; LaneId < OutputLanes.size(); LaneId++) {
     auto *I = cast<Instruction>(OutputLanes[LaneId]);
@@ -172,21 +179,20 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
   SmallVector<unsigned, 2> ResolvedPackIds;
   if (!VP->isStore()) {
     for (unsigned i = 0; i < Next->UnresolvedPacks.size(); i++) {
-      auto &UP = Next->UnresolvedPacks[i];
-      if (bool PartiallyResolved = Next->resolveOperandPack(*VP, UP)) {
-        Cost += getGatherCost(*VP, *UP.Pack, TTI);
-        if (UP.resolved())
+      auto *OP = Next->UnresolvedPacks[i];
+      if (bool PartiallyResolved = Next->resolveOperandPack(*VP, *OP)) {
+        Cost += getGatherCost(*VP, *OP, TTI);
+        if (resolved(*OP))
           ResolvedPackIds.push_back(i);
       }
     }
   }
 
   // Track the unresolved operand packs used by `VP`
-  for (auto &OpndPack : VP->getOperandPacks()) {
-    UnresolvedOperandPack UP(OpndPack);
-    auto *OperandTy = getVectorType(OpndPack);
-    for (unsigned LaneId = 0; LaneId < OpndPack.size(); LaneId++) {
-      auto *V = OpndPack[LaneId];
+  for (auto *OpndPack : VP->getOperandPacks()) {
+    auto *OperandTy = getVectorType(*OpndPack);
+    for (unsigned LaneId = 0; LaneId < OpndPack->size(); LaneId++) {
+      auto *V = (*OpndPack)[LaneId];
       if (isa<Constant>(V))
         continue;
       auto *I = dyn_cast<Instruction>(V);
@@ -194,13 +200,11 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
         // Assume I is always scalar and pay the insert cost.
         Cost += TTI->getVectorInstrCost(Instruction::ExtractElement, OperandTy,
                                         LaneId);
-        UP.resolveOneLane(LaneId);
-      } else if (Next->isFreeInst(I))
-        UP.resolveOneLane(LaneId);
+      }
     }
 
-    if (!UP.resolved())
-      Next->UnresolvedPacks.push_back(std::move(UP));
+    if (!resolved(*OpndPack))
+      Next->UnresolvedPacks.push_back(OpndPack);
   }
 
   remove(Next->UnresolvedPacks, ResolvedPackIds);
@@ -531,12 +535,6 @@ Frontier::nextAvailablePacks(Packer *Packer,
 
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
-#if 0
-  auto *NewNode = new UCTNode(Frt.get());
-  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-  Frontiers.push_back(std::move(Frt));
-  return NewNode;
-#else
   decltype(FrontierToNodeMap)::iterator It;
   bool Inserted;
   std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
@@ -548,7 +546,6 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
     Frontiers.push_back(std::move(Frt));
   }
   return It->second;
-#endif
 }
 
 // Fill out the children node

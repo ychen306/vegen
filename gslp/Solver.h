@@ -8,35 +8,6 @@
 #include "llvm/ADT/Hashing.h"
 #include <bitset>
 
-// A lightweight wrapper around VectorPack::OperandPack
-// to track resolved lanes (lanes with known producers)
-struct UnresolvedOperandPack {
-  using BitsetTy = std::bitset<64>;
-
-  const VectorPack::OperandPack *Pack;
-  BitsetTy ResolvedLanes;
-
-  UnresolvedOperandPack(UnresolvedOperandPack &&) = default;
-  UnresolvedOperandPack &operator=(UnresolvedOperandPack &&) = default;
-
-  UnresolvedOperandPack(const VectorPack::OperandPack &Pack) : Pack(&Pack) {
-    for (unsigned i = 0; i < Pack.size(); i++) {
-      if (llvm::isa<llvm::Constant>(Pack[i]))
-        ResolvedLanes.set(i);
-    }
-  }
-
-  void resolveOneLane(unsigned i) { ResolvedLanes.set(i); }
-  bool resolved() const { return ResolvedLanes.all(); }
-  bool operator<(const UnresolvedOperandPack &Other) const {
-    return Pack < Other.Pack;
-  }
-
-  bool operator==(const UnresolvedOperandPack &Other) const {
-    return Pack == Other.Pack && ResolvedLanes == Other.ResolvedLanes;
-  }
-};
-
 class PackEnumerationCache {
   // Mapping a focus instruction to the set of packs it can involve in,
   // Assumming every instruction before it is free and below not.
@@ -66,13 +37,13 @@ class Frontier {
   llvm::BasicBlock *BB;
   const VectorPackContext *VPCtx;
   llvm::BasicBlock::reverse_iterator BBIt;
-  std::vector<UnresolvedOperandPack> UnresolvedPacks;
+  std::vector<const OperandPack *> UnresolvedPacks;
   llvm::BitVector UnresolvedScalars;
   // Instructions we haven't assigned yet.
   llvm::BitVector FreeInsts;
 
   void freezeOneInst(unsigned);
-  bool resolveOperandPack(const VectorPack &VP, UnresolvedOperandPack &UP);
+  bool resolveOperandPack(const VectorPack &VP, const OperandPack &UP);
   void advanceBBIt();
   bool isFreeInst(llvm::Instruction *I) {
     return FreeInsts[VPCtx->getScalarId(I)];
@@ -81,6 +52,9 @@ class Frontier {
   // Remove any packs that use frozen instructions.
   std::vector<const VectorPack *>
       filterFrozenPacks(llvm::ArrayRef<const VectorPack *>) const;
+
+  // Check if `OP` has been resolved.
+  bool resolved(const OperandPack &OP) const;
 
 public:
   // Create the initial frontier, which surrounds the whole basic block
@@ -109,22 +83,19 @@ struct FrontierHashInfo {
       return hash_combine(reinterpret_cast<BasicBlock *>(0),
                           ArrayRef<uint64_t>(),
                           ArrayRef<uint64_t>(),
-                          ArrayRef<uint64_t>());
+                          ArrayRef<const OperandPack *>());
     } else if (Frt == getTombstoneKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(1),
                           ArrayRef<uint64_t>(),
                           ArrayRef<uint64_t>(),
-                          ArrayRef<uint64_t>());
+                          ArrayRef<const OperandPack *>());
     }
-
-    // Interpret unresolvedOperandPack as a uint64_t array...
-    ArrayRef<uint64_t> UPRaw(
-        reinterpret_cast<const uint64_t *>(Frt->UnresolvedPacks.data()),
-        Frt->UnresolvedPacks.size() * 2);
 
     return hash_combine(reinterpret_cast<BasicBlock *>(2),
                         Frt->UnresolvedScalars.getData(),
-                        Frt->FreeInsts.getData(), UPRaw);
+                        Frt->FreeInsts.getData(),
+                        ArrayRef<const OperandPack *>(
+                          Frt->UnresolvedPacks));
   }
 
   static bool isTombstoneOrEmpty(const Frontier *Frt) {

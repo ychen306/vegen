@@ -10,7 +10,7 @@ using namespace llvm;
 // Get the vector value representing `OpndPack'.
 // If `OpndPack` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
-Value *VectorPackSet::gatherOperandPack(const VectorPack::OperandPack &OpndPack,
+Value *VectorPackSet::gatherOperandPack(const OperandPack &OpndPack,
                                         const ValueIndexTy &ValueIndex,
                                         const PackToValueTy &MaterializedPacks,
                                         IntrinsicBuilder &Builder) {
@@ -217,7 +217,7 @@ static float getBlockWeight(BasicBlock *BB, BlockFrequencyInfo *BFI) {
          float(BFI->getEntryFreq());
 }
 
-static float getBlockWeight(const VectorPack::OperandPack &OpndPack,
+static float getBlockWeight(const OperandPack &OpndPack,
                             BlockFrequencyInfo *BFI) {
   return 1.0;
   float weight = 0;
@@ -227,7 +227,7 @@ static float getBlockWeight(const VectorPack::OperandPack &OpndPack,
   return weight;
 }
 
-static float isConstantPack(const VectorPack::OperandPack &OpndPack) {
+static float isConstantPack(const OperandPack &OpndPack) {
   for (auto *V : OpndPack)
     if (!isa<Constant>(V))
       return false;
@@ -266,17 +266,17 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   // loops
   for (auto &VP : AllPacks) {
     auto *BB = VP->getBasicBlock();
-    for (auto &OpndPack : VP->getOperandPacks()) {
-      auto *VecTy = getVectorType(OpndPack);
+    for (auto *OpndPack : VP->getOperandPacks()) {
+      auto *VecTy = getVectorType(*OpndPack);
 
       // No cost for constant pack
-      if (isConstantPack(OpndPack))
+      if (isConstantPack(*OpndPack))
         continue;
 
       // special case for broadcast
-      if (is_splat(OpndPack)) {
+      if (is_splat(*OpndPack)) {
         float Weight =
-            std::min(getBlockWeight(OpndPack, BFI), getBlockWeight(BB, BFI));
+            std::min(getBlockWeight(*OpndPack, BFI), getBlockWeight(BB, BFI));
         float SplatCost =
             TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
         CostSaving += Weight * SplatCost;
@@ -287,7 +287,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
       // figure out from where we need to gather
       SmallPtrSet<const VectorPack *, 4> SrcPacks;
       unsigned LaneId = 0;
-      for (Value *V : OpndPack) {
+      for (Value *V : *OpndPack) {
         auto It = ValueIndex.find(V);
         if (It != ValueIndex.end()) {
           auto &VPIdx = It->second;
@@ -304,13 +304,13 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
       } else if (!SrcPacks.empty()) {
         auto *SrcPack = *SrcPacks.begin();
         // We are selecting a subset of that pack
-        if (SrcPack->getElements().count() != OpndPack.size()) {
+        if (SrcPack->getElements().count() != OpndPack->size()) {
           BBCost += GatherCost;
         } else {
           // Now see if we need to permute
           unsigned i = 0;
           bool InOrder = true;
-          for (Value *V : OpndPack) {
+          for (Value *V : *OpndPack) {
             auto It = ValueIndex.find(V);
             if (It == ValueIndex.end() || It->second.Idx != i) {
               InOrder = false;
@@ -324,7 +324,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
           }
         }
       }
-      CostSaving += BBCost * getBlockWeight(OpndPack, BFI);
+      CostSaving += BBCost * getBlockWeight(*OpndPack, BFI);
     }
   }
 
@@ -531,9 +531,9 @@ void VectorPackSet::codegen(
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
       unsigned OperandId = 0;
-      for (auto &OpndPack : VP->getOperandPacks()) {
+      for (auto *OpndPack : VP->getOperandPacks()) {
         VP->setOperandGatherPoint(OperandId, Builder);
-        Operands.push_back(gatherOperandPack(OpndPack, ValueIndex,
+        Operands.push_back(gatherOperandPack(*OpndPack, ValueIndex,
                                              MaterializedPacks, Builder));
         OperandId++;
       }

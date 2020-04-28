@@ -28,7 +28,7 @@ T &choose(std::vector<T> &Xs) {
 
 template <typename InstTy>
 llvm::Optional<llvm::SmallVector<InstTy *, 4>>
-castOperandPack(const VectorPack::OperandPack &OpndPack) {
+castOperandPack(const OperandPack &OpndPack) {
   using namespace llvm;
   SmallVector<InstTy *, 4> Ret;
   for (auto *V : OpndPack) {

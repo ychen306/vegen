@@ -412,12 +412,12 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   auto FindExtensionForOnePack = [&](const VectorPack &VP,
                                      const VectorPackSet &Packs,
                                      std::vector<VectorPack *> &Extensions) {
-    for (auto &OpndPack : VP.getOperandPacks()) {
+    for (auto *OpndPack : VP.getOperandPacks()) {
       // Figure out where the scalar operands are produced.
       // Bail if they are produced in different basic blocks.
       BasicBlock *BB = nullptr;
       bool FromSingleBB = true;
-      for (auto *V : OpndPack) {
+      for (auto *V : *OpndPack) {
         auto *I = dyn_cast<Instruction>(V);
         if (!I)
           continue;
@@ -432,7 +432,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
       if (!FromSingleBB || !BB)
         break;
 
-      extendWithDef(OpndPack, Packs, Extensions, LoadDAGs, MMs, VPCtxs, LDAs,
+      extendWithDef(*OpndPack, Packs, Extensions, LoadDAGs, MMs, VPCtxs, LDAs,
                     InstBindings, TTI);
     }
   };
@@ -562,6 +562,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   UCTSearch MCTS(2, &Factory, &Packer, TTI);
   MCTS.run(Root, 100000);
   T.stopTimer();
+
   errs() << "!!! Time elapsed:\n";
   auto Elapsed = T.getTotalTime();
   Elapsed.print(Elapsed, errs());

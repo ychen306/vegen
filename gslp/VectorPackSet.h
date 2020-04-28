@@ -39,7 +39,7 @@ protected:
   using PackToValueTy = llvm::DenseMap<const VectorPack *, llvm::Value *>;
 
   // Get the vector value representing OpndPack.
-  static llvm::Value *gatherOperandPack(const VectorPack::OperandPack &OpndPack,
+  static llvm::Value *gatherOperandPack(const OperandPack &OpndPack,
                                         const ValueIndexTy &ValueIndex,
                                         const PackToValueTy &MaterializedPacks,
                                         IntrinsicBuilder &Builder);

@@ -4,19 +4,25 @@
 #include "InstSema.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
+#include "llvm/ADT/Hashing.h"
 #include <vector>
+
+// Use this to model input operands
+using OperandPack = llvm::SmallVector<llvm::Value *, 8>;
 
 // VectorPackContext captures various meta data we use to create and manage
 // vector packs. Basically we want to store vector packs are a bitvector, and we
 // need this class to manage the mapping between a value and its integer id
 class VectorPack;
 struct VectorPackCache;
+struct OperandPackCache;
 class VectorPackContext {
   llvm::BasicBlock *BB;
   std::vector<llvm::Value *> Scalars;
   llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
 
   std::unique_ptr<VectorPackCache> PackCache;
+  mutable llvm::DenseMap<llvm::ArrayRef<llvm::Value *>, std::unique_ptr<OperandPack>> OperandCache;
 
 public:
   VectorPackContext(llvm::BasicBlock *BB);
@@ -43,6 +49,17 @@ public:
   // Create a vectorized phi
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
                             llvm::TargetTransformInfo *TTI) const;
+
+  OperandPack *getCanonicalOperandPack(OperandPack OP) const {
+    if (OP.empty())
+      abort();
+    decltype(OperandCache)::iterator It;
+    bool Inserted;
+    std::tie(It, Inserted) = OperandCache.try_emplace(OP, nullptr);
+    if (Inserted)
+      It->second = std::make_unique<OperandPack>(OP);
+    return It->second.get();
+  }
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());
