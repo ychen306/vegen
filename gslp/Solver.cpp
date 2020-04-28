@@ -478,7 +478,7 @@ Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
 }
 
 std::vector<const VectorPack *>
-Frontier::nextAvailablePacks(Packer *Packer,
+Frontier::nextAvailablePacks(Packer *Pkr,
                              PackEnumerationCache *EnumCache) const {
   Instruction *I = getNextFreeInst();
   bool InCache;
@@ -486,12 +486,12 @@ Frontier::nextAvailablePacks(Packer *Packer,
   if (InCache)
     return filterFrozenPacks(CachedPacks);
 
-  ArrayRef<InstBinding *> Insts = Packer->getInsts();
-  auto &MM = Packer->getMatchManager(BB);
-  auto &LDA = Packer->getLDA(BB);
-  auto &LoadDAG = Packer->getLoadDAG(BB);
-  auto &StoreDAG = Packer->getStoreDAG(BB);
-  auto *TTI = Packer->getTTI();
+  ArrayRef<InstBinding *> Insts = Pkr->getInsts();
+  auto &MM = Pkr->getMatchManager(BB);
+  auto &LDA = Pkr->getLDA(BB);
+  auto &LoadDAG = Pkr->getLoadDAG(BB);
+  auto &StoreDAG = Pkr->getStoreDAG(BB);
+  auto *TTI = Pkr->getTTI();
 
   std::vector<const VectorPack *> AvailablePacks;
   PackEnumerator Enumerator(I, *VPCtx, LDA, LoadDAG, StoreDAG, TTI);
@@ -550,7 +550,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 }
 
 // Fill out the children node
-void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
+void UCTNode::expand(UCTNodeFactory *Factory, Packer *Pkr,
                      PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
   assert(OutEdges.empty() && "expanded already");
@@ -561,7 +561,7 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
       Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
   OutEdges.push_back(OutEdge{nullptr, Next, Cost});
 
-  auto AvailablePacks = Frt->nextAvailablePacks(Packer, EnumCache);
+  auto AvailablePacks = Frt->nextAvailablePacks(Pkr, EnumCache);
 
   OutEdges.reserve(AvailablePacks.size());
   for (auto *VP : AvailablePacks) {
@@ -609,7 +609,7 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
     if (!CurNode->isTerminal()) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
-      CurNode->expand(Factory, Packer, &EnumCache, TTI);
+      CurNode->expand(Factory, Pkr, &EnumCache, TTI);
     }
 
     // ========= 4) Backpropagation ===========

@@ -142,7 +142,7 @@ private:
 
 public:
   // Fill out the out edge
-  void expand(UCTNodeFactory *Factory, Packer *Packer,
+  void expand(UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !OutEdges.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
@@ -163,14 +163,14 @@ class UCTSearch {
   // The exploration factor in UCT
   float C;
   UCTNodeFactory *Factory;
-  Packer *Packer;
+  Packer *Pkr;
   PackEnumerationCache EnumCache;
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, UCTNodeFactory *Factory, class Packer *Packer,
+  UCTSearch(float C, UCTNodeFactory *Factory, Packer *Pkr,
             llvm::TargetTransformInfo *TTI)
-      : C(C), Factory(Factory), Packer(Packer), TTI(TTI) {}
+      : C(C), Factory(Factory), Pkr(Pkr), TTI(TTI) {}
   // Run MCTS for some iterations
   void run(UCTNode *Root, unsigned Iter);
   // E.g., value function or rollout
