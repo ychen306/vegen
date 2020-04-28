@@ -567,49 +567,54 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
 }
 
 // Do one iteration of MCTS
-void UCTSearch::run(UCTNode *Root) {
-  // ========= 1) Selection ==========
-  UCTNode *CurNode = Root;
+void UCTSearch::run(UCTNode *Root, unsigned Iter) {
   std::vector<const UCTNode::OutEdge *> Path;
-  // Traverse down to a leaf node.
-  while (CurNode->expanded()) {
-    // Compare out-going edges by UCT score
-    unsigned VisitCount = CurNode->visitCount();
-    auto compareEdge = [VisitCount, this](const UCTNode::OutEdge &A,
-                                          const UCTNode::OutEdge &B) {
-      // If we haven't visited the dest of A, then give it infinite weight
-      if (A.Next->visitCount() == 0)
-        return false;
-      // If we haven't visited the dest of B ...
-      if (B.Next->visitCount() == 0)
-        return true;
+  while (Iter--) {
+    Path.clear();
 
-      return -A.Cost + A.Next->score(VisitCount, C) <
-             -B.Cost + B.Next->score(VisitCount, C);
-    };
+    // ========= 1) Selection ==========
+    UCTNode *CurNode = Root;
 
-    auto OutEdges = CurNode->next();
+    // Traverse down to a leaf node.
+    while (CurNode->expanded()) {
+      // Compare out-going edges by UCT score
+      unsigned VisitCount = CurNode->visitCount();
+      auto compareEdge = [VisitCount, this](const UCTNode::OutEdge &A,
+          const UCTNode::OutEdge &B) {
+        // If we haven't visited the dest of A, then give it infinite weight
+        if (A.Next->visitCount() == 0)
+          return false;
+        // If we haven't visited the dest of B ...
+        if (B.Next->visitCount() == 0)
+          return true;
 
-    // Select the node maximizing the UCT formula
-    auto It = std::max_element(OutEdges.begin(), OutEdges.end(), compareEdge);
-    Path.push_back(&*It);
-    CurNode = It->Next;
-  }
+        return -A.Cost + A.Next->score(VisitCount, C) <
+          -B.Cost + B.Next->score(VisitCount, C);
+      };
 
-  float LeafCost = 0;
-  // ========= 2) Expansion ==========
-  if (!CurNode->isTerminal()) {
-    // ======= 3) Evaluation/Simulation =======
-    LeafCost = evalLeafNode(CurNode);
-    CurNode->expand(Factory, Packer, &EnumCache, TTI);
-  }
+      auto OutEdges = CurNode->next();
 
-  // ========= 4) Backpropagation ===========
-  CurNode->update(LeafCost);
-  float TotalCost = LeafCost;
-  for (int i = Path.size() - 2; i >= 0; i--) {
-    auto *Edge = Path[i];
-    TotalCost += Path[i + 1]->Cost;
-    Edge->Next->update(TotalCost);
+      // Select the node maximizing the UCT formula
+      auto It = std::max_element(OutEdges.begin(), OutEdges.end(), compareEdge);
+      Path.push_back(&*It);
+      CurNode = It->Next;
+    }
+
+    float LeafCost = 0;
+    // ========= 2) Expansion ==========
+    if (!CurNode->isTerminal()) {
+      // ======= 3) Evaluation/Simulation =======
+      LeafCost = evalLeafNode(CurNode);
+      CurNode->expand(Factory, Packer, &EnumCache, TTI);
+    }
+
+    // ========= 4) Backpropagation ===========
+    CurNode->update(LeafCost);
+    float TotalCost = LeafCost;
+    for (int i = Path.size() - 2; i >= 0; i--) {
+      auto *Edge = Path[i];
+      TotalCost += Path[i + 1]->Cost;
+      Edge->Next->update(TotalCost);
+    }
   }
 }

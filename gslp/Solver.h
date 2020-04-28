@@ -203,8 +203,8 @@ public:
   UCTSearch(float C, UCTNodeFactory *Factory, class Packer *Packer,
             llvm::TargetTransformInfo *TTI)
       : C(C), Factory(Factory), Packer(Packer), TTI(TTI) {}
-  // Run MCTS for one iteration
-  void run(UCTNode *Root);
+  // Run MCTS for some iterations
+  void run(UCTNode *Root, unsigned Iter);
   // E.g., value function or rollout
   virtual float evalLeafNode(UCTNode *) { return 0; }
 };

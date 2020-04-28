@@ -560,10 +560,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   T.startTimer();
   UCTSearch MCTS(2, &Factory, &Packer, TTI);
-  for (unsigned i = 0; i < 100000; i++) {
-    errs() << "!!! iter = " << i << '\n';
-    MCTS.run(Root);
-  }
+  MCTS.run(Root, 100000);
   T.stopTimer();
   errs() << "!!! Time elapsed:\n";
   auto Elapsed = T.getTotalTime();
