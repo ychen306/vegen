@@ -211,12 +211,16 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
 }
 
 class PackEnumerator {
-  const BitVector &FreeInsts;
+  Instruction *Focus;
   const VectorPackContext &VPCtx;
   const LocalDependenceAnalysis &LDA;
   const ConsecutiveAccessDAG &LoadDAG;
   const ConsecutiveAccessDAG &StoreDAG;
   TargetTransformInfo *TTI;
+
+  bool isFree(Instruction *I) const {
+    return I == Focus || I->comesBefore(Focus);
+  }
 
   void
   enumeratePacksRec(const InstBinding *Inst,
@@ -238,12 +242,12 @@ class PackEnumerator {
   }
 
 public:
-  PackEnumerator(const BitVector &FreeInsts, const VectorPackContext &VPCtx,
+  PackEnumerator(Instruction *Focus, const VectorPackContext &VPCtx,
                  const LocalDependenceAnalysis &LDA,
                  const ConsecutiveAccessDAG &LoadDAG,
                  const ConsecutiveAccessDAG &StoreDAG, TargetTransformInfo *TTI)
-      : FreeInsts(FreeInsts), VPCtx(VPCtx), LDA(LDA), LoadDAG(LoadDAG),
-        StoreDAG(StoreDAG), TTI(TTI) {}
+      : Focus(Focus), VPCtx(VPCtx), LDA(LDA),
+        LoadDAG(LoadDAG), StoreDAG(StoreDAG), TTI(TTI) {}
   void
   enumeratePacks(const InstBinding *Inst,
                  const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
@@ -276,7 +280,7 @@ void PackEnumerator::enumeratePacksRec(
   for (auto &Match : LaneMatches[LaneId]) {
     unsigned OutId = VPCtx.getScalarId(Match.Output);
     // Make sure we are allowed to use the matched instruction
-    if (!FreeInsts.test(OutId))
+    if (!isFree(cast<Instruction>(Match.Output)))
       continue;
     // Make sure adding this `Match` doesn't violate any dependence constraint
     bool Independent = checkIndependence(
@@ -328,7 +332,7 @@ PackEnumerator::findSeedMemAccesses(Instruction *FocusAccess) const {
     if (!Inserted)
       return Seeds.count(I);
 
-    if (!FreeInsts.test(VPCtx.getScalarId(I)))
+    if (!isFree(I))
       return false;
 
     auto It = AccessDAG->find(I);
@@ -411,8 +415,7 @@ void PackEnumerator::enumerateMemAccesses(
         }
 
         for (auto *Next : It->second) {
-          unsigned NextId = VPCtx.getScalarId(Next);
-          if (!FreeInsts.test(NextId))
+          if (!isFree(Next))
             continue;
 
           bool Independent =
@@ -424,7 +427,7 @@ void PackEnumerator::enumerateMemAccesses(
           auto ElementsExt = Elements;
           auto DependedExt = Depended;
           AccessChain.push_back(cast<AccessType>(Next));
-          ElementsExt.set(NextId);
+          ElementsExt.set(VPCtx.getScalarId(Next));
           DependedExt |= LDA.getDepended(Next);
           // Recursively build up the chain
           EnumerateRec(Next, std::move(ElementsExt), std::move(DependedExt),
@@ -458,8 +461,26 @@ void PackEnumerator::enumerateMemAccesses(
 }
 
 std::vector<const VectorPack *>
-Frontier::nextAvailablePacks(Packer *Packer) const {
+Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
+  BitVector FrozenInsts = FreeInsts;
+  FrozenInsts.flip();
+
+  std::vector<const VectorPack *> Filtered;
+  for (auto *VP : Packs)
+    if (!FrozenInsts.anyCommon(VP->getElements()))
+      Filtered.push_back(VP);
+  return Filtered;
+}
+
+std::vector<const VectorPack *>
+Frontier::nextAvailablePacks(Packer *Packer,
+                             PackEnumerationCache *EnumCache) const {
   Instruction *I = getNextFreeInst();
+  bool InCache;
+  auto CachedPacks = EnumCache->getPacks(I, InCache);
+  if (InCache)
+    return filterFrozenPacks(CachedPacks);
+
   ArrayRef<InstBinding *> Insts = Packer->getInsts();
   auto &MM = Packer->getMatchManager(BB);
   auto &LDA = Packer->getLDA(BB);
@@ -468,46 +489,44 @@ Frontier::nextAvailablePacks(Packer *Packer) const {
   auto *TTI = Packer->getTTI();
 
   std::vector<const VectorPack *> AvailablePacks;
-  PackEnumerator Enumerator(FreeInsts, *VPCtx, LDA, LoadDAG, StoreDAG, TTI);
+  PackEnumerator Enumerator(I, *VPCtx, LDA, LoadDAG, StoreDAG, TTI);
 
-  if (auto *LI = dyn_cast<LoadInst>(I)) {
+  if (auto *LI = dyn_cast<LoadInst>(I))
     Enumerator.enumerateMemAccesses(LI, AvailablePacks);
-    return AvailablePacks;
-  }
-
-  if (auto *SI = dyn_cast<StoreInst>(I)) {
+  else if (auto *SI = dyn_cast<StoreInst>(I))
     Enumerator.enumerateMemAccesses(SI, AvailablePacks);
-    return AvailablePacks;
-  }
+  else {
+    for (auto *Inst : Insts) {
+      ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+      unsigned NumLanes = LaneOps.size();
+      // Iterate over all combination of packs, fixing `I` at the `i`'th lane
+      for (unsigned i = 0; i < NumLanes; i++) {
+        std::vector<ArrayRef<Operation::Match>> LaneMatches;
+        for (unsigned LaneId = 0; LaneId < NumLanes; LaneId++) {
+          ArrayRef<Operation::Match> Matches;
+          if (LaneId == i)
+            Matches = MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
+          else
+            Matches = MM.getMatches(LaneOps[i].getOperation());
 
-  for (auto *Inst : Insts) {
-    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
-    unsigned NumLanes = LaneOps.size();
-    // Iterate over all combination of packs, fixing `I` at the `i`'th lane
-    for (unsigned i = 0; i < NumLanes; i++) {
-      std::vector<ArrayRef<Operation::Match>> LaneMatches;
-      for (unsigned LaneId = 0; LaneId < NumLanes; LaneId++) {
-        ArrayRef<Operation::Match> Matches;
-        if (LaneId == i)
-          Matches = MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
-        else
-          Matches = MM.getMatches(LaneOps[i].getOperation());
+          // if we can't find matches for any given lanes, then we can't use
+          // `Inst`
+          if (Matches.empty())
+            break;
+          LaneMatches.push_back(Matches);
+        }
 
-        // if we can't find matches for any given lanes, then we can't use
-        // `Inst`
-        if (Matches.empty())
-          break;
-        LaneMatches.push_back(Matches);
+        // Skip if we can't find a single match for some lane.
+        if (LaneMatches.size() != NumLanes)
+          continue;
+        Enumerator.enumeratePacks(Inst, LaneMatches, AvailablePacks);
       }
-
-      // Skip if we can't find a single match for some lane.
-      if (LaneMatches.size() != NumLanes)
-        continue;
-      Enumerator.enumeratePacks(Inst, LaneMatches, AvailablePacks);
     }
   }
 
-  return AvailablePacks;
+  auto Packs = filterFrozenPacks(AvailablePacks);
+  EnumCache->insert(I, std::move(AvailablePacks));
+  return Packs;
 }
 
 // If we already have a UCTNode for the same frontier, reuse that node.
@@ -529,6 +548,7 @@ UCTNode *UCTNodeFactory::getNode(Frontier Frt) {
 
 // Fill out the children node
 void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
+                     PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
   assert(OutEdges.empty() && "expanded already");
   float Cost;
@@ -538,7 +558,9 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
       Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
   OutEdges.push_back(OutEdge{nullptr, Next, Cost});
 
-  for (auto *VP : Frt->nextAvailablePacks(Packer)) {
+  auto AvailablePacks = Frt->nextAvailablePacks(Packer, EnumCache);
+
+  for (auto *VP : AvailablePacks) {
     auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
     OutEdges.push_back(OutEdge{VP, Next, Cost});
   }
@@ -579,7 +601,7 @@ void UCTSearch::run(UCTNode *Root) {
   if (!CurNode->isTerminal()) {
     // ======= 3) Evaluation/Simulation =======
     LeafCost = evalLeafNode(CurNode);
-    CurNode->expand(Factory, Packer, TTI);
+    CurNode->expand(Factory, Packer, &EnumCache, TTI);
   }
 
   // ========= 4) Backpropagation ===========

@@ -254,13 +254,3 @@ float Packer::evalSeedPacks(const VectorPackSet &Packs, unsigned Alpha) {
   }
   return BestCost;
 };
-
-// Check if `I` is independent from things in `Elements`, which depends on
-// `Depended`.
-bool checkIndependence(const LocalDependenceAnalysis &LDA,
-                       const VectorPackContext &VPCtx, Instruction *I,
-                       const BitVector &Elements, const BitVector &Depended) {
-  unsigned Id = VPCtx.getScalarId(I);
-  return !Elements.test(Id) && !Elements.anyCommon(LDA.getDepended(I)) &&
-         !Depended.test(Id);
-}

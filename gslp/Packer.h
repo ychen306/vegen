@@ -125,9 +125,17 @@ public:
   llvm::Function *getFunction() const { return F; }
 };
 
-bool checkIndependence(const LocalDependenceAnalysis &LDA,
+
+// Check if `I` is independent from things in `Elements`, which depends on
+// `Depended`.
+static inline bool checkIndependence(const LocalDependenceAnalysis &LDA,
                        const VectorPackContext &VPCtx, llvm::Instruction *I,
                        const llvm::BitVector &Elements,
-                       const llvm::BitVector &Depended);
+                       const llvm::BitVector &Depended) {
+  unsigned Id = VPCtx.getScalarId(I);
+  return !Elements.test(Id) && 
+         !Depended.test(Id) &&
+         !Elements.anyCommon(LDA.getDepended(I));
+}
 
 #endif // PACKER

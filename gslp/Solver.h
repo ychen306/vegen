@@ -39,6 +39,29 @@ struct UnresolvedOperandPack {
   }
 };
 
+class PackEnumerationCache {
+  // Mapping a focus instruction to the set of packs it can involve in,
+  // Assumming every instruction before it is free and below not.
+  llvm::DenseMap<llvm::Instruction *, std::vector<const VectorPack *>>
+      FocusToPacksMap;
+
+public:
+  llvm::ArrayRef<const VectorPack *> getPacks(llvm::Instruction *I,
+                                              bool &InCache) const {
+    auto It = FocusToPacksMap.find(I);
+    if (It != FocusToPacksMap.end()) {
+      InCache = true;
+      return It->second;
+    }
+    InCache = false;
+    return {};
+  }
+
+  void insert(llvm::Instruction *I, std::vector<const VectorPack *> &&Packs) {
+    FocusToPacksMap[I] = Packs;
+  }
+};
+
 class MatchManager;
 class Frontier {
   friend struct FrontierHashInfo;
@@ -57,6 +80,10 @@ class Frontier {
     return FreeInsts[VPCtx->getScalarId(I)];
   }
 
+  // Remove any packs that use frozen instructions.
+  std::vector<const VectorPack *>
+      filterFrozenPacks(llvm::ArrayRef<const VectorPack *>) const;
+
 public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, const VectorPackContext *VPCtx);
@@ -65,7 +92,8 @@ public:
   Frontier advance(llvm::Instruction *, float &Cost,
                    llvm::TargetTransformInfo *TTI) const;
   llvm::Instruction *getNextFreeInst() const;
-  std::vector<const VectorPack *> nextAvailablePacks(Packer *) const;
+  std::vector<const VectorPack *>
+  nextAvailablePacks(Packer *, PackEnumerationCache *) const;
 };
 
 // Hashing support for `Frontier`
@@ -147,7 +175,7 @@ private:
 public:
   // Fill out the out edge
   void expand(UCTNodeFactory *Factory, Packer *Packer,
-              llvm::TargetTransformInfo *);
+              PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !OutEdges.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
   llvm::ArrayRef<OutEdge> next() const { return OutEdges; }
@@ -168,6 +196,7 @@ class UCTSearch {
   float C;
   UCTNodeFactory *Factory;
   Packer *Packer;
+  PackEnumerationCache EnumCache;
   llvm::TargetTransformInfo *TTI;
 
 public:

@@ -14,6 +14,7 @@ struct VectorPackCache;
 class VectorPackContext {
   llvm::BasicBlock *BB;
   std::vector<llvm::Value *> Scalars;
+  llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
 
   std::unique_ptr<VectorPackCache> PackCache;
 
@@ -54,11 +55,10 @@ public:
   }
 
   unsigned getScalarId(const llvm::Value *V) const {
-    auto It = std::lower_bound(Scalars.begin(), Scalars.end(), V);
     assert(llvm::cast<llvm::Instruction>(V)->getParent() == BB);
-    assert(It != Scalars.end());
-    assert(Scalars[It - Scalars.begin()] == V);
-    return It - Scalars.begin();
+    auto It = ScalarToIdMap.find(V);
+    assert(It != ScalarToIdMap.end());
+    return It->second;
   }
 
   unsigned getNumValues() const { return Scalars.size(); }

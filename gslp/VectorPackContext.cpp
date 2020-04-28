@@ -20,9 +20,11 @@ VectorPackContext::~VectorPackContext() = default;
 
 VectorPackContext::VectorPackContext(BasicBlock *BB)
     : BB(BB), PackCache(std::make_unique<VectorPackCache>()) {
-  for (auto &I : *BB)
+  unsigned i = 0;
+  for (auto &I : *BB) {
+    ScalarToIdMap[&I] = i++;
     Scalars.push_back(&I);
-  std::sort(Scalars.begin(), Scalars.end());
+  }
 }
 
 VectorPack *VectorPackContext::createVectorPack(
