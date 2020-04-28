@@ -108,9 +108,11 @@ struct FrontierHashInfo {
     if (Frt == getEmptyKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(0),
                           ArrayRef<uint64_t>(),
+                          ArrayRef<uint64_t>(),
                           ArrayRef<uint64_t>());
     } else if (Frt == getTombstoneKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(1),
+                          ArrayRef<uint64_t>(),
                           ArrayRef<uint64_t>(),
                           ArrayRef<uint64_t>());
     }
@@ -120,7 +122,8 @@ struct FrontierHashInfo {
         reinterpret_cast<const uint64_t *>(Frt->UnresolvedPacks.data()),
         Frt->UnresolvedPacks.size() * 2);
 
-    return hash_combine(reinterpret_cast<BasicBlock *>(2), 
+    return hash_combine(reinterpret_cast<BasicBlock *>(2),
+                        Frt->UnresolvedScalars.getData(),
                         Frt->FreeInsts.getData(), UPRaw);
   }
 
@@ -134,6 +137,7 @@ struct FrontierHashInfo {
 
     return A->BB == B->BB &&
            A->FreeInsts == B->FreeInsts &&
+           A->UnresolvedScalars == B->UnresolvedScalars &&
            A->UnresolvedPacks == B->UnresolvedPacks;
   }
 };
