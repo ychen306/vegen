@@ -72,30 +72,25 @@ public:
 struct FrontierHashInfo {
   static Frontier *getEmptyKey() { return nullptr; }
 
-  static Frontier *getTombstoneKey() {
-    return reinterpret_cast<Frontier *>(1);
-  }
+  static Frontier *getTombstoneKey() { return reinterpret_cast<Frontier *>(1); }
 
   static unsigned getHashValue(const Frontier *Frt) {
     using namespace llvm;
 
     if (Frt == getEmptyKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(0),
-                          ArrayRef<uint64_t>(),
-                          ArrayRef<uint64_t>(),
+                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
                           ArrayRef<const OperandPack *>());
     } else if (Frt == getTombstoneKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(1),
-                          ArrayRef<uint64_t>(),
-                          ArrayRef<uint64_t>(),
+                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
                           ArrayRef<const OperandPack *>());
     }
 
     return hash_combine(reinterpret_cast<BasicBlock *>(2),
                         Frt->UnresolvedScalars.getData(),
                         Frt->FreeInsts.getData(),
-                        ArrayRef<const OperandPack *>(
-                          Frt->UnresolvedPacks));
+                        ArrayRef<const OperandPack *>(Frt->UnresolvedPacks));
   }
 
   static bool isTombstoneOrEmpty(const Frontier *Frt) {
@@ -106,8 +101,7 @@ struct FrontierHashInfo {
     if (isTombstoneOrEmpty(A) || isTombstoneOrEmpty(B))
       return A == B;
 
-    return A->BB == B->BB &&
-           A->FreeInsts == B->FreeInsts &&
+    return A->BB == B->BB && A->FreeInsts == B->FreeInsts &&
            A->UnresolvedScalars == B->UnresolvedScalars &&
            A->UnresolvedPacks == B->UnresolvedPacks;
   }

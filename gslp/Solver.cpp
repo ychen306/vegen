@@ -108,8 +108,7 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
 
 // Check whether there are lanes in `OpndPack` that are produced by `VP`.
 // Also resolve such lanes.
-bool Frontier::resolveOperandPack(const VectorPack &VP,
-                                  const OperandPack &OP) {
+bool Frontier::resolveOperandPack(const VectorPack &VP, const OperandPack &OP) {
   bool Produced = false;
   for (unsigned LaneId = 0; LaneId < OP.size(); LaneId++) {
     auto *V = OP[LaneId];
@@ -124,8 +123,7 @@ bool Frontier::resolveOperandPack(const VectorPack &VP,
 }
 
 // Return the cost of gathering from `VP` to `OpndPack`
-static unsigned getGatherCost(const VectorPack &VP,
-                              const OperandPack &OpndPack,
+static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                               TargetTransformInfo *TTI) {
   auto VPVals = VP.getOrderedValues();
   if (VPVals.size() == OpndPack.size()) {

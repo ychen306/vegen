@@ -22,7 +22,9 @@ class VectorPackContext {
   llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
 
   std::unique_ptr<VectorPackCache> PackCache;
-  mutable llvm::DenseMap<llvm::ArrayRef<llvm::Value *>, std::unique_ptr<OperandPack>> OperandCache;
+  mutable llvm::DenseMap<llvm::ArrayRef<llvm::Value *>,
+                         std::unique_ptr<OperandPack>>
+      OperandCache;
 
 public:
   VectorPackContext(llvm::BasicBlock *BB);
