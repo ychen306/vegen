@@ -554,7 +554,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   BasicBlock *EntryBB = &F.getEntryBlock();
   auto *VPCtx = Packer.getContext(EntryBB);
   UCTNodeFactory Factory;
-  UCTNode *Root = Factory.getNode(Frontier(EntryBB, VPCtx));
+  UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(EntryBB, VPCtx));
 
   Timer T("mcts", "time takes to run 1000 iter of MCTS");
 

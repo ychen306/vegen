@@ -52,18 +52,18 @@ void Frontier::advanceBBIt() {
     BBIt = BB->rend();
 }
 
-Frontier Frontier::advance(Instruction *I, float &Cost,
-                           TargetTransformInfo *TTI) const {
-  Frontier Next = *this;
+std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
+                                            TargetTransformInfo *TTI) const {
+  auto Next = std::make_unique<Frontier>(*this);
 
-  Next.freezeOneInst(VPCtx->getScalarId(I));
-  Next.advanceBBIt();
+  Next->freezeOneInst(VPCtx->getScalarId(I));
+  Next->advanceBBIt();
 
   // Go over unresolved packs and see if we've resolved any lanes
   Cost = 0;
   SmallVector<unsigned, 2> ResolvedPackIds;
-  for (unsigned i = 0; i < Next.UnresolvedPacks.size(); i++) {
-    auto &UP = Next.UnresolvedPacks[i];
+  for (unsigned i = 0; i < Next->UnresolvedPacks.size(); i++) {
+    auto &UP = Next->UnresolvedPacks[i];
     auto *VecTy = getVectorType(*UP.Pack);
 
     // Special case: we can build UP by broadcasting `I`.
@@ -92,11 +92,11 @@ Frontier Frontier::advance(Instruction *I, float &Cost,
     if (!I2 || I2->getParent() != BB)
       continue;
     unsigned InstId = VPCtx->getScalarId(I2);
-    if (Next.FreeInsts.test(InstId))
-      Next.UnresolvedScalars.set(InstId);
+    if (Next->FreeInsts.test(InstId))
+      Next->UnresolvedScalars.set(InstId);
   }
 
-  removeAndSort(Next.UnresolvedPacks, ResolvedPackIds);
+  removeAndSort(Next->UnresolvedPacks, ResolvedPackIds);
 
   return Next;
 }
@@ -146,9 +146,9 @@ static unsigned getGatherCost(const VectorPack &VP,
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
-Frontier Frontier::advance(const VectorPack *VP, float &Cost,
-                           TargetTransformInfo *TTI) const {
-  Frontier Next = *this;
+std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
+                                            TargetTransformInfo *TTI) const {
+  auto Next = std::make_unique<Frontier>(*this);
 
   Cost = VP->getCost();
   Type *VecTy;
@@ -163,19 +163,19 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
     unsigned InstId = VPCtx->getScalarId(I);
 
     // Pay the extract cost
-    if (Next.UnresolvedScalars.test(InstId))
+    if (Next->UnresolvedScalars.test(InstId))
       Cost +=
           TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
 
-    Next.freezeOneInst(InstId);
+    Next->freezeOneInst(InstId);
   }
-  Next.advanceBBIt();
+  Next->advanceBBIt();
 
   SmallVector<unsigned, 2> ResolvedPackIds;
   if (!VP->isStore()) {
-    for (unsigned i = 0; i < Next.UnresolvedPacks.size(); i++) {
-      auto &UP = Next.UnresolvedPacks[i];
-      if (bool PartiallyResolved = Next.resolveOperandPack(*VP, UP)) {
+    for (unsigned i = 0; i < Next->UnresolvedPacks.size(); i++) {
+      auto &UP = Next->UnresolvedPacks[i];
+      if (bool PartiallyResolved = Next->resolveOperandPack(*VP, UP)) {
         Cost += getGatherCost(*VP, *UP.Pack, TTI);
         if (UP.resolved())
           ResolvedPackIds.push_back(i);
@@ -197,15 +197,15 @@ Frontier Frontier::advance(const VectorPack *VP, float &Cost,
         Cost += TTI->getVectorInstrCost(Instruction::ExtractElement, OperandTy,
                                         LaneId);
         UP.resolveOneLane(LaneId);
-      } else if (Next.isFreeInst(I))
+      } else if (Next->isFreeInst(I))
         UP.resolveOneLane(LaneId);
     }
 
     if (!UP.resolved())
-      Next.UnresolvedPacks.push_back(std::move(UP));
+      Next->UnresolvedPacks.push_back(std::move(UP));
   }
 
-  removeAndSort(Next.UnresolvedPacks, ResolvedPackIds);
+  removeAndSort(Next->UnresolvedPacks, ResolvedPackIds);
 
   return Next;
 }
@@ -246,8 +246,8 @@ public:
                  const LocalDependenceAnalysis &LDA,
                  const ConsecutiveAccessDAG &LoadDAG,
                  const ConsecutiveAccessDAG &StoreDAG, TargetTransformInfo *TTI)
-      : Focus(Focus), VPCtx(VPCtx), LDA(LDA),
-        LoadDAG(LoadDAG), StoreDAG(StoreDAG), TTI(TTI) {}
+      : Focus(Focus), VPCtx(VPCtx), LDA(LDA), LoadDAG(LoadDAG),
+        StoreDAG(StoreDAG), TTI(TTI) {}
   void
   enumeratePacks(const InstBinding *Inst,
                  const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
@@ -466,6 +466,7 @@ Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
   FrozenInsts.flip();
 
   std::vector<const VectorPack *> Filtered;
+  Filtered.reserve(Packs.size());
   for (auto *VP : Packs)
     if (!FrozenInsts.anyCommon(VP->getElements()))
       Filtered.push_back(VP);
@@ -530,18 +531,16 @@ Frontier::nextAvailablePacks(Packer *Packer,
 }
 
 // If we already have a UCTNode for the same frontier, reuse that node.
-UCTNode *UCTNodeFactory::getNode(Frontier Frt) {
-  auto FrtOwned = std::make_unique<Frontier>(std::move(Frt));
+UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
   decltype(FrontierToNodeMap)::iterator It;
   bool Inserted;
-  std::tie(It, Inserted) =
-      FrontierToNodeMap.try_emplace(FrtOwned.get(), nullptr);
+  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
   if (Inserted) {
-    It->first = FrtOwned.get();
-    auto *NewNode = new UCTNode(FrtOwned.get());
+    It->first = Frt.get();
+    auto *NewNode = new UCTNode(Frt.get());
     Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
     It->second = NewNode;
-    Frontiers.push_back(std::move(FrtOwned));
+    Frontiers.push_back(std::move(Frt));
   }
   return It->second;
 }
@@ -580,7 +579,7 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
       // Compare out-going edges by UCT score
       unsigned VisitCount = CurNode->visitCount();
       auto compareEdge = [VisitCount, this](const UCTNode::OutEdge &A,
-          const UCTNode::OutEdge &B) {
+                                            const UCTNode::OutEdge &B) {
         // If we haven't visited the dest of A, then give it infinite weight
         if (A.Next->visitCount() == 0)
           return false;
@@ -589,7 +588,7 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
           return true;
 
         return -A.Cost + A.Next->score(VisitCount, C) <
-          -B.Cost + B.Next->score(VisitCount, C);
+               -B.Cost + B.Next->score(VisitCount, C);
       };
 
       auto OutEdges = CurNode->next();

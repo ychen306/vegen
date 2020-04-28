@@ -87,10 +87,10 @@ class Frontier {
 public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, const VectorPackContext *VPCtx);
-  Frontier advance(const VectorPack *, float &Cost,
-                   llvm::TargetTransformInfo *TTI) const;
-  Frontier advance(llvm::Instruction *, float &Cost,
-                   llvm::TargetTransformInfo *TTI) const;
+  std::unique_ptr<Frontier> advance(const VectorPack *, float &Cost,
+                                    llvm::TargetTransformInfo *TTI) const;
+  std::unique_ptr<Frontier> advance(llvm::Instruction *, float &Cost,
+                                    llvm::TargetTransformInfo *TTI) const;
   llvm::Instruction *getNextFreeInst() const;
   std::vector<const VectorPack *>
   nextAvailablePacks(Packer *, PackEnumerationCache *) const;
@@ -98,13 +98,13 @@ public:
 
 // Hashing support for `Frontier`
 struct FrontierHashInfo {
-  static inline Frontier *getEmptyKey() { return nullptr; }
+  static Frontier *getEmptyKey() { return nullptr; }
 
-  static inline Frontier *getTombstoneKey() {
+  static Frontier *getTombstoneKey() {
     return reinterpret_cast<Frontier *>(1);
   }
 
-  static inline unsigned getHashValue(const Frontier *Frt) {
+  static unsigned getHashValue(const Frontier *Frt) {
     using namespace llvm;
 
     if (Frt == getEmptyKey()) {
@@ -147,7 +147,7 @@ class UCTNodeFactory {
   llvm::DenseMap<Frontier *, UCTNode *, FrontierHashInfo> FrontierToNodeMap;
 
 public:
-  UCTNode *getNode(Frontier Frontier);
+  UCTNode *getNode(std::unique_ptr<Frontier> Frontier);
 };
 
 class UCTNode {
