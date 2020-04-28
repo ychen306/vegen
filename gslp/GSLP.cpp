@@ -551,23 +551,24 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   /////////
   Packer Packer(SupportedInsts, F, AA, DL, SE, TTI, BFI);
 
-  BasicBlock *EntryBB = &F.getEntryBlock();
-  auto *VPCtx = Packer.getContext(EntryBB);
-  UCTNodeFactory Factory;
-  UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(EntryBB, VPCtx));
+  for (auto &BB : F) {
+    auto *VPCtx = Packer.getContext(&BB);
+    UCTNodeFactory Factory;
+    UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, VPCtx));
 
-  Timer T("mcts", "time takes to run 1000 iter of MCTS");
+    Timer T("mcts", "time takes to run 1000 iter of MCTS");
 
-  T.startTimer();
-  UCTSearch MCTS(2, &Factory, &Packer, TTI);
-  MCTS.run(Root, 100000);
-  T.stopTimer();
+    T.startTimer();
+    UCTSearch MCTS(2, &Factory, &Packer, TTI);
+    MCTS.run(Root, 100000);
+    T.stopTimer();
 
-  errs() << "!!! Time elapsed:\n";
-  auto Elapsed = T.getTotalTime();
-  Elapsed.print(Elapsed, errs());
+    errs() << "!!! Time elapsed:\n";
+    auto Elapsed = T.getTotalTime();
+    Elapsed.print(Elapsed, errs());
+  }
 
-  abort();
+  //abort();
 
   return false;
 

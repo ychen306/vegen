@@ -45,15 +45,18 @@ void Frontier::freezeOneInst(unsigned InstId) {
 
 void Frontier::advanceBBIt() {
   for (auto E = BB->rend(); BBIt != E; ++BBIt)
-    if (FreeInsts.test(VPCtx->getScalarId(&*BBIt))) {
+    if (FreeInsts.test(VPCtx->getScalarId(&*BBIt)))
       break;
-    }
 }
 
 bool Frontier::resolved(const OperandPack &OP) const {
-  for (Value *V : OP)
+  for (Value *V : OP) {
+    auto *I = cast<Instruction>(V);
+    if (!I || I->getParent() != BB)
+      continue;
     if (FreeInsts[VPCtx->getScalarId(V)])
       return false;
+  }
   return true;
 }
 
@@ -85,7 +88,7 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
       Cost +=
           TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, LaneId);
     }
-    if (resolved(*OP))
+    if (Next->resolved(*OP))
       ResolvedPackIds.push_back(i);
   }
 
@@ -160,7 +163,7 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
     VecTy = getVectorType(*VP);
 
   // Tick off instructions taking part in `VP` and pay the scalar extract cost.
-  auto OutputLanes = VP->getOrderedValues();
+  ArrayRef<Value *> OutputLanes = VP->getOrderedValues();
   for (unsigned LaneId = 0; LaneId < OutputLanes.size(); LaneId++) {
     auto *I = cast<Instruction>(OutputLanes[LaneId]);
     unsigned InstId = VPCtx->getScalarId(I);
@@ -180,7 +183,7 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
       auto *OP = Next->UnresolvedPacks[i];
       if (bool PartiallyResolved = Next->resolveOperandPack(*VP, *OP)) {
         Cost += getGatherCost(*VP, *OP, TTI);
-        if (resolved(*OP))
+        if (Next->resolved(*OP))
           ResolvedPackIds.push_back(i);
       }
     }
@@ -201,7 +204,7 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
       }
     }
 
-    if (!resolved(*OpndPack))
+    if (!Next->resolved(*OpndPack))
       Next->UnresolvedPacks.push_back(OpndPack);
   }
 
@@ -560,6 +563,7 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Packer,
 
   auto AvailablePacks = Frt->nextAvailablePacks(Packer, EnumCache);
 
+  OutEdges.reserve(AvailablePacks.size());
   for (auto *VP : AvailablePacks) {
     auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
     OutEdges.push_back(OutEdge{VP, Next, Cost});

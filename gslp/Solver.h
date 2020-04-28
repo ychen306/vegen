@@ -114,6 +114,7 @@ class UCTNodeFactory {
   llvm::DenseMap<Frontier *, UCTNode *, FrontierHashInfo> FrontierToNodeMap;
 
 public:
+  UCTNodeFactory() : FrontierToNodeMap(1000000) {}
   UCTNode *getNode(std::unique_ptr<Frontier> Frontier);
 };
 
