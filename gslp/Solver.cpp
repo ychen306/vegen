@@ -21,21 +21,19 @@ Frontier::Frontier(BasicBlock *BB, const VectorPackContext *VPCtx)
 }
 
 Instruction *Frontier::getNextFreeInst() const {
-  for (auto I = BBIt, E = BB->rend(); I != E; ++I)
-    if (FreeInsts.test(VPCtx->getScalarId(&*I)))
-      return &*I;
+  if (BBIt != BB->rend())
+    return &*BBIt;
   return nullptr;
 }
 
 namespace {
 
 template <typename T>
-void removeAndSort(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
+void remove(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
   for (unsigned i : ToRemove) {
     std::swap(X[i], X.back());
     X.pop_back();
   }
-  std::sort(X.begin(), X.end());
 }
 
 } // namespace
@@ -46,10 +44,10 @@ void Frontier::freezeOneInst(unsigned InstId) {
 }
 
 void Frontier::advanceBBIt() {
-  if (auto *NextFreeInst = getNextFreeInst())
-    BBIt = BasicBlock::reverse_iterator(NextFreeInst);
-  else
-    BBIt = BB->rend();
+  for (auto E = BB->rend(); BBIt != E; ++BBIt)
+    if (FreeInsts.test(VPCtx->getScalarId(&*BBIt))) {
+      break;
+    }
 }
 
 std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
@@ -96,7 +94,7 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
       Next->UnresolvedScalars.set(InstId);
   }
 
-  removeAndSort(Next->UnresolvedPacks, ResolvedPackIds);
+  remove(Next->UnresolvedPacks, ResolvedPackIds);
 
   return Next;
 }
@@ -205,7 +203,8 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
       Next->UnresolvedPacks.push_back(std::move(UP));
   }
 
-  removeAndSort(Next->UnresolvedPacks, ResolvedPackIds);
+  remove(Next->UnresolvedPacks, ResolvedPackIds);
+  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
 
   return Next;
 }
@@ -532,6 +531,12 @@ Frontier::nextAvailablePacks(Packer *Packer,
 
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
+#if 0
+  auto *NewNode = new UCTNode(Frt.get());
+  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+  Frontiers.push_back(std::move(Frt));
+  return NewNode;
+#else
   decltype(FrontierToNodeMap)::iterator It;
   bool Inserted;
   std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
@@ -543,6 +548,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
     Frontiers.push_back(std::move(Frt));
   }
   return It->second;
+#endif
 }
 
 // Fill out the children node

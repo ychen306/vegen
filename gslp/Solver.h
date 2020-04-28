@@ -29,9 +29,7 @@ struct UnresolvedOperandPack {
   void resolveOneLane(unsigned i) { ResolvedLanes.set(i); }
   bool resolved() const { return ResolvedLanes.all(); }
   bool operator<(const UnresolvedOperandPack &Other) const {
-    auto RL = ResolvedLanes.to_ullong();
-    auto RL2 = ResolvedLanes.to_ullong();
-    return std::tie(Pack, RL) < std::tie(Other.Pack, RL2);
+    return Pack < Other.Pack;
   }
 
   bool operator==(const UnresolvedOperandPack &Other) const {
@@ -109,11 +107,11 @@ struct FrontierHashInfo {
 
     if (Frt == getEmptyKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(0),
-                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
+                          ArrayRef<uint64_t>(),
                           ArrayRef<uint64_t>());
     } else if (Frt == getTombstoneKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(1),
-                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
+                          ArrayRef<uint64_t>(),
                           ArrayRef<uint64_t>());
     }
 
@@ -122,7 +120,7 @@ struct FrontierHashInfo {
         reinterpret_cast<const uint64_t *>(Frt->UnresolvedPacks.data()),
         Frt->UnresolvedPacks.size() * 2);
 
-    return hash_combine(Frt->BB, Frt->UnresolvedScalars.getData(),
+    return hash_combine(reinterpret_cast<BasicBlock *>(2), 
                         Frt->FreeInsts.getData(), UPRaw);
   }
 
@@ -134,7 +132,7 @@ struct FrontierHashInfo {
     if (isTombstoneOrEmpty(A) || isTombstoneOrEmpty(B))
       return A == B;
 
-    return A->BB == B->BB && A->UnresolvedScalars == B->UnresolvedScalars &&
+    return A->BB == B->BB &&
            A->FreeInsts == B->FreeInsts &&
            A->UnresolvedPacks == B->UnresolvedPacks;
   }
