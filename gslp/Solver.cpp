@@ -581,27 +581,23 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
 
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
-      // Compare out-going edges by UCT score
+      const UCTNode::OutEdge *SelectedEdge;
+      float MaxUCTScore = 0;
       unsigned VisitCount = CurNode->visitCount();
-      auto compareEdge = [VisitCount, this](const UCTNode::OutEdge &A,
-                                            const UCTNode::OutEdge &B) {
-        // If we haven't visited the dest of A, then give it infinite weight
-        if (A.Next->visitCount() == 0)
-          return false;
-        // If we haven't visited the dest of B ...
-        if (B.Next->visitCount() == 0)
-          return true;
+      for (auto &E : CurNode->next()) {
+        if (E.Next->visitCount() == 0) {
+          SelectedEdge = &E;
+          break;
+        }
+        float UCTScore = -E.Cost + E.Next->score(VisitCount, C);
+        if (UCTScore > MaxUCTScore) {
+          MaxUCTScore = UCTScore;
+          SelectedEdge = &E;
+        }
+      }
 
-        return -A.Cost + A.Next->score(VisitCount, C) <
-               -B.Cost + B.Next->score(VisitCount, C);
-      };
-
-      auto OutEdges = CurNode->next();
-
-      // Select the node maximizing the UCT formula
-      auto It = std::max_element(OutEdges.begin(), OutEdges.end(), compareEdge);
-      Path.push_back(&*It);
-      CurNode = It->Next;
+      Path.push_back(SelectedEdge);
+      CurNode = SelectedEdge->Next;
     }
 
     float LeafCost = 0;
