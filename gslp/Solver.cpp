@@ -181,7 +181,7 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
   if (!VP->isStore()) {
     for (unsigned i = 0; i < Next->UnresolvedPacks.size(); i++) {
       auto *OP = Next->UnresolvedPacks[i];
-      if (bool PartiallyResolved = Next->resolveOperandPack(*VP, *OP)) {
+      if (Next->resolveOperandPack(*VP, *OP)) {
         Cost += getGatherCost(*VP, *OP, TTI);
         if (Next->resolved(*OP))
           ResolvedPackIds.push_back(i);
