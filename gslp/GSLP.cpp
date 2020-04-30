@@ -548,17 +548,22 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   };
 
   /////////
+
   Packer Packer(SupportedInsts, F, AA, DL, SE, TTI, BFI);
 
+  DummyEvaluator Evaluator;
+
   for (auto &BB : F) {
-    auto *VPCtx = Packer.getContext(&BB);
+    errs() << F.getName() << "/" << BB.getName() << '\n';
+    class Packer Pkr(SupportedInsts, F, AA, DL, SE, TTI, BFI);
+    auto *VPCtx = Pkr.getContext(&BB);
     UCTNodeFactory Factory;
     UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, VPCtx));
 
-    Timer T("mcts", "time takes to run 1000 iter of MCTS");
+    Timer T("mcts", "time takes to run 100000 iter of MCTS");
 
     T.startTimer();
-    UCTSearch MCTS(2, &Factory, &Packer, TTI);
+    UCTSearch MCTS(2, &Factory, &Pkr, &Evaluator, TTI);
     MCTS.run(Root, 100000);
     T.stopTimer();
 

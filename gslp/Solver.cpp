@@ -215,19 +215,20 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
 }
 
 class PackEnumerator {
-  Instruction *Focus;
   const VectorPackContext &VPCtx;
+  ArrayRef<InstBinding *> Insts;
   const LocalDependenceAnalysis &LDA;
   const ConsecutiveAccessDAG &LoadDAG;
   const ConsecutiveAccessDAG &StoreDAG;
+  const MatchManager &MM;
   TargetTransformInfo *TTI;
 
-  bool isFree(Instruction *I) const {
+  bool isFree(Instruction *I, Instruction *Focus) const {
     return I == Focus || I->comesBefore(Focus);
   }
 
   void
-  enumeratePacksRec(const InstBinding *Inst,
+  enumeratePacksRec(Instruction *Focus, const InstBinding *Inst,
                     const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
                     std::vector<const VectorPack *> &Enumerated,
                     BitVector &Elements, BitVector &Depended,
@@ -245,31 +246,34 @@ class PackEnumerator {
     return nullptr;
   }
 
-public:
-  PackEnumerator(Instruction *Focus, const VectorPackContext &VPCtx,
-                 const LocalDependenceAnalysis &LDA,
-                 const ConsecutiveAccessDAG &LoadDAG,
-                 const ConsecutiveAccessDAG &StoreDAG, TargetTransformInfo *TTI)
-      : Focus(Focus), VPCtx(VPCtx), LDA(LDA), LoadDAG(LoadDAG),
-        StoreDAG(StoreDAG), TTI(TTI) {}
-  void
-  enumeratePacks(const InstBinding *Inst,
-                 const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
-                 std::vector<const VectorPack *> &Enumerated) const {
-    std::vector<const Operation::Match *> EmptyPrefix;
-    BitVector Elements(VPCtx.getNumValues());
-    BitVector Depended(VPCtx.getNumValues());
-    enumeratePacksRec(Inst, LaneMatches, Enumerated, Elements, Depended,
-                      EmptyPrefix);
-  }
+  void enumeratePacks(Instruction *Focus,
+                      std::vector<const VectorPack *> &Enumerated) const;
 
   template <typename AccessType>
   void enumerateMemAccesses(AccessType *LI,
                             std::vector<const VectorPack *> &Enumerated) const;
+
+public:
+  PackEnumerator(BasicBlock *BB, Packer *Pkr)
+      : VPCtx(*Pkr->getContext(BB)), Insts(Pkr->getInsts()),
+        LDA(Pkr->getLDA(BB)), LoadDAG(Pkr->getLoadDAG(BB)),
+        StoreDAG(Pkr->getStoreDAG(BB)), MM(Pkr->getMatchManager(BB)),
+        TTI(Pkr->getTTI()) {}
+
+  void enumerate(Instruction *Focus,
+                 std::vector<const VectorPack *> &Enumerated) const {
+    if (auto *LI = dyn_cast<LoadInst>(Focus))
+      enumerateMemAccesses(LI, Enumerated);
+    else if (auto *SI = dyn_cast<StoreInst>(Focus))
+      enumerateMemAccesses(SI, Enumerated);
+    else {
+      enumeratePacks(Focus, Enumerated);
+    }
+  }
 };
 
 void PackEnumerator::enumeratePacksRec(
-    const InstBinding *Inst,
+    Instruction *Focus, const InstBinding *Inst,
     const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
     std::vector<const VectorPack *> &Enumerated, BitVector &Elements,
     BitVector &Depended, std::vector<const Operation::Match *> &Lanes) const {
@@ -284,7 +288,7 @@ void PackEnumerator::enumeratePacksRec(
   for (auto &Match : LaneMatches[LaneId]) {
     unsigned OutId = VPCtx.getScalarId(Match.Output);
     // Make sure we are allowed to use the matched instruction
-    if (!isFree(cast<Instruction>(Match.Output)))
+    if (!isFree(cast<Instruction>(Match.Output), Focus))
       continue;
     // Make sure adding this `Match` doesn't violate any dependence constraint
     bool Independent = checkIndependence(
@@ -299,8 +303,8 @@ void PackEnumerator::enumeratePacksRec(
 
     if (LaneId < LaneMatches.size() - 1) {
       // Recursivly fill out the next lane
-      enumeratePacksRec(Inst, LaneMatches, Enumerated, Elements, Depended,
-                        Lanes);
+      enumeratePacksRec(Focus, Inst, LaneMatches, Enumerated, Elements,
+                        Depended, Lanes);
     } else {
       // We've filled the last lane
       Enumerated.push_back(
@@ -312,6 +316,42 @@ void PackEnumerator::enumeratePacksRec(
     Depended = BackupDepended;
   }
   Lanes.pop_back();
+}
+
+void PackEnumerator::enumeratePacks(
+    Instruction *Focus, std::vector<const VectorPack *> &Enumerated) const {
+  for (auto *Inst : Insts) {
+    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+    unsigned NumLanes = LaneOps.size();
+    // Iterate over all combination of packs, fixing `Focus` at the `i`'th
+    // lane
+    for (unsigned i = 0; i < NumLanes; i++) {
+      std::vector<ArrayRef<Operation::Match>> LaneMatches;
+      for (unsigned LaneId = 0; LaneId < NumLanes; LaneId++) {
+        ArrayRef<Operation::Match> Matches;
+        if (LaneId == i)
+          Matches = MM.getMatchesForOutput(LaneOps[i].getOperation(), Focus);
+        else
+          Matches = MM.getMatches(LaneOps[i].getOperation());
+
+        // if we can't find matches for any given lanes, then we can't use
+        // `Inst`
+        if (Matches.empty())
+          break;
+        LaneMatches.push_back(Matches);
+      }
+
+      // Skip if we can't find a single match for some lane.
+      if (LaneMatches.size() != NumLanes)
+        continue;
+
+      std::vector<const Operation::Match *> EmptyPrefix;
+      BitVector Elements(VPCtx.getNumValues());
+      BitVector Depended(VPCtx.getNumValues());
+      enumeratePacksRec(Focus, Inst, LaneMatches, Enumerated, Elements,
+                        Depended, EmptyPrefix);
+    }
+  }
 }
 
 SmallPtrSet<Instruction *, 16>
@@ -336,7 +376,7 @@ PackEnumerator::findSeedMemAccesses(Instruction *FocusAccess) const {
     if (!Inserted)
       return Seeds.count(I);
 
-    if (!isFree(I))
+    if (!isFree(I, FocusAccess))
       return false;
 
     auto It = AccessDAG->find(I);
@@ -399,6 +439,8 @@ void PackEnumerator::enumerateMemAccesses(
           Enumerated.push_back(createMemAccessPack<AccessType>(
               AccessChain, Elements, Depended, TTI));
         }
+        if (AccessChain.size() > 8)
+          return;
 
         // Extend this load chain
         auto It = AccessDAG->find(I);
@@ -419,7 +461,7 @@ void PackEnumerator::enumerateMemAccesses(
         }
 
         for (auto *Next : It->second) {
-          if (!isFree(Next))
+          if (!isFree(Next, Focus))
             continue;
 
           bool Independent =
@@ -486,48 +528,10 @@ Frontier::nextAvailablePacks(Packer *Pkr,
   if (InCache)
     return filterFrozenPacks(CachedPacks);
 
-  ArrayRef<InstBinding *> Insts = Pkr->getInsts();
-  auto &MM = Pkr->getMatchManager(BB);
-  auto &LDA = Pkr->getLDA(BB);
-  auto &LoadDAG = Pkr->getLoadDAG(BB);
-  auto &StoreDAG = Pkr->getStoreDAG(BB);
-  auto *TTI = Pkr->getTTI();
-
   std::vector<const VectorPack *> AvailablePacks;
-  PackEnumerator Enumerator(I, *VPCtx, LDA, LoadDAG, StoreDAG, TTI);
+  PackEnumerator Enumerator(BB, Pkr);
 
-  if (auto *LI = dyn_cast<LoadInst>(I))
-    Enumerator.enumerateMemAccesses(LI, AvailablePacks);
-  else if (auto *SI = dyn_cast<StoreInst>(I))
-    Enumerator.enumerateMemAccesses(SI, AvailablePacks);
-  else {
-    for (auto *Inst : Insts) {
-      ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
-      unsigned NumLanes = LaneOps.size();
-      // Iterate over all combination of packs, fixing `I` at the `i`'th lane
-      for (unsigned i = 0; i < NumLanes; i++) {
-        std::vector<ArrayRef<Operation::Match>> LaneMatches;
-        for (unsigned LaneId = 0; LaneId < NumLanes; LaneId++) {
-          ArrayRef<Operation::Match> Matches;
-          if (LaneId == i)
-            Matches = MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
-          else
-            Matches = MM.getMatches(LaneOps[i].getOperation());
-
-          // if we can't find matches for any given lanes, then we can't use
-          // `Inst`
-          if (Matches.empty())
-            break;
-          LaneMatches.push_back(Matches);
-        }
-
-        // Skip if we can't find a single match for some lane.
-        if (LaneMatches.size() != NumLanes)
-          continue;
-        Enumerator.enumeratePacks(Inst, LaneMatches, AvailablePacks);
-      }
-    }
-  }
+  Enumerator.enumerate(I, AvailablePacks);
 
   auto Packs = filterFrozenPacks(AvailablePacks);
   EnumCache->insert(I, std::move(AvailablePacks));
@@ -564,6 +568,7 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Pkr,
   auto AvailablePacks = Frt->nextAvailablePacks(Pkr, EnumCache);
 
   OutEdges.reserve(AvailablePacks.size());
+  errs() << "BRANCHING FACTOR: " << AvailablePacks.size() << '\n';
   for (auto *VP : AvailablePacks) {
     auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
     OutEdges.push_back(OutEdge{VP, Next, Cost});

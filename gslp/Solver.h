@@ -153,10 +153,28 @@ public:
            C * sqrtf(logf(ParentCount) / float(Count));
   }
   uint64_t visitCount() const { return Count; }
+  const Frontier *getFrontier() const { return Frt; }
   void update(float Cost) {
     TotalCost += Cost;
     Count++;
   }
+};
+
+struct FrontierEvaluator {
+  virtual float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
+                         Packer *Pkr, llvm::TargetTransformInfo *TTI) = 0;
+};
+
+struct DummyEvaluator : public FrontierEvaluator {
+  float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
+                 Packer *Pkr, llvm::TargetTransformInfo *TTI) override {
+    return 0;
+  }
+};
+
+class RolloutEvaluator : public FrontierEvaluator {
+  float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
+                 Packer *Pkr, llvm::TargetTransformInfo *TTI) override;
 };
 
 class UCTSearch {
@@ -164,17 +182,20 @@ class UCTSearch {
   float C;
   UCTNodeFactory *Factory;
   Packer *Pkr;
+  // How we evaluate a leaf UCTNode (e.g., w/ a value network or rollout)
+  FrontierEvaluator *Evaluator;
   PackEnumerationCache EnumCache;
   llvm::TargetTransformInfo *TTI;
 
 public:
   UCTSearch(float C, UCTNodeFactory *Factory, Packer *Pkr,
-            llvm::TargetTransformInfo *TTI)
-      : C(C), Factory(Factory), Pkr(Pkr), TTI(TTI) {}
-  // Run MCTS for some iterations
+            FrontierEvaluator *Evaluator, llvm::TargetTransformInfo *TTI)
+      : C(C), Factory(Factory), Pkr(Pkr), Evaluator(Evaluator), TTI(TTI) {}
+
   void run(UCTNode *Root, unsigned Iter);
-  // E.g., value function or rollout
-  virtual float evalLeafNode(UCTNode *) { return 0; }
+  float evalLeafNode(UCTNode *N) {
+    return Evaluator->evaluate(N->getFrontier(), EnumCache, Pkr, TTI);
+  }
 };
 
 #endif
