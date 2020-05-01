@@ -60,18 +60,15 @@ bool Frontier::resolved(const OperandPack &OP) const {
   return true;
 }
 
-std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
-                                            TargetTransformInfo *TTI) const {
-  auto Next = std::make_unique<Frontier>(*this);
-
-  Next->freezeOneInst(VPCtx->getScalarId(I));
-  Next->advanceBBIt();
+float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
+  freezeOneInst(VPCtx->getScalarId(I));
+  advanceBBIt();
 
   // Go over unresolved packs and see if we've resolved any lanes
-  Cost = 0;
+  float Cost = 0;
   SmallVector<unsigned, 2> ResolvedPackIds;
-  for (unsigned i = 0; i < Next->UnresolvedPacks.size(); i++) {
-    auto *OP = Next->UnresolvedPacks[i];
+  for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
+    auto *OP = UnresolvedPacks[i];
     auto *VecTy = getVectorType(*OP);
 
     // Special case: we can build OP by broadcasting `I`.
@@ -88,7 +85,7 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
       Cost +=
           TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, LaneId);
     }
-    if (Next->resolved(*OP))
+    if (resolved(*OP))
       ResolvedPackIds.push_back(i);
   }
 
@@ -99,14 +96,12 @@ std::unique_ptr<Frontier> Frontier::advance(Instruction *I, float &Cost,
     if (!I2 || I2->getParent() != BB)
       continue;
     unsigned InstId = VPCtx->getScalarId(I2);
-    if (Next->FreeInsts.test(InstId))
-      Next->UnresolvedScalars.set(InstId);
+    if (FreeInsts.test(InstId))
+      UnresolvedScalars.set(InstId);
   }
 
-  remove(Next->UnresolvedPacks, ResolvedPackIds);
-  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
-
-  return Next;
+  remove(UnresolvedPacks, ResolvedPackIds);
+  return Cost;
 }
 
 // Check whether there are lanes in `OpndPack` that are produced by `VP`.
@@ -151,11 +146,8 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
-std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
-                                            TargetTransformInfo *TTI) const {
-  auto Next = std::make_unique<Frontier>(*this);
-
-  Cost = VP->getCost();
+float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
+  float Cost = VP->getCost();
   Type *VecTy;
   // It doesn't make sense to get the value type of a store,
   // which returns nothing.
@@ -169,21 +161,21 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
     unsigned InstId = VPCtx->getScalarId(I);
 
     // Pay the extract cost
-    if (Next->UnresolvedScalars.test(InstId))
+    if (UnresolvedScalars.test(InstId))
       Cost +=
           TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
 
-    Next->freezeOneInst(InstId);
+    freezeOneInst(InstId);
   }
-  Next->advanceBBIt();
+  advanceBBIt();
 
   SmallVector<unsigned, 2> ResolvedPackIds;
   if (!VP->isStore()) {
-    for (unsigned i = 0; i < Next->UnresolvedPacks.size(); i++) {
-      auto *OP = Next->UnresolvedPacks[i];
-      if (Next->resolveOperandPack(*VP, *OP)) {
+    for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
+      auto *OP = UnresolvedPacks[i];
+      if (resolveOperandPack(*VP, *OP)) {
         Cost += getGatherCost(*VP, *OP, TTI);
-        if (Next->resolved(*OP))
+        if (resolved(*OP))
           ResolvedPackIds.push_back(i);
       }
     }
@@ -204,13 +196,29 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
       }
     }
 
-    if (!Next->resolved(*OpndPack))
-      Next->UnresolvedPacks.push_back(OpndPack);
+    if (!resolved(*OpndPack))
+      UnresolvedPacks.push_back(OpndPack);
   }
 
-  remove(Next->UnresolvedPacks, ResolvedPackIds);
-  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
+  remove(UnresolvedPacks, ResolvedPackIds);
+  return Cost;
+}
 
+std::unique_ptr<Frontier>
+Frontier::advance(const VectorPack *VP, float &Cost,
+                  llvm::TargetTransformInfo *TTI) const {
+  auto Next = std::make_unique<Frontier>(*this);
+  Cost = Next->advanceInplace(VP, TTI);
+  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
+  return Next;
+}
+
+std::unique_ptr<Frontier>
+Frontier::advance(llvm::Instruction *I, float &Cost,
+                  llvm::TargetTransformInfo *TTI) const {
+  auto Next = std::make_unique<Frontier>(*this);
+  Cost = Next->advanceInplace(I, TTI);
+  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
   return Next;
 }
 
@@ -568,7 +576,6 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Pkr,
   auto AvailablePacks = Frt->nextAvailablePacks(Pkr, EnumCache);
 
   OutEdges.reserve(AvailablePacks.size());
-  errs() << "BRANCHING FACTOR: " << AvailablePacks.size() << '\n';
   for (auto *VP : AvailablePacks) {
     auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
     OutEdges.push_back(OutEdge{VP, Next, Cost});
@@ -586,7 +593,7 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
 
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
-      const UCTNode::OutEdge *SelectedEdge;
+      const UCTNode::OutEdge *SelectedEdge = &CurNode->next()[0];
       float MaxUCTScore = 0;
       unsigned VisitCount = CurNode->visitCount();
       for (auto &E : CurNode->next()) {
@@ -621,5 +628,44 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
       TotalCost += Path[i + 1]->Cost;
       Edge->Next->update(TotalCost);
     }
+    if (!Path.empty())
+      Root->update(TotalCost + Path[0]->Cost);
+    if (TotalCost < 0)
+      errs() << "!!! " << TotalCost << '\n';
   }
+}
+
+// Uniformly random rollout
+float RolloutEvaluator::evaluate(const Frontier *Frt,
+                                 PackEnumerationCache &EnumCache, Packer *Pkr) {
+  Frontier FrtScratch = *Frt;
+  float Cost = 0;
+  std::vector<const VectorPack *> Packs;
+  PackEnumerator Enumerator(Frt->getBasicBlock(), Pkr);
+  auto *TTI = Pkr->getTTI();
+
+  for (;;) {
+    auto *I = FrtScratch.getNextFreeInst();
+    if (!I)
+      break;
+    bool InCache;
+    auto CachedPacks = EnumCache.getPacks(I, InCache);
+    if (InCache) {
+      unsigned PackId = rand_int(CachedPacks.size() + 1);
+      if (PackId == 0) // go with scalar
+        Cost += FrtScratch.advanceInplace(I, TTI);
+      else
+        Cost += FrtScratch.advanceInplace(CachedPacks[PackId - 1], TTI);
+    } else {
+      Packs.clear();
+      Enumerator.enumerate(I, Packs);
+      unsigned PackId = rand_int(Packs.size() + 1);
+      if (PackId == 0) // go with scalar
+        Cost += FrtScratch.advanceInplace(I, TTI);
+      else
+        Cost += FrtScratch.advanceInplace(Packs[PackId - 1], TTI);
+      EnumCache.insert(I, std::move(Packs));
+    }
+  }
+  return Cost;
 }

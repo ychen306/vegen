@@ -59,10 +59,13 @@ class Frontier {
 public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, const VectorPackContext *VPCtx);
-  std::unique_ptr<Frontier> advance(const VectorPack *, float &Cost,
+  std::unique_ptr<Frontier> advance(const VectorPack *VP, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
-  std::unique_ptr<Frontier> advance(llvm::Instruction *, float &Cost,
+  std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
+  llvm::BasicBlock *getBasicBlock() const { return BB; }
+  float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
+  float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
   llvm::Instruction *getNextFreeInst() const;
   std::vector<const VectorPack *>
   nextAvailablePacks(Packer *, PackEnumerationCache *) const;
@@ -162,19 +165,19 @@ public:
 
 struct FrontierEvaluator {
   virtual float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
-                         Packer *Pkr, llvm::TargetTransformInfo *TTI) = 0;
+                         Packer *Pkr) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
   float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
-                 Packer *Pkr, llvm::TargetTransformInfo *TTI) override {
+                 Packer *Pkr) override {
     return 0;
   }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
   float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
-                 Packer *Pkr, llvm::TargetTransformInfo *TTI) override;
+                 Packer *Pkr) override;
 };
 
 class UCTSearch {
@@ -194,7 +197,7 @@ public:
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
-    return Evaluator->evaluate(N->getFrontier(), EnumCache, Pkr, TTI);
+    return Evaluator->evaluate(N->getFrontier(), EnumCache, Pkr);
   }
 };
 
