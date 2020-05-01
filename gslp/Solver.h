@@ -122,15 +122,6 @@ public:
 };
 
 class UCTNode {
-public:
-  // The next action state pair
-  struct OutEdge {
-    const VectorPack *VP; // NULL means we choose Frt->getNextFreeInst();
-    UCTNode *Next;
-    float Cost; // Reward
-  };
-
-private:
   friend class UCTNodeFactory;
 
   // State
@@ -139,7 +130,37 @@ private:
   float TotalCost;
   uint64_t Count;
 
-  std::vector<OutEdge> OutEdges;
+public:
+  // The next action state pair
+  struct Transition {
+    const VectorPack *VP; // NULL means we choose Frt->getNextFreeInst();
+    UCTNode *Next;
+    uint64_t Count;
+    float Cost; // Reward
+
+    Transition(const VectorPack *VP, UCTNode *Next, float Cost) 
+      : VP(VP), Next(Next), Count(0), Cost(Cost) {}
+
+    float visited() const { return Count > 0; }
+
+    // Average Q value
+    float avgCost() const { return Cost + Next->avgCost(); }
+
+    // The ucb bias for this transition
+    float bias(uint64_t ParentCount, float C) const {
+      return C * sqrtf(logf(ParentCount) / float(Count));
+    }
+
+    // UCT2 formula from the paper 
+    // ``Transpositions and Move Groups in Monte Carlo Tree Search''
+    float score(uint64_t ParentCount, float C) const {
+      return -avgCost() + bias(ParentCount, C);
+    }
+  };
+
+private:
+
+  std::vector<Transition> Transitions;
 
   UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {}
 
@@ -147,14 +168,14 @@ public:
   // Fill out the out edge
   void expand(UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
-  bool expanded() { return !OutEdges.empty() && !isTerminal(); }
+  bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
-  llvm::ArrayRef<OutEdge> next() const { return OutEdges; }
-  // The classic UCT score
-  float score(unsigned ParentCount, float C) const {
-    return (-TotalCost / float(Count)) +
-           C * sqrtf(logf(ParentCount) / float(Count));
+  std::vector<Transition> &transitions() { return Transitions; }
+
+  float avgCost() const {
+    return TotalCost / float(Count);
   }
+
   uint64_t visitCount() const { return Count; }
   const Frontier *getFrontier() const { return Frt; }
   void update(float Cost) {

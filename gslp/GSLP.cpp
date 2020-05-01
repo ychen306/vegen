@@ -564,21 +564,22 @@ bool GSLP::runOnFunction(llvm::Function &F) {
     Timer T("mcts", "time takes to run 100000 iter of MCTS");
 
     T.startTimer();
-    UCTSearch MCTS(100/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
+#if 1
+    UCTSearch MCTS(200/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
+    MCTS.run(Root, 100000000);
+#else
+    UCTSearch MCTS(50/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
     auto *Node = Root;
     while (!Node->isTerminal()) {
-      errs() << Node->expanded() << '\n';
-      MCTS.run(Node, 100);
+      MCTS.run(Node, 100000);
       ArrayRef<UCTNode::OutEdge> Edges = Node->next();
       auto It = std::max_element(Edges.begin(), Edges.end(),
           [](const UCTNode::OutEdge &A, const UCTNode::OutEdge &B) -> bool {
           return A.Next->visitCount() < B.Next->visitCount();
           });
-      errs() << "?? " << Edges.size() << ", " << (It == Edges.end()) << '\n';
       Node = It->Next;
-      errs() << "NEXT: " << Node << ", VISIT COUNT: " << It->Next->visitCount() << '\n';
-      errs() << "!!! Root visit count : " << Root->visitCount() << '\n';
     }
+#endif
     T.stopTimer();
 
     errs() << "!!! Time elapsed:\n";

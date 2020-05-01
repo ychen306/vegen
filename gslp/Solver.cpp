@@ -565,26 +565,31 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 void UCTNode::expand(UCTNodeFactory *Factory, Packer *Pkr,
                      PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
-  assert(OutEdges.empty() && "expanded already");
+  assert(Transitions.empty() && "expanded already");
   float Cost;
 
   // Consider keeping the next free inst scalar
   auto *Next =
       Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
-  OutEdges.push_back(OutEdge{nullptr, Next, Cost});
+  Transitions.emplace_back(nullptr, Next, Cost);
 
   auto AvailablePacks = Frt->nextAvailablePacks(Pkr, EnumCache);
 
-  OutEdges.reserve(AvailablePacks.size());
+  Transitions.reserve(AvailablePacks.size());
   for (auto *VP : AvailablePacks) {
     auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
-    OutEdges.push_back(OutEdge{VP, Next, Cost});
+    Transitions.emplace_back(VP, Next, Cost);
   }
 }
 
 // Do one iteration of MCTS
 void UCTSearch::run(UCTNode *Root, unsigned Iter) {
-  std::vector<const UCTNode::OutEdge *> Path;
+  struct FullTransition {
+    UCTNode *Parent;
+    UCTNode::Transition *T;
+  };
+
+  std::vector<FullTransition> Path;
   while (Iter--) {
     Path.clear();
 
@@ -593,23 +598,27 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
 
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
-      const UCTNode::OutEdge *SelectedEdge = &CurNode->next()[0];
-      float MaxUCTScore = 0;
       unsigned VisitCount = CurNode->visitCount();
-      for (auto &E : CurNode->next()) {
-        if (E.Next->visitCount() == 0) {
-          SelectedEdge = &E;
+      UCTNode::Transition *BestT = &CurNode->transitions()[0];
+      float MaxUCTScore = 0;
+      if (BestT->visited())
+        MaxUCTScore = BestT->score(VisitCount, C);
+
+      for (auto &T : CurNode->transitions()) {
+        if (!T.visited()) {
+          BestT = &T;
           break;
         }
-        float UCTScore = -E.Cost + E.Next->score(VisitCount, C);
+        // FIXME: refactor this as a method
+        float UCTScore = T.score(VisitCount, C);
         if (UCTScore > MaxUCTScore) {
           MaxUCTScore = UCTScore;
-          SelectedEdge = &E;
+          BestT = &T;
         }
       }
 
-      Path.push_back(SelectedEdge);
-      CurNode = SelectedEdge->Next;
+      Path.push_back(FullTransition{CurNode, BestT});
+      CurNode = BestT->Next;
     }
 
     float LeafCost = 0;
@@ -623,13 +632,11 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
     // ========= 4) Backpropagation ===========
     CurNode->update(LeafCost);
     float TotalCost = LeafCost;
-    for (int i = Path.size() - 2; i >= 0; i--) {
-      auto *Edge = Path[i];
-      TotalCost += Path[i + 1]->Cost;
-      Edge->Next->update(TotalCost);
+    for (FullTransition &FT : make_range(Path.rbegin(), Path.rend())) {
+      TotalCost += FT.T->Cost;
+      FT.Parent->update(TotalCost);
+      FT.T->Count += 1;
     }
-    if (!Path.empty())
-      Root->update(TotalCost + Path[0]->Cost);
     if (TotalCost < 0)
       errs() << "!!! " << TotalCost << '\n';
   }
@@ -640,7 +647,6 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
                                  PackEnumerationCache &EnumCache, Packer *Pkr) {
   Frontier FrtScratch = *Frt;
   float Cost = 0;
-  std::vector<const VectorPack *> Packs;
   PackEnumerator Enumerator(Frt->getBasicBlock(), Pkr);
   auto *TTI = Pkr->getTTI();
 
@@ -648,24 +654,12 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
     auto *I = FrtScratch.getNextFreeInst();
     if (!I)
       break;
-    bool InCache;
-    auto CachedPacks = EnumCache.getPacks(I, InCache);
-    if (InCache) {
-      unsigned PackId = rand_int(CachedPacks.size() + 1);
-      if (PackId == 0) // go with scalar
-        Cost += FrtScratch.advanceInplace(I, TTI);
-      else
-        Cost += FrtScratch.advanceInplace(CachedPacks[PackId - 1], TTI);
-    } else {
-      Packs.clear();
-      Enumerator.enumerate(I, Packs);
-      unsigned PackId = rand_int(Packs.size() + 1);
-      if (PackId == 0) // go with scalar
-        Cost += FrtScratch.advanceInplace(I, TTI);
-      else
-        Cost += FrtScratch.advanceInplace(Packs[PackId - 1], TTI);
-      EnumCache.insert(I, std::move(Packs));
-    }
+    auto Packs = FrtScratch.nextAvailablePacks(Pkr, &EnumCache);
+    unsigned PackId = rand_int(Packs.size() + 1);
+    if (PackId == 0) // go with scalar
+      Cost += FrtScratch.advanceInplace(I, TTI);
+    else
+      Cost += FrtScratch.advanceInplace(Packs[PackId - 1], TTI);
   }
   return Cost;
 }
