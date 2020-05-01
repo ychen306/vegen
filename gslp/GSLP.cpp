@@ -565,20 +565,23 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
     T.startTimer();
 #if 1
-    UCTSearch MCTS(200/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
-    MCTS.run(Root, 100000000);
+    UCTSearch MCTS(80/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
+    MCTS.run(Root, 100000);
 #else
     UCTSearch MCTS(50/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
     auto *Node = Root;
+    float Cost = 0;
     while (!Node->isTerminal()) {
-      MCTS.run(Node, 100000);
-      ArrayRef<UCTNode::OutEdge> Edges = Node->next();
+      MCTS.run(Node, 10000);
+      auto &Edges = Node->transitions();
       auto It = std::max_element(Edges.begin(), Edges.end(),
-          [](const UCTNode::OutEdge &A, const UCTNode::OutEdge &B) -> bool {
-          return A.Next->visitCount() < B.Next->visitCount();
+          [](const UCTNode::Transition &A, const UCTNode::Transition &B) -> bool {
+          return A.Count < B.Count;
           });
       Node = It->Next;
+      Cost += It->Cost;
     }
+    errs() << "~~~~~~~ Total cost: " << Cost << '\n';
 #endif
     T.stopTimer();
 

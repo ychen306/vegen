@@ -637,8 +637,8 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
       FT.Parent->update(TotalCost);
       FT.T->Count += 1;
     }
-    if (TotalCost < 0)
-      errs() << "!!! " << TotalCost << '\n';
+    //if (TotalCost < 0)
+    //  errs() << "!!! " << TotalCost << '\n';
   }
 }
 
@@ -650,16 +650,37 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
   PackEnumerator Enumerator(Frt->getBasicBlock(), Pkr);
   auto *TTI = Pkr->getTTI();
 
+  auto sampleFromPack = [&FrtScratch, TTI](Instruction *I, ArrayRef<const VectorPack *> Packs) -> float {
+    auto FrozenInsts = FrtScratch.getFreeInsts();
+    FrozenInsts.flip();
+
+    for (;;) {
+      unsigned PackId = rand_int(Packs.size() + 1);
+      if (PackId == 0) // go with scalar
+        return FrtScratch.advanceInplace(I, TTI);
+      else {
+        auto *VP = Packs[PackId - 1];
+        if (!FrozenInsts.anyCommon(VP->getElements()))
+          return FrtScratch.advanceInplace(VP, TTI);
+      }
+    }
+  };
+
   for (;;) {
     auto *I = FrtScratch.getNextFreeInst();
     if (!I)
       break;
-    auto Packs = FrtScratch.nextAvailablePacks(Pkr, &EnumCache);
-    unsigned PackId = rand_int(Packs.size() + 1);
-    if (PackId == 0) // go with scalar
-      Cost += FrtScratch.advanceInplace(I, TTI);
-    else
-      Cost += FrtScratch.advanceInplace(Packs[PackId - 1], TTI);
+    //auto Packs = FrtScratch.nextAvailablePacks(Pkr, &EnumCache);
+    bool InCache;
+    auto CachedPacks = EnumCache.getPacks(I, InCache);
+    if (InCache)
+      Cost += sampleFromPack(I, CachedPacks);
+    else {
+      std::vector<const VectorPack *> Packs;
+      Enumerator.enumerate(I, Packs);
+      Cost += sampleFromPack(I, Packs);
+      EnumCache.insert(I, std::move(Packs));
+    }
   }
   return Cost;
 }

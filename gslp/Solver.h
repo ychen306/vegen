@@ -45,9 +45,6 @@ class Frontier {
   void freezeOneInst(unsigned);
   bool resolveOperandPack(const VectorPack &VP, const OperandPack &UP);
   void advanceBBIt();
-  bool isFreeInst(llvm::Instruction *I) {
-    return FreeInsts[VPCtx->getScalarId(I)];
-  }
 
   // Remove any packs that use frozen instructions.
   std::vector<const VectorPack *>
@@ -67,6 +64,7 @@ public:
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
   llvm::Instruction *getNextFreeInst() const;
+  llvm::BitVector getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
   nextAvailablePacks(Packer *, PackEnumerationCache *) const;
 };
