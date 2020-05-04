@@ -591,6 +591,7 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
   };
 
   std::vector<FullTransition> Path;
+  std::vector<float> Weight; // Weights given by a prior policy
   while (Iter--) {
     Path.clear();
 
@@ -599,19 +600,30 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
 
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
+      auto &Transitions = CurNode->transitions();
+      if (Policy)
+        Policy->predict(CurNode->getFrontier(), Transitions, Weight);
+
       unsigned VisitCount = CurNode->visitCount();
-      UCTNode::Transition *BestT = &CurNode->transitions()[0];
+      auto ScoreTransition = [&](unsigned i) -> float {
+        float Score = Transitions[i].score(VisitCount, C);
+        if (Policy)
+          Score += Weight[i];
+        return Score;
+      };
+
+      UCTNode::Transition *BestT = &Transitions[0];
       float MaxUCTScore = 0;
       if (BestT->visited())
-        MaxUCTScore = BestT->score(VisitCount, C);
+        MaxUCTScore = ScoreTransition(0);
 
-      for (auto &T : CurNode->transitions()) {
+      for (unsigned i = 0; i < Transitions.size(); i++) {
+        auto &T = Transitions[i];
         if (!T.visited()) {
           BestT = &T;
           break;
         }
-        // FIXME: refactor this as a method
-        float UCTScore = T.score(VisitCount, C);
+        float UCTScore = ScoreTransition(i);
         if (UCTScore > MaxUCTScore) {
           MaxUCTScore = UCTScore;
           BestT = &T;

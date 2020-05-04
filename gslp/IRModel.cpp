@@ -730,10 +730,9 @@ PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
   PD.OpProb = StateToOpcode->forward(H_value);
 
   auto Emb = StateToEmb->forward(H_value);
-  for (auto &StateToLaneEmb : StateToLaneEmbs) {
+  for (auto &StateToLaneEmb : StateToLaneEmbs)
     PD.LaneProbs.push_back(
         StateToLaneEmb->forward(H_value).mm(Emb.t()).softmax(1 /*dim*/));
-  }
 
   return PD;
 }

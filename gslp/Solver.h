@@ -70,9 +70,13 @@ public:
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
   }
-  llvm::ArrayRef<const OperandPack *> getUnresolvedPacks() const { return UnresolvedPacks; }
-  llvm::iterator_range<VectorPackContext::value_iterator> 
-    getUnresolvedScalars() const { return VPCtx->iter_values(UnresolvedScalars); }
+  llvm::ArrayRef<const OperandPack *> getUnresolvedPacks() const {
+    return UnresolvedPacks;
+  }
+  llvm::iterator_range<VectorPackContext::value_iterator>
+  getUnresolvedScalars() const {
+    return VPCtx->iter_values(UnresolvedScalars);
+  }
   unsigned numUnresolvedScalars() const { return UnresolvedScalars.count(); }
 };
 
@@ -186,6 +190,7 @@ public:
   }
 };
 
+// Interface for state evaluation
 struct FrontierEvaluator {
   virtual float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
                          Packer *Pkr) = 0;
@@ -203,11 +208,21 @@ class RolloutEvaluator : public FrontierEvaluator {
                  Packer *Pkr) override;
 };
 
+
+struct PackingPolicy {
+  // Interface for policy prediction.
+  virtual void predict(const Frontier *Frt, llvm::ArrayRef<UCTNode::Transition> Transitions, std::vector<float> &Prob) = 0;
+};
+
 class UCTSearch {
   // The exploration factor in UCT
   float C;
+
   UCTNodeFactory *Factory;
   Packer *Pkr;
+
+  PackingPolicy *Policy;
+  
   // How we evaluate a leaf UCTNode (e.g., w/ a value network or rollout)
   FrontierEvaluator *Evaluator;
   PackEnumerationCache EnumCache;
@@ -215,8 +230,9 @@ class UCTSearch {
 
 public:
   UCTSearch(float C, UCTNodeFactory *Factory, Packer *Pkr,
+      PackingPolicy *Policy,
             FrontierEvaluator *Evaluator, llvm::TargetTransformInfo *TTI)
-      : C(C), Factory(Factory), Pkr(Pkr), Evaluator(Evaluator), TTI(TTI) {}
+      : C(C), Factory(Factory), Pkr(Pkr), Policy(Policy), Evaluator(Evaluator), TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
