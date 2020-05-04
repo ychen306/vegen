@@ -24,7 +24,7 @@ find_package(Torch REQUIRED)
 SET_SOURCE_FILES_PROPERTIES(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 
-llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader)
+llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis)
 
 target_link_libraries(Packing ${TORCH_LIBRARIES})
 target_link_libraries(GSLP Packing ${TORCH_LIBRARIES})

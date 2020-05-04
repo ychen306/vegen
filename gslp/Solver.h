@@ -67,6 +67,13 @@ public:
   llvm::BitVector getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
   nextAvailablePacks(Packer *, PackEnumerationCache *) const;
+  bool isFree(llvm::Instruction *I) const {
+    return FreeInsts.test(VPCtx->getScalarId(I));
+  }
+  llvm::ArrayRef<const OperandPack *> getUnresolvedPacks() const { return UnresolvedPacks; }
+  llvm::iterator_range<VectorPackContext::value_iterator> 
+    getUnresolvedScalars() const { return VPCtx->iter_values(UnresolvedScalars); }
+  unsigned numUnresolvedScalars() const { return UnresolvedScalars.count(); }
 };
 
 // Hashing support for `Frontier`
@@ -136,8 +143,8 @@ public:
     uint64_t Count;
     float Cost; // Reward
 
-    Transition(const VectorPack *VP, UCTNode *Next, float Cost) 
-      : VP(VP), Next(Next), Count(0), Cost(Cost) {}
+    Transition(const VectorPack *VP, UCTNode *Next, float Cost)
+        : VP(VP), Next(Next), Count(0), Cost(Cost) {}
 
     float visited() const { return Count > 0; }
 
@@ -149,7 +156,7 @@ public:
       return C * sqrtf(logf(ParentCount) / float(Count));
     }
 
-    // UCT2 formula from the paper 
+    // UCT2 formula from the paper
     // ``Transpositions and Move Groups in Monte Carlo Tree Search''
     float score(uint64_t ParentCount, float C) const {
       return -avgCost() + bias(ParentCount, C);
@@ -157,7 +164,6 @@ public:
   };
 
 private:
-
   std::vector<Transition> Transitions;
 
   UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {}
@@ -170,9 +176,7 @@ public:
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
   std::vector<Transition> &transitions() { return Transitions; }
 
-  float avgCost() const {
-    return TotalCost / float(Count);
-  }
+  float avgCost() const { return TotalCost / float(Count); }
 
   uint64_t visitCount() const { return Count; }
   const Frontier *getFrontier() const { return Frt; }

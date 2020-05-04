@@ -195,8 +195,9 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
                                         LaneId);
       }
     }
-
-    if (!resolved(*OpndPack))
+    if (!resolved(*OpndPack) &&
+        !std::binary_search(UnresolvedPacks.begin(), UnresolvedPacks.end(),
+                            OpndPack))
       UnresolvedPacks.push_back(OpndPack);
   }
 
@@ -637,8 +638,9 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
       FT.Parent->update(TotalCost);
       FT.T->Count += 1;
     }
-    //if (TotalCost < 0)
-    //  errs() << "!!! " << TotalCost << '\n';
+
+    if (TotalCost < 0)
+      errs() << "Total Cost: " << TotalCost << '\n';
   }
 }
 
@@ -650,7 +652,9 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
   PackEnumerator Enumerator(Frt->getBasicBlock(), Pkr);
   auto *TTI = Pkr->getTTI();
 
-  auto sampleFromPack = [&FrtScratch, TTI](Instruction *I, ArrayRef<const VectorPack *> Packs) -> float {
+  auto sampleFromPack = [&FrtScratch,
+                         TTI](Instruction *I,
+                              ArrayRef<const VectorPack *> Packs) -> float {
     auto FrozenInsts = FrtScratch.getFreeInsts();
     FrozenInsts.flip();
 
@@ -670,7 +674,7 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
     auto *I = FrtScratch.getNextFreeInst();
     if (!I)
       break;
-    //auto Packs = FrtScratch.nextAvailablePacks(Pkr, &EnumCache);
+    // auto Packs = FrtScratch.nextAvailablePacks(Pkr, &EnumCache);
     bool InCache;
     auto CachedPacks = EnumCache.getPacks(I, InCache);
     if (InCache)

@@ -1,6 +1,7 @@
 #include "IRModel.h"
 #include "IRVec.h"
 #include "Packer.h"
+#include "Solver.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -16,6 +17,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Timer.h"
 
 using namespace llvm;
 
@@ -151,6 +153,15 @@ int main(int argc, char **argv) {
         Diag.print("Trainer failed to load bitcode:", errs());
       else {
         dbgs() << "Parsed module: " << FilePath << '\n';
+        // Set target feature. FIXME:
+        // make it configurable depending on which machine we want to tune for
+        for (auto &F : *M) {
+          if (F.empty())
+            continue;
+          //F.addFnAttr(
+              //"target-features", "+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-waitpkg,-wbnoinvd,-xop");
+          //F.addFnAttr("target-cpu", "skylake");
+        }
         Modules.push_back(std::move(M));
       }
     }
@@ -167,11 +178,11 @@ int main(int argc, char **argv) {
   Passes.add(createBasicAAWrapperPass());
   Passes.add(new PackerBuilder());
 
-  PackModel Model(EmbeddingSize, VecBindingTable.getBindings());
-  if (!InitModelPath.empty()) {
-    errs() << "Initializing model using " << InitModelPath << '\n';
-    loadModel(Model, InitModelPath);
-  }
+  PackingModel Model(EmbeddingSize, VecBindingTable.getBindings(), 8);
+  //if (!InitModelPath.empty()) {
+  //  errs() << "Initializing model using " << InitModelPath << '\n';
+  //  loadModel(Model, InitModelPath);
+  //}
 
   torch::Device Device(torch::kCPU);
   if (torch::cuda::is_available())
@@ -189,32 +200,19 @@ int main(int argc, char **argv) {
   errs() << "Num packers: " << PackerBuilder::Packers.size() << '\n';
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
          << '\n';
-
+  
   int NumEpochs = 100;
 
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
-    float EpochCost = 0;
-    std::vector<torch::Tensor> Losses;
-    int NumSamples = 0;
-    for (std::unique_ptr<Packer> &Packer : PackerBuilder::Packers) {
-      float AvgCost = trainOnPacker(Device, Model, *Packer, Losses);
-
-      errs() << "AvgCost: " << AvgCost << '\n';
-      EpochCost += AvgCost;
-
-      Optimizer.zero_grad();
-      auto Loss = torch::stack(Losses).mean();
-      Loss.backward();
-      Optimizer.step();
-
-      NumSamples += Losses.size();
-      Losses.clear();
+    for (auto &Pkr : PackerBuilder::Packers) {
+      if (Pkr->getFunction()->getName() != "binvcrhs")
+        continue;
+      errs() << "!!! " << Epoch << '\n';
+      for (auto &BB : *Pkr->getFunction()) {
+        Frontier Frt(&BB, Pkr->getContext(&BB));
+        Model->forward(&Frt, Pkr.get(), Device, 4);
+      }
     }
-
-    errs() << "Epoch " << Epoch << ", cost: " << EpochCost / (float)NumSamples
-           << '\n';
-
-    saveModel(Model, OutModelPath);
   }
   return 0;
 }

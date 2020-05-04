@@ -100,12 +100,12 @@ public:
 
   PackSample samplePackForInst(llvm::Instruction *I,
                                VectorPackSet &ExistingPacks,
-                               PackDistribution &PackDistr) {
+                               PackDistributionDeprecated &PackDistr) {
     return PackDistr.sample(Index, I, ExistingPacks, SupportedInsts, LDAs,
                             LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
   }
 
-  PackDistribution runModel(torch::Device Device, PackModel &Model,
+  PackDistributionDeprecated runModel(torch::Device Device, PackModel &Model,
                             int NumIters = 8) {
     return Model->forward(Device, Index, LoadDAGs, StoreDAGs, NumIters);
   }
