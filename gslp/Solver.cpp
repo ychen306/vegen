@@ -123,6 +123,9 @@ bool Frontier::resolveOperandPack(const VectorPack &VP, const OperandPack &OP) {
 // Return the cost of gathering from `VP` to `OpndPack`
 static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                               TargetTransformInfo *TTI) {
+  if (isConstantPack(OpndPack))
+    return 0;
+
   auto VPVals = VP.getOrderedValues();
   if (VPVals.size() == OpndPack.size()) {
     bool Exact = true;
@@ -141,7 +144,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 2;
+  return 4;
 }
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
@@ -593,6 +596,7 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
   std::vector<FullTransition> Path;
   std::vector<float> Weight; // Weights given by a prior policy
   while (Iter--) {
+    errs() << "!!! " << Iter << '\n';
     Path.clear();
 
     // ========= 1) Selection ==========
@@ -602,7 +606,7 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
     while (CurNode->expanded()) {
       auto &Transitions = CurNode->transitions();
       if (Policy)
-        Policy->predict(CurNode->getFrontier(), Transitions, Weight);
+        Policy->predict(CurNode->getFrontier(), Transitions, Pkr, Weight);
 
       unsigned VisitCount = CurNode->visitCount();
       auto ScoreTransition = [&](unsigned i) -> float {

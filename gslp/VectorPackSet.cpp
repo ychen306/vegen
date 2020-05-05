@@ -227,13 +227,6 @@ static float getBlockWeight(const OperandPack &OpndPack,
   return weight;
 }
 
-static float isConstantPack(const OperandPack &OpndPack) {
-  for (auto *V : OpndPack)
-    if (!isa<Constant>(V))
-      return false;
-  return true;
-}
-
 // FIXME: this is a mess
 float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
                                    BlockFrequencyInfo *BFI) const {

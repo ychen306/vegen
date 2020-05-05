@@ -79,11 +79,11 @@ torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
                                  TensorOptions().dtype(torch::kInt64));
   for (unsigned i = 0; i < Edges.size(); i++) {
     if (Flip) {
-      CooIndices[0][i] = (int64_t)Edges[i].Src;
-      CooIndices[1][i] = (int64_t)Edges[i].Dest;
-    } else {
       CooIndices[1][i] = (int64_t)Edges[i].Src;
       CooIndices[0][i] = (int64_t)Edges[i].Dest;
+    } else {
+      CooIndices[0][i] = (int64_t)Edges[i].Src;
+      CooIndices[1][i] = (int64_t)Edges[i].Dest;
     }
   }
   return torch::sparse_coo_tensor(CooIndices,
@@ -641,8 +641,7 @@ static torch::Tensor buildInverseUnresolvedUseGraph(const Frontier *Frt,
   // Include unresolved vector uses
   for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
     const OperandPack &OP = *UnresolvedPacks[i];
-    for (unsigned j = 0; j < OP.size(); j++) {
-      Value *V = OP[j];
+    for (auto *V : OP) {
       auto *I = dyn_cast<Instruction>(V);
       // Skip `I` is frozen (and therefore resolved)
       if (!I || I->getParent() != BB || !Frt->isFree(I))
@@ -725,14 +724,13 @@ PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
     H_value = ValueGRU->forward(SendToValues(H_value, H_use), H_value);
   }
 
-  PackDistribution PD;
-
+  PackDistribution PD(std::move(Index));
   PD.OpProb = StateToOpcode->forward(H_value);
-
   auto Emb = StateToEmb->forward(H_value);
-  for (auto &StateToLaneEmb : StateToLaneEmbs)
+  for (auto &StateToLaneEmb : StateToLaneEmbs) {
     PD.LaneProbs.push_back(
         StateToLaneEmb->forward(H_value).mm(Emb.t()).softmax(1 /*dim*/));
+  }
 
   return PD;
 }

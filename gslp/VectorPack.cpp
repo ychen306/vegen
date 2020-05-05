@@ -340,3 +340,10 @@ VectorType *getVectorType(const VectorPack &VP) {
   auto *FirstLane = *VP.elementValues().begin();
   return VectorType::get(FirstLane->getType(), NumLanes);
 }
+
+bool isConstantPack(const OperandPack &OpndPack) {
+  for (auto *V : OpndPack)
+    if (!isa<Constant>(V))
+      return false;
+  return true;
+}

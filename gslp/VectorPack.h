@@ -133,6 +133,8 @@ public:
 
   bool isStore() const { return Kind == Store; }
 
+  bool isLoad() const { return Kind == Load; }
+
   llvm::BasicBlock *getBasicBlock() const { return VPCtx->getBasicBlock(); }
 
   llvm::ArrayRef<llvm::Value *> getOrderedValues() const {
@@ -162,5 +164,7 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
 llvm::VectorType *getVectorType(const OperandPack &OpndPack);
 
 llvm::VectorType *getVectorType(const VectorPack &VP);
+
+bool isConstantPack(const OperandPack &OpndPack);
 
 #endif // VECTOR_PACK_H

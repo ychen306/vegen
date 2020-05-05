@@ -5,6 +5,7 @@ set(LIB_PACKING_SRC
   IRModel.cpp Packer.cpp
   Solver.cpp
   IRVec.cpp
+  Policy.cpp
   LocalDependenceAnalysis.cpp)
 
 if(APPLE)

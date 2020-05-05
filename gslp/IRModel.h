@@ -72,10 +72,10 @@ struct PackDistributionDeprecated {
 };
 
 struct PackDistribution {
+  IRIndex Index;
   torch::Tensor OpProb;
   std::vector<torch::Tensor> LaneProbs;
-
-  torch::Tensor log_prob(VectorPack *, const IRIndex &) const;
+  PackDistribution(IRIndex &&Index) : Index(Index) {}
 };
 
 class Packer;
@@ -108,16 +108,16 @@ class PackingModelImpl : public torch::nn::Module {
   // Used to combine lanes of unresolved vector uses
   torch::nn::GRUCell UseGRU = nullptr;
 
-  unsigned getNopId() const { return InstPool.size(); }
-  unsigned getMemAccessId(unsigned VL) const {
-    return InstPool.size() + VL - 2;
-  }
-
 public:
   PackingModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts,
                    unsigned MaxNumLanes = 8);
   PackDistribution forward(const Frontier *, Packer *, torch::Device,
                            unsigned NumIters);
+  unsigned getNopId() const { return InstPool.size(); }
+  unsigned getMemAccessId(unsigned VL) const {
+    return InstPool.size() + VL - 2;
+  }
+  llvm::ArrayRef<InstBinding *> getInstPool() const { return InstPool; }
 };
 
 TORCH_MODULE(PackingModel);
