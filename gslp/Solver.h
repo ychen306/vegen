@@ -224,6 +224,8 @@ class UCTSearch {
   Packer *Pkr;
 
   PackingPolicy *Policy;
+  // Cache policy prediction here.
+  llvm::DenseMap<UCTNode *, std::vector<float>> PredictionCache;
 
   // How we evaluate a leaf UCTNode (e.g., w/ a value network or rollout)
   FrontierEvaluator *Evaluator;

@@ -52,15 +52,13 @@ public:
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
                             llvm::TargetTransformInfo *TTI) const;
 
+  // TODO: clean this up...
   OperandPack *getCanonicalOperandPack(OperandPack OP) const {
-    if (OP.empty())
-      abort();
-    decltype(OperandCache)::iterator It;
-    bool Inserted;
-    std::tie(It, Inserted) = OperandCache.try_emplace(OP, nullptr);
-    if (Inserted)
-      It->second = std::make_unique<OperandPack>(OP);
-    return It->second.get();
+    auto It = OperandCache.find(OP);
+    if (It != OperandCache.end())
+      return It->second.get();
+    auto NewOP = std::make_unique<OperandPack>(OP);
+    return (OperandCache[*NewOP] = std::move(NewOP)).get();
   }
 
   llvm::Value *getScalar(unsigned Id) const {

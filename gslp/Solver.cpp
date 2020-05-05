@@ -28,9 +28,10 @@ Instruction *Frontier::getNextFreeInst() const {
 
 namespace {
 
+// Remove elements indexed by `ToRemove`, which is sorted in increasing order.
 template <typename T>
 void remove(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
-  for (unsigned i : ToRemove) {
+  for (unsigned i : make_range(ToRemove.rbegin(), ToRemove.rend())) {
     std::swap(X[i], X.back());
     X.pop_back();
   }
@@ -587,16 +588,16 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Pkr,
 }
 
 // Do one iteration of MCTS
-void UCTSearch::run(UCTNode *Root, unsigned Iter) {
+void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
   struct FullTransition {
     UCTNode *Parent;
     UCTNode::Transition *T;
   };
 
   std::vector<FullTransition> Path;
-  std::vector<float> Weight; // Weights given by a prior policy
-  while (Iter--) {
-    errs() << "!!! " << Iter << '\n';
+  // Transition weight given by some prior predictor (i.e., the apprentice)
+  ArrayRef<float> Weight;
+  for (unsigned Iter = 0; Iter < NumIters; Iter++) {
     Path.clear();
 
     // ========= 1) Selection ==========
@@ -605,13 +606,14 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
       auto &Transitions = CurNode->transitions();
-      if (Policy)
-        Policy->predict(CurNode->getFrontier(), Transitions, Pkr, Weight);
+      bool HasPredictions = Policy && Transitions.size() > 1;
+      if (HasPredictions)
+        Weight = PredictionCache[CurNode];
 
       unsigned VisitCount = CurNode->visitCount();
       auto ScoreTransition = [&](unsigned i) -> float {
         float Score = Transitions[i].score(VisitCount, C);
-        if (Policy)
+        if (HasPredictions)
           Score += Weight[i];
         return Score;
       };
@@ -644,6 +646,11 @@ void UCTSearch::run(UCTNode *Root, unsigned Iter) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
       CurNode->expand(Factory, Pkr, &EnumCache, TTI);
+      auto &Transitions = CurNode->transitions();
+      // Bias future exploration on this node if there is a prior
+      if (Policy && Transitions.size() > 1)
+        Policy->predict(CurNode->getFrontier(), Transitions, Pkr,
+                        PredictionCache[CurNode]);
     }
 
     // ========= 4) Backpropagation ===========

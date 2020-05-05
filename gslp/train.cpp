@@ -205,7 +205,6 @@ int main(int argc, char **argv) {
   int NumEpochs = 100;
 
   RolloutEvaluator Evaluator;
-  UCTNodeFactory Factory;
   NeuralPackingPolicy Policy(Model, 8, Device);
 
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
@@ -214,6 +213,7 @@ int main(int argc, char **argv) {
         continue;
       errs() << "!!! " << Epoch << '\n';
       for (auto &BB : *Pkr->getFunction()) {
+        UCTNodeFactory Factory;
         UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
         UCTSearch MCTS(100/*exploration factor*/, &Factory, Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
         MCTS.run(Root, 100);

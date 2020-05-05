@@ -42,6 +42,8 @@ torch::Tensor NeuralPackingPolicy::predict(
 void NeuralPackingPolicy::predict(const Frontier *Frt,
                llvm::ArrayRef<UCTNode::Transition> Transitions, Packer *Pkr,
                std::vector<float> &Prob) {
+  Prob.resize(Transitions.size());
+  return;
   auto Predicted = predict(Frt, Transitions, Pkr);
   Prob = llvm::ArrayRef<float>(Predicted.data_ptr<float>(), Predicted.size(0)).vec();
 }
