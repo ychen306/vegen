@@ -46,31 +46,6 @@ class VectorPackSet;
 class LocalDependenceAnalysis;
 class MatchManager;
 
-struct PackDistributionDeprecated {
-  torch::Tensor OpProb;
-  std::vector<torch::Tensor> LaneProbs;
-
-  PackDistributionDeprecated(torch::Tensor OpProb,
-                             std::vector<torch::Tensor> LaneProbs)
-      : OpProb(OpProb), LaneProbs(LaneProbs) {}
-
-  PackSample sample(
-      const IRIndex &Index, llvm::Instruction *Focus,
-      const VectorPackSet &ExistingPacks, llvm::ArrayRef<InstBinding *> Insts,
-      llvm::DenseMap<llvm::BasicBlock *,
-                     std::unique_ptr<LocalDependenceAnalysis>> &LDAs,
-      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-          &LoadDAG,
-      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-          &StoreDAG,
-      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<VectorPackContext>>
-          &VPCtxs,
-      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
-      llvm::TargetTransformInfo *TTI) const;
-
-  torch::Tensor entropy() const;
-};
-
 struct PackDistribution {
   IRIndex Index;
   torch::Tensor OpProb;
@@ -121,37 +96,5 @@ public:
 };
 
 TORCH_MODULE(PackingModel);
-
-class PackModelImpl : public torch::nn::Module {
-  unsigned EmbSize;
-  llvm::ArrayRef<InstBinding *> Insts;
-
-  torch::nn::Embedding OpcodeEmb = nullptr;
-
-  torch::nn::GRUCell GRU = nullptr;
-  torch::nn::Linear StateToUserMsg = nullptr;
-  torch::nn::Linear StateToUseMsg1 = nullptr;
-  torch::nn::Linear StateToUseMsg2 = nullptr;
-  torch::nn::Linear StateToMemMsg = nullptr;
-  torch::nn::Linear StateToInst = nullptr;
-  torch::nn::Linear StateToEmb = nullptr;
-  torch::nn::Linear StateToNop = nullptr;
-  std::vector<torch::nn::Linear> StateToLaneEmbs;
-
-public:
-  PackModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts,
-                unsigned MaxNumLanes = 64);
-  PackDistributionDeprecated forward(
-      torch::Device &Device, const IRIndex &Index,
-      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-          &LoadDAG,
-      llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-          &StoreDAG,
-      unsigned NumIters = 8);
-};
-
-TORCH_MODULE(PackModel);
-
-void loadModel(PackModel &PackModel, std::string ModelPath);
 
 #endif // IR_MODEL_H

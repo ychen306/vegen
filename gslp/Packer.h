@@ -1,12 +1,12 @@
 #ifndef PACKER_H
 #define PACKER_H
 
-#include "IRModel.h"
 #include "InstSema.h"
 #include "LocalDependenceAnalysis.h"
 #include "MatchManager.h"
 #include "Util.h"
 #include "VectorPackContext.h"
+#include "VectorPackSet.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -74,7 +74,6 @@ class Packer {
 
   llvm::TargetTransformInfo *TTI;
   llvm::BlockFrequencyInfo *BFI;
-  IRIndex Index;
 
   // First find out if which vector instruction we can emit.
   // E.g. sometimes there is simply no `fadd` in a basic block..
@@ -98,18 +97,6 @@ public:
 
   float evalSeedPacks(const VectorPackSet &Packs, unsigned Alpha = 4);
 
-  PackSample samplePackForInst(llvm::Instruction *I,
-                               VectorPackSet &ExistingPacks,
-                               PackDistributionDeprecated &PackDistr) {
-    return PackDistr.sample(Index, I, ExistingPacks, SupportedInsts, LDAs,
-                            LoadDAGs, StoreDAGs, VPCtxs, MMs, TTI);
-  }
-
-  PackDistributionDeprecated runModel(torch::Device Device, PackModel &Model,
-                            int NumIters = 8) {
-    return Model->forward(Device, Index, LoadDAGs, StoreDAGs, NumIters);
-  }
-
   llvm::ArrayRef<InstBinding *> getInsts() const { return SupportedInsts; }
 
   MatchManager &getMatchManager(llvm::BasicBlock *BB) { return *MMs[BB]; }
@@ -125,16 +112,15 @@ public:
   llvm::Function *getFunction() const { return F; }
 };
 
-
 // Check if `I` is independent from things in `Elements`, which depends on
 // `Depended`.
 static inline bool checkIndependence(const LocalDependenceAnalysis &LDA,
-                       const VectorPackContext &VPCtx, llvm::Instruction *I,
-                       const llvm::BitVector &Elements,
-                       const llvm::BitVector &Depended) {
+                                     const VectorPackContext &VPCtx,
+                                     llvm::Instruction *I,
+                                     const llvm::BitVector &Elements,
+                                     const llvm::BitVector &Depended) {
   unsigned Id = VPCtx.getScalarId(I);
-  return !Elements.test(Id) && 
-         !Depended.test(Id) &&
+  return !Elements.test(Id) && !Depended.test(Id) &&
          !Elements.anyCommon(LDA.getDepended(I));
 }
 

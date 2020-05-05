@@ -70,10 +70,6 @@ public:
 
 std::vector<std::unique_ptr<Packer>> PackerBuilder::Packers = {};
 
-static void saveModel(PackModel &Model, std::string ModelPath) {
-  torch::save(Model, ModelPath);
-}
-
 static IRInstTable VecBindingTable;
 
 bool PackerBuilder::runOnFunction(llvm::Function &F) {
@@ -98,31 +94,6 @@ INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(PackerBuilder, "pic", "pic", false, false)
-
-static float trainOnPacker(torch::Device Device, PackModel &Model,
-                           Packer &Packer, std::vector<torch::Tensor> &Losses,
-                           int SamplesPerInst = 8) {
-  auto PackDistr = Packer.runModel(Device, Model, 8);
-  auto Entropy = PackDistr.entropy();
-  auto *F = Packer.getFunction();
-  float TotalCost = 0;
-  int NumSamples = 0;
-  for (auto &I : make_range(inst_begin(*F), inst_end(*F))) {
-    for (int i = 0; i < SamplesPerInst; i++) {
-      VectorPackSet Packs(F);
-      PackSample PS = Packer.samplePackForInst(&I, Packs, PackDistr);
-      if (PS.VP)
-        Packs.tryAdd(PS.VP);
-      float Cost = Packer.evalSeedPacks(Packs, 4);
-      TotalCost += Cost;
-      // Ensure exploration by pumping up entropy
-      Losses.push_back(PS.LogProb * Cost - Entropy * 0.1);
-      NumSamples += SamplesPerInst;
-    }
-  }
-
-  return TotalCost;
-}
 
 int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);

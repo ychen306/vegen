@@ -1,4 +1,3 @@
-#include "IRModel.h" // NOTE: this file has to be included first because of namespace conflict with libtorch
 #include "IRVec.h"
 #include "InstSema.h"
 #include "LocalDependenceAnalysis.h"
@@ -594,27 +593,10 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   return false;
 
-  // FIXME: make sure ths supported insts we are using here syncs up with the
-  // model
-  PackModel Model(32, SupportedInsts);
-  loadModel(Model, ModelPath);
-
-  auto PackDistr = Packer.runModel(torch::Device(torch::kCPU), Model, 8);
-
   // Sample Seed packs and evaluate their qualities
   std::map<const VectorPack *, float> SeedPacks;
   VectorPackSet EmptyPackSet(&F);
 
-#if 1
-  for (auto &I : make_range(inst_begin(F), inst_end(F))) {
-    for (int i = 0; i < 16; i++) {
-      auto *VP = Packer.samplePackForInst(&I, EmptyPackSet, PackDistr).VP;
-      if (!VP || SeedPacks.count(VP))
-        continue;
-      SeedPacks[VP] = EvalSeedPack(*VP);
-    }
-  }
-#else
   for (auto &BB : F) {
     // if (BB.getName() != "for.body7.i.i")
     //  continue;
@@ -630,7 +612,6 @@ bool GSLP::runOnFunction(llvm::Function &F) {
       SeedPacks[VP] = EvalSeedPack(*VP);
     }
   }
-#endif
 
   std::vector<const VectorPack *> ProfitableSeedPacks;
   for (auto &VPAndCost : SeedPacks)
