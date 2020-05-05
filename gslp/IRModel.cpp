@@ -678,7 +678,7 @@ PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
       buildRightMemRefGraph(Index, LoadDAG, StoreDAG).to(Device);
   auto IndependenceGraph = buildIndependenceGraph(Frt, Pkr, Index).to(Device);
 
-  auto InvUnresolvedGraph = buildInverseUnresolvedUseGraph(Frt, Pkr, Index);
+  auto InvUnresolvedGraph = buildInverseUnresolvedUseGraph(Frt, Pkr, Index).to(Device);
   std::vector<torch::Tensor> UnresolvedUseGraphs =
       buildUnresolvedUseGraphs(Frt, Pkr, Index, MaxNumLanes);
   for (auto &G : UnresolvedUseGraphs)
