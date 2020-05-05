@@ -678,12 +678,12 @@ PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
       buildRightMemRefGraph(Index, LoadDAG, StoreDAG).to(Device);
   auto IndependenceGraph = buildIndependenceGraph(Frt, Pkr, Index).to(Device);
 
-  auto InvUnresolvedGraph = buildInverseUnresolvedUseGraph(Frt, Pkr, Index).to(Device);
+  auto InvUnresolvedGraph =
+      buildInverseUnresolvedUseGraph(Frt, Pkr, Index).to(Device);
   std::vector<torch::Tensor> UnresolvedUseGraphs =
       buildUnresolvedUseGraphs(Frt, Pkr, Index, MaxNumLanes);
   for (auto &G : UnresolvedUseGraphs)
     G = G.to(Device);
-
 
   unsigned N = Index.getNumValues();
   unsigned NumUnresolvedUses =
@@ -709,7 +709,8 @@ PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
     auto RightMemMsg = torch::mm(RightMemRefGraph, MemMsg);
     auto Independent =
         torch::mm(IndependenceGraph, StateToIndependentMsg(H_value));
-    auto Unresolved = torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use));
+    auto Unresolved =
+        torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use));
     return torch::cat(
         {Msg1, Msg2, LeftMemMsg, RightMemMsg, Independent, Unresolved},
         1 /*dim*/);
