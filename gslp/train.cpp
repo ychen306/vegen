@@ -1,8 +1,8 @@
 #include "IRModel.h"
 #include "IRVec.h"
 #include "Packer.h"
-#include "Solver.h"
 #include "Policy.h"
+#include "Solver.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -17,8 +17,8 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Timer.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
@@ -32,16 +32,17 @@ static cl::opt<std::string>
                  cl::value_desc("output model path"), cl::init("pack.pt"));
 
 static cl::opt<std::string>
-  InitModelPath("init", cl::desc("Specify a file path to initialize the model"),
-      cl::value_desc("init model path"), cl::init(""));
+    InitModelPath("init",
+                  cl::desc("Specify a file path to initialize the model"),
+                  cl::value_desc("init model path"), cl::init(""));
 
 static cl::opt<unsigned>
     EmbeddingSize("emb-size", cl::desc("Specify size of the embedding"),
                   cl::value_desc("model embedding sizes"), cl::init(32));
 
-static cl::opt<float>
-  LearningRate("lr", cl::desc("Specify learning rate"),
-      cl::value_desc("learning rate"), cl::init(1e-3));
+static cl::opt<float> LearningRate("lr", cl::desc("Specify learning rate"),
+                                   cl::value_desc("learning rate"),
+                                   cl::init(1e-3));
 
 namespace llvm {
 void initializePackerBuilderPass(PassRegistry &);
@@ -159,9 +160,10 @@ int main(int argc, char **argv) {
         for (auto &F : *M) {
           if (F.empty())
             continue;
-          //F.addFnAttr(
-              //"target-features", "+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-waitpkg,-wbnoinvd,-xop");
-          //F.addFnAttr("target-cpu", "skylake");
+          // F.addFnAttr(
+          //"target-features",
+          //"+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-waitpkg,-wbnoinvd,-xop");
+          // F.addFnAttr("target-cpu", "skylake");
         }
         Modules.push_back(std::move(M));
       }
@@ -180,7 +182,7 @@ int main(int argc, char **argv) {
   Passes.add(new PackerBuilder());
 
   PackingModel Model(EmbeddingSize, VecBindingTable.getBindings(), 8);
-  //if (!InitModelPath.empty()) {
+  // if (!InitModelPath.empty()) {
   //  errs() << "Initializing model using " << InitModelPath << '\n';
   //  loadModel(Model, InitModelPath);
   //}
@@ -201,7 +203,7 @@ int main(int argc, char **argv) {
   errs() << "Num packers: " << PackerBuilder::Packers.size() << '\n';
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
          << '\n';
-  
+
   int NumEpochs = 100;
 
   RolloutEvaluator Evaluator;
@@ -214,8 +216,11 @@ int main(int argc, char **argv) {
       errs() << "!!! " << Epoch << '\n';
       for (auto &BB : *Pkr->getFunction()) {
         UCTNodeFactory Factory;
-        UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
-        UCTSearch MCTS(100/*exploration factor*/, &Factory, Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
+        UCTNode *Root = Factory.getNode(
+            std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
+        UCTSearch MCTS(100 /*exploration factor*/,
+                       100 /*how much we trust the policy*/, &Factory,
+                       Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
         MCTS.run(Root, 100);
       }
     }

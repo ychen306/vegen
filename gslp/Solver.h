@@ -152,6 +152,8 @@ public:
 
     float visited() const { return Count > 0; }
 
+    unsigned visitCount() const { return Count; }
+
     // Average Q value
     float avgCost() const { return Cost + Next->avgCost(); }
 
@@ -217,8 +219,10 @@ struct PackingPolicy {
 };
 
 class UCTSearch {
-  // The exploration factor in UCT
+  // Controlling how much we explore.
   float C;
+  // Controlling how much we trust the policy bias.
+  float W;
 
   UCTNodeFactory *Factory;
   Packer *Pkr;
@@ -233,10 +237,10 @@ class UCTSearch {
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, UCTNodeFactory *Factory, Packer *Pkr,
+  UCTSearch(float C, float W, UCTNodeFactory *Factory, Packer *Pkr,
             PackingPolicy *Policy, FrontierEvaluator *Evaluator,
             llvm::TargetTransformInfo *TTI)
-      : C(C), Factory(Factory), Pkr(Pkr), Policy(Policy), Evaluator(Evaluator),
+      : C(C), W(W), Factory(Factory), Pkr(Pkr), Policy(Policy), Evaluator(Evaluator),
         TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
