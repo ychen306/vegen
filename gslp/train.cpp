@@ -213,15 +213,24 @@ int main(int argc, char **argv) {
     for (auto &Pkr : PackerBuilder::Packers) {
       if (Pkr->getFunction()->getName() != "binvcrhs")
         continue;
-      errs() << "!!! " << Epoch << '\n';
       for (auto &BB : *Pkr->getFunction()) {
         UCTNodeFactory Factory;
         UCTNode *Root = Factory.getNode(
             std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
         UCTSearch MCTS(100 /*exploration factor*/,
-                       100 /*how much we trust the policy*/, &Factory,
-                       Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
-        MCTS.run(Root, 100);
+            100 /*how much we trust the policy*/, &Factory,
+            Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
+        Timer T("mcts", "time takes to run 10 iter of MCTS");
+
+        T.startTimer();
+
+        MCTS.run(Root, 10);
+
+        T.stopTimer();
+
+        auto Elapsed = T.getTotalTime();
+        Elapsed.print(Elapsed, errs());
+        return 0;
       }
     }
   }
