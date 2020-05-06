@@ -394,10 +394,6 @@ static torch::Tensor getValueTypes(llvm::ArrayRef<IRIndex> Indexes) {
       .clone();
 }
 
-static torch::Tensor getValueTypes(const IRIndex &Index) {
-  return getValueTypes(llvm::ArrayRef<IRIndex>(&Index, 1));
-}
-
 PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                    llvm::ArrayRef<InstBinding *> InstPool,
                                    unsigned MaxNumLanes)
