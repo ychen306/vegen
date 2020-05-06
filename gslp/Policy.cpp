@@ -16,7 +16,6 @@ torch::Tensor NeuralPackingPolicy::predict(
     const Frontier *Frt, llvm::ArrayRef<UCTNode::Transition> Transitions,
     Packer *Pkr) {
   PackDistribution PD = Model->forward(Frt, Pkr, Device, NumIters);
-  return torch::zeros({(long long)Transitions.size()});
 
   std::vector<torch::Tensor> Prob;
   auto *Focus = Frt->getNextFreeInst();

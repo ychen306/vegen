@@ -495,6 +495,8 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     return torch::cat(Messages, 1 /*dim*/);
   };
 
+  auto Zeros = torch::zeros({EmbSize}).to(Device);
+
   // Pass message from values and unresolved uses to values themselves
   auto SendToValues = [&](torch::Tensor H_value,
                           torch::Tensor H_use) -> torch::Tensor {
@@ -506,14 +508,16 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     auto Independent =
         torch::mm(IndependenceGraph, StateToIndependentMsg(H_value));
     auto Unresolved =
-        torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use));
+        NumUnresolvedUses ? torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use))
+        : Zeros;
     return torch::cat(
         {Msg1, Msg2, LeftMemMsg, RightMemMsg, Independent, Unresolved},
         1 /*dim*/);
   };
 
   for (unsigned i = 0; i < NumIters; i++) {
-    H_use = UseGRU->forward(SendToUses(H_value), H_use);
+    if (NumUnresolvedUses)
+      H_use = UseGRU->forward(SendToUses(H_value), H_use);
     H_value = ValueGRU->forward(SendToValues(H_value, H_use), H_value);
   }
 
