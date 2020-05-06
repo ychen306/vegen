@@ -155,22 +155,6 @@ IRIndex::IRIndex(const Frontier *Frt) {
   }
 }
 
-// u->v === v using u
-static torch::Tensor buildInvUseGraph(const IRIndex &Index) {
-  std::vector<DiEdge> Edges;
-  unsigned N = Index.getNumValues();
-  for (unsigned i = 0; i < N; i++) {
-    auto *V = Index.get(i);
-    auto *I = dyn_cast<Instruction>(V);
-    if (!I)
-      continue;
-    for (Value *Operand : I->operands())
-      // Value -> user
-      Edges.emplace_back(Index.getValueId(Operand), Index.getValueId(I));
-  }
-  return buildAdjacencyMat(Edges, N);
-}
-
 // u->v === u using v
 static torch::Tensor buildUseGraph1(const IRIndex &Index) {
   std::vector<DiEdge> Edges;
