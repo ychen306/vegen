@@ -521,23 +521,22 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
   auto OpProb = StateToOpcode->forward(H_value);
   std::vector<torch::Tensor> LaneProbs;
   auto Emb = StateToEmb->forward(H_value);
-  for (auto &StateToLaneEmb : StateToLaneEmbs)
-    LaneProbs.push_back(
-        StateToLaneEmb->forward(H_value).mm(Emb.t()).softmax(1 /*dim*/));
 
   // Unpack the probs
   std::vector<PackDistribution> PDs;
   unsigned Offset = 0;
   for (auto &Index : Indexes) {
     unsigned N = Index.getNumValues();
+    auto Slice = [Offset, N](torch::Tensor X) -> torch::Tensor {
+      return X.slice(0/*dim*/, Offset, Offset+N);
+    };
     PackDistribution PD(std::move(Index));
-    PD.OpProb = OpProb.slice(0/*dim*/, Offset, Offset+N);
-    for (auto LP : LaneProbs)
-      PD.LaneProbs.push_back(LP.slice(0/*dim*/, Offset, Offset+N));
+    PD.OpProb = Slice(OpProb);
+    for (auto &StateToLaneEmb : StateToLaneEmbs)
+      PD.LaneProbs.push_back(StateToLaneEmb->forward(Slice(H_value)).mm(Slice(Emb).t()).softmax(1 /*dim*/));
     Offset += N;
     PDs.push_back(std::move(PD));
   }
-
   return PDs;
 }
 
