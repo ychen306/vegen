@@ -89,10 +89,6 @@ torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
   return torch::sparse_coo_tensor(CooIndices,
                                   torch::ones({(int64_t)Edges.size()}), {N, M});
 }
-torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
-                                bool Flip = false) {
-  return buildAdjacencyMat(Edges, N, N, Flip);
-}
 
 template <typename OutStreamTy>
 void dumpShape(torch::Tensor X, OutStreamTy &Os) {
@@ -155,105 +151,250 @@ IRIndex::IRIndex(const Frontier *Frt) {
   }
 }
 
+class BatchedGraphBuilder {
+  unsigned N, M;
+  std::vector<DiEdge> Edges;
+protected:
+  void addEdge(unsigned U, unsigned V) {
+    Edges.emplace_back(U+N, V+M);
+  }
+  void finishBatch(unsigned NN, unsigned MM) {
+    N += NN;
+    M += MM;
+  }
+public:
+  BatchedGraphBuilder() : N(0), M(0) {}
+  torch::Tensor getBatched(bool Flip=false) const {
+    return buildAdjacencyMat(Edges, N, M, Flip);
+  }
+};
+
+struct BatchedUseGraph1 : public BatchedGraphBuilder {
+  void process(const IRIndex &Index) {
+    unsigned N = Index.getNumValues();
+    for (unsigned i = 0; i < N; i++) {
+      auto *V = Index.get(i);
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        continue;
+      if (I->getNumOperands() < 1)
+        continue;
+      addEdge(Index.getValueId(I), Index.getValueId(I->getOperand(0)));
+    }
+    finishBatch(N, N);
+  }
+};
+
+struct BatchedUseGraph2 : public BatchedGraphBuilder {
+  void process(const IRIndex &Index) {
+    unsigned N = Index.getNumValues();
+    for (unsigned i = 0; i < N; i++) {
+      auto *V = Index.get(i);
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        continue;
+      if (I->getNumOperands() < 1)
+        continue;
+      addEdge(Index.getValueId(I), Index.getValueId(I->getOperand(0)));
+    }
+    finishBatch(N, N);
+  }
+};
+
 // u->v === u using v
 static torch::Tensor buildUseGraph1(const IRIndex &Index) {
-  std::vector<DiEdge> Edges;
-  unsigned N = Index.getNumValues();
-  for (unsigned i = 0; i < N; i++) {
-    auto *V = Index.get(i);
-    auto *I = dyn_cast<Instruction>(V);
-    if (!I)
-      continue;
-    if (I->getNumOperands() < 1)
-      continue;
-    Edges.emplace_back(Index.getValueId(I), Index.getValueId(I->getOperand(0)));
-  }
-  return buildAdjacencyMat(Edges, N);
+  BatchedUseGraph1 B;
+  B.process(Index);
+  return B.getBatched();
 }
 
 // u->v === u using v
 static torch::Tensor buildUseGraph2(const IRIndex &Index) {
-  std::vector<DiEdge> Edges;
-  unsigned N = Index.getNumValues();
-  for (unsigned i = 0; i < N; i++) {
-    auto *V = Index.get(i);
-    auto *I = dyn_cast<Instruction>(V);
-    if (!I || isa<LoadInst>(I))
-      continue;
-    if (I->getNumOperands() < 2)
-      continue;
-    Edges.emplace_back(Index.getValueId(I), Index.getValueId(I->getOperand(1)));
-  }
-  return buildAdjacencyMat(Edges, N);
+  BatchedUseGraph2 B;
+  B.process(Index);
+  return B.getBatched();
 }
 
-static void getEdges(std::vector<DiEdge> &Edges, const IRIndex &Index,
-                     ConsecutiveAccessDAG &AccessDAG) {
-  for (auto &LeftAndRights : AccessDAG) {
-    auto *Left = LeftAndRights.first;
-    auto &Rights = LeftAndRights.second;
-    unsigned LeftId = Index.getValueId(Left);
-    for (auto *Right : Rights) {
-      unsigned RightId = Index.getValueId(Right);
-      Edges.emplace_back(LeftId, RightId);
+
+class BatchedMemRefGraph : public BatchedGraphBuilder {
+  void getEdges(const IRIndex &Index, ConsecutiveAccessDAG &AccessDAG) {
+    for (auto &LeftAndRights : AccessDAG) {
+      auto *Left = LeftAndRights.first;
+      auto &Rights = LeftAndRights.second;
+      unsigned LeftId = Index.getValueId(Left);
+      for (auto *Right : Rights) {
+        unsigned RightId = Index.getValueId(Right);
+        addEdge(LeftId, RightId);
+      }
     }
   }
-}
-
-// Having edge uv means u if to the left of v (u and v are mem refs)
-static torch::Tensor buildRightMemRefGraph(
-    const IRIndex &Index,
-    DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &LoadDAGs,
-    DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>> &StoreDAGs) {
-  std::vector<DiEdge> Edges;
-  for (auto &KV : LoadDAGs)
-    getEdges(Edges, Index, *KV.second);
-  for (auto &KV : StoreDAGs)
-    getEdges(Edges, Index, *KV.second);
-  return buildAdjacencyMat(Edges, Index.getNumValues());
-}
-
-// Having edge uv means u if to the right of v (u and v are mem refs)
-static torch::Tensor buildLeftMemRefGraph(
-    const IRIndex &Index,
-    llvm::DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-        &LoadDAGs,
-    llvm::DenseMap<BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-        &StoreDAGs) {
-  std::vector<DiEdge> Edges;
-  for (auto &KV : LoadDAGs)
-    getEdges(Edges, Index, *KV.second);
-  for (auto &KV : StoreDAGs)
-    getEdges(Edges, Index, *KV.second);
-  return buildAdjacencyMat(Edges, Index.getNumValues(), true /*flip*/);
-}
+public:
+  void process(const IRIndex &Index,
+      ConsecutiveAccessDAG &LoadDAG,
+      ConsecutiveAccessDAG &StoreDAG) {
+    getEdges(Index, LoadDAG);
+    getEdges(Index, StoreDAG);
+    unsigned N = Index.getNumValues();
+    finishBatch(N, N);
+  }
+};
 
 // Having edge uv means u if to the left of v (u and v are mem refs)
 static torch::Tensor buildRightMemRefGraph(const IRIndex &Index,
                                            ConsecutiveAccessDAG &LoadDAG,
                                            ConsecutiveAccessDAG &StoreDAG) {
-  std::vector<DiEdge> Edges;
-  getEdges(Edges, Index, LoadDAG);
-  getEdges(Edges, Index, StoreDAG);
-  return buildAdjacencyMat(Edges, Index.getNumValues());
+  BatchedMemRefGraph B;
+  B.process(Index, LoadDAG, StoreDAG);
+  return B.getBatched();
 }
 
 // Having edge uv means u if to the right of v (u and v are mem refs)
 static torch::Tensor buildLeftMemRefGraph(const IRIndex &Index,
                                           ConsecutiveAccessDAG &LoadDAG,
                                           ConsecutiveAccessDAG &StoreDAG) {
-  std::vector<DiEdge> Edges;
-  getEdges(Edges, Index, LoadDAG);
-  getEdges(Edges, Index, StoreDAG);
-  return buildAdjacencyMat(Edges, Index.getNumValues(), true /*flip*/);
+  BatchedMemRefGraph B;
+  B.process(Index, LoadDAG, StoreDAG);
+  return B.getBatched(false);
+}
+
+struct BatchedIndependenceGraph : public BatchedGraphBuilder {
+  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+    auto *BB = Frt->getBasicBlock();
+    auto *VPCtx = Pkr->getContext(BB);
+    auto &LDA = Pkr->getLDA(BB);
+
+    for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
+      if (!Frt->isFree(&*I))
+        continue;
+      unsigned i = VPCtx->getScalarId(&*I);
+      auto &Depended = LDA.getDepended(&*I);
+      for (auto J = std::next(I); J != E; ++J) {
+        if (!Frt->isFree(&*J))
+          continue;
+        unsigned j = VPCtx->getScalarId(&*J);
+        if (Depended.test(j))
+          continue;
+        if (LDA.getDepended(&*J).test(i))
+          continue;
+
+        addEdge(Index.getValueId(&*I), Index.getValueId(&*J));
+        addEdge(Index.getValueId(&*J), Index.getValueId(&*I));
+      }
+    }
+    unsigned N = Index.getNumValues();
+    finishBatch(N, N);
+  }
+};
+
+static torch::Tensor buildIndependenceGraph(const Frontier *Frt, Packer *Pkr,
+                                            IRIndex &Index) {
+  BatchedIndependenceGraph B;
+  B.process(Frt, Pkr, Index);
+  return B.getBatched();
+}
+
+class BatchedUnresolvedUseGraph : public BatchedGraphBuilder {
+  unsigned LaneId;
+public:
+  BatchedUnresolvedUseGraph(unsigned LaneId) : LaneId(LaneId) {}
+  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+    BasicBlock *BB = Frt->getBasicBlock();
+    llvm::ArrayRef<const OperandPack *> UnresolvedPacks =
+      Frt->getUnresolvedPacks();
+
+    // Include unresolved vector uses
+    for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
+      const OperandPack &OP = *UnresolvedPacks[i];
+      if (LaneId >= OP.size())
+        continue;
+      auto *V = OP[LaneId];
+      auto *I = dyn_cast<Instruction>(V);
+      // Skip `I` is frozen (and therefore resolved)
+      if (!I || I->getParent() != BB || !Frt->isFree(I))
+        continue;
+      addEdge(i, Index.getValueId(I));
+    }
+
+    if (LaneId == 0) {
+      unsigned i = UnresolvedPacks.size();
+      // Include unresolved scalar uses
+      for (auto *V : Frt->getUnresolvedScalars()) {
+        // Pretend scalar uses are degenerate vector use
+        // and assign them to the first lane.
+        addEdge(i++, Index.getValueId(V));
+      }
+    }
+
+    unsigned NumUnresolvedUses = UnresolvedPacks.size() + Frt->numUnresolvedScalars();
+    finishBatch(NumUnresolvedUses, Index.getNumValues());
+  }
+};
+
+// uv means u uses v at some lane
+static std::vector<torch::Tensor>
+buildUnresolvedUseGraphs(const Frontier *Frt, Packer *Pkr, IRIndex &Index,
+                         unsigned MaxNumLanes) {
+  std::vector<torch::Tensor> Graphs;
+  for (unsigned i = 0; i < MaxNumLanes; i++) {
+    BatchedUnresolvedUseGraph B(i);
+    B.process(Frt, Pkr, Index);
+    Graphs.push_back(B.getBatched());
+  }
+  return Graphs;
+}
+
+struct BatchedInverseUnresolvedUseGraph : public BatchedGraphBuilder {
+  void process(const Frontier *Frt,
+                                                    Packer *Pkr,
+                                                    IRIndex &Index) {
+    BasicBlock *BB = Frt->getBasicBlock();
+    auto UnresolvedPacks = Frt->getUnresolvedPacks();
+    // Include unresolved vector uses
+    for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
+      const OperandPack &OP = *UnresolvedPacks[i];
+      for (auto *V : OP) {
+        auto *I = dyn_cast<Instruction>(V);
+        // Skip `I` is frozen (and therefore resolved)
+        if (!I || I->getParent() != BB || !Frt->isFree(I))
+          continue;
+        addEdge(Index.getValueId(I), i);
+      }
+    }
+
+    unsigned i = UnresolvedPacks.size();
+    // Include unresolved scalar uses
+    for (auto *V : Frt->getUnresolvedScalars()) {
+      // Pretend scalar uses are degenerate vector use
+      // and assign them to the first lane.
+      addEdge(Index.getValueId(V), i++);
+    }
+
+    unsigned NumUnresolvedUses = i;
+    finishBatch(Index.getNumValues(), NumUnresolvedUses);
+  }
+};
+
+// uv means u is *used by* v
+static torch::Tensor buildInverseUnresolvedUseGraph(const Frontier *Frt,
+                                                    Packer *Pkr,
+                                                    IRIndex &Index) {
+  BatchedInverseUnresolvedUseGraph B;
+  B.process(Frt, Pkr, Index);
+  return B.getBatched();
+}
+
+static torch::Tensor getValueTypes(llvm::ArrayRef<IRIndex> Indexes) {
+  std::vector<int64_t> ValueTypes;
+  for (auto &Index : Indexes) {
+    unsigned N = Index.getNumValues();
+    for (unsigned i = 0; i < N; i++)
+      ValueTypes.push_back(OpTable.getValueTypeId(Index.get(i)));
+  }
+  return torch::from_blob(ValueTypes.data(), {(int64_t)ValueTypes.size()}, torch::TensorOptions().dtype(torch::kInt64)).clone();
 }
 
 static torch::Tensor getValueTypes(const IRIndex &Index) {
-  unsigned N = Index.getNumValues();
-  auto ValueTypes = torch::empty({N}, TensorOptions().dtype(torch::kInt64));
-  for (unsigned i = 0; i < N; i++)
-    ValueTypes[i] = (int64_t)OpTable.getValueTypeId(Index.get(i));
-  return ValueTypes;
+  return getValueTypes(llvm::ArrayRef<IRIndex>(&Index, 1));
 }
 
 PackingModelImpl::PackingModelImpl(unsigned EmbSize,
@@ -295,105 +436,6 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
       "value_gru", nn::GRUCell(nn::GRUCellOptions(EmbSize * 6, EmbSize)));
   UseGRU = register_module("use_gru", nn::GRUCell(nn::GRUCellOptions(
                                           EmbSize * MaxNumLanes, EmbSize)));
-}
-
-static torch::Tensor buildIndependenceGraph(const Frontier *Frt, Packer *Pkr,
-                                            IRIndex &Index) {
-  auto *BB = Frt->getBasicBlock();
-  auto *VPCtx = Pkr->getContext(BB);
-  auto &LDA = Pkr->getLDA(BB);
-
-  std::vector<DiEdge> Edges;
-
-  for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
-    if (!Frt->isFree(&*I))
-      continue;
-    unsigned i = VPCtx->getScalarId(&*I);
-    auto &Depended = LDA.getDepended(&*I);
-    for (auto J = std::next(I); J != E; ++J) {
-      if (!Frt->isFree(&*J))
-        continue;
-      unsigned j = VPCtx->getScalarId(&*J);
-      if (Depended.test(j))
-        continue;
-      if (LDA.getDepended(&*J).test(i))
-        continue;
-
-      Edges.emplace_back(Index.getValueId(&*I), Index.getValueId(&*J));
-      Edges.emplace_back(Index.getValueId(&*J), Index.getValueId(&*I));
-    }
-  }
-  return buildAdjacencyMat(Edges, Index.getNumValues());
-}
-
-// uv means u uses v at some lane
-static std::vector<torch::Tensor>
-buildUnresolvedUseGraphs(const Frontier *Frt, Packer *Pkr, IRIndex &Index,
-                         unsigned MaxNumLanes) {
-  BasicBlock *BB = Frt->getBasicBlock();
-  llvm::ArrayRef<const OperandPack *> UnresolvedPacks =
-      Frt->getUnresolvedPacks();
-  std::vector<std::vector<DiEdge>> Edges(MaxNumLanes);
-
-  // Include unresolved vector uses
-  for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
-    const OperandPack &OP = *UnresolvedPacks[i];
-    for (unsigned j = 0; j < OP.size(); j++) {
-      Value *V = OP[j];
-      auto *I = dyn_cast<Instruction>(V);
-      // Skip `I` is frozen (and therefore resolved)
-      if (!I || I->getParent() != BB || !Frt->isFree(I))
-        continue;
-      Edges[j].emplace_back(i, Index.getValueId(I));
-    }
-  }
-
-  unsigned i = UnresolvedPacks.size();
-  // Include unresolved scalar uses
-  for (auto *V : Frt->getUnresolvedScalars()) {
-    // Pretend scalar uses are degenerate vector use
-    // and assign them to the first lane.
-    Edges[0].emplace_back(i++, Index.getValueId(V));
-  }
-
-  unsigned NumUnresolvedUses = i;
-
-  std::vector<torch::Tensor> Graphs;
-  for (auto &E : Edges)
-    Graphs.push_back(
-        buildAdjacencyMat(E, NumUnresolvedUses, Index.getNumValues()));
-  return Graphs;
-}
-
-// uv means u is *used by* v
-static torch::Tensor buildInverseUnresolvedUseGraph(const Frontier *Frt,
-                                                    Packer *Pkr,
-                                                    IRIndex &Index) {
-  BasicBlock *BB = Frt->getBasicBlock();
-  auto UnresolvedPacks = Frt->getUnresolvedPacks();
-  std::vector<DiEdge> Edges;
-  // Include unresolved vector uses
-  for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
-    const OperandPack &OP = *UnresolvedPacks[i];
-    for (auto *V : OP) {
-      auto *I = dyn_cast<Instruction>(V);
-      // Skip `I` is frozen (and therefore resolved)
-      if (!I || I->getParent() != BB || !Frt->isFree(I))
-        continue;
-      Edges.emplace_back(Index.getValueId(I), i);
-    }
-  }
-
-  unsigned i = UnresolvedPacks.size();
-  // Include unresolved scalar uses
-  for (auto *V : Frt->getUnresolvedScalars()) {
-    // Pretend scalar uses are degenerate vector use
-    // and assign them to the first lane.
-    Edges.emplace_back(Index.getValueId(V), i++);
-  }
-
-  unsigned NumUnresolvedUses = i;
-  return buildAdjacencyMat(Edges, Index.getNumValues(), NumUnresolvedUses);
 }
 
 PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
