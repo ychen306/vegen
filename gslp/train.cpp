@@ -185,17 +185,23 @@ int main(int argc, char **argv) {
       if (Pkr->getFunction()->getName() != "binvcrhs")
         continue;
       for (auto &BB : *Pkr->getFunction()) {
-        UCTNodeFactory Factory;
-        UCTNode *Root = Factory.getNode(
-            std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
-        UCTSearch MCTS(100 /*exploration factor*/,
-            100 /*how much we trust the policy*/, &Factory,
-            Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
+        //UCTNodeFactory Factory;
+        //UCTNode *Root = Factory.getNode(
+        //    std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
+        //UCTSearch MCTS(100 /*exploration factor*/,
+        //    100 /*how much we trust the policy*/, &Factory,
+        //    Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
         Timer T("mcts", "time takes to run 10 iter of MCTS");
+
+        Frontier Frt(&BB, Pkr->getContext(&BB));
 
         T.startTimer();
 
-        MCTS.run(Root, 10);
+        //MCTS.run(Root, 10);
+        std::vector<const Frontier *> Frts(10, &Frt);
+        //for (unsigned i = 0; i < 10; i++)
+        //  Model->forward(&Frt, Pkr.get(), Device, 8);
+        Model->batch_forward(Frts, Pkr.get(), Device, 8);
 
         T.stopTimer();
 

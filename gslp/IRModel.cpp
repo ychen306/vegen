@@ -435,34 +435,57 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                           EmbSize * MaxNumLanes, EmbSize)));
 }
 
-PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
-                                           torch::Device Device,
-                                           unsigned NumIters) {
-  IRIndex Index(Frt);
-  BasicBlock *BB = Frt->getBasicBlock();
-  auto &LoadDAG = Pkr->getLoadDAG(BB);
-  auto &StoreDAG = Pkr->getStoreDAG(BB);
+std::vector<PackDistribution>
+PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
+                          Packer *Pkr, torch::Device Device,
+                          unsigned NumIters) {
+  unsigned N = 0, NumUnresolvedUses = 0;
+  std::vector<IRIndex> Indexes;
+  BatchedUseGraph1 UseGraph1Builder;
+  BatchedUseGraph2 UseGraph2Builder;
+  BatchedMemRefGraph MemRefGraphBuilder;
+  BatchedIndependenceGraph IndependenceGraphBuilder;
+  std::vector<BatchedUnresolvedUseGraph> UnresolvedGraphBuilders;
+  BatchedInverseUnresolvedUseGraph InvUnresolvedGraphBuilder;
 
-  auto UseGraph1 = buildUseGraph1(Index).to(Device);
-  auto UseGraph2 = buildUseGraph2(Index).to(Device);
-  auto LeftMemRefGraph =
-      buildLeftMemRefGraph(Index, LoadDAG, StoreDAG).to(Device);
-  auto RightMemRefGraph =
-      buildRightMemRefGraph(Index, LoadDAG, StoreDAG).to(Device);
-  auto IndependenceGraph = buildIndependenceGraph(Frt, Pkr, Index).to(Device);
+  for (unsigned i = 0; i < MaxNumLanes; i++)
+    UnresolvedGraphBuilders.emplace_back(i);
 
-  auto InvUnresolvedGraph =
-      buildInverseUnresolvedUseGraph(Frt, Pkr, Index).to(Device);
-  std::vector<torch::Tensor> UnresolvedUseGraphs =
-      buildUnresolvedUseGraphs(Frt, Pkr, Index, MaxNumLanes);
-  for (auto &G : UnresolvedUseGraphs)
-    G = G.to(Device);
+  for (auto *Frt : Frontiers) {
+    IRIndex Index(Frt);
+    BasicBlock *BB = Frt->getBasicBlock();
+    auto &LoadDAG = Pkr->getLoadDAG(BB);
+    auto &StoreDAG = Pkr->getStoreDAG(BB);
 
-  unsigned N = Index.getNumValues();
-  unsigned NumUnresolvedUses =
+    UseGraph1Builder.process(Index);
+    UseGraph2Builder.process(Index);
+    MemRefGraphBuilder.process(Index, LoadDAG, StoreDAG);
+    IndependenceGraphBuilder.process(Frt, Pkr, Index);
+    InvUnresolvedGraphBuilder.process(Frt, Pkr, Index);
+    for (auto &B : UnresolvedGraphBuilders)
+      B.process(Frt, Pkr, Index);
+
+    N += Index.getNumValues();
+    NumUnresolvedUses +=
       Frt->getUnresolvedPacks().size() + Frt->numUnresolvedScalars();
+    Indexes.push_back(std::move(Index));
+  }
 
-  auto ValueTypes = getValueTypes(Index).to(Device);
+  auto UseGraph1 = UseGraph1Builder.getBatched().to(Device);
+  auto UseGraph2 = UseGraph2Builder.getBatched().to(Device);
+  auto LeftMemRefGraph = MemRefGraphBuilder.getBatched().to(Device);
+  auto RightMemRefGraph = MemRefGraphBuilder.getBatched(true/*flip*/).to(Device);
+  auto IndependenceGraph = IndependenceGraphBuilder.getBatched().to(Device);
+  auto InvUnresolvedGraph = InvUnresolvedGraphBuilder.getBatched().to(Device);
+  std::vector<torch::Tensor> UnresolvedUseGraphs;
+  for (auto &B : UnresolvedGraphBuilders)
+    UnresolvedUseGraphs.push_back(B.getBatched().to(Device));
+
+  auto ValueTypes = getValueTypes(Indexes).to(Device);
+
+  // Initialize the states
+  auto H_value = OpcodeEmb->forward(ValueTypes).view({N, EmbSize});
+  auto H_use = InitUse.repeat({NumUnresolvedUses, 1});
 
   // Pass message from values to unresolved uses
   auto SendToUses = [&](torch::Tensor H_value) -> torch::Tensor {
@@ -489,22 +512,36 @@ PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
         1 /*dim*/);
   };
 
-  // Initialize the states
-  auto H_value = OpcodeEmb->forward(ValueTypes).view({N, EmbSize});
-  auto H_use = InitUse.repeat({NumUnresolvedUses, 1});
-
   for (unsigned i = 0; i < NumIters; i++) {
     H_use = UseGRU->forward(SendToUses(H_value), H_use);
     H_value = ValueGRU->forward(SendToValues(H_value, H_use), H_value);
   }
 
-  PackDistribution PD(std::move(Index));
-  PD.OpProb = StateToOpcode->forward(H_value);
+  // Read out the probs in batch
+  auto OpProb = StateToOpcode->forward(H_value);
+  std::vector<torch::Tensor> LaneProbs;
   auto Emb = StateToEmb->forward(H_value);
-  for (auto &StateToLaneEmb : StateToLaneEmbs) {
-    PD.LaneProbs.push_back(
+  for (auto &StateToLaneEmb : StateToLaneEmbs)
+    LaneProbs.push_back(
         StateToLaneEmb->forward(H_value).mm(Emb.t()).softmax(1 /*dim*/));
+
+  // Unpack the probs
+  std::vector<PackDistribution> PDs;
+  unsigned Offset = 0;
+  for (auto &Index : Indexes) {
+    unsigned N = Index.getNumValues();
+    PackDistribution PD(std::move(Index));
+    PD.OpProb = OpProb.slice(0/*dim*/, Offset, Offset+N);
+    for (auto LP : LaneProbs)
+      PD.LaneProbs.push_back(LP.slice(0/*dim*/, Offset, Offset+N));
+    Offset += N;
+    PDs.push_back(std::move(PD));
   }
 
-  return PD;
+  return PDs;
+}
+
+PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr, torch::Device Device, unsigned NumIters) {
+  std::vector<PackDistribution> PDs = batch_forward(Frt, Pkr, Device, NumIters);
+  return std::move(PDs[0]);
 }
