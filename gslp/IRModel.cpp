@@ -495,7 +495,7 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     return torch::cat(Messages, 1 /*dim*/);
   };
 
-  auto Zeros = torch::zeros({EmbSize}).to(Device);
+  auto Zeros = torch::zeros({N, EmbSize}).to(Device);
 
   // Pass message from values and unresolved uses to values themselves
   auto SendToValues = [&](torch::Tensor H_value,
