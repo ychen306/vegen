@@ -154,17 +154,17 @@ IRIndex::IRIndex(const Frontier *Frt) {
 class BatchedGraphBuilder {
   unsigned N, M;
   std::vector<DiEdge> Edges;
+
 protected:
-  void addEdge(unsigned U, unsigned V) {
-    Edges.emplace_back(U+N, V+M);
-  }
+  void addEdge(unsigned U, unsigned V) { Edges.emplace_back(U + N, V + M); }
   void finishBatch(unsigned NN, unsigned MM) {
     N += NN;
     M += MM;
   }
+
 public:
   BatchedGraphBuilder() : N(0), M(0) {}
-  torch::Tensor getBatched(bool Flip=false) const {
+  torch::Tensor getBatched(bool Flip = false) const {
     return buildAdjacencyMat(Edges, N, M, Flip);
   }
 };
@@ -215,7 +215,6 @@ static torch::Tensor buildUseGraph2(const IRIndex &Index) {
   return B.getBatched();
 }
 
-
 class BatchedMemRefGraph : public BatchedGraphBuilder {
   void getEdges(const IRIndex &Index, ConsecutiveAccessDAG &AccessDAG) {
     for (auto &LeftAndRights : AccessDAG) {
@@ -228,10 +227,10 @@ class BatchedMemRefGraph : public BatchedGraphBuilder {
       }
     }
   }
+
 public:
-  void process(const IRIndex &Index,
-      ConsecutiveAccessDAG &LoadDAG,
-      ConsecutiveAccessDAG &StoreDAG) {
+  void process(const IRIndex &Index, ConsecutiveAccessDAG &LoadDAG,
+               ConsecutiveAccessDAG &StoreDAG) {
     getEdges(Index, LoadDAG);
     getEdges(Index, StoreDAG);
     unsigned N = Index.getNumValues();
@@ -295,12 +294,13 @@ static torch::Tensor buildIndependenceGraph(const Frontier *Frt, Packer *Pkr,
 
 class BatchedUnresolvedUseGraph : public BatchedGraphBuilder {
   unsigned LaneId;
+
 public:
   BatchedUnresolvedUseGraph(unsigned LaneId) : LaneId(LaneId) {}
   void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
     BasicBlock *BB = Frt->getBasicBlock();
     llvm::ArrayRef<const OperandPack *> UnresolvedPacks =
-      Frt->getUnresolvedPacks();
+        Frt->getUnresolvedPacks();
 
     // Include unresolved vector uses
     for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
@@ -325,7 +325,8 @@ public:
       }
     }
 
-    unsigned NumUnresolvedUses = UnresolvedPacks.size() + Frt->numUnresolvedScalars();
+    unsigned NumUnresolvedUses =
+        UnresolvedPacks.size() + Frt->numUnresolvedScalars();
     finishBatch(NumUnresolvedUses, Index.getNumValues());
   }
 };
@@ -344,9 +345,7 @@ buildUnresolvedUseGraphs(const Frontier *Frt, Packer *Pkr, IRIndex &Index,
 }
 
 struct BatchedInverseUnresolvedUseGraph : public BatchedGraphBuilder {
-  void process(const Frontier *Frt,
-                                                    Packer *Pkr,
-                                                    IRIndex &Index) {
+  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
     BasicBlock *BB = Frt->getBasicBlock();
     auto UnresolvedPacks = Frt->getUnresolvedPacks();
     // Include unresolved vector uses
@@ -390,7 +389,9 @@ static torch::Tensor getValueTypes(llvm::ArrayRef<IRIndex> Indexes) {
     for (unsigned i = 0; i < N; i++)
       ValueTypes.push_back(OpTable.getValueTypeId(Index.get(i)));
   }
-  return torch::from_blob(ValueTypes.data(), {(int64_t)ValueTypes.size()}, torch::TensorOptions().dtype(torch::kInt64)).clone();
+  return torch::from_blob(ValueTypes.data(), {(int64_t)ValueTypes.size()},
+                          torch::TensorOptions().dtype(torch::kInt64))
+      .clone();
 }
 
 static torch::Tensor getValueTypes(const IRIndex &Index) {
