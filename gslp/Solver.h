@@ -64,7 +64,7 @@ public:
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
   llvm::Instruction *getNextFreeInst() const;
-  llvm::BitVector getFreeInsts() const { return FreeInsts; }
+  const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
   nextAvailablePacks(Packer *, PackEnumerationCache *) const;
   bool isFree(llvm::Instruction *I) const {

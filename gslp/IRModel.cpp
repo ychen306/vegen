@@ -263,22 +263,19 @@ struct BatchedIndependenceGraph : public BatchedGraphBuilder {
     auto *VPCtx = Pkr->getContext(BB);
     auto &LDA = Pkr->getLDA(BB);
 
+    const BitVector &FreeInsts = Frt->getFreeInsts();
+
     for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
       if (!Frt->isFree(&*I))
         continue;
-      unsigned i = VPCtx->getScalarId(&*I);
-      auto &Depended = LDA.getDepended(&*I);
-      for (auto J = std::next(I); J != E; ++J) {
-        if (!Frt->isFree(&*J))
-          continue;
-        unsigned j = VPCtx->getScalarId(&*J);
-        if (Depended.test(j))
-          continue;
-        if (LDA.getDepended(&*J).test(i))
-          continue;
+      BitVector Independent = LDA.getIndependent(&*I);
+      Independent &= FreeInsts;
 
-        addEdge(Index.getValueId(&*I), Index.getValueId(&*J));
-        addEdge(Index.getValueId(&*J), Index.getValueId(&*I));
+      unsigned i = Index.getValueId(&*I);
+      for (auto *V : VPCtx->iter_values(Independent)) {
+        unsigned ValId = Index.getValueId(V);
+        addEdge(i, ValId);
+        addEdge(ValId, i);
       }
     }
     unsigned N = Index.getNumValues();

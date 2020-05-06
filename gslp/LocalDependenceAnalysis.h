@@ -8,12 +8,14 @@
 // Utility class to track dependency within a basic block
 class LocalDependenceAnalysis {
   llvm::BasicBlock *BB;
-  // mapping inst -> <users>
+  // Mapping inst -> <users>
   llvm::DenseMap<llvm::Instruction *, std::vector<llvm::Instruction *>>
       Dependencies;
   VectorPackContext *VPCtx;
-  // mapping an instruction -> instructions that it transitively depends on
+  // Mapping an instruction -> instructions that it transitively depends on
   llvm::DenseMap<llvm::Instruction *, llvm::BitVector> TransitiveClosure;
+  // Mapp an instruction -> instructions that are indepenpendent
+  llvm::DenseMap<llvm::Instruction *, llvm::BitVector> IndependentInsts;
 
 public:
   LocalDependenceAnalysis(llvm::AliasAnalysis *AA, llvm::BasicBlock *BB,
@@ -22,6 +24,12 @@ public:
   const llvm::BitVector &getDepended(llvm::Instruction *I) const {
     auto It = TransitiveClosure.find(I);
     assert(It != TransitiveClosure.end());
+    return It->second;
+  }
+
+  const llvm::BitVector &getIndependent(llvm::Instruction *I) const {
+    auto It = IndependentInsts.find(I);
+    assert(It != IndependentInsts.end());
     return It->second;
   }
 };

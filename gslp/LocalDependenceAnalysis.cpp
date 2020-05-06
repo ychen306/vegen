@@ -96,4 +96,16 @@ LocalDependenceAnalysis::LocalDependenceAnalysis(llvm::AliasAnalysis *AA,
 
     TransitiveClosure[&I] = Depended;
   }
+
+  // Additionally, compute all independent pairs of instructions
+  for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
+    unsigned i = VPCtx->getScalarId(&*I);
+    BitVector Independent(VPCtx->getNumValues());
+    for (auto J = std::next(I); J != E; ++J) {
+      if (getDepended(&*J).test(i))
+        continue;
+      Independent.set(VPCtx->getScalarId(&*J));
+    }
+    IndependentInsts[&*I] = std::move(Independent);
+  }
 }
