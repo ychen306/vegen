@@ -77,13 +77,14 @@ torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
                                 unsigned M, bool Flip = false) {
   auto CooIndices = torch::empty({2, (int64_t)Edges.size()},
                                  TensorOptions().dtype(torch::kInt64));
+  auto CooIndicesRef = CooIndices.accessor<int64_t, 2>();
   for (unsigned i = 0; i < Edges.size(); i++) {
     if (Flip) {
-      CooIndices[1][i] = (int64_t)Edges[i].Src;
-      CooIndices[0][i] = (int64_t)Edges[i].Dest;
+      CooIndicesRef[1][i] = (int64_t)Edges[i].Src;
+      CooIndicesRef[0][i] = (int64_t)Edges[i].Dest;
     } else {
-      CooIndices[0][i] = (int64_t)Edges[i].Src;
-      CooIndices[1][i] = (int64_t)Edges[i].Dest;
+      CooIndicesRef[0][i] = (int64_t)Edges[i].Src;
+      CooIndicesRef[1][i] = (int64_t)Edges[i].Dest;
     }
   }
   return torch::sparse_coo_tensor(CooIndices,
