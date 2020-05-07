@@ -94,6 +94,7 @@ public:
     return InstPool.size() + VL - 2;
   }
   llvm::ArrayRef<InstBinding *> getInstPool() const { return InstPool; }
+  unsigned getMaxNumLanes() const { return MaxNumLanes; }
 };
 
 TORCH_MODULE(PackingModel);

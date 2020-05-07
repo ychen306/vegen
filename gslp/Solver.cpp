@@ -228,6 +228,7 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
 }
 
 class PackEnumerator {
+  unsigned MaxNumLanes;
   const VectorPackContext &VPCtx;
   ArrayRef<InstBinding *> Insts;
   const LocalDependenceAnalysis &LDA;
@@ -267,8 +268,8 @@ class PackEnumerator {
                             std::vector<const VectorPack *> &Enumerated) const;
 
 public:
-  PackEnumerator(BasicBlock *BB, Packer *Pkr)
-      : VPCtx(*Pkr->getContext(BB)), Insts(Pkr->getInsts()),
+  PackEnumerator(unsigned MaxNumLanes, BasicBlock *BB, Packer *Pkr)
+      : MaxNumLanes(MaxNumLanes), VPCtx(*Pkr->getContext(BB)), Insts(Pkr->getInsts()),
         LDA(Pkr->getLDA(BB)), LoadDAG(Pkr->getLoadDAG(BB)),
         StoreDAG(Pkr->getStoreDAG(BB)), MM(Pkr->getMatchManager(BB)),
         TTI(Pkr->getTTI()) {}
@@ -336,6 +337,9 @@ void PackEnumerator::enumeratePacks(
   for (auto *Inst : Insts) {
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
     unsigned NumLanes = LaneOps.size();
+    if (NumLanes > MaxNumLanes)
+      continue;
+
     // Iterate over all combination of packs, fixing `Focus` at the `i`'th
     // lane
     for (unsigned i = 0; i < NumLanes; i++) {
@@ -452,7 +456,7 @@ void PackEnumerator::enumerateMemAccesses(
           Enumerated.push_back(createMemAccessPack<AccessType>(
               AccessChain, Elements, Depended, TTI));
         }
-        if (AccessChain.size() > 8)
+        if (AccessChain.size() >= MaxNumLanes)
           return;
 
         // Extend this load chain
@@ -533,7 +537,7 @@ Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
 }
 
 std::vector<const VectorPack *>
-Frontier::nextAvailablePacks(Packer *Pkr,
+Frontier::nextAvailablePacks(unsigned MaxNumLanes, Packer *Pkr,
                              PackEnumerationCache *EnumCache) const {
   Instruction *I = getNextFreeInst();
   bool InCache;
@@ -542,7 +546,7 @@ Frontier::nextAvailablePacks(Packer *Pkr,
     return filterFrozenPacks(CachedPacks);
 
   std::vector<const VectorPack *> AvailablePacks;
-  PackEnumerator Enumerator(BB, Pkr);
+  PackEnumerator Enumerator(MaxNumLanes, BB, Pkr);
 
   Enumerator.enumerate(I, AvailablePacks);
 
@@ -567,7 +571,9 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 }
 
 // Fill out the children node
-void UCTNode::expand(UCTNodeFactory *Factory, Packer *Pkr,
+void UCTNode::expand(
+    unsigned MaxNumLanes,
+    UCTNodeFactory *Factory, Packer *Pkr,
                      PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
@@ -578,7 +584,7 @@ void UCTNode::expand(UCTNodeFactory *Factory, Packer *Pkr,
       Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
   Transitions.emplace_back(nullptr, Next, Cost);
 
-  auto AvailablePacks = Frt->nextAvailablePacks(Pkr, EnumCache);
+  auto AvailablePacks = Frt->nextAvailablePacks(MaxNumLanes, Pkr, EnumCache);
 
   Transitions.reserve(AvailablePacks.size());
   for (auto *VP : AvailablePacks) {
@@ -644,7 +650,9 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     if (!CurNode->isTerminal()) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
-      CurNode->expand(Factory, Pkr, &EnumCache, TTI);
+      CurNode->expand(
+          Policy ? Policy->getMaxNumLanes() : 0,
+          Factory, Pkr, &EnumCache, TTI);
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
       if (Policy && Transitions.size() > 1)
@@ -666,11 +674,13 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
 }
 
 // Uniformly random rollout
-float RolloutEvaluator::evaluate(const Frontier *Frt,
+float RolloutEvaluator::evaluate(
+    unsigned MaxNumLanes,
+    const Frontier *Frt,
                                  PackEnumerationCache &EnumCache, Packer *Pkr) {
   Frontier FrtScratch = *Frt;
   float Cost = 0;
-  PackEnumerator Enumerator(Frt->getBasicBlock(), Pkr);
+  PackEnumerator Enumerator(MaxNumLanes, Frt->getBasicBlock(), Pkr);
   auto *TTI = Pkr->getTTI();
 
   auto sampleFromPack = [&FrtScratch,

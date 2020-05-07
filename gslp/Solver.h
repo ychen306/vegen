@@ -66,7 +66,7 @@ public:
   llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
-  nextAvailablePacks(Packer *, PackEnumerationCache *) const;
+  nextAvailablePacks(unsigned MaxNumLanes, Packer *, PackEnumerationCache *) const;
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
   }
@@ -186,7 +186,9 @@ public:
   }
 
   // Fill out the out edge
-  void expand(UCTNodeFactory *Factory, Packer *Pkr,
+  void expand(
+      unsigned MaxNumLanes,
+      UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
@@ -216,25 +218,30 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
+  virtual float evaluate(unsigned MaxNumLanes, const Frontier *Frt, PackEnumerationCache &EnumCache,
                          Packer *Pkr) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
-  float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
-                 Packer *Pkr) override {
+  float evaluate(unsigned, const Frontier *, PackEnumerationCache &,
+                 Packer *) override {
     return 0;
   }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  float evaluate(const Frontier *Frt, PackEnumerationCache &EnumCache,
+  float evaluate(unsigned MaxNumLanes, const Frontier *Frt, PackEnumerationCache &EnumCache,
                  Packer *Pkr) override;
 };
 
 
 // Interface for asynchronous policy prediction.
-struct PackingPolicy {
+class PackingPolicy {
+  unsigned MaxNumLanes;
+public:
+  PackingPolicy() = delete;
+  PackingPolicy(unsigned MaxNumLanes) : MaxNumLanes(MaxNumLanes) {}
+  unsigned getMaxNumLanes() const { return MaxNumLanes; }
   virtual void predictAsync(UCTNode *) = 0;
   virtual void waitForInflight() = 0;
 };
@@ -264,7 +271,9 @@ public:
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
-    return Evaluator->evaluate(N->getFrontier(), EnumCache, Pkr);
+    return Evaluator->evaluate(
+        Policy ? Policy->getMaxNumLanes() : 0,
+        N->getFrontier(), EnumCache, Pkr);
   }
 };
 

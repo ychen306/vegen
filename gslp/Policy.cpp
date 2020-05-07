@@ -11,6 +11,16 @@ static unsigned getInstId(PackingModel Model, const VectorPack *VP) {
   assert(*It == Inst);
   return It - InstPool.begin();
 }
+namespace {
+
+template <typename OutStreamTy>
+void dumpShape(torch::Tensor X, OutStreamTy &Os) {
+  for (auto N : X.sizes()) {
+    Os << " " << N;
+  }
+  Os << '\n';
+}
+}
 
 torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
                           const Frontier *Frt,
@@ -23,15 +33,23 @@ torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
     if (!T.VP) {
       // Scalar (i.e., nop).
       Prob.push_back(PD.OpProb[FocusId][Model->getNopId()]);
-      continue;
+    } else {
+      // T involves an actual pack.
+      // We pretend we can sample the opcode and lanes independently
+      auto PackProb = PD.OpProb[FocusId][getInstId(Model, T.VP)];
+      unsigned i = 0;
+      errs() << "<<<<<<<<<<<<<<<\n";
+      for (auto *V : T.VP->getOrderedValues()) {
+        errs() << "~~~ " << FocusId << ", " << PD.Index.getValueId(V) << "::: "
+          << "(" << i << ", " << PD.LaneProbs.size() << ")";
+          ;
+
+        dumpShape(PD.LaneProbs[i], errs());
+        PackProb *= PD.LaneProbs[i++][FocusId][PD.Index.getValueId(V)];
+      }
+      errs() << ">>>>>>>>>>>>>>>\n";
+      Prob.push_back(PackProb);
     }
-    // T involves an actual pack.
-    // We pretend we can sample the opcode and lanes independently
-    auto PackProb = PD.OpProb[FocusId][getInstId(Model, T.VP)];
-    unsigned i = 0;
-    for (auto *V : T.VP->getOrderedValues())
-      PackProb *= PD.LaneProbs[i++][FocusId][PD.Index.getValueId(V)];
-    Prob.push_back(PackProb);
   }
   auto Predicted = torch::stack(Prob);
   return Predicted / Predicted.sum();
