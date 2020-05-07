@@ -22,9 +22,9 @@ public:
   NeuralPackingPolicy(PackingModel Model, Packer *Pkr, unsigned NumIters,
                       torch::Device Device, unsigned BatchSize = 128,
                       unsigned NumThreads = 1)
-      : PackingPolicy(Model->getMaxNumLanes()), 
-      Model(Model), Pkr(Pkr), NumIters(NumIters), Device(Device),
-        BatchSize(BatchSize), Threads(llvm::hardware_concurrency(NumThreads)) {
+      : PackingPolicy(Model->getMaxNumLanes()), Model(Model), Pkr(Pkr),
+        NumIters(NumIters), Device(Device), BatchSize(BatchSize),
+        Threads(llvm::hardware_concurrency(NumThreads)) {
     Nodes.reserve(BatchSize);
   }
   void predictAsync(UCTNode *) override;

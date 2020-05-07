@@ -86,9 +86,11 @@ class PackingModelImpl : public torch::nn::Module {
 public:
   PackingModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts,
                    unsigned MaxNumLanes = 8);
-  std::vector<PackDistribution> batch_forward(llvm::ArrayRef<const Frontier *>, Packer *, torch::Device,
+  std::vector<PackDistribution> batch_forward(llvm::ArrayRef<const Frontier *>,
+                                              Packer *, torch::Device,
+                                              unsigned NumIters);
+  PackDistribution forward(const Frontier *, Packer *, torch::Device,
                            unsigned NumIters);
-  PackDistribution forward(const Frontier *, Packer *, torch::Device, unsigned NumIters);
   unsigned getNopId() const { return InstPool.size(); }
   unsigned getMemAccessId(unsigned VL) const {
     return InstPool.size() + VL - 2;

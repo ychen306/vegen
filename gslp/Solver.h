@@ -66,7 +66,8 @@ public:
   llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
-  nextAvailablePacks(unsigned MaxNumLanes, Packer *, PackEnumerationCache *) const;
+  nextAvailablePacks(unsigned MaxNumLanes, Packer *,
+                     PackEnumerationCache *) const;
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
   }
@@ -186,9 +187,7 @@ public:
   }
 
   // Fill out the out edge
-  void expand(
-      unsigned MaxNumLanes,
-      UCTNodeFactory *Factory, Packer *Pkr,
+  void expand(unsigned MaxNumLanes, UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
@@ -218,8 +217,8 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(unsigned MaxNumLanes, const Frontier *Frt, PackEnumerationCache &EnumCache,
-                         Packer *Pkr) = 0;
+  virtual float evaluate(unsigned MaxNumLanes, const Frontier *Frt,
+                         PackEnumerationCache &EnumCache, Packer *Pkr) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
@@ -230,14 +229,14 @@ struct DummyEvaluator : public FrontierEvaluator {
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned MaxNumLanes, const Frontier *Frt, PackEnumerationCache &EnumCache,
-                 Packer *Pkr) override;
+  float evaluate(unsigned MaxNumLanes, const Frontier *Frt,
+                 PackEnumerationCache &EnumCache, Packer *Pkr) override;
 };
-
 
 // Interface for asynchronous policy prediction.
 class PackingPolicy {
   unsigned MaxNumLanes;
+
 public:
   PackingPolicy() = delete;
   PackingPolicy(unsigned MaxNumLanes) : MaxNumLanes(MaxNumLanes) {}
@@ -266,14 +265,13 @@ public:
   UCTSearch(float C, float W, UCTNodeFactory *Factory, Packer *Pkr,
             PackingPolicy *Policy, FrontierEvaluator *Evaluator,
             llvm::TargetTransformInfo *TTI)
-      : C(C), W(W), Factory(Factory), Pkr(Pkr), Policy(Policy), Evaluator(Evaluator),
-        TTI(TTI) {}
+      : C(C), W(W), Factory(Factory), Pkr(Pkr), Policy(Policy),
+        Evaluator(Evaluator), TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
-    return Evaluator->evaluate(
-        Policy ? Policy->getMaxNumLanes() : 0,
-        N->getFrontier(), EnumCache, Pkr);
+    return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 0,
+                               N->getFrontier(), EnumCache, Pkr);
   }
 };
 

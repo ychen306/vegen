@@ -269,10 +269,10 @@ class PackEnumerator {
 
 public:
   PackEnumerator(unsigned MaxNumLanes, BasicBlock *BB, Packer *Pkr)
-      : MaxNumLanes(MaxNumLanes), VPCtx(*Pkr->getContext(BB)), Insts(Pkr->getInsts()),
-        LDA(Pkr->getLDA(BB)), LoadDAG(Pkr->getLoadDAG(BB)),
-        StoreDAG(Pkr->getStoreDAG(BB)), MM(Pkr->getMatchManager(BB)),
-        TTI(Pkr->getTTI()) {}
+      : MaxNumLanes(MaxNumLanes), VPCtx(*Pkr->getContext(BB)),
+        Insts(Pkr->getInsts()), LDA(Pkr->getLDA(BB)),
+        LoadDAG(Pkr->getLoadDAG(BB)), StoreDAG(Pkr->getStoreDAG(BB)),
+        MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
 
   void enumerate(Instruction *Focus,
                  std::vector<const VectorPack *> &Enumerated) const {
@@ -571,9 +571,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 }
 
 // Fill out the children node
-void UCTNode::expand(
-    unsigned MaxNumLanes,
-    UCTNodeFactory *Factory, Packer *Pkr,
+void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory, Packer *Pkr,
                      PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
@@ -650,9 +648,8 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     if (!CurNode->isTerminal()) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
-      CurNode->expand(
-          Policy ? Policy->getMaxNumLanes() : 0,
-          Factory, Pkr, &EnumCache, TTI);
+      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 0, Factory, Pkr,
+                      &EnumCache, TTI);
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
       if (Policy && Transitions.size() > 1)
@@ -674,9 +671,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
 }
 
 // Uniformly random rollout
-float RolloutEvaluator::evaluate(
-    unsigned MaxNumLanes,
-    const Frontier *Frt,
+float RolloutEvaluator::evaluate(unsigned MaxNumLanes, const Frontier *Frt,
                                  PackEnumerationCache &EnumCache, Packer *Pkr) {
   Frontier FrtScratch = *Frt;
   float Cost = 0;
