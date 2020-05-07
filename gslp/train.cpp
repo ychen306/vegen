@@ -178,12 +178,13 @@ int main(int argc, char **argv) {
   int NumEpochs = 100;
 
   RolloutEvaluator Evaluator;
-  NeuralPackingPolicy Policy(Model, 8, Device);
 
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
     for (auto &Pkr : PackerBuilder::Packers) {
       if (Pkr->getFunction()->getName() != "binvcrhs")
         continue;
+      NeuralPackingPolicy Policy(Model, Pkr.get(), 8/*iters of message passing*/, Device, 8/*batch size*/, 4/*num threads*/);
+      torch::NoGradGuard Guard;
       for (auto &BB : *Pkr->getFunction()) {
         UCTNodeFactory Factory;
         UCTNode *Root = Factory.getNode(
@@ -197,7 +198,8 @@ int main(int argc, char **argv) {
 
         T.startTimer();
 
-        MCTS.run(Root, 100);
+        MCTS.run(Root, 10000);
+        errs() << "!!! search done\n";
         //std::vector<const Frontier *> Frts(128, &Frt);
         //for (unsigned i = 0; i < 10; i++)
         //  Model->forward(&Frt, Pkr.get(), Device, 8);

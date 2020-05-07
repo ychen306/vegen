@@ -595,8 +595,6 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
   };
 
   std::vector<FullTransition> Path;
-  // Transition weight given by some prior predictor (i.e., the apprentice)
-  ArrayRef<float> Weight;
   for (unsigned Iter = 0; Iter < NumIters; Iter++) {
     Path.clear();
 
@@ -606,16 +604,16 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
       auto &Transitions = CurNode->transitions();
-      bool HasPredictions = Policy && Transitions.size() > 1;
-      if (HasPredictions)
-        Weight = PredictionCache[CurNode];
+      // Transition weight given by some prior predictor (i.e., the apprentice)
+      auto TransitionWeight = CurNode->transitionWeight();
+      bool HasPredictions = TransitionWeight.size() > 0;
 
       unsigned VisitCount = CurNode->visitCount();
       auto ScoreTransition = [&](unsigned i) -> float {
         auto &T = Transitions[i];
         float Score = T.score(VisitCount, C);
         if (HasPredictions)
-          Score += W * Weight[i] / T.visitCount();
+          Score += W * TransitionWeight[i] / T.visitCount();
         return Score;
       };
 
@@ -650,8 +648,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
       if (Policy && Transitions.size() > 1)
-        Policy->predict(CurNode->getFrontier(), Transitions, Pkr,
-                        PredictionCache[CurNode]);
+        Policy->predictAsync(CurNode);
     }
 
     // ========= 4) Backpropagation ===========

@@ -12,11 +12,9 @@ static unsigned getInstId(PackingModel Model, const VectorPack *VP) {
   return It - InstPool.begin();
 }
 
-torch::Tensor NeuralPackingPolicy::predict(
-    const Frontier *Frt, llvm::ArrayRef<UCTNode::Transition> Transitions,
-    Packer *Pkr) {
-  PackDistribution PD = Model->forward(Frt, Pkr, Device, NumIters);
-
+torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
+                          const Frontier *Frt,
+                          llvm::ArrayRef<UCTNode::Transition> Transitions) {
   std::vector<torch::Tensor> Prob;
   auto *Focus = Frt->getNextFreeInst();
   assert(Focus);
@@ -39,9 +37,31 @@ torch::Tensor NeuralPackingPolicy::predict(
   return Predicted / Predicted.sum();
 }
 
-void NeuralPackingPolicy::predict(const Frontier *Frt,
-               llvm::ArrayRef<UCTNode::Transition> Transitions, Packer *Pkr,
-               std::vector<float> &Prob) {
-  auto Predicted = predict(Frt, Transitions, Pkr).to(torch::Device(torch::kCPU));
-  Prob = llvm::ArrayRef<float>(Predicted.data_ptr<float>(), Predicted.size(0)).vec();
+void NeuralPackingPolicy::predictAsync(UCTNode *Node) {
+  Nodes.push_back(Node);
+  if (Nodes.size() >= BatchSize) {
+    // Is this javascript?
+    Threads.async([Nodes = std::move(Nodes), &Model = Model, Device = Device,
+                   Pkr = Pkr, NumIters = NumIters]() {
+      // Run the batch of frontiers through the model
+      std::vector<const Frontier *> Frontiers;
+      Frontiers.reserve(Nodes.size());
+      for (auto *Node : Nodes)
+        Frontiers.push_back(Node->getFrontier());
+      std::vector<PackDistribution> PDs =
+          Model->batch_forward(Frontiers, Pkr, Device, NumIters);
+
+      // Compute pack probability.
+      torch::Device CPU(torch::kCPU);
+      for (unsigned i = 0; i < Frontiers.size(); i++) {
+        auto *Node = Nodes[i];
+        auto Prob =
+            computeProb(Model, PDs[i], Frontiers[i], Node->transitions());
+        // This line is so beautify, I am crying :-).
+        Node->updateTransitionWeight(new std::vector<float>(
+            ArrayRef<float>(Prob.to(CPU).data_ptr<float>(), Prob.size(0))
+                .vec()));
+      }
+    });
+  }
 }

@@ -169,17 +169,28 @@ public:
     }
   };
 
+  std::atomic<std::vector<float> *> TransitionWeight;
+
 private:
   std::vector<Transition> Transitions;
 
-  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {}
+  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {
+    TransitionWeight.store(nullptr);
+  }
 
 public:
+  ~UCTNode() {
+    auto Ptr = TransitionWeight.load();
+    if (Ptr)
+      delete Ptr;
+  }
+
   // Fill out the out edge
   void expand(UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
+
   std::vector<Transition> &transitions() { return Transitions; }
 
   float avgCost() const { return TotalCost / float(Count); }
@@ -189,6 +200,17 @@ public:
   void update(float Cost) {
     TotalCost += Cost;
     Count++;
+  }
+
+  void updateTransitionWeight(std::vector<float> *NewWeight) {
+    TransitionWeight.store(NewWeight);
+  }
+
+  llvm::ArrayRef<float> transitionWeight() {
+    auto *WeightPtr = TransitionWeight.load();
+    if (WeightPtr)
+      return *WeightPtr;
+    return llvm::ArrayRef<float>();
   }
 };
 
@@ -210,12 +232,11 @@ class RolloutEvaluator : public FrontierEvaluator {
                  Packer *Pkr) override;
 };
 
+
+// Interface for asynchronous policy prediction.
 struct PackingPolicy {
-  // Interface for policy prediction.
-  virtual void predict(const Frontier *Frt,
-                       llvm::ArrayRef<UCTNode::Transition> Transitions,
-                       Packer *Pkr,
-                       std::vector<float> &Prob) = 0;
+  virtual void predictAsync(UCTNode *) = 0;
+  virtual void waitForInflight() = 0;
 };
 
 class UCTSearch {
@@ -228,8 +249,6 @@ class UCTSearch {
   Packer *Pkr;
 
   PackingPolicy *Policy;
-  // Cache policy prediction here.
-  llvm::DenseMap<UCTNode *, std::vector<float>> PredictionCache;
 
   // How we evaluate a leaf UCTNode (e.g., w/ a value network or rollout)
   FrontierEvaluator *Evaluator;

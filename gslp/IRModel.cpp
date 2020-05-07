@@ -202,20 +202,6 @@ struct BatchedUseGraph2 : public BatchedGraphBuilder {
   }
 };
 
-// u->v === u using v
-static torch::Tensor buildUseGraph1(const IRIndex &Index) {
-  BatchedUseGraph1 B;
-  B.process(Index);
-  return B.getBatched();
-}
-
-// u->v === u using v
-static torch::Tensor buildUseGraph2(const IRIndex &Index) {
-  BatchedUseGraph2 B;
-  B.process(Index);
-  return B.getBatched();
-}
-
 class BatchedMemRefGraph : public BatchedGraphBuilder {
   void getEdges(const IRIndex &Index, ConsecutiveAccessDAG &AccessDAG) {
     for (auto &LeftAndRights : AccessDAG) {
@@ -238,24 +224,6 @@ public:
     finishBatch(N, N);
   }
 };
-
-// Having edge uv means u if to the left of v (u and v are mem refs)
-static torch::Tensor buildRightMemRefGraph(const IRIndex &Index,
-                                           ConsecutiveAccessDAG &LoadDAG,
-                                           ConsecutiveAccessDAG &StoreDAG) {
-  BatchedMemRefGraph B;
-  B.process(Index, LoadDAG, StoreDAG);
-  return B.getBatched();
-}
-
-// Having edge uv means u if to the right of v (u and v are mem refs)
-static torch::Tensor buildLeftMemRefGraph(const IRIndex &Index,
-                                          ConsecutiveAccessDAG &LoadDAG,
-                                          ConsecutiveAccessDAG &StoreDAG) {
-  BatchedMemRefGraph B;
-  B.process(Index, LoadDAG, StoreDAG);
-  return B.getBatched(false);
-}
 
 struct BatchedIndependenceGraph : public BatchedGraphBuilder {
   void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
@@ -282,13 +250,6 @@ struct BatchedIndependenceGraph : public BatchedGraphBuilder {
     finishBatch(N, N);
   }
 };
-
-static torch::Tensor buildIndependenceGraph(const Frontier *Frt, Packer *Pkr,
-                                            IRIndex &Index) {
-  BatchedIndependenceGraph B;
-  B.process(Frt, Pkr, Index);
-  return B.getBatched();
-}
 
 class BatchedUnresolvedUseGraph : public BatchedGraphBuilder {
   unsigned LaneId;
@@ -329,19 +290,6 @@ public:
   }
 };
 
-// uv means u uses v at some lane
-static std::vector<torch::Tensor>
-buildUnresolvedUseGraphs(const Frontier *Frt, Packer *Pkr, IRIndex &Index,
-                         unsigned MaxNumLanes) {
-  std::vector<torch::Tensor> Graphs;
-  for (unsigned i = 0; i < MaxNumLanes; i++) {
-    BatchedUnresolvedUseGraph B(i);
-    B.process(Frt, Pkr, Index);
-    Graphs.push_back(B.getBatched());
-  }
-  return Graphs;
-}
-
 struct BatchedInverseUnresolvedUseGraph : public BatchedGraphBuilder {
   void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
     BasicBlock *BB = Frt->getBasicBlock();
@@ -370,15 +318,6 @@ struct BatchedInverseUnresolvedUseGraph : public BatchedGraphBuilder {
     finishBatch(Index.getNumValues(), NumUnresolvedUses);
   }
 };
-
-// uv means u is *used by* v
-static torch::Tensor buildInverseUnresolvedUseGraph(const Frontier *Frt,
-                                                    Packer *Pkr,
-                                                    IRIndex &Index) {
-  BatchedInverseUnresolvedUseGraph B;
-  B.process(Frt, Pkr, Index);
-  return B.getBatched();
-}
 
 static torch::Tensor getValueTypes(llvm::ArrayRef<IRIndex> Indexes) {
   std::vector<int64_t> ValueTypes;
@@ -435,8 +374,8 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
 
 std::vector<PackDistribution>
 PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
-                          Packer *Pkr, torch::Device Device,
-                          unsigned NumIters) {
+                                Packer *Pkr, torch::Device Device,
+                                unsigned NumIters) {
   unsigned N = 0, NumUnresolvedUses = 0;
   std::vector<IRIndex> Indexes;
   BatchedUseGraph1 UseGraph1Builder;
@@ -465,14 +404,15 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
 
     N += Index.getNumValues();
     NumUnresolvedUses +=
-      Frt->getUnresolvedPacks().size() + Frt->numUnresolvedScalars();
+        Frt->getUnresolvedPacks().size() + Frt->numUnresolvedScalars();
     Indexes.push_back(std::move(Index));
   }
 
   auto UseGraph1 = UseGraph1Builder.getBatched().to(Device);
   auto UseGraph2 = UseGraph2Builder.getBatched().to(Device);
   auto LeftMemRefGraph = MemRefGraphBuilder.getBatched().to(Device);
-  auto RightMemRefGraph = MemRefGraphBuilder.getBatched(true/*flip*/).to(Device);
+  auto RightMemRefGraph =
+      MemRefGraphBuilder.getBatched(true /*flip*/).to(Device);
   auto IndependenceGraph = IndependenceGraphBuilder.getBatched().to(Device);
   auto InvUnresolvedGraph = InvUnresolvedGraphBuilder.getBatched().to(Device);
   std::vector<torch::Tensor> UnresolvedUseGraphs;
@@ -506,8 +446,9 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     auto Independent =
         torch::mm(IndependenceGraph, StateToIndependentMsg(H_value));
     auto Unresolved =
-        NumUnresolvedUses ? torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use))
-        : Zeros;
+        NumUnresolvedUses
+            ? torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use))
+            : Zeros;
     return torch::cat(
         {Msg1, Msg2, LeftMemMsg, RightMemMsg, Independent, Unresolved},
         1 /*dim*/);
@@ -530,19 +471,23 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
   for (auto &Index : Indexes) {
     unsigned N = Index.getNumValues();
     auto Slice = [Offset, N](torch::Tensor X) -> torch::Tensor {
-      return X.slice(0/*dim*/, Offset, Offset+N);
+      return X.slice(0 /*dim*/, Offset, Offset + N);
     };
     PackDistribution PD(std::move(Index));
     PD.OpProb = Slice(OpProb);
     for (auto &StateToLaneEmb : StateToLaneEmbs)
-      PD.LaneProbs.push_back(StateToLaneEmb->forward(Slice(H_value)).mm(Slice(Emb).t()).softmax(1 /*dim*/));
+      PD.LaneProbs.push_back(StateToLaneEmb->forward(Slice(H_value))
+                                 .mm(Slice(Emb).t())
+                                 .softmax(1 /*dim*/));
     Offset += N;
     PDs.push_back(std::move(PD));
   }
   return PDs;
 }
 
-PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr, torch::Device Device, unsigned NumIters) {
+PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
+                                           torch::Device Device,
+                                           unsigned NumIters) {
   std::vector<PackDistribution> PDs = batch_forward(Frt, Pkr, Device, NumIters);
   return std::move(PDs[0]);
 }
