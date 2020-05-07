@@ -213,7 +213,6 @@ int main(int argc, char **argv) {
 
           auto Elapsed = T.getTotalTime();
           Elapsed.print(Elapsed, errs());
-          Policy.waitForInflight();
         }
         return 0;
       }

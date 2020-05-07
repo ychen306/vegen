@@ -32,9 +32,8 @@ public:
       : PackingPolicy(Model->getMaxNumLanes()), Model(Model), Pkr(Pkr),
         NumIters(NumIters), Device(Device), BatchSize(BatchSize) {
     Nodes.reserve(BatchSize);
-    for (unsigned i = 0; i < BatchSize; i++)
+    for (unsigned i = 0; i < NumThreads; i++)
       Threads.emplace_back([this]() { evalNodes(); });
-    NumActiveThreads = NumThreads;
     Shutdown = false;
   }
   void predictAsync(UCTNode *) override;
