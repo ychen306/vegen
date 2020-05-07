@@ -2,7 +2,7 @@
 #define POLICY_H
 #include "IRModel.h"
 #include "Solver.h"
-#include "llvm/Support/ThreadPool.h"
+#include "llvm/Support/thread.h"
 
 class Packer;
 
@@ -13,22 +13,32 @@ class NeuralPackingPolicy : public PackingPolicy {
   torch::Device Device;
   unsigned BatchSize;
 
-  llvm::ThreadPool Threads;
+  std::condition_variable QueueCond;
+  std::mutex QueueLock;
+  std::queue<std::vector<UCTNode *>> Queue;
+  std::vector<llvm::thread> Threads;
+
+  std::atomic<bool> Shutdown;
 
   // Worklist of nodes we want to evaluate.
   std::vector<UCTNode *> Nodes;
+
+  void evalNodes();
 
 public:
   NeuralPackingPolicy(PackingModel Model, Packer *Pkr, unsigned NumIters,
                       torch::Device Device, unsigned BatchSize = 128,
                       unsigned NumThreads = 1)
       : PackingPolicy(Model->getMaxNumLanes()), Model(Model), Pkr(Pkr),
-        NumIters(NumIters), Device(Device), BatchSize(BatchSize),
-        Threads(llvm::hardware_concurrency(NumThreads)) {
+        NumIters(NumIters), Device(Device), BatchSize(BatchSize) {
     Nodes.reserve(BatchSize);
+    for (unsigned i = 0; i < BatchSize; i++)
+      Threads.emplace_back([this]() { evalNodes(); });
+    NumActiveThreads = NumThreads;
+    Shutdown = false;
   }
   void predictAsync(UCTNode *) override;
-  void waitForInflight() override { Threads.wait(); }
+  void waitForInflight() override;
 };
 
 #endif // end POLICY_H

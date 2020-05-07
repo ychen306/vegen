@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
             std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
         NeuralPackingPolicy Policy(Model, Pkr.get(),
                                    8 /*iters of message passing*/, Device,
-                                   8 /*batch size*/, 1 /*num threads*/);
+                                   8 /*batch size*/, 4 /*num threads*/);
         {
           UCTSearch MCTS(100 /*exploration factor*/,
                          100 /*how much we trust the policy*/, &Factory,
