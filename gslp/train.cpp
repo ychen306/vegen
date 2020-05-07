@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
         {
           UCTSearch MCTS(100 /*exploration factor*/,
                          100 /*how much we trust the policy*/, &Factory,
-                         Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
+                         Pkr.get(), nullptr/*&Policy*/, &Evaluator, Pkr->getTTI());
           Timer T("mcts", "time takes to run 10 iter of MCTS");
 
           // Frontier Frt(&BB, Pkr->getContext(&BB));

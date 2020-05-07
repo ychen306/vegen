@@ -668,9 +668,6 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     if (TotalCost < 0)
       errs() << "Total Cost: " << TotalCost << '\n';
   }
-
-  if (Policy)
-    Policy->waitForInflight();
 }
 
 // Uniformly random rollout

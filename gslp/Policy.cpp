@@ -83,7 +83,7 @@ void NeuralPackingPolicy::predictAsync(UCTNode *Node) {
   }
 }
 
-void NeuralPackingPolicy::waitForInflight() {
+NeuralPackingPolicy::~NeuralPackingPolicy() {
   Shutdown.store(true);
   QueueCond.notify_all();
   for (auto &T : Threads)

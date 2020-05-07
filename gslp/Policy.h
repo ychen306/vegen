@@ -36,8 +36,8 @@ public:
       Threads.emplace_back([this]() { evalNodes(); });
     Shutdown = false;
   }
+  ~NeuralPackingPolicy();
   void predictAsync(UCTNode *) override;
-  void waitForInflight() override;
 };
 
 #endif // end POLICY_H

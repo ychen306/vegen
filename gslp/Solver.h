@@ -242,7 +242,6 @@ public:
   PackingPolicy(unsigned MaxNumLanes) : MaxNumLanes(MaxNumLanes) {}
   unsigned getMaxNumLanes() const { return MaxNumLanes; }
   virtual void predictAsync(UCTNode *) = 0;
-  virtual void waitForInflight() = 0;
 };
 
 class UCTSearch {
