@@ -2,6 +2,7 @@
 #define SERIALIZE_H
 #include "Preprocessing.h"
 #include "Proto/serialize.pb.h"
+#include "google/protobuf/util/delimited_message_util.h"
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 /*
@@ -21,6 +22,7 @@ struct ProcessedFrontier {
   std::vector<int32_t> ValueTypes;
 
   ProcessedFrontier(const serialize::Frontier &);
+  void proto(serialize::Frontier &) const;
 };
 
 struct ProcessedVectorPack {
@@ -31,6 +33,7 @@ struct ProcessedVectorPack {
   std::vector<int64_t> Lanes;
 
   ProcessedVectorPack(const serialize::VectorPack &);
+  void proto(serialize::VectorPack &) const;
 };
 
 struct PolicySupervision {
@@ -39,6 +42,7 @@ struct PolicySupervision {
   std::vector<float> Prob;
 
   PolicySupervision(const serialize::Supervision &);
+  void proto(serialize::Supervision &) const;
 };
 
 class PolicyReader {
@@ -46,7 +50,14 @@ class PolicyReader {
 
 public:
   PolicyReader(int FD) : IS(FD) { IS.SetCloseOnDelete(true); }
-  void read(PolicySupervision &);
+  bool read(PolicySupervision &PS) {
+    serialize::Supervision S;
+    bool CleanEOF;
+    bool Success = google::protobuf::util::ParseDelimitedFromZeroCopyStream(
+        &S, &IS, &CleanEOF);
+    PS = S;
+    return Success;
+  }
 };
 
 class PolicyWriter {
@@ -54,6 +65,10 @@ class PolicyWriter {
 
 public:
   PolicyWriter(int FD) : OS(FD) { OS.SetCloseOnDelete(true); }
-  void writeOne(const PolicySupervision &);
+  void write(const PolicySupervision &PS) {
+    serialize::Supervision S;
+    PS.proto(S);
+    google::protobuf::util::SerializeDelimitedToZeroCopyStream(S, &OS);
+  }
 };
 #endif // SERIALIZE_H

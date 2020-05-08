@@ -1,13 +1,14 @@
 #include "Serialize.h"
-#include "google/protobuf/util/delimited_message_util.h"
 #include "llvm/ADT/ArrayRef.h"
 
 using namespace llvm;
 
 static std::vector<DiEdge> getEdges(const serialize::Frontier::Graph &G) {
+  unsigned N = G.sources_size();
   std::vector<DiEdge> Edges;
-  for (auto &E : G.edges())
-    Edges.emplace_back(E.src(), E.dst());
+  Edges.reserve(N);
+  for (unsigned i = 0; i < N; i++)
+    Edges.emplace_back(G.sources(i), G.dests(i));
   return Edges;
 }
 
@@ -23,6 +24,33 @@ ProcessedFrontier::ProcessedFrontier(const serialize::Frontier &Frt)
   ValueTypes.reserve(Frt.value_types_size());
   for (int32_t Ty : Frt.value_types())
     ValueTypes.push_back(Ty);
+}
+
+static void buildGraph(ArrayRef<DiEdge> Edges, serialize::Frontier::Graph &G) {
+  for (auto &E : Edges) {
+    G.add_sources(E.Src);
+    G.add_dests(E.Dest);
+  }
+}
+
+static serialize::Frontier::Graph *buildGraph(ArrayRef<DiEdge> Edges) {
+  auto *G = new serialize::Frontier::Graph();
+  buildGraph(Edges, *G);
+  return G;
+}
+
+void ProcessedFrontier::proto(serialize::Frontier &Frt) const {
+  Frt.set_num_values(NumValues);
+  Frt.set_focus_id(FocusId);
+  Frt.set_allocated_use1(buildGraph(Use1));
+  Frt.set_allocated_use2(buildGraph(Use2));
+  Frt.set_allocated_mem_refs(buildGraph(MemRefs));
+  Frt.set_allocated_independence(buildGraph(Independence));
+  Frt.set_allocated_inv_unresolved(buildGraph(InvUnresolved));
+  for (auto &G : Unresolved)
+    buildGraph(G, *Frt.add_unresolved());
+  for (int32_t Ty : ValueTypes)
+    Frt.add_value_types(Ty);
 }
 
 ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
@@ -43,6 +71,9 @@ ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
     Lanes.push_back(L);
 }
 
+void ProcessedVectorPack::proto(serialize::VectorPack &VP) const {
+}
+
 PolicySupervision::PolicySupervision(const serialize::Supervision &S)
     : Frt(S.frontier()) {
   Packs.reserve(S.packs_size());
@@ -51,4 +82,18 @@ PolicySupervision::PolicySupervision(const serialize::Supervision &S)
   Prob.reserve(S.prob_size());
   for (float P : S.prob())
     Prob.push_back(P);
+}
+
+void PolicySupervision::proto(serialize::Supervision &S) const {
+  auto *ProtoFrt = new serialize::Frontier();
+  Frt.proto(*ProtoFrt);
+  S.set_allocated_frontier(ProtoFrt);
+
+  for (auto &VP : Packs) {
+    auto *ProtoPack = S.add_packs();
+    VP.proto(*ProtoPack);
+  }
+
+  for (auto P : Prob)
+    S.add_prob(P);
 }
