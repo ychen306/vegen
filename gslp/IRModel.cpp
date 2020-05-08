@@ -63,7 +63,6 @@ torch::Tensor getValueTypesAsTensor(llvm::ArrayRef<IRIndex> Indexes) {
       .clone();
 }
 
-
 } // end anonymous namespace
 
 PackingModelImpl::PackingModelImpl(unsigned EmbSize,
