@@ -5,6 +5,7 @@
 #include "Util.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
+#include "Preprocessing.h"
 #include <llvm/ADT/DenseMap.h>
 #include <torch/torch.h>
 
@@ -18,21 +19,6 @@ class Value;
 
 class TargetTransformInfo;
 } // namespace llvm
-
-class Frontier;
-class IRIndex {
-  llvm::DenseMap<llvm::Value *, unsigned> Value2IdMap;
-  std::vector<llvm::Value *> Values;
-
-  void trackValue(llvm::Value *);
-
-public:
-  IRIndex(llvm::Function &F);
-  IRIndex(const Frontier *Frt);
-  unsigned getValueId(llvm::Value *V) const { return Value2IdMap.lookup(V); }
-  llvm::Value *get(unsigned i) const { return Values[i]; }
-  unsigned getNumValues() const { return Values.size(); }
-};
 
 class VectorPack;
 struct PackSample {
