@@ -38,8 +38,6 @@ void dumpShape(torch::Tensor X, OutStreamTy &Os) {
   Os << '\n';
 }
 
-} // end anonymous namespace
-
 class BatchedGraphBuilder {
   unsigned N, M;
   std::vector<DiEdge> Edges;
@@ -58,12 +56,15 @@ public:
   }
 };
 
-static torch::Tensor getValueTypesAsTensor(llvm::ArrayRef<IRIndex> Indexes) {
+torch::Tensor getValueTypesAsTensor(llvm::ArrayRef<IRIndex> Indexes) {
   std::vector<int64_t> ValueTypes = getValueTypes(Indexes);
   return torch::from_blob(ValueTypes.data(), {(int64_t)ValueTypes.size()},
                           torch::TensorOptions().dtype(torch::kInt64))
       .clone();
 }
+
+
+} // end anonymous namespace
 
 PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                    llvm::ArrayRef<InstBinding *> InstPool,
