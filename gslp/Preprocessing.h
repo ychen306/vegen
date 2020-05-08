@@ -1,0 +1,191 @@
+#ifndef PREPROCESSING_H
+#define PREPROCESSING_H
+
+#include "Packer.h"
+#include "Solver.h"
+#include "llvm/IR/Instruction.h"
+
+struct DiEdge {
+  unsigned Src, Dest;
+  DiEdge(unsigned S, unsigned T) : Src(S), Dest(T) {}
+};
+
+class IRIndex {
+  llvm::DenseMap<llvm::Value *, unsigned> Value2IdMap;
+  std::vector<llvm::Value *> Values;
+
+  void trackValue(llvm::Value *);
+
+public:
+  IRIndex(llvm::Function &F);
+  IRIndex(const Frontier *Frt);
+  unsigned getValueId(llvm::Value *V) const { return Value2IdMap.lookup(V); }
+  llvm::Value *get(unsigned i) const { return Values[i]; }
+  unsigned getNumValues() const { return Values.size(); }
+};
+
+template<typename Builder>
+struct BatchedUseGraph1 : public Builder {
+  void process(const IRIndex &Index) {
+    using namespace llvm;
+    unsigned N = Index.getNumValues();
+    for (unsigned i = 0; i < N; i++) {
+      auto *V = Index.get(i);
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        continue;
+      if (I->getNumOperands() < 1)
+        continue;
+      Builder::addEdge(Index.getValueId(I), Index.getValueId(I->getOperand(0)));
+    }
+    Builder::finishBatch(N, N);
+  }
+};
+
+template<typename Builder>
+struct BatchedUseGraph2 : public Builder {
+  void process(const IRIndex &Index) {
+    using namespace llvm;
+
+    unsigned N = Index.getNumValues();
+    for (unsigned i = 0; i < N; i++) {
+      auto *V = Index.get(i);
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        continue;
+      if (I->getNumOperands() < 1)
+        continue;
+      Builder::addEdge(Index.getValueId(I), Index.getValueId(I->getOperand(0)));
+    }
+    Builder::finishBatch(N, N);
+  }
+};
+
+template<typename Builder>
+class BatchedMemRefGraph : public Builder {
+  void getEdges(const IRIndex &Index, ConsecutiveAccessDAG &AccessDAG) {
+    for (auto &LeftAndRights : AccessDAG) {
+      auto *Left = LeftAndRights.first;
+      auto &Rights = LeftAndRights.second;
+      unsigned LeftId = Index.getValueId(Left);
+      for (auto *Right : Rights) {
+        unsigned RightId = Index.getValueId(Right);
+        Builder::addEdge(LeftId, RightId);
+      }
+    }
+  }
+
+public:
+  void process(const IRIndex &Index, ConsecutiveAccessDAG &LoadDAG,
+               ConsecutiveAccessDAG &StoreDAG) {
+    getEdges(Index, LoadDAG);
+    getEdges(Index, StoreDAG);
+    unsigned N = Index.getNumValues();
+    Builder::finishBatch(N, N);
+  }
+};
+
+template<typename Builder>
+struct BatchedIndependenceGraph : public Builder {
+  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+    using namespace llvm;
+
+    auto *BB = Frt->getBasicBlock();
+    auto *VPCtx = Pkr->getContext(BB);
+    auto &LDA = Pkr->getLDA(BB);
+
+    const BitVector &FreeInsts = Frt->getFreeInsts();
+
+    for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
+      if (!Frt->isFree(&*I))
+        continue;
+      BitVector Independent = LDA.getIndependent(&*I);
+      Independent &= FreeInsts;
+
+      unsigned i = Index.getValueId(&*I);
+      for (auto *V : VPCtx->iter_values(Independent)) {
+        unsigned ValId = Index.getValueId(V);
+        Builder::addEdge(i, ValId);
+        Builder::addEdge(ValId, i);
+      }
+    }
+    unsigned N = Index.getNumValues();
+    Builder::finishBatch(N, N);
+  }
+};
+
+template<typename Builder>
+class BatchedUnresolvedUseGraph : public Builder {
+  unsigned LaneId;
+
+public:
+  BatchedUnresolvedUseGraph(unsigned LaneId) : LaneId(LaneId) {}
+  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+    using namespace llvm;
+
+    BasicBlock *BB = Frt->getBasicBlock();
+    llvm::ArrayRef<const OperandPack *> UnresolvedPacks =
+        Frt->getUnresolvedPacks();
+
+    // Include unresolved vector uses
+    for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
+      const OperandPack &OP = *UnresolvedPacks[i];
+      if (LaneId >= OP.size())
+        continue;
+      auto *V = OP[LaneId];
+      auto *I = dyn_cast<Instruction>(V);
+      // Skip `I` is frozen (and therefore resolved)
+      if (!I || I->getParent() != BB || !Frt->isFree(I))
+        continue;
+      Builder::addEdge(i, Index.getValueId(I));
+    }
+
+    if (LaneId == 0) {
+      unsigned i = UnresolvedPacks.size();
+      // Include unresolved scalar uses
+      for (auto *V : Frt->getUnresolvedScalars()) {
+        // Pretend scalar uses are degenerate vector use
+        // and assign them to the first lane.
+        Builder::addEdge(i++, Index.getValueId(V));
+      }
+    }
+
+    unsigned NumUnresolvedUses =
+        UnresolvedPacks.size() + Frt->numUnresolvedScalars();
+    Builder::finishBatch(NumUnresolvedUses, Index.getNumValues());
+  }
+};
+
+template <typename Builder>
+struct BatchedInverseUnresolvedUseGraph : public Builder {
+  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+    using namespace llvm;
+
+    BasicBlock *BB = Frt->getBasicBlock();
+    auto UnresolvedPacks = Frt->getUnresolvedPacks();
+    // Include unresolved vector uses
+    for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
+      const OperandPack &OP = *UnresolvedPacks[i];
+      for (auto *V : OP) {
+        auto *I = dyn_cast<Instruction>(V);
+        // Skip `I` is frozen (and therefore resolved)
+        if (!I || I->getParent() != BB || !Frt->isFree(I))
+          continue;
+        Builder::addEdge(Index.getValueId(I), i);
+      }
+    }
+
+    unsigned i = UnresolvedPacks.size();
+    // Include unresolved scalar uses
+    for (auto *V : Frt->getUnresolvedScalars()) {
+      // Pretend scalar uses are degenerate vector use
+      // and assign them to the first lane.
+      Builder::addEdge(Index.getValueId(V), i++);
+    }
+
+    unsigned NumUnresolvedUses = i;
+    Builder::finishBatch(Index.getNumValues(), NumUnresolvedUses);
+  }
+};
+
+#endif // PREPROCESSING_H
