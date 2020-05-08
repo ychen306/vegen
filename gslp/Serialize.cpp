@@ -71,7 +71,18 @@ ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
     Lanes.push_back(L);
 }
 
-void ProcessedVectorPack::proto(serialize::VectorPack &VP) const {}
+void ProcessedVectorPack::proto(serialize::VectorPack &VP) const {
+  serialize::VectorPack::Kind Kind;
+  switch (K) {
+    case General: Kind = serialize::VectorPack::GENERAL; break;
+    case Store: Kind = serialize::VectorPack::STORE; break;
+    case Load: Kind = serialize::VectorPack::LOAD; break;
+  }
+  VP.set_kind(Kind);
+  VP.set_inst_id(InstId);
+  for (int64_t L : Lanes)
+    VP.add_lanes(L);
+}
 
 PolicySupervision::PolicySupervision(const serialize::Supervision &S)
     : Frt(S.frontier()) {
