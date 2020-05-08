@@ -3,11 +3,6 @@
 #include "Packer.h"
 #include "Preprocessing.h"
 #include "Solver.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/Support/FormatVariadic.h"
 #include <map>
 #include <torch/nn/module.h>
@@ -17,58 +12,6 @@ using namespace llvm;
 using namespace torch;
 
 namespace {
-class OpcodeTable {
-  static unsigned getUnknownTypeId() { return 0; }
-  static unsigned getConstId() { return 1; }
-  static unsigned getCastId() { return 2; }
-  static unsigned getBitwidth(llvm::Type *Ty) {
-    if (auto *IntTy = dyn_cast<IntegerType>(Ty))
-      return IntTy->getBitWidth();
-    if (Ty->isFloatTy())
-      return 32;
-    if (Ty->isDoubleTy())
-      return 64;
-    return 0; // don't care
-  }
-
-  static std::vector<unsigned> Bitwidths;
-  static std::vector<unsigned> Opcodes;
-  std::map<std::pair<unsigned, unsigned>, unsigned> ValueTypeIds;
-
-public:
-  OpcodeTable() {
-    for (unsigned BW : Bitwidths)
-      for (unsigned Opc : Opcodes) {
-        unsigned TypeId = ValueTypeIds.size();
-        ValueTypeIds[{Opc, BW}] = TypeId;
-      }
-  }
-  unsigned getNumValueTypes() const {
-    // # of value types = <# inst opcode> * <# bitwidths> + <constant> + <cast>
-    // <unknown>
-    return Opcodes.size() * Bitwidths.size() + 1 + 1 + 1;
-  }
-
-  unsigned getValueTypeId(Value *V) const {
-    if (isa<ConstantInt>(V) || isa<ConstantFP>(V))
-      return getConstId();
-    if (auto *I = dyn_cast<Instruction>(V)) {
-      if (I->isCast())
-        return getCastId();
-      llvm::Type *Ty;
-      if (auto *SI = dyn_cast<StoreInst>(I))
-        Ty = SI->getValueOperand()->getType();
-      else
-        Ty = I->getType();
-      auto It = ValueTypeIds.find({I->getOpcode(), getBitwidth(Ty)});
-      if (It != ValueTypeIds.end())
-        return It->second;
-    }
-    return getUnknownTypeId();
-  }
-
-} OpTable;
-
 torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
                                 unsigned M, bool Flip = false) {
   auto CooIndices = torch::empty({2, (int64_t)Edges.size()},
@@ -97,57 +40,6 @@ void dumpShape(torch::Tensor X, OutStreamTy &Os) {
 
 } // end anonymous namespace
 
-std::vector<unsigned> OpcodeTable::Bitwidths = {8, 16, 32, 64};
-// TODO: support PHI
-std::vector<unsigned> OpcodeTable::Opcodes = {
-    /*Instruction::PHI, */ Instruction::Load,
-    Instruction::Store,
-    Instruction::Add,
-    Instruction::FAdd,
-    Instruction::Sub,
-    Instruction::FSub,
-    Instruction::Mul,
-    Instruction::FMul,
-    Instruction::UDiv,
-    Instruction::SDiv,
-    Instruction::FDiv,
-    Instruction::URem,
-    Instruction::SRem,
-    Instruction::FRem,
-    Instruction::Shl,
-    Instruction::LShr,
-    Instruction::AShr,
-    Instruction::And,
-    Instruction::Or,
-    Instruction::Xor};
-
-void IRIndex::trackValue(Value *V) {
-  if (Value2IdMap.count(V))
-    return;
-  unsigned Id = Values.size();
-  Values.push_back(V);
-  Value2IdMap[V] = Id;
-}
-
-IRIndex::IRIndex(llvm::Function &F) {
-  for (auto &I : make_range(inst_begin(F), inst_end(F))) {
-    trackValue(&I);
-    for (Value *Operand : I.operands())
-      trackValue(Operand);
-  }
-}
-
-IRIndex::IRIndex(const Frontier *Frt) {
-  BasicBlock *BB = Frt->getBasicBlock();
-  for (auto &I : *BB) {
-    if (!Frt->isFree(&I))
-      continue;
-    trackValue(&I);
-    for (Value *Operand : I.operands())
-      trackValue(Operand);
-  }
-}
-
 class BatchedGraphBuilder {
   unsigned N, M;
   std::vector<DiEdge> Edges;
@@ -166,13 +58,8 @@ public:
   }
 };
 
-static torch::Tensor getValueTypes(llvm::ArrayRef<IRIndex> Indexes) {
-  std::vector<int64_t> ValueTypes;
-  for (auto &Index : Indexes) {
-    unsigned N = Index.getNumValues();
-    for (unsigned i = 0; i < N; i++)
-      ValueTypes.push_back(OpTable.getValueTypeId(Index.get(i)));
-  }
+static torch::Tensor getValueTypesAsTensor(llvm::ArrayRef<IRIndex> Indexes) {
+  std::vector<int64_t> ValueTypes = getValueTypes(Indexes);
   return torch::from_blob(ValueTypes.data(), {(int64_t)ValueTypes.size()},
                           torch::TensorOptions().dtype(torch::kInt64))
       .clone();
@@ -249,7 +136,7 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
   for (auto &G : Preprocessor.unresolved())
     UnresolvedUseGraphs.push_back(G.getBatched().to(Device));
 
-  auto ValueTypes = getValueTypes(Indexes).to(Device);
+  auto ValueTypes = getValueTypesAsTensor(Indexes).to(Device);
 
   // Initialize the states
   auto H_value = OpcodeEmb->forward(ValueTypes).view({N, EmbSize});

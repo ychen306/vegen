@@ -11,6 +11,7 @@ set(LIB_PACKING_SRC
   IRVec.cpp
   Policy.cpp
   Serialize.cpp
+  Preprocessing.cpp
   LocalDependenceAnalysis.cpp)
 
 if(APPLE)

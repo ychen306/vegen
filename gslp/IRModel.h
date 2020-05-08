@@ -3,34 +3,11 @@
 
 #include "LocalDependenceAnalysis.h"
 #include "Util.h"
-#include "VectorPackContext.h"
-#include "VectorPackSet.h"
 #include "Preprocessing.h"
 #include <llvm/ADT/DenseMap.h>
 #include <torch/torch.h>
 
 class InstBinding;
-
-namespace llvm {
-class Function;
-class BasicBlock;
-class Instruction;
-class Value;
-
-class TargetTransformInfo;
-} // namespace llvm
-
-class VectorPack;
-struct PackSample {
-  VectorPack *VP;
-  torch::Tensor LogProb;
-};
-
-// FIXME: PLEASE wrap these classes together
-class VectorPackContext;
-class VectorPackSet;
-class LocalDependenceAnalysis;
-class MatchManager;
 
 struct PackDistribution {
   IRIndex Index;

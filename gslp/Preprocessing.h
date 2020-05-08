@@ -239,4 +239,38 @@ public:
   }
 };
 
+class OpcodeTable {
+  static unsigned getUnknownTypeId() { return 0; }
+  static unsigned getConstId() { return 1; }
+  static unsigned getCastId() { return 2; }
+  static unsigned getBitwidth(llvm::Type *Ty) {
+    using namespace llvm;
+
+    if (auto *IntTy = dyn_cast<IntegerType>(Ty))
+      return IntTy->getBitWidth();
+    if (Ty->isFloatTy())
+      return 32;
+    if (Ty->isDoubleTy())
+      return 64;
+    return 0; // don't care
+  }
+
+  static std::vector<unsigned> Bitwidths;
+  static std::vector<unsigned> Opcodes;
+  std::map<std::pair<unsigned, unsigned>, unsigned> ValueTypeIds;
+
+public:
+  OpcodeTable();
+  unsigned getNumValueTypes() const {
+    // # of value types = <# inst opcode> * <# bitwidths> + <constant> + <cast>
+    // <unknown>
+    return Opcodes.size() * Bitwidths.size() + 1 + 1 + 1;
+  }
+
+  unsigned getValueTypeId(llvm::Value *V) const;
+};
+
+extern OpcodeTable OpTable;
+
+std::vector<int64_t> getValueTypes(llvm::ArrayRef<IRIndex> Indexes);
 #endif // PREPROCESSING_H
