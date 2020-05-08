@@ -1,0 +1,44 @@
+syntax = "proto2";
+
+package serialize;
+
+message Frontier {
+  message Edge {
+    required int32 src = 1;
+    required int32 dst = 2;
+  }
+
+  required int32 num_values = 1;
+  required int32 focus_id = 2;
+
+  message Graph {
+    repeated Edge edges = 1;
+  }
+
+  required Graph use1 = 3;
+  required Graph use2 = 4;
+  required Graph mem_refs = 5;
+  required Graph independence = 6;
+  required Graph inv_unresolved = 7;
+  repeated Graph unresolved = 8;
+  repeated int32 value_types = 9;
+}
+
+message VectorPack {
+  enum Kind {
+    GENERAL = 0;
+    STORE = 1;
+    LOAD = 2;
+  }
+
+  required Kind kind = 1;
+  optional int32 inst_id = 2;
+  repeated int32 lanes = 3;
+  required float prob = 4;
+}
+
+message PackDistribution {
+  // State
+  required Frontier frontier = 1;
+  repeated VectorPack packs = 2;
+}

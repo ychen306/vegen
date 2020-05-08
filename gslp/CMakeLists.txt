@@ -1,3 +1,7 @@
+add_subdirectory(Proto)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 # The main "lib packing"
 set(LIB_PACKING_SRC
   InstSema.cpp
@@ -6,6 +10,7 @@ set(LIB_PACKING_SRC
   Solver.cpp
   IRVec.cpp
   Policy.cpp
+  Serialize.cpp
   LocalDependenceAnalysis.cpp)
 
 if(APPLE)
@@ -22,14 +27,15 @@ add_executable(train train.cpp)
 
 find_package(Torch REQUIRED)
 
-SET_SOURCE_FILES_PROPERTIES(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+set_source_files_properties(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis)
 
 target_link_libraries(Packing ${TORCH_LIBRARIES})
 target_link_libraries(GSLP Packing ${TORCH_LIBRARIES})
-target_link_libraries(train Packing ${TORCH_LIBRARIES} ${LLVM_LIBRARIES})
+target_link_libraries(train Packing Serialize 
+  ${TORCH_LIBRARIES} ${LLVM_LIBRARIES} ${PROTOBUF_LIBRARY})
 
 SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)
 

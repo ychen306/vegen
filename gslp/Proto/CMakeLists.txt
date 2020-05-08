@@ -1,0 +1,5 @@
+include(FindProtobuf)
+find_package(Protobuf REQUIRED)
+include_directories(${PROTOBUF_INCLUDE_DIR})
+protobuf_generate_cpp(PROTO_SRC PROTO_HEADER serialize.proto)
+add_library(Serialize ${PROTO_HEADER} ${PROTO_SRC})
