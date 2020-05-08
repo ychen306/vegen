@@ -1,6 +1,12 @@
 #ifndef PREPROCESSING_H
 #define PREPROCESSING_H
 
+/*
+ * This file provides utility to preprocess/abstract
+ * a frontier into a bunch of graphs
+ * that's easier for serialization or network evaluation.
+ */
+
 #include "Packer.h"
 #include "Solver.h"
 #include "llvm/IR/Instruction.h"
@@ -24,8 +30,7 @@ public:
   unsigned getNumValues() const { return Values.size(); }
 };
 
-template<typename Builder>
-struct BatchedUseGraph1 : public Builder {
+template <typename Builder> struct BatchedUseGraph1 : public Builder {
   void process(const IRIndex &Index) {
     using namespace llvm;
     unsigned N = Index.getNumValues();
@@ -42,8 +47,7 @@ struct BatchedUseGraph1 : public Builder {
   }
 };
 
-template<typename Builder>
-struct BatchedUseGraph2 : public Builder {
+template <typename Builder> struct BatchedUseGraph2 : public Builder {
   void process(const IRIndex &Index) {
     using namespace llvm;
 
@@ -61,8 +65,7 @@ struct BatchedUseGraph2 : public Builder {
   }
 };
 
-template<typename Builder>
-class BatchedMemRefGraph : public Builder {
+template <typename Builder> class BatchedMemRefGraph : public Builder {
   void getEdges(const IRIndex &Index, ConsecutiveAccessDAG &AccessDAG) {
     for (auto &LeftAndRights : AccessDAG) {
       auto *Left = LeftAndRights.first;
@@ -85,8 +88,7 @@ public:
   }
 };
 
-template<typename Builder>
-struct BatchedIndependenceGraph : public Builder {
+template <typename Builder> struct BatchedIndependenceGraph : public Builder {
   void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
     using namespace llvm;
 
@@ -114,8 +116,7 @@ struct BatchedIndependenceGraph : public Builder {
   }
 };
 
-template<typename Builder>
-class BatchedUnresolvedUseGraph : public Builder {
+template <typename Builder> class BatchedUnresolvedUseGraph : public Builder {
   unsigned LaneId;
 
 public:

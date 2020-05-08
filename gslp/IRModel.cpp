@@ -1,8 +1,8 @@
 #include "IRModel.h"
 #include "MatchManager.h"
 #include "Packer.h"
-#include "Solver.h"
 #include "Preprocessing.h"
+#include "Solver.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
@@ -228,10 +228,11 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
   BatchedUseGraph1<BatchedGraphBuilder> UseGraph1Builder;
   BatchedUseGraph2<BatchedGraphBuilder> UseGraph2Builder;
   BatchedMemRefGraph<BatchedGraphBuilder> MemRefGraphBuilder;
-  BatchedIndependenceGraph<BatchedGraphBuilder> 
-    IndependenceGraphBuilder;
-  std::vector<BatchedUnresolvedUseGraph<BatchedGraphBuilder>> UnresolvedGraphBuilders;
-  BatchedInverseUnresolvedUseGraph<BatchedGraphBuilder> InvUnresolvedGraphBuilder;
+  BatchedIndependenceGraph<BatchedGraphBuilder> IndependenceGraphBuilder;
+  std::vector<BatchedUnresolvedUseGraph<BatchedGraphBuilder>>
+      UnresolvedGraphBuilders;
+  BatchedInverseUnresolvedUseGraph<BatchedGraphBuilder>
+      InvUnresolvedGraphBuilder;
 
   for (unsigned i = 0; i < MaxNumLanes; i++)
     UnresolvedGraphBuilders.emplace_back(i);
