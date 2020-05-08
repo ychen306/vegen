@@ -34,11 +34,11 @@ message VectorPack {
   required Kind kind = 1;
   optional int32 inst_id = 2;
   repeated int64 lanes = 3;
-  required float prob = 4;
 }
 
-message PackDistribution {
+message Supervision {
   // State
   required Frontier frontier = 1;
   repeated VectorPack packs = 2;
+  repeated float prob = 3;
 }

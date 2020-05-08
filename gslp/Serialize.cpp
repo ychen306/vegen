@@ -41,5 +41,14 @@ ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
   Lanes.reserve(VP.lanes_size());
   for (int64_t L : VP.lanes())
     Lanes.push_back(L);
-  Prob = VP.prob();
+}
+
+PolicySupervision::PolicySupervision(const serialize::Supervision &S)
+    : Frt(S.frontier()) {
+  Packs.reserve(S.packs_size());
+  for (auto &VP : S.packs())
+    Packs.emplace_back(VP);
+  Prob.reserve(S.prob_size());
+  for (float P : S.prob())
+    Prob.push_back(P);
 }

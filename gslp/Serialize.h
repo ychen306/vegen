@@ -32,9 +32,16 @@ struct ProcessedVectorPack {
   Kind K;
   unsigned InstId;
   std::vector<int64_t> Lanes;
-  float Prob;
 
   ProcessedVectorPack(const serialize::VectorPack &);
+};
+
+struct PolicySupervision {
+  ProcessedFrontier Frt;
+  std::vector<ProcessedVectorPack> Packs;
+  std::vector<float> Prob;
+
+  PolicySupervision(const serialize::Supervision &);
 };
 
 class PolicyReader {
