@@ -1,6 +1,9 @@
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
+#include "Preprocessing.h"
+#include "Proto/serialize.pb.h"
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+
 
 /*
  * This file provides the utility to serialize a target policy,
@@ -12,9 +15,26 @@
 // in order to be consumed by a graph neural network,
 // describing things like unresolved uses and use edges.
 struct ProcessedFrontier {
+  unsigned NumValues;
+  unsigned FocusId;
+  std::vector<DiEdge> Use1, Use2, MemRefs, Independence, InvUnresolved;
+  std::vector<std::vector<DiEdge>> Unresolved;
+  std::vector<int32_t> ValueTypes;
+
+  ProcessedFrontier(const serialize::Frontier &);
 };
 
 struct ProcessedVectorPack {
+  enum Kind {
+    General, Store, Load
+  };
+
+  Kind K;
+  unsigned InstId;
+  std::vector<int64_t> Lanes;
+  float Prob;
+
+  ProcessedVectorPack(const serialize::VectorPack &);
 };
 
 class PolicyReader {

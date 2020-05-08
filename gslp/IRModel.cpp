@@ -2,6 +2,7 @@
 #include "MatchManager.h"
 #include "Packer.h"
 #include "Solver.h"
+#include "Preprocessing.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
@@ -67,11 +68,6 @@ public:
   }
 
 } OpTable;
-
-struct DiEdge {
-  unsigned Src, Dest;
-  DiEdge(unsigned S, unsigned T) : Src(S), Dest(T) {}
-};
 
 torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
                                 unsigned M, bool Flip = false) {
