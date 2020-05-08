@@ -71,8 +71,7 @@ ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
     Lanes.push_back(L);
 }
 
-void ProcessedVectorPack::proto(serialize::VectorPack &VP) const {
-}
+void ProcessedVectorPack::proto(serialize::VectorPack &VP) const {}
 
 PolicySupervision::PolicySupervision(const serialize::Supervision &S)
     : Frt(S.frontier()) {
