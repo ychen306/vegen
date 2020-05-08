@@ -225,48 +225,29 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
                                 unsigned NumIters) {
   unsigned N = 0, NumUnresolvedUses = 0;
   std::vector<IRIndex> Indexes;
-  BatchedUseGraph1<BatchedGraphBuilder> UseGraph1Builder;
-  BatchedUseGraph2<BatchedGraphBuilder> UseGraph2Builder;
-  BatchedMemRefGraph<BatchedGraphBuilder> MemRefGraphBuilder;
-  BatchedIndependenceGraph<BatchedGraphBuilder> IndependenceGraphBuilder;
-  std::vector<BatchedUnresolvedUseGraph<BatchedGraphBuilder>>
-      UnresolvedGraphBuilders;
-  BatchedInverseUnresolvedUseGraph<BatchedGraphBuilder>
-      InvUnresolvedGraphBuilder;
-
-  for (unsigned i = 0; i < MaxNumLanes; i++)
-    UnresolvedGraphBuilders.emplace_back(i);
+  FrontierPreprocessor<BatchedGraphBuilder> Preprocessor(MaxNumLanes);
 
   for (auto *Frt : Frontiers) {
     IRIndex Index(Frt);
-    BasicBlock *BB = Frt->getBasicBlock();
-    auto &LoadDAG = Pkr->getLoadDAG(BB);
-    auto &StoreDAG = Pkr->getStoreDAG(BB);
-
-    UseGraph1Builder.process(Index);
-    UseGraph2Builder.process(Index);
-    MemRefGraphBuilder.process(Index, LoadDAG, StoreDAG);
-    IndependenceGraphBuilder.process(Frt, Pkr, Index);
-    InvUnresolvedGraphBuilder.process(Frt, Pkr, Index);
-    for (auto &B : UnresolvedGraphBuilders)
-      B.process(Frt, Pkr, Index);
-
-    N += Index.getNumValues();
-    NumUnresolvedUses +=
-        Frt->getUnresolvedPacks().size() + Frt->numUnresolvedScalars();
+    unsigned NumValues;
+    unsigned NumUses;
+    Preprocessor.process(Frt, Index, Pkr, NumValues, NumUses);
+    N += NumValues;
+    NumUnresolvedUses += NumUses;
     Indexes.push_back(std::move(Index));
   }
 
-  auto UseGraph1 = UseGraph1Builder.getBatched().to(Device);
-  auto UseGraph2 = UseGraph2Builder.getBatched().to(Device);
-  auto LeftMemRefGraph = MemRefGraphBuilder.getBatched().to(Device);
+  auto UseGraph1 = Preprocessor.use1().getBatched().to(Device);
+  auto UseGraph2 = Preprocessor.use2().getBatched().to(Device);
+  auto LeftMemRefGraph = Preprocessor.memRefs().getBatched().to(Device);
   auto RightMemRefGraph =
-      MemRefGraphBuilder.getBatched(true /*flip*/).to(Device);
-  auto IndependenceGraph = IndependenceGraphBuilder.getBatched().to(Device);
-  auto InvUnresolvedGraph = InvUnresolvedGraphBuilder.getBatched().to(Device);
+      Preprocessor.memRefs().getBatched(true /*flip*/).to(Device);
+  auto IndependenceGraph = Preprocessor.independence().getBatched().to(Device);
+  auto InvUnresolvedGraph =
+      Preprocessor.invUnresolved().getBatched().to(Device);
   std::vector<torch::Tensor> UnresolvedUseGraphs;
-  for (auto &B : UnresolvedGraphBuilders)
-    UnresolvedUseGraphs.push_back(B.getBatched().to(Device));
+  for (auto &G : Preprocessor.unresolved())
+    UnresolvedUseGraphs.push_back(G.getBatched().to(Device));
 
   auto ValueTypes = getValueTypes(Indexes).to(Device);
 

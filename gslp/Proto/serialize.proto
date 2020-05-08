@@ -4,20 +4,21 @@ package serialize;
 
 message Frontier {
   required int32 num_values = 1;
-  required int32 focus_id = 2;
+  required int32 num_uses = 2;
+  required int32 focus_id = 3;
 
   message Graph {
     repeated int32 sources = 1;
     repeated int32 dests = 2;
   }
 
-  required Graph use1 = 3;
-  required Graph use2 = 4;
-  required Graph mem_refs = 5;
-  required Graph independence = 6;
-  required Graph inv_unresolved = 7;
-  repeated Graph unresolved = 8;
-  repeated int32 value_types = 9;
+  required Graph use1 = 4;
+  required Graph use2 = 5;
+  required Graph mem_refs = 6;
+  required Graph independence = 7;
+  required Graph inv_unresolved = 8;
+  repeated Graph unresolved = 9;
+  repeated int32 value_types = 10;
 }
 
 message VectorPack {

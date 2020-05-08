@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 
           T.startTimer();
 
-          MCTS.run(Root, 1000);
+          MCTS.run(Root, 10000);
           errs() << "!!! search done\n";
           // std::vector<const Frontier *> Frts(128, &Frt);
           // for (unsigned i = 0; i < 10; i++)

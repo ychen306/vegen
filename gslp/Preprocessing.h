@@ -89,7 +89,7 @@ public:
 };
 
 template <typename Builder> struct BatchedIndependenceGraph : public Builder {
-  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+  void process(const Frontier *Frt, Packer *Pkr, const IRIndex &Index) {
     using namespace llvm;
 
     auto *BB = Frt->getBasicBlock();
@@ -121,7 +121,7 @@ template <typename Builder> class BatchedUnresolvedUseGraph : public Builder {
 
 public:
   BatchedUnresolvedUseGraph(unsigned LaneId) : LaneId(LaneId) {}
-  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+  void process(const Frontier *Frt, Packer *Pkr, const IRIndex &Index) {
     using namespace llvm;
 
     BasicBlock *BB = Frt->getBasicBlock();
@@ -159,7 +159,7 @@ public:
 
 template <typename Builder>
 struct BatchedInverseUnresolvedUseGraph : public Builder {
-  void process(const Frontier *Frt, Packer *Pkr, IRIndex &Index) {
+  void process(const Frontier *Frt, Packer *Pkr, const IRIndex &Index) {
     using namespace llvm;
 
     BasicBlock *BB = Frt->getBasicBlock();
@@ -186,6 +186,56 @@ struct BatchedInverseUnresolvedUseGraph : public Builder {
 
     unsigned NumUnresolvedUses = i;
     Builder::finishBatch(Index.getNumValues(), NumUnresolvedUses);
+  }
+};
+
+template <typename Builder> class FrontierPreprocessor {
+  BatchedUseGraph1<Builder> UseGraph1Builder;
+  BatchedUseGraph2<Builder> UseGraph2Builder;
+  BatchedMemRefGraph<Builder> MemRefGraphBuilder;
+  BatchedIndependenceGraph<Builder> IndependenceGraphBuilder;
+  std::vector<BatchedUnresolvedUseGraph<Builder>> UnresolvedGraphBuilders;
+  BatchedInverseUnresolvedUseGraph<Builder> InvUnresolvedGraphBuilder;
+
+public:
+  FrontierPreprocessor(unsigned MaxNumLanes) {
+    for (unsigned i = 0; i < MaxNumLanes; i++)
+      UnresolvedGraphBuilders.emplace_back(i);
+  }
+
+  void process(const Frontier *Frt, const IRIndex &Index, Packer *Pkr,
+               unsigned &NumValues, unsigned &NumUses) {
+    using namespace llvm;
+
+    BasicBlock *BB = Frt->getBasicBlock();
+    auto &LoadDAG = Pkr->getLoadDAG(BB);
+    auto &StoreDAG = Pkr->getStoreDAG(BB);
+
+    UseGraph1Builder.process(Index);
+    UseGraph2Builder.process(Index);
+    MemRefGraphBuilder.process(Index, LoadDAG, StoreDAG);
+    IndependenceGraphBuilder.process(Frt, Pkr, Index);
+    InvUnresolvedGraphBuilder.process(Frt, Pkr, Index);
+    for (auto &B : UnresolvedGraphBuilders)
+      B.process(Frt, Pkr, Index);
+
+    NumValues = Index.getNumValues();
+    NumUses = Frt->getUnresolvedPacks().size() + Frt->numUnresolvedScalars();
+  }
+
+  const BatchedUseGraph1<Builder> &use1() const { return UseGraph1Builder; }
+  const BatchedUseGraph2<Builder> &use2() const { return UseGraph2Builder; }
+  const BatchedMemRefGraph<Builder> &memRefs() const {
+    return MemRefGraphBuilder;
+  }
+  const BatchedIndependenceGraph<Builder> &independence() const {
+    return IndependenceGraphBuilder;
+  }
+  const BatchedInverseUnresolvedUseGraph<Builder> &invUnresolved() const {
+    return InvUnresolvedGraphBuilder;
+  }
+  llvm::ArrayRef<BatchedUnresolvedUseGraph<Builder>> unresolved() const {
+    return UnresolvedGraphBuilders;
   }
 };
 

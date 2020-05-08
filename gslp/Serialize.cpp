@@ -13,7 +13,9 @@ static std::vector<DiEdge> getEdges(const serialize::Frontier::Graph &G) {
 }
 
 ProcessedFrontier::ProcessedFrontier(const serialize::Frontier &Frt)
-    : NumValues(Frt.num_values()), FocusId(Frt.focus_id()),
+    : NumValues(Frt.num_values()),
+    NumUses(Frt.num_uses()),
+    FocusId(Frt.focus_id()),
       Use1(getEdges(Frt.use1())), Use2(getEdges(Frt.use2())),
       MemRefs(getEdges(Frt.mem_refs())),
       Independence(getEdges(Frt.independence())),

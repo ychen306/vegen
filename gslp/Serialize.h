@@ -16,6 +16,7 @@
 // describing things like unresolved uses and use edges.
 struct ProcessedFrontier {
   unsigned NumValues;
+  unsigned NumUses;
   unsigned FocusId;
   std::vector<DiEdge> Use1, Use2, MemRefs, Independence, InvUnresolved;
   std::vector<std::vector<DiEdge>> Unresolved;
