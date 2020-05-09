@@ -36,6 +36,8 @@ message VectorPack {
 message Supervision {
   // State
   required Frontier frontier = 1;
+  // Action
   repeated VectorPack packs = 2;
+  // Action probability
   repeated float prob = 3;
 }
