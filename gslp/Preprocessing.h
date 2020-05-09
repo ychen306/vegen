@@ -223,18 +223,18 @@ public:
     NumUses = Frt->getUnresolvedPacks().size() + Frt->numUnresolvedScalars();
   }
 
-  const BatchedUseGraph1<Builder> &use1() const { return UseGraph1Builder; }
-  const BatchedUseGraph2<Builder> &use2() const { return UseGraph2Builder; }
-  const BatchedMemRefGraph<Builder> &memRefs() const {
+  BatchedUseGraph1<Builder> &use1() { return UseGraph1Builder; }
+  BatchedUseGraph2<Builder> &use2() { return UseGraph2Builder; }
+  BatchedMemRefGraph<Builder> &memRefs() {
     return MemRefGraphBuilder;
   }
-  const BatchedIndependenceGraph<Builder> &independence() const {
+  BatchedIndependenceGraph<Builder> &independence() {
     return IndependenceGraphBuilder;
   }
-  const BatchedInverseUnresolvedUseGraph<Builder> &invUnresolved() const {
+  BatchedInverseUnresolvedUseGraph<Builder> &invUnresolved() {
     return InvUnresolvedGraphBuilder;
   }
-  llvm::ArrayRef<BatchedUnresolvedUseGraph<Builder>> unresolved() const {
+  std::vector<BatchedUnresolvedUseGraph<Builder>> unresolved() {
     return UnresolvedGraphBuilders;
   }
 };

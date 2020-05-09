@@ -1,15 +1,19 @@
+/*
+ * This file provides the utility to serialize a target policy,
+ * which consists of a frontier and the pack distribution
+ * determined by the target policy.
+ *
+ * Notice that the writer writes a raw/unprocessed frontier and packs
+ * while the reader reads out a processed frontier and packs.
+ * The reason is that it's easier to directly serialize a raw frontier,
+ * skipping the processing step.
+ */
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
 #include "Preprocessing.h"
 #include "Proto/serialize.pb.h"
 #include "google/protobuf/util/delimited_message_util.h"
 #include <google/protobuf/io/zero_copy_stream_impl.h>
-
-/*
- * This file provides the utility to serialize a target policy,
- * which consists of a frontier and the pack distribution
- * determined by the target policy.
- */
 
 // A frontier processed into a bunch of adjacency matrices --
 // in order to be consumed by a graph neural network,
@@ -66,10 +70,7 @@ class PolicyWriter {
 
 public:
   PolicyWriter(int FD) : OS(FD) { OS.SetCloseOnDelete(true); }
-  void write(const PolicySupervision &PS) {
-    serialize::Supervision S;
-    PS.proto(S);
-    google::protobuf::util::SerializeDelimitedToZeroCopyStream(S, &OS);
-  }
+  void write(const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
+             llvm::ArrayRef<float> Prob, unsigned MaxNumLanes);
 };
 #endif // SERIALIZE_H
