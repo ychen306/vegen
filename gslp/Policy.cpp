@@ -2,16 +2,6 @@
 
 using namespace llvm;
 
-static unsigned getInstId(PackingModel Model, const VectorPack *VP) {
-  if (VP->isLoad() || VP->isStore())
-    return Model->getMemAccessId(VP->getOrderedValues().size());
-  auto *Inst = VP->getProducer();
-  auto InstPool = Model->getInstPool();
-  auto It = std::lower_bound(InstPool.begin(), InstPool.end(), Inst);
-  assert(*It == Inst);
-  return It - InstPool.begin();
-}
-
 torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
                           const Frontier *Frt,
                           llvm::ArrayRef<UCTNode::Transition> Transitions) {
@@ -26,7 +16,7 @@ torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
     } else {
       // T involves an actual pack.
       // We pretend we can sample the opcode and lanes independently
-      auto PackProb = PD.OpProb[FocusId][getInstId(Model, T.VP)];
+      auto PackProb = PD.OpProb[FocusId][Model->getInstId(T.VP)];
       unsigned i = 0;
       for (auto *V : T.VP->getOrderedValues())
         PackProb *= PD.LaneProbs[i++][FocusId][PD.Index.getValueId(V)];

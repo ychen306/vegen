@@ -65,6 +65,15 @@ torch::Tensor getValueTypesAsTensor(llvm::ArrayRef<IRIndex> Indexes) {
 
 } // end anonymous namespace
 
+unsigned PackingModelImpl::getInstId(const VectorPack *VP) const {
+  if (VP->isLoad() || VP->isStore())
+    return getMemAccessId(VP->getOrderedValues().size());
+  auto *Inst = VP->getProducer();
+  auto It = std::lower_bound(InstPool.begin(), InstPool.end(), Inst);
+  assert(*It == Inst);
+  return It - InstPool.begin();
+}
+
 PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                    llvm::ArrayRef<InstBinding *> InstPool,
                                    unsigned MaxNumLanes)

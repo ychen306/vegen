@@ -2,8 +2,8 @@
 #define IR_MODEL_H
 
 #include "LocalDependenceAnalysis.h"
-#include "Util.h"
 #include "Preprocessing.h"
+#include "Util.h"
 #include <llvm/ADT/DenseMap.h>
 #include <torch/torch.h>
 
@@ -54,11 +54,13 @@ public:
                                               unsigned NumIters);
   PackDistribution forward(const Frontier *, Packer *, torch::Device,
                            unsigned NumIters);
+  // TODO: pull `getNopID`, `getMemAccessId`, and `getInstId`
+  // into a separate class that deals with assigning instruction id.
   unsigned getNopId() const { return InstPool.size(); }
   unsigned getMemAccessId(unsigned VL) const {
     return InstPool.size() + VL - 2;
   }
-  llvm::ArrayRef<InstBinding *> getInstPool() const { return InstPool; }
+  unsigned getInstId(const VectorPack *) const;
   unsigned getMaxNumLanes() const { return MaxNumLanes; }
 };
 

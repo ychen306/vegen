@@ -10,6 +10,7 @@
  */
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
+#include "IRModel.h"
 #include "Preprocessing.h"
 #include "Proto/serialize.pb.h"
 #include "google/protobuf/util/delimited_message_util.h"
@@ -68,6 +69,6 @@ class PolicyWriter {
 public:
   PolicyWriter(int FD) : OS(FD) { OS.SetCloseOnDelete(true); }
   void write(const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
-             llvm::ArrayRef<float> Prob, unsigned MaxNumLanes);
+             llvm::ArrayRef<float> Prob, PackingModel Model);
 };
 #endif // SERIALIZE_H

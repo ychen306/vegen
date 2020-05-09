@@ -78,11 +78,11 @@ public:
 
 void PolicyWriter::write(const Frontier *Frt, Packer *Pkr,
                          ArrayRef<const VectorPack *> Packs,
-                         ArrayRef<float> Prob, unsigned MaxNumLanes) {
+                         ArrayRef<float> Prob, PackingModel Model) {
   serialize::Supervision S;
   auto *ProtoFrt = new serialize::Frontier();
 
-  FrontierPreprocessor<GraphSerializer> Serializer(MaxNumLanes);
+  FrontierPreprocessor<GraphSerializer> Serializer(Model->getMaxNumLanes());
 
   // Tell the serializer where to dump the edges while traversing the frontier.
   ProtoFrt->set_allocated_use1(
@@ -115,6 +115,32 @@ void PolicyWriter::write(const Frontier *Frt, Packer *Pkr,
   Instruction *Focus = Frt->getNextFreeInst();
   assert(Focus && "Attempting to serialize empty frontier");
   ProtoFrt->set_focus_id(Index.getValueId(Focus));
+
+  // Dump the packs
+  for (auto *VP : Packs) {
+    auto *ProtoPack = S.add_packs();
+
+    serialize::VectorPack::Kind K;
+    if (VP->isLoad())
+      K = serialize::VectorPack::LOAD;
+    else if (VP->isStore())
+      K = serialize::VectorPack::STORE;
+    else {
+      assert(VP->getProducer() && "Attempting to serialize a phi pack");
+      K = serialize::VectorPack::GENERAL;
+    }
+
+    ProtoPack->set_kind(K);
+    ProtoPack->set_inst_id(Model->getInstId(VP));
+    for (auto *V : VP->getOrderedValues())
+      ProtoPack->add_lanes(Index.getValueId(V));
+  }
+
+  assert(Packs.size() == Prob.size());
+
+  // Dump the the probability of choosing the packs
+  for (float P : Prob)
+    S.add_prob(P);
 
   S.set_allocated_frontier(ProtoFrt);
   google::protobuf::util::SerializeDelimitedToZeroCopyStream(S, &OS);
