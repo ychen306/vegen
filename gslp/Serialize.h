@@ -27,7 +27,6 @@ struct ProcessedFrontier {
   std::vector<int32_t> ValueTypes;
 
   ProcessedFrontier(const serialize::Frontier &);
-  void proto(serialize::Frontier &) const;
 };
 
 struct ProcessedVectorPack {
@@ -38,7 +37,6 @@ struct ProcessedVectorPack {
   std::vector<int64_t> Lanes;
 
   ProcessedVectorPack(const serialize::VectorPack &);
-  void proto(serialize::VectorPack &) const;
 };
 
 struct PolicySupervision {
@@ -47,7 +45,6 @@ struct PolicySupervision {
   std::vector<float> Prob;
 
   PolicySupervision(const serialize::Supervision &);
-  void proto(serialize::Supervision &) const;
 };
 
 class PolicyReader {

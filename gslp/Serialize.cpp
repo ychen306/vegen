@@ -26,33 +26,6 @@ ProcessedFrontier::ProcessedFrontier(const serialize::Frontier &Frt)
     ValueTypes.push_back(Ty);
 }
 
-static void buildGraph(ArrayRef<DiEdge> Edges, serialize::Frontier::Graph &G) {
-  for (auto &E : Edges) {
-    G.add_sources(E.Src);
-    G.add_dests(E.Dest);
-  }
-}
-
-static serialize::Frontier::Graph *buildGraph(ArrayRef<DiEdge> Edges) {
-  auto *G = new serialize::Frontier::Graph();
-  buildGraph(Edges, *G);
-  return G;
-}
-
-void ProcessedFrontier::proto(serialize::Frontier &Frt) const {
-  Frt.set_num_values(NumValues);
-  Frt.set_focus_id(FocusId);
-  Frt.set_allocated_use1(buildGraph(Use1));
-  Frt.set_allocated_use2(buildGraph(Use2));
-  Frt.set_allocated_mem_refs(buildGraph(MemRefs));
-  Frt.set_allocated_independence(buildGraph(Independence));
-  Frt.set_allocated_inv_unresolved(buildGraph(InvUnresolved));
-  for (auto &G : Unresolved)
-    buildGraph(G, *Frt.add_unresolved());
-  for (int32_t Ty : ValueTypes)
-    Frt.add_value_types(Ty);
-}
-
 ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
   switch (VP.kind()) {
   case serialize::VectorPack::GENERAL:
@@ -71,25 +44,6 @@ ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
     Lanes.push_back(L);
 }
 
-void ProcessedVectorPack::proto(serialize::VectorPack &VP) const {
-  serialize::VectorPack::Kind Kind;
-  switch (K) {
-  case General:
-    Kind = serialize::VectorPack::GENERAL;
-    break;
-  case Store:
-    Kind = serialize::VectorPack::STORE;
-    break;
-  case Load:
-    Kind = serialize::VectorPack::LOAD;
-    break;
-  }
-  VP.set_kind(Kind);
-  VP.set_inst_id(InstId);
-  for (int64_t L : Lanes)
-    VP.add_lanes(L);
-}
-
 PolicySupervision::PolicySupervision(const serialize::Supervision &S)
     : Frt(S.frontier()) {
   Packs.reserve(S.packs_size());
@@ -98,20 +52,6 @@ PolicySupervision::PolicySupervision(const serialize::Supervision &S)
   Prob.reserve(S.prob_size());
   for (float P : S.prob())
     Prob.push_back(P);
-}
-
-void PolicySupervision::proto(serialize::Supervision &S) const {
-  auto *ProtoFrt = new serialize::Frontier();
-  Frt.proto(*ProtoFrt);
-  S.set_allocated_frontier(ProtoFrt);
-
-  for (auto &VP : Packs) {
-    auto *ProtoPack = S.add_packs();
-    VP.proto(*ProtoPack);
-  }
-
-  for (auto P : Prob)
-    S.add_prob(P);
 }
 
 namespace {
