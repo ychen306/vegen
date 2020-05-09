@@ -11,11 +11,6 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
   UCTNode *Root =
       Factory.getNode(std::make_unique<Frontier>(BB, Pkr->getContext(BB)));
 
-  auto CompareByVisitCount = [](const UCTNode::Transition &A,
-                                const UCTNode::Transition &B) {
-    return A.visitCount() < B.visitCount();
-  };
-
   UCTNode *Node = Root;
   std::vector<UCTNode *> Nodes = {Root};
   std::vector<float> Prob;
