@@ -234,7 +234,7 @@ public:
   BatchedInverseUnresolvedUseGraph<Builder> &invUnresolved() {
     return InvUnresolvedGraphBuilder;
   }
-  std::vector<BatchedUnresolvedUseGraph<Builder>> unresolved() {
+  std::vector<BatchedUnresolvedUseGraph<Builder>> &unresolved() {
     return UnresolvedGraphBuilders;
   }
 };

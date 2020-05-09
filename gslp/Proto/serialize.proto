@@ -31,7 +31,7 @@ message VectorPack {
 
   required Kind kind = 1;
   optional int32 inst_id = 2;
-  repeated int64 lanes = 3;
+  repeated int32 lanes = 3;
 }
 
 message Supervision {

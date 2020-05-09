@@ -241,7 +241,12 @@ public:
   PackingPolicy() = delete;
   PackingPolicy(unsigned MaxNumLanes) : MaxNumLanes(MaxNumLanes) {}
   unsigned getMaxNumLanes() const { return MaxNumLanes; }
+  // Predict transition probability *asynchronously*.
   virtual void predictAsync(UCTNode *) = 0;
+  // Predict transition probability *synchronously*.
+  virtual void predict(UCTNode *, std::vector<float> &) = 0;
+  // Cancel prediction requests we made asynchronously.
+  virtual void cancel() = 0;
 };
 
 class UCTSearch {

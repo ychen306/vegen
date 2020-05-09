@@ -2,6 +2,11 @@
 
 using namespace llvm;
 
+static llvm::ArrayRef<float> tensorToArrayRef(torch::Tensor X) {
+  static torch::Device CPU(torch::kCPU);
+  return llvm::ArrayRef<float>(X.to(CPU).template data_ptr<float>(), X.size(0));
+}
+
 torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
                           const Frontier *Frt,
                           llvm::ArrayRef<UCTNode::Transition> Transitions) {
@@ -33,13 +38,18 @@ void NeuralPackingPolicy::evalNodes() {
     // Grab a batch of nodes from the queue
     {
       std::unique_lock<std::mutex> LockGuard(QueueLock);
-      QueueCond.wait(LockGuard, [&] { return !Queue.empty() || Shutdown.load(); });
+      QueueCond.wait(LockGuard,
+                     [&] { return !Queue.empty() || Shutdown.load(); });
 
       if (Shutdown.load())
         break;
 
       Nodes = std::move(Queue.front());
       Queue.pop();
+    }
+    {
+      std::unique_lock<std::mutex> LockGuard(IdlingLock);
+      --NumIdlingThreads;
     }
 
     // Run the batch of frontiers through the model
@@ -50,15 +60,18 @@ void NeuralPackingPolicy::evalNodes() {
     std::vector<PackDistribution> PDs =
         Model->batch_forward(Frontiers, Pkr, Device, NumIters);
 
-    // Compute pack probability.
-    torch::Device CPU(torch::kCPU);
     for (unsigned i = 0; i < Frontiers.size(); i++) {
       auto *Node = Nodes[i];
       auto Prob = computeProb(Model, PDs[i], Frontiers[i], Node->transitions());
-      // This line is so beautify, I am crying :-).
-      Node->updateTransitionWeight(new std::vector<float>(
-          ArrayRef<float>(Prob.to(CPU).data_ptr<float>(), Prob.size(0)).vec()));
+      Node->updateTransitionWeight(
+          new std::vector<float>(tensorToArrayRef(Prob).vec()));
     }
+
+    {
+      std::unique_lock<std::mutex> LockGuard(IdlingLock);
+      ++NumIdlingThreads;
+    }
+    IdlingCond.notify_all();
   }
 }
 
@@ -71,6 +84,26 @@ void NeuralPackingPolicy::predictAsync(UCTNode *Node) {
     }
     QueueCond.notify_one();
   }
+}
+
+// Empty the task queue and wait for all inflight tasks to finish.
+void NeuralPackingPolicy::cancel() {
+  Nodes.clear();
+  {
+    std::unique_lock<std::mutex> LockGuard(QueueLock);
+    Queue = {};
+  }
+  std::unique_lock<std::mutex> LockGuard(IdlingLock);
+  IdlingCond.wait(LockGuard,
+                  [&] { return NumIdlingThreads == Threads.size(); });
+}
+
+void NeuralPackingPolicy::predict(UCTNode *Node,
+                                  std::vector<float> &Predicted) {
+  auto *Frt = Node->getFrontier();
+  PackDistribution PD = Model->forward(Frt, Pkr, Device, NumIters);
+  auto Prob = computeProb(Model, PD, Frt, Node->transitions());
+  Predicted = tensorToArrayRef(Prob).vec();
 }
 
 NeuralPackingPolicy::~NeuralPackingPolicy() {

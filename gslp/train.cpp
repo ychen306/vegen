@@ -4,6 +4,7 @@
 #include "Policy.h"
 #include "Solver.h"
 #include "Serialize.h"
+#include "SupervisionGenerator.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -181,7 +182,7 @@ int main(int argc, char **argv) {
 
   RolloutEvaluator Evaluator;
 
-  if (true){
+  if (false){
     int FD;
     EC = sys::fs::openFileForRead("t.bin", FD);
     PolicyReader Reader(FD);
@@ -206,20 +207,25 @@ int main(int argc, char **argv) {
         NeuralPackingPolicy Policy(Model, Pkr.get(),
                                    8 /*iters of message passing*/, Device,
                                    8 /*batch size*/, 4 /*num threads*/);
-        {
-          UCTSearch MCTS(100 /*exploration factor*/,
-                         100 /*how much we trust the policy*/, &Factory,
-                         Pkr.get(), nullptr/*&Policy*/, &Evaluator, Pkr->getTTI());
-          Timer T("mcts", "time takes to run 10 iter of MCTS");
-
-          // Frontier Frt(&BB, Pkr->getContext(&BB));
           int FD;
           EC = sys::fs::openFileForWrite("t.bin", FD);
           CheckError();
 
           PolicyWriter Writer(FD);
+        {
+          SupervisionGenerator SG(Writer, &Evaluator, Model, 4, 100, 100, 10);
+          SG.run(&Policy, Pkr.get(), &BB);
+        }
+#if 0
+        {
+          UCTSearch MCTS(100 /*exploration factor*/,
+              100 /*how much we trust the policy*/, &Factory,
+              Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
+          Timer T("mcts", "time takes to run 10 iter of MCTS");
+
+          // Frontier Frt(&BB, Pkr->getContext(&BB));
           /*const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
-             llvm::ArrayRef<float> Prob, PackingModel Model*/
+            llvm::ArrayRef<float> Prob, PackingModel Model*/
 
           UCTNode *Node = Root;
 
@@ -244,6 +250,7 @@ int main(int argc, char **argv) {
           auto Elapsed = T.getTotalTime();
           Elapsed.print(Elapsed, errs());
         }
+#endif
         return 0;
       }
     }
