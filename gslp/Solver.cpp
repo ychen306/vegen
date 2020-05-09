@@ -79,6 +79,9 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
       continue;
     }
 
+    // FIXME: Consider the case of *partial* resuse here.
+    // E.g. If we have two operand packs (a,b) and (b,a) then we can 
+    // just explicitly pack (a,b) with insertion and get (b,a) with permutation.
     for (unsigned LaneId = 0; LaneId < OP->size(); LaneId++) {
       if ((*OP)[LaneId] != I)
         continue;

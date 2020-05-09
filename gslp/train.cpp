@@ -3,6 +3,7 @@
 #include "Packer.h"
 #include "Policy.h"
 #include "Solver.h"
+#include "Serialize.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -19,6 +20,7 @@
 #include "llvm/Support/GlobPattern.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/FileSystem.h"
 
 using namespace llvm;
 
@@ -199,6 +201,11 @@ int main(int argc, char **argv) {
           Timer T("mcts", "time takes to run 10 iter of MCTS");
 
           // Frontier Frt(&BB, Pkr->getContext(&BB));
+          int FD;
+          EC = sys::fs::openFileForWrite("t.bin", FD);
+          CheckError();
+
+          PolicyWriter Writer(FD);
 
           T.startTimer();
 

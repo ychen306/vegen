@@ -1,5 +1,8 @@
 add_subdirectory(Proto)
 
+include(FindProtobuf)
+find_package(Protobuf REQUIRED)
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # The main "lib packing"
