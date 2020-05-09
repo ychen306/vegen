@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
 
   std::error_code EC;
-  ExitOnError ExitOnErr("Error");
+  ExitOnError ExitOnErr("Error: ");
   auto CheckError = [&]() { ExitOnErr(errorCodeToError(EC)); };
 
   sys::fs::directory_iterator DirEnd;
@@ -180,6 +180,18 @@ int main(int argc, char **argv) {
   int NumEpochs = 100;
 
   RolloutEvaluator Evaluator;
+
+  if (true){
+    int FD;
+    EC = sys::fs::openFileForRead("t.bin", FD);
+    PolicyReader Reader(FD);
+    CheckError();
+
+    PolicySupervision PS;
+    while (Reader.read(PS)) {
+    }
+    return 0;
+  }
 
   for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
     for (auto &Pkr : PackerBuilder::Packers) {

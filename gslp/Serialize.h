@@ -28,6 +28,7 @@ struct ProcessedFrontier {
   std::vector<std::vector<DiEdge>> Unresolved;
   std::vector<int32_t> ValueTypes;
 
+  ProcessedFrontier() = default;
   ProcessedFrontier(const serialize::Frontier &);
 };
 
@@ -38,6 +39,7 @@ struct ProcessedVectorPack {
   unsigned InstId;
   std::vector<int64_t> Lanes;
 
+  ProcessedVectorPack() = default;
   ProcessedVectorPack(const serialize::VectorPack &);
 };
 
@@ -46,20 +48,23 @@ struct PolicySupervision {
   std::vector<ProcessedVectorPack> Packs;
   std::vector<float> Prob;
 
+  PolicySupervision() = default;
   PolicySupervision(const serialize::Supervision &);
 };
 
 class PolicyReader {
-  google::protobuf::io::FileInputStream IS;
+  google::protobuf::io::FileInputStream ISRaw;
+  google::protobuf::io::GzipInputStream IS;
 
 public:
-  PolicyReader(int FD) : IS(FD) { IS.SetCloseOnDelete(true); }
+  PolicyReader(int FD) : ISRaw(FD), IS(&ISRaw) { ISRaw.SetCloseOnDelete(true); }
   bool read(PolicySupervision &PS) {
     serialize::Supervision S;
     bool CleanEOF;
     bool Success = google::protobuf::util::ParseDelimitedFromZeroCopyStream(
         &S, &IS, &CleanEOF);
-    PS = S;
+    if (Success)
+      PS = S;
     return Success;
   }
 };

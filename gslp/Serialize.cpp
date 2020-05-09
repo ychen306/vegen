@@ -66,7 +66,7 @@ class GraphSerializer {
 protected:
   void addEdge(unsigned Src, unsigned Dest) {
     G->add_sources(Src);
-    G->add_sources(Dest);
+    G->add_dests(Dest);
   }
   // This is a nop because we will serialize one frontier at a time
   void finishBatch(unsigned, unsigned) {}
