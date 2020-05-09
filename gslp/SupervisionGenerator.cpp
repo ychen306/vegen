@@ -24,7 +24,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
       Policy->cancel();
 
     auto &Transitions = Node->transitions();
-    // Don't bother querying the policy if there's no decision to be make.
+    // Don't bother querying the policy if there's no decision to make.
     if (Transitions.size() == 1) {
       Node = Transitions.begin()->Next;
       continue;
