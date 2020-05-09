@@ -213,8 +213,8 @@ int main(int argc, char **argv) {
 
           PolicyWriter Writer(FD);
         {
-          SupervisionGenerator SG(Writer, &Evaluator, Model, 4, 100, 100, 10);
-          SG.run(&Policy, Pkr.get(), &BB);
+          SupervisionGenerator SG(Writer, &Evaluator, Model, 4, 50, 100, 1000);
+          SG.run(nullptr/*&Policy*/, Pkr.get(), &BB);
         }
 #if 0
         {

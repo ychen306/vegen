@@ -274,7 +274,7 @@ public:
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
-    return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 0,
+    return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8,
                                N->getFrontier(), EnumCache, Pkr);
   }
 };

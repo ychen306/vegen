@@ -651,7 +651,8 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     if (!CurNode->isTerminal()) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
-      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 0, Factory, Pkr,
+      // FIXME: make max num lanes a parameter of MCTS ctor
+      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 16, Factory, Pkr,
                       &EnumCache, TTI);
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
