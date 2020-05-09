@@ -26,6 +26,7 @@ message VectorPack {
     GENERAL = 0;
     STORE = 1;
     LOAD = 2;
+    SCALAR = 3;
   }
 
   required Kind kind = 1;

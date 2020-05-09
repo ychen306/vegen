@@ -206,15 +206,26 @@ int main(int argc, char **argv) {
           CheckError();
 
           PolicyWriter Writer(FD);
+          /*const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
+             llvm::ArrayRef<float> Prob, PackingModel Model*/
+
+          UCTNode *Node = Root;
 
           T.startTimer();
 
-          MCTS.run(Root, 10000);
-          errs() << "!!! search done\n";
-          // std::vector<const Frontier *> Frts(128, &Frt);
-          // for (unsigned i = 0; i < 10; i++)
-          //  Model->forward(&Frt, Pkr.get(), Device, 8);
-          // Model->batch_forward(Frts, Pkr.get(), Device, 8);
+          unsigned Iter = 0;
+          while (!Node->isTerminal() && Iter++ < 100) {
+            errs() << "!!! ITER = " << Iter << '\n';
+            MCTS.run(Node, 1000);
+            writeTreeSearchPolicy(Writer, *Node, *Pkr, Model);
+
+            auto Transitions = Root->transitions();
+            auto It = std::max_element(Transitions.begin(), Transitions.end(),
+                [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+                return A.visitCount() < B.visitCount();
+                });
+            Node = It->Next;
+          }
 
           T.stopTimer();
 

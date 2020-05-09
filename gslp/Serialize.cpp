@@ -37,6 +37,9 @@ ProcessedVectorPack::ProcessedVectorPack(const serialize::VectorPack &VP) {
   case serialize::VectorPack::LOAD:
     K = Load;
     break;
+  case serialize::VectorPack::SCALAR:
+    K = Scalar;
+    return;
   }
   InstId = VP.inst_id();
   Lanes.reserve(VP.lanes_size());
@@ -120,6 +123,11 @@ void PolicyWriter::write(const Frontier *Frt, Packer *Pkr,
   for (auto *VP : Packs) {
     auto *ProtoPack = S.add_packs();
 
+    if (!VP) {
+      ProtoPack->set_kind(serialize::VectorPack::SCALAR);
+      break;
+    }
+
     serialize::VectorPack::Kind K;
     if (VP->isLoad())
       K = serialize::VectorPack::LOAD;
@@ -144,4 +152,16 @@ void PolicyWriter::write(const Frontier *Frt, Packer *Pkr,
 
   S.set_allocated_frontier(ProtoFrt);
   google::protobuf::util::SerializeDelimitedToZeroCopyStream(S, &OS);
+}
+
+void writeTreeSearchPolicy(PolicyWriter &Writer, UCTNode &Node, Packer &Pkr,
+                           PackingModel Model) {
+  std::vector<const VectorPack *> Packs;
+  std::vector<float> Prob;
+  float VisitCount = Node.visitCount();
+  for (const auto &T : Node.transitions()) {
+    Packs.push_back(T.VP);
+    Prob.push_back(float(T.visitCount()) / VisitCount);
+  }
+  Writer.write(Node.getFrontier(), &Pkr, Packs, Prob, Model);
 }

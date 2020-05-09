@@ -14,6 +14,7 @@
 #include "Preprocessing.h"
 #include "Proto/serialize.pb.h"
 #include "google/protobuf/util/delimited_message_util.h"
+#include <google/protobuf/io/gzip_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 // A frontier processed into a bunch of adjacency matrices --
@@ -31,7 +32,7 @@ struct ProcessedFrontier {
 };
 
 struct ProcessedVectorPack {
-  enum Kind { General, Store, Load };
+  enum Kind { General, Store, Load, Scalar };
 
   Kind K;
   unsigned InstId;
@@ -64,11 +65,19 @@ public:
 };
 
 class PolicyWriter {
-  google::protobuf::io::FileOutputStream OS;
+  google::protobuf::io::FileOutputStream OSRaw;
+  google::protobuf::io::GzipOutputStream OS;
 
 public:
-  PolicyWriter(int FD) : OS(FD) { OS.SetCloseOnDelete(true); }
+  PolicyWriter(int FD) : OSRaw(FD), OS(&OSRaw) { OSRaw.SetCloseOnDelete(true); }
+  ~PolicyWriter() {
+    OS.Flush();
+    OS.Close();
+  }
   void write(const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
              llvm::ArrayRef<float> Prob, PackingModel Model);
 };
+
+// Interpret result of tree search as a probability distr. and dump it.
+void writeTreeSearchPolicy(PolicyWriter &, UCTNode &, Packer &, PackingModel);
 #endif // SERIALIZE_H
