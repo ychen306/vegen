@@ -3,20 +3,6 @@
 
 using namespace llvm;
 
-namespace {
-class TransitionComparator {
-  PackingPolicy *Policy;
-
-public:
-  TransitionComparator(PackingPolicy *Policy) : Policy(Policy) {}
-  bool operator()(const UCTNode::Transition &A,
-                  const UCTNode::Transition &B) const {
-    if (!Policy)
-      return A.visitCount() < B.visitCount();
-  }
-};
-} // end anonymous namespace
-
 void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
                                BasicBlock *BB) {
   UCTNodeFactory Factory;
