@@ -13,6 +13,7 @@ set(LIB_PACKING_SRC
   Solver.cpp
   IRVec.cpp
   Policy.cpp
+  GraphUtil.cpp
   Serialize.cpp
   Preprocessing.cpp
   SupervisionGenerator.cpp
@@ -27,6 +28,7 @@ endif(APPLE)
 add_library(GSLP MODULE GSLP.cpp)
 
 add_executable(generate-data generate-data.cpp)
+add_executable(train train.cpp)
 
 find_package(Torch REQUIRED)
 
@@ -38,6 +40,9 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irrea
 target_link_libraries(Packing ${TORCH_LIBRARIES})
 target_link_libraries(GSLP Packing ${TORCH_LIBRARIES})
 target_link_libraries(generate-data Packing Serialize 
+  ${TORCH_LIBRARIES} ${LLVM_LIBRARIES} ${PROTOBUF_LIBRARY})
+# FIXME: `train` doesn't require a lot of these dependence.
+target_link_libraries(train Packing Serialize 
   ${TORCH_LIBRARIES} ${LLVM_LIBRARIES} ${PROTOBUF_LIBRARY})
 
 SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)
