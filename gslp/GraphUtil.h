@@ -2,6 +2,11 @@
 #define GRAPH_UTIL_H
 #include <torch/torch.h>
 
+struct DiEdge {
+  unsigned Src, Dest;
+  DiEdge(unsigned S, unsigned T) : Src(S), Dest(T) {}
+};
+
 class BatchedGraphBuilder {
   unsigned N, M;
   std::vector<DiEdge> Edges;

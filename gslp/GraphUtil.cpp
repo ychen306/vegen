@@ -1,9 +1,10 @@
 #include "GraphUtil.h"
+#include "llvm/ADT/ArrayRef.h"
 
 torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
                                 unsigned M, bool Flip = false) {
-  auto CooIndices = torch::empty({2, (int64_t)Edges.size()},
-                                 TensorOptions().dtype(torch::kInt64));
+  auto Int64Ty = torch::TensorOptions().dtype(torch::kInt64);
+  auto CooIndices = torch::empty({2, (int64_t)Edges.size()}, Int64Ty);
   auto CooIndicesRef = CooIndices.accessor<int64_t, 2>();
   for (unsigned i = 0; i < Edges.size(); i++) {
     if (Flip) {

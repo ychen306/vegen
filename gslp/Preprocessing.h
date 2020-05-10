@@ -9,12 +9,8 @@
 
 #include "Packer.h"
 #include "Solver.h"
+#include "GraphUtil.h" // DiEdge
 #include "llvm/IR/Instruction.h"
-
-struct DiEdge {
-  unsigned Src, Dest;
-  DiEdge(unsigned S, unsigned T) : Src(S), Dest(T) {}
-};
 
 class IRIndex {
   llvm::DenseMap<llvm::Value *, unsigned> Value2IdMap;
