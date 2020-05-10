@@ -31,21 +31,38 @@ static cl::opt<std::string>
              cl::value_desc("train directory"));
 
 static cl::opt<std::string>
-    OutModelPath("o", cl::desc("Specify a file path for the trained model"),
-                 cl::value_desc("output model path"), cl::init("pack.pt"));
-
-static cl::opt<std::string>
-    InitModelPath("init",
-                  cl::desc("Specify a file path to initialize the model"),
-                  cl::value_desc("init model path"), cl::init(""));
+    ModelPath("model",
+                  cl::desc("Specify a file path to the model"),
+                  cl::value_desc("model path"), cl::init(""));
 
 static cl::opt<unsigned>
     EmbeddingSize("emb-size", cl::desc("Specify size of the embedding"),
                   cl::value_desc("model embedding sizes"), cl::init(32));
 
-static cl::opt<float> LearningRate("lr", cl::desc("Specify learning rate"),
-                                   cl::value_desc("learning rate"),
-                                   cl::init(1e-3));
+static cl::opt<unsigned>
+    MaxNumLanes("max-num-lanes", cl::desc("Specify maximum number of lanes the vectorizer is allowed to pack"),
+        cl::value_desc("Maximum number of lanes"), cl::init(8));
+
+static cl::opt<std::string>
+    OutputFileName("o", 
+        cl::desc("Specify an output file path where we will dump the sampled tree search result."),
+        cl::value_desc("Output file name"), cl::init("decisions.bin"));
+
+static cl::opt<unsigned>
+    ParamC("c", cl::desc("Specify the exploration factor (C)"),
+        cl::value_desc("C"), cl::init(1.5));
+
+static cl::opt<unsigned>
+ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
+    cl::value_desc("W"), cl::init(100));
+
+static cl::opt<unsigned>
+SamplePerBlock("samples", cl::desc("Specify the number of decisions we sample when dumping optimizing decisions of a basic block"),
+    cl::value_desc("Number of decisions to sample per basic block"), cl::init(20));
+
+static cl::opt<unsigned>
+NumSimulations("simulations", cl::desc("Specify the number of MCTS simulations for each state"),
+    cl::desc("Number of MCTS simulations"), cl::init(5000));
 
 namespace llvm {
 void initializePackerBuilderPass(PassRegistry &);
@@ -155,7 +172,7 @@ int main(int argc, char **argv) {
   Passes.add(createBasicAAWrapperPass());
   Passes.add(new PackerBuilder());
 
-  PackingModel Model(EmbeddingSize, VecBindingTable.getBindings(), 8);
+  PackingModel Model(EmbeddingSize, VecBindingTable.getBindings(), MaxNumLanes);
   // if (!InitModelPath.empty()) {
   //  errs() << "Initializing model using " << InitModelPath << '\n';
   //  loadModel(Model, InitModelPath);
@@ -167,93 +184,29 @@ int main(int argc, char **argv) {
 
   Model->to(Device);
 
-  torch::optim::Adam Optimizer(Model->parameters(),
-                               torch::optim::AdamOptions(LearningRate));
-  Optimizer.zero_grad();
-
   for (auto &M : Modules)
     Passes.run(*M);
 
   errs() << "Num packers: " << PackerBuilder::Packers.size() << '\n';
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
-         << '\n';
+    << '\n';
 
-  int NumEpochs = 100;
+  torch::NoGradGuard Guard;
+  Model->eval();
 
+  int FD;
+  EC = sys::fs::openFileForWrite(OutputFileName, FD);
+  CheckError();
+  PolicyWriter Writer(FD);
   RolloutEvaluator Evaluator;
+  SupervisionGenerator SG(Writer, &Evaluator, Model, SamplePerBlock, ParamC, ParamW, NumSimulations);
 
-  if (false){
-    int FD;
-    EC = sys::fs::openFileForRead("t.bin", FD);
-    PolicyReader Reader(FD);
-    CheckError();
-
-    PolicySupervision PS;
-    while (Reader.read(PS)) {
-    }
-    return 0;
-  }
-
-  for (int Epoch = 0; Epoch < NumEpochs; Epoch++) {
-    for (auto &Pkr : PackerBuilder::Packers) {
-      if (Pkr->getFunction()->getName() != "binvcrhs")
-        continue;
-      torch::NoGradGuard Guard;
-      Model->eval();
-      for (auto &BB : *Pkr->getFunction()) {
-        UCTNodeFactory Factory;
-        UCTNode *Root = Factory.getNode(
-            std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
-        NeuralPackingPolicy Policy(Model, Pkr.get(),
-                                   8 /*iters of message passing*/, Device,
-                                   8 /*batch size*/, 4 /*num threads*/);
-          int FD;
-          EC = sys::fs::openFileForWrite("t.bin", FD);
-          CheckError();
-
-          PolicyWriter Writer(FD);
-        {
-          SupervisionGenerator SG(Writer, &Evaluator, Model, 4, 50, 100, 1000);
-          SG.run(nullptr/*&Policy*/, Pkr.get(), &BB);
-        }
-#if 0
-        {
-          UCTSearch MCTS(100 /*exploration factor*/,
-              100 /*how much we trust the policy*/, &Factory,
-              Pkr.get(), &Policy, &Evaluator, Pkr->getTTI());
-          Timer T("mcts", "time takes to run 10 iter of MCTS");
-
-          // Frontier Frt(&BB, Pkr->getContext(&BB));
-          /*const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
-            llvm::ArrayRef<float> Prob, PackingModel Model*/
-
-          UCTNode *Node = Root;
-
-          T.startTimer();
-
-          unsigned Iter = 0;
-          while (!Node->isTerminal() && Iter++ < 100) {
-            errs() << "!!! ITER = " << Iter << '\n';
-            MCTS.run(Node, 1000);
-            writeTreeSearchPolicy(Writer, *Node, *Pkr, Model);
-
-            auto Transitions = Root->transitions();
-            auto It = std::max_element(Transitions.begin(), Transitions.end(),
-                [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
-                return A.visitCount() < B.visitCount();
-                });
-            Node = It->Next;
-          }
-
-          T.stopTimer();
-
-          auto Elapsed = T.getTotalTime();
-          Elapsed.print(Elapsed, errs());
-        }
-#endif
-        return 0;
-      }
+  for (auto &Pkr : PackerBuilder::Packers) {
+    for (auto &BB : *Pkr->getFunction()) {
+      UCTNodeFactory Factory;
+      UCTNode *Root = Factory.getNode(
+          std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
+      SG.run(nullptr, Pkr.get(), &BB);
     }
   }
-  return 0;
 }
