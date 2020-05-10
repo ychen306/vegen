@@ -2,8 +2,8 @@
 #include "IRVec.h"
 #include "Packer.h"
 #include "Policy.h"
-#include "Solver.h"
 #include "Serialize.h"
+#include "Solver.h"
 #include "SupervisionGenerator.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -21,7 +21,6 @@
 #include "llvm/Support/GlobPattern.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/FileSystem.h"
 
 using namespace llvm;
 
@@ -31,38 +30,52 @@ static cl::opt<std::string>
              cl::value_desc("train directory"));
 
 static cl::opt<std::string>
-    ModelPath("model",
-                  cl::desc("Specify a file path to the model"),
-                  cl::value_desc("model path"), cl::init(""));
+    ModelPath("model", cl::desc("Specify a file path to the model"),
+              cl::value_desc("model path"), cl::init(""));
 
 static cl::opt<unsigned>
     EmbeddingSize("emb-size", cl::desc("Specify size of the embedding"),
                   cl::value_desc("model embedding sizes"), cl::init(32));
 
-static cl::opt<unsigned>
-    MaxNumLanes("max-num-lanes", cl::desc("Specify maximum number of lanes the vectorizer is allowed to pack"),
-        cl::value_desc("Maximum number of lanes"), cl::init(8));
+static cl::opt<unsigned> MaxNumLanes(
+    "max-num-lanes",
+    cl::desc(
+        "Specify maximum number of lanes the vectorizer is allowed to pack"),
+    cl::value_desc("Maximum number of lanes"), cl::init(8));
 
 static cl::opt<std::string>
-    OutputFileName("o", 
-        cl::desc("Specify an output file path where we will dump the sampled tree search result."),
-        cl::value_desc("Output file name"), cl::init("decisions.bin"));
+    OutputFileName("o",
+                   cl::desc("Specify an output file path where we will dump "
+                            "the sampled tree search result."),
+                   cl::value_desc("Output file name"),
+                   cl::init("decisions.bin"));
+
+static cl::opt<unsigned> ParamC("c",
+                                cl::desc("Specify the exploration factor (C)"),
+                                cl::value_desc("C"), cl::init(1.5));
 
 static cl::opt<unsigned>
-    ParamC("c", cl::desc("Specify the exploration factor (C)"),
-        cl::value_desc("C"), cl::init(1.5));
+    ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
+           cl::value_desc("W"), cl::init(100));
 
-static cl::opt<unsigned>
-ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
-    cl::value_desc("W"), cl::init(100));
+static cl::opt<unsigned> SamplePerBlock(
+    "samples",
+    cl::desc("Specify the number of decisions we sample when dumping "
+             "optimizing decisions of a basic block"),
+    cl::value_desc("Number of decisions to sample per basic block"),
+    cl::init(20));
 
-static cl::opt<unsigned>
-SamplePerBlock("samples", cl::desc("Specify the number of decisions we sample when dumping optimizing decisions of a basic block"),
-    cl::value_desc("Number of decisions to sample per basic block"), cl::init(20));
-
-static cl::opt<unsigned>
-NumSimulations("simulations", cl::desc("Specify the number of MCTS simulations for each state"),
+static cl::opt<unsigned> NumSimulations(
+    "simulations",
+    cl::desc("Specify the number of MCTS simulations for each state"),
     cl::desc("Number of MCTS simulations"), cl::init(5000));
+
+static cl::opt<unsigned> MaxSearchDist(
+    "max-search-dist",
+    cl::desc(
+        "Maximum distance with which consider two instructions as independent"),
+    cl::desc("Maximum distatance between two packable instructions"),
+    cl::init(50));
 
 namespace llvm {
 void initializePackerBuilderPass(PassRegistry &);
@@ -189,7 +202,7 @@ int main(int argc, char **argv) {
 
   errs() << "Num packers: " << PackerBuilder::Packers.size() << '\n';
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
-    << '\n';
+         << '\n';
 
   torch::NoGradGuard Guard;
   Model->eval();
@@ -199,14 +212,10 @@ int main(int argc, char **argv) {
   CheckError();
   PolicyWriter Writer(FD);
   RolloutEvaluator Evaluator;
-  SupervisionGenerator SG(Writer, &Evaluator, Model, SamplePerBlock, ParamC, ParamW, NumSimulations);
+  SupervisionGenerator SG(Writer, &Evaluator, Model, MaxSearchDist,
+                          SamplePerBlock, ParamC, ParamW, NumSimulations);
 
-  for (auto &Pkr : PackerBuilder::Packers) {
-    for (auto &BB : *Pkr->getFunction()) {
-      UCTNodeFactory Factory;
-      UCTNode *Root = Factory.getNode(
-          std::make_unique<Frontier>(&BB, Pkr->getContext(&BB)));
+  for (auto &Pkr : PackerBuilder::Packers)
+    for (auto &BB : *Pkr->getFunction())
       SG.run(nullptr, Pkr.get(), &BB);
-    }
-  }
 }

@@ -80,7 +80,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     }
 
     // FIXME: Consider the case of *partial* resuse here.
-    // E.g. If we have two operand packs (a,b) and (b,a) then we can 
+    // E.g. If we have two operand packs (a,b) and (b,a) then we can
     // just explicitly pack (a,b) with insertion and get (b,a) with permutation.
     for (unsigned LaneId = 0; LaneId < OP->size(); LaneId++) {
       if ((*OP)[LaneId] != I)
@@ -232,6 +232,7 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
 
 class PackEnumerator {
   unsigned MaxNumLanes;
+  unsigned MaxSearchDist;
   const VectorPackContext &VPCtx;
   ArrayRef<InstBinding *> Insts;
   const LocalDependenceAnalysis &LDA;
@@ -240,8 +241,14 @@ class PackEnumerator {
   const MatchManager &MM;
   TargetTransformInfo *TTI;
 
-  bool isFree(Instruction *I, Instruction *Focus) const {
-    return I == Focus || I->comesBefore(Focus);
+  // We can use `I` if
+  // 1) it comes before `Focus` and
+  // 2) it's no more than `MaxSearchDist` away from `Focus`.
+  // The second criterion is to limit the number of packs we can enumerate.
+  bool isUsable(Instruction *I, Instruction *Focus) const {
+    // Abusing the fact that instructions are ID'd in order by VectorPackContext.
+    return (I == Focus || I->comesBefore(Focus)) &&
+      VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
   }
 
   void
@@ -271,11 +278,13 @@ class PackEnumerator {
                             std::vector<const VectorPack *> &Enumerated) const;
 
 public:
-  PackEnumerator(unsigned MaxNumLanes, BasicBlock *BB, Packer *Pkr)
-      : MaxNumLanes(MaxNumLanes), VPCtx(*Pkr->getContext(BB)),
-        Insts(Pkr->getInsts()), LDA(Pkr->getLDA(BB)),
-        LoadDAG(Pkr->getLoadDAG(BB)), StoreDAG(Pkr->getStoreDAG(BB)),
-        MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
+  PackEnumerator(unsigned MaxNumLanes, unsigned MaxSearchDist, BasicBlock *BB,
+                 Packer *Pkr)
+      : MaxNumLanes(MaxNumLanes), MaxSearchDist(MaxSearchDist),
+        VPCtx(*Pkr->getContext(BB)), Insts(Pkr->getInsts()),
+        LDA(Pkr->getLDA(BB)), LoadDAG(Pkr->getLoadDAG(BB)),
+        StoreDAG(Pkr->getStoreDAG(BB)), MM(Pkr->getMatchManager(BB)),
+        TTI(Pkr->getTTI()) {}
 
   void enumerate(Instruction *Focus,
                  std::vector<const VectorPack *> &Enumerated) const {
@@ -305,7 +314,7 @@ void PackEnumerator::enumeratePacksRec(
   for (auto &Match : LaneMatches[LaneId]) {
     unsigned OutId = VPCtx.getScalarId(Match.Output);
     // Make sure we are allowed to use the matched instruction
-    if (!isFree(cast<Instruction>(Match.Output), Focus))
+    if (!isUsable(cast<Instruction>(Match.Output), Focus))
       continue;
     // Make sure adding this `Match` doesn't violate any dependence constraint
     bool Independent = checkIndependence(
@@ -396,7 +405,7 @@ PackEnumerator::findSeedMemAccesses(Instruction *FocusAccess) const {
     if (!Inserted)
       return Seeds.count(I);
 
-    if (!isFree(I, FocusAccess))
+    if (!isUsable(I, FocusAccess))
       return false;
 
     auto It = AccessDAG->find(I);
@@ -481,7 +490,7 @@ void PackEnumerator::enumerateMemAccesses(
         }
 
         for (auto *Next : It->second) {
-          if (!isFree(Next, Focus))
+          if (!isUsable(Next, Focus))
             continue;
 
           bool Independent =
@@ -540,7 +549,8 @@ Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
 }
 
 std::vector<const VectorPack *>
-Frontier::nextAvailablePacks(unsigned MaxNumLanes, Packer *Pkr,
+Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned MaxSearchDist,
+                             Packer *Pkr,
                              PackEnumerationCache *EnumCache) const {
   Instruction *I = getNextFreeInst();
   bool InCache;
@@ -549,7 +559,7 @@ Frontier::nextAvailablePacks(unsigned MaxNumLanes, Packer *Pkr,
     return filterFrozenPacks(CachedPacks);
 
   std::vector<const VectorPack *> AvailablePacks;
-  PackEnumerator Enumerator(MaxNumLanes, BB, Pkr);
+  PackEnumerator Enumerator(MaxNumLanes, MaxSearchDist, BB, Pkr);
 
   Enumerator.enumerate(I, AvailablePacks);
 
@@ -574,7 +584,9 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 }
 
 // Fill out the children node
-void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory, Packer *Pkr,
+void UCTNode::expand(unsigned MaxNumLanes, unsigned MaxSearchDist,
+                     UCTNodeFactory *Factory, Packer *Pkr,
+
                      PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
@@ -585,7 +597,8 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory, Packer *Pkr,
       Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
   Transitions.emplace_back(nullptr, Next, Cost);
 
-  auto AvailablePacks = Frt->nextAvailablePacks(MaxNumLanes, Pkr, EnumCache);
+  auto AvailablePacks =
+      Frt->nextAvailablePacks(MaxNumLanes, MaxSearchDist, Pkr, EnumCache);
 
   Transitions.reserve(AvailablePacks.size());
   for (auto *VP : AvailablePacks) {
@@ -652,8 +665,8 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
       // FIXME: make max num lanes a parameter of MCTS ctor
-      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 16, Factory, Pkr,
-                      &EnumCache, TTI);
+      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, MaxSearchDist,
+                      Factory, Pkr, &EnumCache, TTI);
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
       if (Policy && Transitions.size() > 1)
@@ -675,11 +688,13 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
 }
 
 // Uniformly random rollout
-float RolloutEvaluator::evaluate(unsigned MaxNumLanes, const Frontier *Frt,
+float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned MaxSearchDist,
+                                 const Frontier *Frt,
                                  PackEnumerationCache &EnumCache, Packer *Pkr) {
   Frontier FrtScratch = *Frt;
   float Cost = 0;
-  PackEnumerator Enumerator(MaxNumLanes, Frt->getBasicBlock(), Pkr);
+  PackEnumerator Enumerator(MaxNumLanes, MaxSearchDist, Frt->getBasicBlock(),
+                            Pkr);
   auto *TTI = Pkr->getTTI();
 
   auto sampleFromPack = [&FrtScratch,
@@ -704,7 +719,6 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, const Frontier *Frt,
     auto *I = FrtScratch.getNextFreeInst();
     if (!I)
       break;
-    // auto Packs = FrtScratch.nextAvailablePacks(Pkr, &EnumCache);
     bool InCache;
     auto CachedPacks = EnumCache.getPacks(I, InCache);
     if (InCache)

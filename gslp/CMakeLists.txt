@@ -24,11 +24,9 @@ else()
   add_library(Packing SHARED ${LIB_PACKING_SRC})
 endif(APPLE)
 
-# #xpose libPacking as a clang plugin
 add_library(GSLP MODULE GSLP.cpp)
 
-# Expose libPacking to the training code
-add_executable(train train.cpp)
+add_executable(generate-data generate-data.cpp)
 
 find_package(Torch REQUIRED)
 
@@ -39,7 +37,7 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irrea
 
 target_link_libraries(Packing ${TORCH_LIBRARIES})
 target_link_libraries(GSLP Packing ${TORCH_LIBRARIES})
-target_link_libraries(train Packing Serialize 
+target_link_libraries(generate-data Packing Serialize 
   ${TORCH_LIBRARIES} ${LLVM_LIBRARIES} ${PROTOBUF_LIBRARY})
 
 SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)

@@ -6,7 +6,7 @@ using namespace llvm;
 void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
                                BasicBlock *BB) {
   UCTNodeFactory Factory;
-  UCTSearch MCTS(C, W, &Factory, Pkr, Policy, Evaluator, Pkr->getTTI());
+  UCTSearch MCTS(C, W, MaxSearchDist, &Factory, Pkr, Policy, Evaluator, Pkr->getTTI());
 
   UCTNode *Root =
       Factory.getNode(std::make_unique<Frontier>(BB, Pkr->getContext(BB)));
@@ -18,8 +18,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
     MCTS.run(Node, NumIters);
     assert(Node->expanded());
     errs() << "~~ " << Nodes.size() << ", " << Node->transitions().size()
-      << ", " << Node
-      << '\n';
+           << ", " << Node << '\n';
 
     // The MCTS queries the policy (if there's one) asynchronously,
     // cancel all requests if they haven't been processed yet.

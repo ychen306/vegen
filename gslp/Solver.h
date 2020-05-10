@@ -66,7 +66,7 @@ public:
   llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
-  nextAvailablePacks(unsigned MaxNumLanes, Packer *,
+  nextAvailablePacks(unsigned MaxNumLanes, unsigned MaxSearchDist, Packer *,
                      PackEnumerationCache *) const;
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
@@ -187,7 +187,7 @@ public:
   }
 
   // Fill out the out edge
-  void expand(unsigned MaxNumLanes, UCTNodeFactory *Factory, Packer *Pkr,
+  void expand(unsigned MaxNumLanes, unsigned MaxSearchDist, UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
@@ -217,20 +217,20 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(unsigned MaxNumLanes, const Frontier *Frt,
+  virtual float evaluate(unsigned MaxNumLanes, unsigned MaxSearchDist, const Frontier *Frt,
                          PackEnumerationCache &EnumCache, Packer *Pkr) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned, const Frontier *, PackEnumerationCache &,
+  float evaluate(unsigned, unsigned, const Frontier *, PackEnumerationCache &,
                  Packer *) override {
     return 0;
   }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned MaxNumLanes, const Frontier *Frt,
-                 PackEnumerationCache &EnumCache, Packer *Pkr) override;
+  float evaluate(unsigned, unsigned, const Frontier *, PackEnumerationCache &,
+                 Packer *) override;
 };
 
 // Interface for asynchronous policy prediction.
@@ -255,6 +255,8 @@ class UCTSearch {
   // Controlling how much we trust the policy bias.
   float W;
 
+  unsigned MaxSearchDist;
+
   UCTNodeFactory *Factory;
   Packer *Pkr;
 
@@ -266,16 +268,16 @@ class UCTSearch {
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, float W, UCTNodeFactory *Factory, Packer *Pkr,
-            PackingPolicy *Policy, FrontierEvaluator *Evaluator,
+  UCTSearch(float C, float W, unsigned MaxSearchDist, UCTNodeFactory *Factory,
+            Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
             llvm::TargetTransformInfo *TTI)
-      : C(C), W(W), Factory(Factory), Pkr(Pkr), Policy(Policy),
-        Evaluator(Evaluator), TTI(TTI) {}
+      : C(C), W(W), MaxSearchDist(MaxSearchDist), Factory(Factory), Pkr(Pkr),
+        Policy(Policy), Evaluator(Evaluator), TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
     return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8,
-                               N->getFrontier(), EnumCache, Pkr);
+                               MaxSearchDist, N->getFrontier(), EnumCache, Pkr);
   }
 };
 
