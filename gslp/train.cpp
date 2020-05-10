@@ -112,7 +112,7 @@ batch(std::vector<const PolicySupervision *> Supervisions) {
   Batched.Use1 = Use1.getBatched();
   Batched.Use2 = Use2.getBatched();
   Batched.LeftMemRef = MemRef.getBatched();
-  Batched.RightMemRef = MemRef.getBatched(false);
+  Batched.RightMemRef = MemRef.getBatched(true/*flip edges*/);
   Batched.Independence = Independence.getBatched();
   Batched.InvUnresolved = InvUnresolved.getBatched();
   Batched.ValueTypes = ValueTypeTensor;
