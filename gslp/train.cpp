@@ -34,9 +34,12 @@ static cl::opt<unsigned> MsgPassingIters(
     "msg-passing-iters",
     cl::value_desc("Number of iterations we do message passing"), cl::init(8));
 
-static cl::opt<float> LearningRate(
-    "lr",
-    cl::value_desc("Learning rate"), cl::init(1e-2));
+static cl::opt<float> LearningRate("lr", cl::value_desc("Learning rate"),
+                                   cl::init(1e-2));
+
+static cl::opt<unsigned> NumEpochs("epochs",
+                                   cl::value_desc("Number of epochs to train"),
+                                   cl::init(5));
 
 namespace {
 
@@ -217,30 +220,31 @@ int main(int argc, char **argv) {
 
   Model->to(Device);
   torch::optim::Adam Optimizer(Model->parameters(),
-      torch::optim::AdamOptions(LearningRate));
+                               torch::optim::AdamOptions(LearningRate));
 
-  for (auto &Batch : (*DataLoader)) {
-    errs() << "!!!\n";
-    auto &Frt = Batch.first;
-    auto &Sup = Batch.second;
-    std::vector<PackDistribution> PDs = Model->batch_forward(
-        Frt, Device, None /* We don't have IR indexes */, MsgPassingIters);
+  for (unsigned Epoch = 0; Epoch < NumEpochs; Epoch++) {
+    for (auto &Batch : (*DataLoader)) {
+      auto &Frt = Batch.first;
+      auto &Sup = Batch.second;
+      std::vector<PackDistribution> PDs = Model->batch_forward(
+          Frt, Device, None /* We don't have IR indexes */, MsgPassingIters);
 
-    auto Probs = computeProbInBatch(Model, Device, PDs, Sup);
-    std::vector<torch::Tensor> Losses;
-    for (unsigned i = 0; i < PDs.size(); i++) {
-      auto Target =
-          torch::from_blob(const_cast<float *>(Sup[i]->Prob.data()),
-                           {(int64_t)Sup[i]->Prob.size()},
-                           torch::TensorOptions().dtype(torch::kFloat32));
-      auto Predicted = Probs[i];
-      auto Loss = -Target.dot(Predicted.log());
-      Losses.push_back(Loss);
+      auto Probs = computeProbInBatch(Model, Device, PDs, Sup);
+      std::vector<torch::Tensor> Losses;
+      for (unsigned i = 0; i < PDs.size(); i++) {
+        auto Target =
+            torch::from_blob(const_cast<float *>(Sup[i]->Prob.data()),
+                             {(int64_t)Sup[i]->Prob.size()},
+                             torch::TensorOptions().dtype(torch::kFloat32));
+        auto Predicted = Probs[i];
+        auto Loss = -Target.dot(Predicted.log());
+        Losses.push_back(Loss);
+      }
+      Optimizer.zero_grad();
+      auto Loss = torch::stack(Losses).mean();
+      Loss.backward();
+      errs() << "\r " << Loss.item<float>();
+      Optimizer.step();
     }
-    Optimizer.zero_grad();
-    auto Loss = torch::stack(Losses).mean();
-    Loss.backward();
-    errs() << Loss.item<float>() << '\n';
-    Optimizer.step();
   }
 }

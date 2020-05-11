@@ -38,9 +38,9 @@ void BatchPackProbability::start(const PackDistribution &PD, unsigned FocusId) {
 }
 
 void BatchPackProbability::finish() {
-  BatchOpProb.addBatch(OpProb.log(), OpIds);
+  BatchOpProb.addBatch(OpProb, OpIds);
   for (unsigned i = 0; i < MaxNumLanes; i++)
-    BatchLaneProbs[i].addBatch(LaneProbs[i].log(), PerLaneValueIds[i]);
+    BatchLaneProbs[i].addBatch(LaneProbs[i], PerLaneValueIds[i]);
   NumPacks.push_back(OpIds.size());
 }
 
