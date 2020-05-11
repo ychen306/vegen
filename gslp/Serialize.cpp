@@ -123,9 +123,10 @@ void PolicyWriter::write(const Frontier *Frt, Packer *Pkr,
   for (auto *VP : Packs) {
     auto *ProtoPack = S.add_packs();
 
+    // FIXME: assign also set InstId to NOP ID
     if (!VP) {
       ProtoPack->set_kind(serialize::VectorPack::SCALAR);
-      break;
+      continue;
     }
 
     serialize::VectorPack::Kind K;

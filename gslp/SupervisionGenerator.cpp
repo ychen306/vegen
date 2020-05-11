@@ -12,7 +12,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
       Factory.getNode(std::make_unique<Frontier>(BB, Pkr->getContext(BB)));
 
   UCTNode *Node = Root;
-  std::vector<UCTNode *> Nodes = {Root};
+  std::vector<UCTNode *> Nodes = {};
   std::vector<float> Prob;
   while (!Node->isTerminal()) {
     MCTS.run(Node, NumIters);
@@ -32,11 +32,12 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
       continue;
     }
 
+    UCTNode *NextNode;
     if (Policy) {
       // If there's a policy, just take the transition w/ the highest prob.
       Policy->predict(Node, Prob);
       auto It = std::max_element(Prob.begin(), Prob.end());
-      Node = Transitions[It - Prob.begin()].Next;
+      NextNode = Transitions[It - Prob.begin()].Next;
     } else {
       // Without a policy, we just follow the transition visited the most
       auto It = std::max_element(
@@ -44,10 +45,11 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
           [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
             return A.visitCount() < B.visitCount();
           });
-      Node = It->Next;
+      NextNode = It->Next;
     }
 
     Nodes.push_back(Node);
+    Node = NextNode;
   }
 
   // Sample `SamplesPerBlock` and dump the tree search result.

@@ -52,7 +52,7 @@ void Frontier::advanceBBIt() {
 
 bool Frontier::resolved(const OperandPack &OP) const {
   for (Value *V : OP) {
-    auto *I = cast<Instruction>(V);
+    auto *I = dyn_cast<Instruction>(V);
     if (!I || I->getParent() != BB)
       continue;
     if (FreeInsts[VPCtx->getScalarId(V)])
