@@ -118,7 +118,7 @@ batch(std::vector<const PolicySupervision *> Supervisions) {
   for (unsigned i = 0; i < MaxNumLanes; i++)
     Batched.Unresolved.push_back(Unresolved[i].getBatched());
 
-  return {Batched, std::move(Supervisions)};
+  return {std::move(Batched), std::move(Supervisions)};
 }
 
 int main(int argc, char **argv) {
