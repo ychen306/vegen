@@ -13,7 +13,7 @@ torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
   std::vector<torch::Tensor> Prob;
   auto *Focus = Frt->getNextFreeInst();
   assert(Focus);
-  unsigned FocusId = PD.Index.getValueId(Focus);
+  unsigned FocusId = PD.index().getValueId(Focus);
   for (const auto &T : Transitions) {
     if (!T.VP) {
       // Scalar (i.e., nop).
@@ -24,7 +24,7 @@ torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
       auto PackProb = PD.OpProb[FocusId][Model->getInstId(T.VP)];
       unsigned i = 0;
       for (auto *V : T.VP->getOrderedValues())
-        PackProb *= PD.LaneProbs[i++][FocusId][PD.Index.getValueId(V)];
+        PackProb *= PD.LaneProbs[i++][FocusId][PD.index().getValueId(V)];
       Prob.push_back(PackProb);
     }
   }

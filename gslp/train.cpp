@@ -1,3 +1,4 @@
+#include "IRModel.h"
 #include "GraphUtil.h"
 #include "Serialize.h"
 #include "llvm/Support/CommandLine.h"
@@ -25,19 +26,6 @@ static cl::opt<unsigned>
                cl::init(1));
 
 namespace {
-
-struct BatchedFrontier {
-  unsigned NumValues;
-  unsigned NumUses;
-  torch::Tensor Use1;
-  torch::Tensor Use2;
-  torch::Tensor LeftMemRef;
-  torch::Tensor RightMemRef;
-  torch::Tensor Independence;
-  torch::Tensor InvUnresolved;
-  std::vector<torch::Tensor> Unresolved;
-  torch::Tensor ValueTypes;
-};
 
 class PackingDataset
     : public torch::data::Dataset<PackingDataset, const PolicySupervision *> {
@@ -80,12 +68,16 @@ batch(std::vector<const PolicySupervision *> Supervisions) {
   std::vector<GraphBatcher> Unresolved(MaxNumLanes);
   std::vector<int64_t> ValueTypes;
 
+  BatchedFrontier Batched;
+
   unsigned NumValues = 0;
   unsigned NumUses = 0;
   // Here we go.
   for (auto *PS : Supervisions) {
     const ProcessedFrontier &Frt = PS->Frt;
     unsigned N = Frt.NumValues, M = Frt.NumUses;
+    Batched.NumValues.push_back(N);
+    Batched.NumUses.push_back(M);
     NumValues += N;
     NumUses += M;
 
@@ -106,9 +98,8 @@ batch(std::vector<const PolicySupervision *> Supervisions) {
                        torch::TensorOptions().dtype(torch::kInt64))
           .clone();
 
-  BatchedFrontier Batched;
-  Batched.NumValues = NumValues;
-  Batched.NumUses = NumUses;
+  Batched.TotalValues = NumValues;
+  Batched.TotalUses = NumUses;
   Batched.Use1 = Use1.getBatched();
   Batched.Use2 = Use2.getBatched();
   Batched.LeftMemRef = MemRef.getBatched();

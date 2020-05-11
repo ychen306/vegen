@@ -81,41 +81,24 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                           EmbSize * MaxNumLanes, EmbSize)));
 }
 
-std::vector<PackDistribution>
-PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
-                                Packer *Pkr, torch::Device Device,
-                                unsigned NumIters) {
-  unsigned N = 0, NumUnresolvedUses = 0;
-  std::vector<IRIndex> Indexes;
-  FrontierPreprocessor<BatchedGraphBuilder> Preprocessor(MaxNumLanes);
-
-  for (auto *Frt : Frontiers) {
-    IRIndex Index(Frt);
-    unsigned NumValues;
-    unsigned NumUses;
-    Preprocessor.process(Frt, Index, Pkr, NumValues, NumUses);
-    N += NumValues;
-    NumUnresolvedUses += NumUses;
-    Indexes.push_back(std::move(Index));
-  }
-
-  auto UseGraph1 = Preprocessor.use1().getBatched().to(Device);
-  auto UseGraph2 = Preprocessor.use2().getBatched().to(Device);
-  auto LeftMemRefGraph = Preprocessor.memRefs().getBatched().to(Device);
-  auto RightMemRefGraph =
-      Preprocessor.memRefs().getBatched(true /*flip*/).to(Device);
-  auto IndependenceGraph = Preprocessor.independence().getBatched().to(Device);
-  auto InvUnresolvedGraph =
-      Preprocessor.invUnresolved().getBatched().to(Device);
+std::vector<PackDistribution> PackingModelImpl::batch_forward(
+    BatchedFrontier Frt, torch::Device Device, 
+    llvm::Optional<std::vector<IRIndex>> Indexes,
+    unsigned NumIters) {
+  auto ValueTypes = Frt.ValueTypes.to(Device);
+  auto UseGraph1 = Frt.Use1.to(Device);
+  auto UseGraph2 = Frt.Use2.to(Device);
+  auto LeftMemRefGraph = Frt.LeftMemRef.to(Device);
+  auto RightMemRefGraph = Frt.RightMemRef.to(Device);
+  auto IndependenceGraph = Frt.Independence.to(Device);
+  auto InvUnresolvedGraph = Frt.InvUnresolved.to(Device);
   std::vector<torch::Tensor> UnresolvedUseGraphs;
-  for (auto &G : Preprocessor.unresolved())
-    UnresolvedUseGraphs.push_back(G.getBatched().to(Device));
-
-  auto ValueTypes = getValueTypesAsTensor(Indexes).to(Device);
+  for (auto &U : Frt.Unresolved)
+    UnresolvedUseGraphs.push_back(U.to(Device));
 
   // Initialize the states
-  auto H_value = OpcodeEmb->forward(ValueTypes).view({N, EmbSize});
-  auto H_use = InitUse.repeat({NumUnresolvedUses, 1});
+  auto H_value = OpcodeEmb->forward(ValueTypes).view({Frt.TotalValues, EmbSize});
+  auto H_use = InitUse.repeat({Frt.TotalUses, 1});
 
   // Pass message from values to unresolved uses
   auto SendToUses = [&](torch::Tensor H_value) -> torch::Tensor {
@@ -125,7 +108,7 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     return torch::cat(Messages, 1 /*dim*/);
   };
 
-  auto Zeros = torch::zeros({N, EmbSize}).to(Device);
+  auto Zeros = torch::zeros({Frt.TotalValues, EmbSize}).to(Device);
 
   // Pass message from values and unresolved uses to values themselves
   auto SendToValues = [&](torch::Tensor H_value,
@@ -138,7 +121,7 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     auto Independent =
         torch::mm(IndependenceGraph, StateToIndependentMsg(H_value));
     auto Unresolved =
-        NumUnresolvedUses
+      Frt.TotalUses
             ? torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use))
             : Zeros;
     return torch::cat(
@@ -147,7 +130,7 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
   };
 
   for (unsigned i = 0; i < NumIters; i++) {
-    if (NumUnresolvedUses)
+    if (Frt.TotalUses)
       H_use = UseGRU->forward(SendToUses(H_value), H_use);
     H_value = ValueGRU->forward(SendToValues(H_value, H_use), H_value);
   }
@@ -160,12 +143,14 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
   // Unpack the probs
   std::vector<PackDistribution> PDs;
   unsigned Offset = 0;
-  for (auto &Index : Indexes) {
-    unsigned N = Index.getNumValues();
+  for (unsigned i = 0; i < Frt.size(); i++) {
+    unsigned N = Frt.NumValues[i];
     auto Slice = [Offset, N](torch::Tensor X) -> torch::Tensor {
       return X.slice(0 /*dim*/, Offset, Offset + N);
     };
-    PackDistribution PD(std::move(Index));
+    PackDistribution PD;
+    if (Indexes)
+      PD = PackDistribution(std::move(Indexes.getValue()[i]));
     PD.OpProb = Slice(OpProb);
     for (auto &StateToLaneEmb : StateToLaneEmbs)
       PD.LaneProbs.push_back(StateToLaneEmb->forward(Slice(H_value))
@@ -175,6 +160,47 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     PDs.push_back(std::move(PD));
   }
   return PDs;
+}
+
+std::vector<PackDistribution>
+PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
+                                Packer *Pkr, torch::Device Device,
+                                unsigned NumIters) {
+  unsigned N = 0, NumUnresolvedUses = 0;
+  std::vector<IRIndex> Indexes;
+  FrontierPreprocessor<BatchedGraphBuilder> Preprocessor(MaxNumLanes);
+
+  BatchedFrontier Batched;
+
+  for (auto *Frt : Frontiers) {
+    IRIndex Index(Frt);
+    unsigned NumValues;
+    unsigned NumUses;
+    // Build up the various graphs representing a frontier.
+    Preprocessor.process(Frt, Index, Pkr, NumValues, NumUses);
+
+    Indexes.push_back(std::move(Index));
+
+    Batched.TotalValues += NumValues;
+    Batched.TotalUses += NumUses;
+    Batched.NumValues.push_back(NumValues);
+    Batched.NumUses.push_back(NumUses);
+  }
+
+  Batched.Use1 = Preprocessor.use1().getBatched();
+  Batched.Use2 = Preprocessor.use2().getBatched();
+  Batched.LeftMemRef = Preprocessor.memRefs().getBatched();
+  Batched.RightMemRef =
+      Preprocessor.memRefs().getBatched(true /*flip*/);
+  Batched.Independence = Preprocessor.independence().getBatched();
+  Batched.InvUnresolved =
+      Preprocessor.invUnresolved().getBatched();
+  for (auto &U : Preprocessor.unresolved())
+    Batched.Unresolved.push_back(U.getBatched());
+
+  Batched.ValueTypes = getValueTypesAsTensor(Indexes);
+
+  return batch_forward(std::move(Batched), Device, std::move(Indexes), NumIters);
 }
 
 PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,

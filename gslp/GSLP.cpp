@@ -1,3 +1,7 @@
+#include "Policy.h" 
+//       ^^^^ 
+//       this needs to be included first because torch pollutes global namespace
+//       with "using namespace ..."
 #include "IRVec.h"
 #include "InstSema.h"
 #include "LocalDependenceAnalysis.h"
@@ -552,10 +556,14 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   //DummyEvaluator Evaluator;
   RolloutEvaluator Evaluator;
+  torch::Device CPU(torch::kCPU);
+  PackingModel Model(16, SupportedInsts, 8);
 
   for (auto &BB : F) {
     errs() << F.getName() << "/" << BB.getName() << '\n';
     class Packer Pkr(SupportedInsts, F, AA, DL, SE, TTI, BFI);
+    NeuralPackingPolicy Policy(Model, &Pkr, 4, CPU, 4);
+
     auto *VPCtx = Pkr.getContext(&BB);
     UCTNodeFactory Factory;
     UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, VPCtx));
@@ -564,8 +572,9 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
     T.startTimer();
 #if 1
-    UCTSearch MCTS(100/*exploration factor*/, 0, 10, &Factory, &Pkr, nullptr, &Evaluator, TTI);
-    MCTS.run(Root, 10000000);
+    UCTSearch MCTS(100/*exploration factor*/, 0, 10, &Factory, &Pkr, &Policy, &Evaluator, TTI);
+    MCTS.run(Root, 1000);
+    Policy.cancel();
 #else
     UCTSearch MCTS(50/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
     auto *Node = Root;

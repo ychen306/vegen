@@ -10,10 +10,33 @@
 class InstBinding;
 
 struct PackDistribution {
-  IRIndex Index;
+  llvm::Optional<IRIndex> Index;
   torch::Tensor OpProb;
   std::vector<torch::Tensor> LaneProbs;
   PackDistribution(IRIndex &&Index) : Index(Index) {}
+  PackDistribution() = default;
+
+  const IRIndex &index() const { return Index.getValue(); }
+};
+
+struct BatchedFrontier {
+  std::vector<unsigned> NumValues;
+  std::vector<unsigned> NumUses;
+  unsigned TotalValues;
+  unsigned TotalUses;
+  torch::Tensor Use1;
+  torch::Tensor Use2;
+  torch::Tensor LeftMemRef;
+  torch::Tensor RightMemRef;
+  torch::Tensor Independence;
+  torch::Tensor InvUnresolved;
+  std::vector<torch::Tensor> Unresolved;
+  torch::Tensor ValueTypes;
+
+  BatchedFrontier() : TotalValues(0), TotalUses(0) {}
+
+  // Return the batch size
+  unsigned size() const { return NumValues.size(); }
 };
 
 class Packer;
@@ -52,6 +75,10 @@ public:
   std::vector<PackDistribution> batch_forward(llvm::ArrayRef<const Frontier *>,
                                               Packer *, torch::Device,
                                               unsigned NumIters);
+  std::vector<PackDistribution> batch_forward(
+      BatchedFrontier Frt, torch::Device Device,
+      llvm::Optional<std::vector<IRIndex>> Indexes,
+      unsigned NumIters);
   PackDistribution forward(const Frontier *, Packer *, torch::Device,
                            unsigned NumIters);
   // TODO: pull `getNopID`, `getMemAccessId`, and `getInstId`
