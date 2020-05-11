@@ -34,6 +34,10 @@ static cl::opt<unsigned> MsgPassingIters(
     "msg-passing-iters",
     cl::value_desc("Number of iterations we do message passing"), cl::init(8));
 
+static cl::opt<float> LearningRate(
+    "lr",
+    cl::value_desc("Learning rate"), cl::init(1e-2));
+
 namespace {
 
 class PackingDataset
@@ -212,6 +216,8 @@ int main(int argc, char **argv) {
     Device = torch::Device(torch::kCUDA);
 
   Model->to(Device);
+  torch::optim::Adam Optimizer(Model->parameters(),
+      torch::optim::AdamOptions(LearningRate));
 
   for (auto &Batch : (*DataLoader)) {
     errs() << "!!!\n";
@@ -229,9 +235,12 @@ int main(int argc, char **argv) {
                            torch::TensorOptions().dtype(torch::kFloat32));
       auto Predicted = Probs[i];
       auto Loss = -Target.dot(Predicted.log());
-      std::cerr << Loss << '\n';
       Losses.push_back(Loss);
     }
-    torch::stack(Losses).sum().backward();
+    Optimizer.zero_grad();
+    auto Loss = torch::stack(Losses).mean();
+    Loss.backward();
+    errs() << Loss.item<float>() << '\n';
+    Optimizer.step();
   }
 }
