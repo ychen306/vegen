@@ -31,7 +31,7 @@ static cl::opt<unsigned>
 
 static cl::opt<unsigned> MsgPassingIters(
     "msg-passing-iters",
-    cl::value_desc("Number of iterations we do message passing"), cl::init(64));
+    cl::value_desc("Number of iterations we do message passing"), cl::init(8));
 
 namespace {
 
@@ -158,6 +158,7 @@ int main(int argc, char **argv) {
   for (auto &Batch : *DataLoader) {
     errs() << "!!!\n";
     const BatchedFrontier &Frt = Batch.first;
-    Model->batch_forward(Frt, Device, None /* We don't have IR indexes */, 8);
+    Model->batch_forward(Frt, Device, None /* We don't have IR indexes */,
+        MsgPassingIters);
   }
 }
