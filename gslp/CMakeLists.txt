@@ -14,6 +14,7 @@ set(LIB_PACKING_SRC
   IRVec.cpp
   Policy.cpp
   GraphUtil.cpp
+  ModelUtil.cpp
   Serialize.cpp
   Preprocessing.cpp
   SupervisionGenerator.cpp

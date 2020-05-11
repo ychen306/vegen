@@ -37,7 +37,7 @@ struct ProcessedVectorPack {
 
   Kind K;
   unsigned InstId;
-  std::vector<int64_t> Lanes;
+  std::vector<unsigned> Lanes;
 
   ProcessedVectorPack() = default;
   ProcessedVectorPack(const serialize::VectorPack &);

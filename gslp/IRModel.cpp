@@ -150,7 +150,7 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
     PackDistribution PD;
     if (Indexes)
       PD = PackDistribution(std::move(Indexes.getValue()[i]));
-    PD.OpProb = Slice(OpProb);
+    PD.OpProb = Slice(OpProb).softmax(1/*dim*/);
     for (auto &StateToLaneEmb : StateToLaneEmbs)
       PD.LaneProbs.push_back(StateToLaneEmb->forward(Slice(H_value))
                                  .mm(Slice(Emb).t())

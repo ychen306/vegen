@@ -1,6 +1,7 @@
 #include "GraphUtil.h"
 #include "IRModel.h"
 #include "IRVec.h"
+#include "ModelUtil.h"
 #include "Serialize.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
@@ -20,7 +21,7 @@ static cl::opt<unsigned>
                 cl::value_desc("Max number of lanes in a vector"), cl::init(8));
 
 static cl::opt<unsigned> BatchSize("batch-size", cl::value_desc("Batch size"),
-                                   cl::init(8));
+                                   cl::init(32));
 
 static cl::opt<unsigned>
     NumWorkers("num-workers", cl::value_desc("Number of data-loader workers"),
@@ -129,9 +130,8 @@ void dumpShape(torch::Tensor X, OutStreamTy &Os) {
   Os << '\n';
 }
 
-static
-torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
-                const PolicySupervision *S) {
+static torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
+                                 const PolicySupervision *S) {
   std::vector<torch::Tensor> Prob;
   auto &Frt = S->Frt;
   unsigned FocusId = Frt.FocusId;
@@ -153,94 +153,30 @@ torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
   return Predicted / Predicted.sum();
 }
 
-// Given a bunch of vectors Xs (B x N) and a bunch of indices Is (B x M),
-// return a flat tensor with shape `sum_i M_i`.
-class BatchSelector {
-  torch::Device Device;
-  unsigned N;
-  std::vector<torch::Tensor> Xs;
-  std::vector<int64_t> I;
-public:
-  BatchSelector(torch::Device Device) : Device(Device), N(0) {
-    Xs.push_back(torch::zeros({1}).to(Device));
-  }
-  void addBatch(torch::Tensor X, llvm::ArrayRef<int64_t> Indices) {
-    Xs.push_back(X);
-    for (unsigned i = 0; i < Indices.size(); i++) {
-      // We reserve the first entry of the final flat vector to be zero
-      // If an index is -1 it means we want X[i] = 0 forall X
-      if (Indices[i] == -1)
-        I.push_back(0);
-      else
-        I.push_back(N + Indices[i] + 1);
-    }
-    N += X.size(0);
-  }
-  torch::Tensor get() {
-    auto IdxTensor = torch::from_blob(
-        I.data(), {(int64_t)I.size()}, 
-        torch::TensorOptions().dtype(torch::kInt64)).clone();
-    return torch::cat(Xs).index(IdxTensor).to(Device);
-  }
-};
-
-std::vector<torch::Tensor> computeProbInBatch(
-    PackingModel Model,
-    llvm::ArrayRef<PackDistribution> PDs,
-    llvm::ArrayRef<const PolicySupervision *> Supervisions) {
-  unsigned N = PDs.size();
-  std::vector<torch::Tensor> OpProbs;
-
-  torch::Device CPU(torch::kCPU);
-
-  BatchSelector BatchOpProb(CPU);
-  std::vector<BatchSelector> BatchLaneProbs;
-  for (unsigned i = 0; i < MaxNumLanes; i++)
-    BatchLaneProbs.emplace_back(CPU);
-
-  for (unsigned i = 0; i < N; i++) {
+static std::vector<torch::Tensor>
+computeProbInBatch(PackingModel Model, torch::Device Device,
+                   llvm::ArrayRef<PackDistribution> PDs,
+                   llvm::ArrayRef<const PolicySupervision *> Supervisions) {
+  BatchPackProbability BPP(MaxNumLanes, Device);
+  for (unsigned i = 0; i < PDs.size(); i++) {
     const auto &PD = PDs[i];
     const auto &Frt = Supervisions[i]->Frt;
 
-    // Compute op prob for the packs
-    auto OpProb = PD.OpProb[Frt.FocusId];
-    std::vector<int64_t> OpIds;
+    BPP.start(PD, Frt.FocusId);
+
     for (auto &Pack : Supervisions[i]->Packs) {
+      unsigned OpId;
+      ;
       if (Pack.K == ProcessedVectorPack::Scalar)
-        OpIds.push_back(Model->getNopId());
+        OpId = Model->getNopId();
       else
-        OpIds.push_back(Pack.InstId);
+        OpId = Pack.InstId;
+      BPP.addPack(OpId, Pack.Lanes);
     }
-    BatchOpProb.addBatch(OpProb.log(), OpIds);
 
-    // Compute lane prob for all the packs.
-    for (unsigned j = 0; j < MaxNumLanes; j++) {
-      auto LaneProb = PD.LaneProbs[j][Frt.FocusId];
-      std::vector<int64_t> ValueIds;
-      for (auto &Pack : Supervisions[i]->Packs) {
-        if (j < Pack.Lanes.size())
-          ValueIds.push_back(Pack.Lanes[j]);
-        else
-          ValueIds.push_back(-1);
-      }
-      BatchLaneProbs[j].addBatch(LaneProb.log(), ValueIds);
-    }
+    BPP.finish();
   }
-  auto RawLogProb = BatchOpProb.get();
-  for (auto &LP : BatchLaneProbs)
-    RawLogProb = RawLogProb + LP.get();
-  auto RawProb = RawLogProb.exp();
-
-  // Unpack the flatten probs and renormalize them.
-  std::vector<torch::Tensor> Probs;
-  unsigned Offset = 0;
-  for (unsigned i = 0; i < N; i++) {
-    unsigned M = Supervisions[i]->Packs.size();
-    auto Prob = RawProb.slice(0/*dim*/, Offset, Offset+M);
-    Probs.push_back(Prob / Prob.sum());
-    Offset += M;
-  }
-  return Probs;
+  return BPP.get();
 }
 
 int main(int argc, char **argv) {
@@ -276,73 +212,24 @@ int main(int argc, char **argv) {
     Device = torch::Device(torch::kCUDA);
 
   Model->to(Device);
-#if 1
-  {
-    Timer T("train", "Time takes to do backward on a batch of 16 frontiers");
-    int FD;
-    ExitOnError ExitOnErr("Error: ");
-    std::error_code EC = sys::fs::openFileForRead(InputFileName, FD);
-    ExitOnErr(errorCodeToError(EC));
 
-    PolicyReader Reader(FD);
-    PackingDataset Dataset(Reader);
-
-    std::vector<const PolicySupervision *> Supervisions;
-    for (unsigned i = 0; i < std::min<unsigned>(8, Dataset.size().value()); i++)
-      Supervisions.push_back(Dataset.get(i));
-
-    auto Batch = batch(Supervisions);
-    auto &Frt = Batch.first;
-    auto &Sup = Batch.second;
-
-    auto PDs = Model->batch_forward(Frt, Device, None /* We don't have IR indexes */,
-        8);
-
-    T.startTimer();
-    unsigned i = 0;
-    std::vector<torch::Tensor> Losses;
-#if 0
-    for (auto PD : PDs) {
-      auto Target = torch::from_blob(const_cast<float *>(Sup[i]->Prob.data()), {(int64_t)Sup[i]->Prob.size()},
-                       torch::TensorOptions().dtype(torch::kFloat32));
-      auto Predicted = computeProb(Model, PD, Sup[i]);
-      auto Loss = -Target.dot(Predicted.log());
-      Losses.push_back(Loss);
-      i++;
-    }
-#else
-    auto Probs = computeProbInBatch(Model, PDs, Sup);
-    for (unsigned i = 0; i < PDs.size(); i++) {
-      auto Target = torch::from_blob(const_cast<float *>(Sup[i]->Prob.data()), {(int64_t)Sup[i]->Prob.size()},
-          torch::TensorOptions().dtype(torch::kFloat32));
-      auto Predicted = Probs[i];
-      auto Loss = -Target.dot(Predicted.log());
-      Losses.push_back(Loss);
-    }
-#endif
-    torch::stack(Losses).sum().backward();
-    
-    T.stopTimer();
-    return 0;
-  }
-#endif
-
-
-  for (auto &Batch : *DataLoader) {
+  for (auto &Batch : (*DataLoader)) {
     errs() << "!!!\n";
     auto &Frt = Batch.first;
     auto &Sup = Batch.second;
-    std::vector<PackDistribution> PDs =
-      Model->batch_forward(Frt, Device, None /* We don't have IR indexes */,
-        MsgPassingIters);
-  
-    auto Probs = computeProbInBatch(Model, PDs, Sup);
+    std::vector<PackDistribution> PDs = Model->batch_forward(
+        Frt, Device, None /* We don't have IR indexes */, MsgPassingIters);
+
+    auto Probs = computeProbInBatch(Model, Device, PDs, Sup);
     std::vector<torch::Tensor> Losses;
     for (unsigned i = 0; i < PDs.size(); i++) {
-      auto Target = torch::from_blob(const_cast<float *>(Sup[i]->Prob.data()), {(int64_t)Sup[i]->Prob.size()},
-          torch::TensorOptions().dtype(torch::kFloat32));
+      auto Target =
+          torch::from_blob(const_cast<float *>(Sup[i]->Prob.data()),
+                           {(int64_t)Sup[i]->Prob.size()},
+                           torch::TensorOptions().dtype(torch::kFloat32));
       auto Predicted = Probs[i];
       auto Loss = -Target.dot(Predicted.log());
+      std::cerr << Loss << '\n';
       Losses.push_back(Loss);
     }
     torch::stack(Losses).sum().backward();
