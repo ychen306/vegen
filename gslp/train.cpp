@@ -1,7 +1,7 @@
 #include "GraphUtil.h"
 #include "IRModel.h"
-#include "Serialize.h"
 #include "IRVec.h"
+#include "Serialize.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
@@ -29,8 +29,8 @@ static cl::opt<unsigned>
 static cl::opt<unsigned>
     EmbSize("emb-size", cl::value_desc("Size of embedding"), cl::init(64));
 
-static cl::opt<unsigned>
-MsgPassingIters("msg-passing-iters",
+static cl::opt<unsigned> MsgPassingIters(
+    "msg-passing-iters",
     cl::value_desc("Number of iterations we do message passing"), cl::init(64));
 
 namespace {
@@ -158,6 +158,6 @@ int main(int argc, char **argv) {
   for (auto &Batch : *DataLoader) {
     errs() << "!!!\n";
     const BatchedFrontier &Frt = Batch.first;
-    Model->batch_forward(Frt, Device, None/* We don't have IR indexes */, 8);
+    Model->batch_forward(Frt, Device, None /* We don't have IR indexes */, 8);
   }
 }
