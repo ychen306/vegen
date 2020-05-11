@@ -1,5 +1,5 @@
-#include "Policy.h" 
-//       ^^^^ 
+#include "Policy.h"
+//       ^^^^
 //       this needs to be included first because torch pollutes global namespace
 //       with "using namespace ..."
 #include "IRVec.h"
@@ -554,7 +554,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   Packer Packer(SupportedInsts, F, AA, DL, SE, TTI, BFI);
 
-  //DummyEvaluator Evaluator;
+  // DummyEvaluator Evaluator;
   RolloutEvaluator Evaluator;
   torch::Device CPU(torch::kCPU);
   PackingModel Model(16, SupportedInsts, 8);
@@ -572,20 +572,22 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
     T.startTimer();
 #if 1
-    UCTSearch MCTS(100/*exploration factor*/, 0, 10, &Factory, &Pkr, &Policy, &Evaluator, TTI);
+    UCTSearch MCTS(100 /*exploration factor*/, 0, 10, &Factory, &Pkr, &Policy,
+                   &Evaluator, TTI);
     MCTS.run(Root, 1000);
     Policy.cancel();
 #else
-    UCTSearch MCTS(50/*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
+    UCTSearch MCTS(50 /*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);
     auto *Node = Root;
     float Cost = 0;
     while (!Node->isTerminal()) {
       MCTS.run(Node, 10000);
       auto &Edges = Node->transitions();
       auto It = std::max_element(Edges.begin(), Edges.end(),
-          [](const UCTNode::Transition &A, const UCTNode::Transition &B) -> bool {
-          return A.Count < B.Count;
-          });
+                                 [](const UCTNode::Transition &A,
+                                    const UCTNode::Transition &B) -> bool {
+                                   return A.Count < B.Count;
+                                 });
       Node = It->Next;
       Cost += It->Cost;
     }
@@ -598,7 +600,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
     Elapsed.print(Elapsed, errs());
   }
 
-  //abort();
+  // abort();
 
   return false;
 

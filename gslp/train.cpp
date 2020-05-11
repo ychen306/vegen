@@ -1,5 +1,5 @@
-#include "IRModel.h"
 #include "GraphUtil.h"
+#include "IRModel.h"
 #include "Serialize.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"

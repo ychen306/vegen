@@ -75,10 +75,10 @@ public:
   std::vector<PackDistribution> batch_forward(llvm::ArrayRef<const Frontier *>,
                                               Packer *, torch::Device,
                                               unsigned NumIters);
-  std::vector<PackDistribution> batch_forward(
-      BatchedFrontier Frt, torch::Device Device,
-      llvm::Optional<std::vector<IRIndex>> Indexes,
-      unsigned NumIters);
+  std::vector<PackDistribution>
+  batch_forward(BatchedFrontier Frt, torch::Device Device,
+                llvm::Optional<std::vector<IRIndex>> Indexes,
+                unsigned NumIters);
   PackDistribution forward(const Frontier *, Packer *, torch::Device,
                            unsigned NumIters);
   // TODO: pull `getNopID`, `getMemAccessId`, and `getInstId`

@@ -1,9 +1,9 @@
 #include "IRModel.h"
+#include "GraphUtil.h"
 #include "MatchManager.h"
 #include "Packer.h"
 #include "Preprocessing.h"
 #include "Solver.h"
-#include "GraphUtil.h"
 #include "llvm/Support/FormatVariadic.h"
 #include <map>
 #include <torch/nn/module.h>
@@ -81,10 +81,10 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                           EmbSize * MaxNumLanes, EmbSize)));
 }
 
-std::vector<PackDistribution> PackingModelImpl::batch_forward(
-    BatchedFrontier Frt, torch::Device Device, 
-    llvm::Optional<std::vector<IRIndex>> Indexes,
-    unsigned NumIters) {
+std::vector<PackDistribution>
+PackingModelImpl::batch_forward(BatchedFrontier Frt, torch::Device Device,
+                                llvm::Optional<std::vector<IRIndex>> Indexes,
+                                unsigned NumIters) {
   auto ValueTypes = Frt.ValueTypes.to(Device);
   auto UseGraph1 = Frt.Use1.to(Device);
   auto UseGraph2 = Frt.Use2.to(Device);
@@ -97,7 +97,8 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
     UnresolvedUseGraphs.push_back(U.to(Device));
 
   // Initialize the states
-  auto H_value = OpcodeEmb->forward(ValueTypes).view({Frt.TotalValues, EmbSize});
+  auto H_value =
+      OpcodeEmb->forward(ValueTypes).view({Frt.TotalValues, EmbSize});
   auto H_use = InitUse.repeat({Frt.TotalUses, 1});
 
   // Pass message from values to unresolved uses
@@ -120,10 +121,9 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
     auto RightMemMsg = torch::mm(RightMemRefGraph, MemMsg);
     auto Independent =
         torch::mm(IndependenceGraph, StateToIndependentMsg(H_value));
-    auto Unresolved =
-      Frt.TotalUses
-            ? torch::mm(InvUnresolvedGraph, UnresolvedToMsg->forward(H_use))
-            : Zeros;
+    auto Unresolved = Frt.TotalUses ? torch::mm(InvUnresolvedGraph,
+                                                UnresolvedToMsg->forward(H_use))
+                                    : Zeros;
     return torch::cat(
         {Msg1, Msg2, LeftMemMsg, RightMemMsg, Independent, Unresolved},
         1 /*dim*/);
@@ -190,17 +190,16 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
   Batched.Use1 = Preprocessor.use1().getBatched();
   Batched.Use2 = Preprocessor.use2().getBatched();
   Batched.LeftMemRef = Preprocessor.memRefs().getBatched();
-  Batched.RightMemRef =
-      Preprocessor.memRefs().getBatched(true /*flip*/);
+  Batched.RightMemRef = Preprocessor.memRefs().getBatched(true /*flip*/);
   Batched.Independence = Preprocessor.independence().getBatched();
-  Batched.InvUnresolved =
-      Preprocessor.invUnresolved().getBatched();
+  Batched.InvUnresolved = Preprocessor.invUnresolved().getBatched();
   for (auto &U : Preprocessor.unresolved())
     Batched.Unresolved.push_back(U.getBatched());
 
   Batched.ValueTypes = getValueTypesAsTensor(Indexes);
 
-  return batch_forward(std::move(Batched), Device, std::move(Indexes), NumIters);
+  return batch_forward(std::move(Batched), Device, std::move(Indexes),
+                       NumIters);
 }
 
 PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
