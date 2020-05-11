@@ -76,7 +76,7 @@ public:
                                               Packer *, torch::Device,
                                               unsigned NumIters);
   std::vector<PackDistribution>
-  batch_forward(BatchedFrontier Frt, torch::Device Device,
+  batch_forward(const BatchedFrontier &Frt, torch::Device Device,
                 llvm::Optional<std::vector<IRIndex>> Indexes,
                 unsigned NumIters);
   PackDistribution forward(const Frontier *, Packer *, torch::Device,

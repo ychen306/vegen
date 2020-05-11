@@ -1,6 +1,7 @@
 #include "GraphUtil.h"
 #include "IRModel.h"
 #include "Serialize.h"
+#include "IRVec.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
@@ -24,6 +25,13 @@ static cl::opt<unsigned> BatchSize("batch-size", cl::value_desc("Batch size"),
 static cl::opt<unsigned>
     NumWorkers("num-workers", cl::value_desc("Number of data-loader workers"),
                cl::init(1));
+
+static cl::opt<unsigned>
+    EmbSize("emb-size", cl::value_desc("Size of embedding"), cl::init(64));
+
+static cl::opt<unsigned>
+MsgPassingIters("msg-passing-iters",
+    cl::value_desc("Number of iterations we do message passing"), cl::init(64));
 
 namespace {
 
@@ -135,7 +143,21 @@ int main(int argc, char **argv) {
       torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
           Dataset.map(TransformTy(batch)), DataLoaderOpt);
 
+  // FIXME:
+  // make the number of instruction a configurable thing (w/ a config file?)
+  // and allow constructing a model w/ just the number of instruction w/o
+  // telling it what the instructions are.
+  static IRInstTable VecBindingTable;
+  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes);
+  torch::Device Device(torch::kCPU);
+  if (torch::cuda::is_available())
+    Device = torch::Device(torch::kCUDA);
+
+  Model->to(Device);
+
   for (auto &Batch : *DataLoader) {
-    errs() << "BATCH\n";
+    errs() << "!!!\n";
+    const BatchedFrontier &Frt = Batch.first;
+    Model->batch_forward(Frt, Device, None/* We don't have IR indexes */, 8);
   }
 }

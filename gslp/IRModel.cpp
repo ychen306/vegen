@@ -81,10 +81,9 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                           EmbSize * MaxNumLanes, EmbSize)));
 }
 
-std::vector<PackDistribution>
-PackingModelImpl::batch_forward(BatchedFrontier Frt, torch::Device Device,
-                                llvm::Optional<std::vector<IRIndex>> Indexes,
-                                unsigned NumIters) {
+std::vector<PackDistribution> PackingModelImpl::batch_forward(
+    const BatchedFrontier &Frt, torch::Device Device,
+    llvm::Optional<std::vector<IRIndex>> Indexes, unsigned NumIters) {
   auto ValueTypes = Frt.ValueTypes.to(Device);
   auto UseGraph1 = Frt.Use1.to(Device);
   auto UseGraph2 = Frt.Use2.to(Device);
