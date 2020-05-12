@@ -168,7 +168,7 @@ void writeTreeSearchPolicy(PolicyArchiver &Archive, UCTNode &Node, Packer &Pkr,
   Archive.write(Node.getFrontier(), &Pkr, Packs, Prob, Model);
 }
 
-static int openFile(std::string FileName) {
+static int openFileForWrite(std::string FileName) {
   int FD;
   std::error_code EC = sys::fs::openFileForWrite(FileName, FD);
   ExitOnError ExitOnErr("Error opening new file for PolicyArchiver: ");
@@ -184,11 +184,11 @@ PolicyArchiver::PolicyArchiver(int BlockSize, llvm::StringRef ArchivePath)
     : BlockSize(BlockSize), BlockCounter(0), NumBlocks(1),
     Size(0),
       ArchivePath(ArchivePath),
-      Writer(std::make_unique<PolicyWriter>(openFile(getFileName()))) {}
+      Writer(std::make_unique<PolicyWriter>(openFileForWrite(getFileName()))) {}
 
 // Write the meta file.
 PolicyArchiver::~PolicyArchiver() {
-  int FD = openFile(formatv("{0}/meta", ArchivePath).str());
+  int FD = openFileForWrite(formatv("{0}/meta", ArchivePath).str());
   google::protobuf::io::FileOutputStream OS(FD);
   // Finish the block we are currently working with.
   startNewBlock();
@@ -216,7 +216,36 @@ void PolicyArchiver::write(const Frontier *Frt, Packer *Pkr,
 
   if (BlockCounter >= BlockSize) {
     startNewBlock();
-    int FD = openFile(getFileName());
+    int FD = openFileForWrite(getFileName());
     Writer.reset(new PolicyWriter(FD));
   }
+}
+
+static int openFileForRead(std::string FileName) {
+  int FD;
+  std::error_code EC = sys::fs::openFileForRead(FileName, FD);
+  ExitOnError ExitOnErr("Error opening new file for PolicyArchiveReader: ");
+  ExitOnErr(errorCodeToError(EC));
+  return FD;
+}
+
+PolicyArchiveReader::PolicyArchiveReader(llvm::StringRef ArchivePath)
+  : ArchivePath(ArchivePath) {
+  std::string MetaFilePath = formatv("{0}/meta", ArchivePath);
+  google::protobuf::io::FileInputStream MetaFile(openFileForRead(MetaFilePath));
+  google::protobuf::util::ParseDelimitedFromZeroCopyStream(&Meta, &MetaFile, nullptr);
+
+  Size = Meta.size();
+  BlockSize = Meta.files()[0].num_entries();
+}
+
+void PolicyArchiveReader::read(unsigned i, PolicySupervision &PS) const {
+  unsigned BlockId = i / BlockSize;
+  unsigned EntryId = i % BlockSize;
+  std::string FileName = Meta.files()[BlockId].name();
+  int FD = openFileForRead(formatv("{0}/{1}", ArchivePath, FileName));
+  PolicyReader Reader(FD);
+  for (unsigned i = 0; i < EntryId; i++)
+    Reader.readAndDiscard();
+  Reader.read(PS);
 }

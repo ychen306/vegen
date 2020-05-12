@@ -58,11 +58,16 @@ class PolicyReader {
 
 public:
   PolicyReader(int FD) : ISRaw(FD), IS(&ISRaw) { ISRaw.SetCloseOnDelete(true); }
+  bool readAndDiscard() {
+    serialize::Supervision S;
+    return
+      google::protobuf::util::ParseDelimitedFromZeroCopyStream(&S, &IS, nullptr);
+  }
+
   bool read(PolicySupervision &PS) {
     serialize::Supervision S;
-    bool CleanEOF;
     bool Success = google::protobuf::util::ParseDelimitedFromZeroCopyStream(
-        &S, &IS, &CleanEOF);
+        &S, &IS, nullptr);
     if (Success)
       PS = S;
     return Success;
@@ -103,6 +108,17 @@ public:
   ~PolicyArchiver();
   void write(const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
              llvm::ArrayRef<float> Prob, PackingModel);
+};
+
+class PolicyArchiveReader {
+  std::string ArchivePath;
+  unsigned Size;
+  unsigned BlockSize;
+  serialize::ArchiveMeta Meta;
+public:
+  PolicyArchiveReader(llvm::StringRef ArchivePath);
+  unsigned size() const { return Size; }
+  void read(unsigned i, PolicySupervision &) const;
 };
 
 // Interpret result of tree search as a probability distr. and dump it.

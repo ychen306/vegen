@@ -13,8 +13,9 @@
 
 using namespace llvm;
 
-static cl::opt<std::string> InputFileName(cl::Positional,
-                                          cl::value_desc("Input file name"));
+static cl::opt<std::string> ArchivePath(cl::Positional,
+                                          cl::value_desc("Input file name"),
+                                          cl::Required);
 
 static cl::opt<unsigned>
     MaxNumLanes("max-num-lanes",
@@ -44,13 +45,17 @@ static cl::opt<unsigned> NumEpochs("epochs",
 namespace {
 
 class PackingDataset
-    : public torch::data::Dataset<PackingDataset, const PolicySupervision *> {
-  std::vector<PolicySupervision> Supervisions;
+    : public torch::data::Dataset<PackingDataset, PolicySupervision> {
+  PolicyArchiveReader Archive;
 
 public:
-  PackingDataset(PolicyReader &Reader);
-  const PolicySupervision *get(size_t i) override { return &Supervisions[i]; }
-  c10::optional<size_t> size() const override { return Supervisions.size(); }
+  PackingDataset(std::string ArchivePath) : Archive(ArchivePath) {}
+  PolicySupervision get(size_t i) override {
+    PolicySupervision PS;
+    Archive.read(i, PS);
+    return PS;
+  }
+  c10::optional<size_t> size() const override { return Archive.size(); }
 };
 
 // Add a util func that allows us to take a whole array of edges
@@ -60,12 +65,6 @@ struct GraphBatcher : public BatchedGraphBuilder {
 
 } // end anonymous namespace
 
-PackingDataset::PackingDataset(PolicyReader &Reader) {
-  PolicySupervision PS;
-  while (Reader.read(PS))
-    Supervisions.push_back(std::move(PS));
-}
-
 void GraphBatcher::addGraph(llvm::ArrayRef<DiEdge> NewEdges, unsigned N,
                             unsigned M) {
   for (auto &E : NewEdges)
@@ -73,8 +72,8 @@ void GraphBatcher::addGraph(llvm::ArrayRef<DiEdge> NewEdges, unsigned N,
   finishBatch(N, M);
 }
 
-static std::pair<BatchedFrontier, std::vector<const PolicySupervision *>>
-batch(std::vector<const PolicySupervision *> Supervisions) {
+static std::pair<BatchedFrontier, std::vector<PolicySupervision>>
+batch(std::vector<PolicySupervision> Supervisions) {
   GraphBatcher Use1;
   GraphBatcher Use2;
   GraphBatcher MemRef;
@@ -89,8 +88,8 @@ batch(std::vector<const PolicySupervision *> Supervisions) {
   unsigned NumValues = 0;
   unsigned NumUses = 0;
   // Here we go.
-  for (auto *PS : Supervisions) {
-    const ProcessedFrontier &Frt = PS->Frt;
+  for (const auto &PS : Supervisions) {
+    const ProcessedFrontier &Frt = PS.Frt;
     unsigned N = Frt.NumValues, M = Frt.NumUses;
     Batched.NumValues.push_back(N);
     Batched.NumUses.push_back(M);
@@ -163,15 +162,15 @@ static torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
 static std::vector<torch::Tensor>
 computeProbInBatch(PackingModel Model, torch::Device Device,
                    llvm::ArrayRef<PackDistribution> PDs,
-                   llvm::ArrayRef<const PolicySupervision *> Supervisions) {
+                   llvm::ArrayRef<PolicySupervision> Supervisions) {
   BatchPackProbability BPP(MaxNumLanes, Device);
   for (unsigned i = 0; i < PDs.size(); i++) {
     const auto &PD = PDs[i];
-    const auto &Frt = Supervisions[i]->Frt;
+    const auto &Frt = Supervisions[i].Frt;
 
     BPP.start(PD, Frt.FocusId);
 
-    for (auto &Pack : Supervisions[i]->Packs) {
+    for (auto &Pack : Supervisions[i].Packs) {
       unsigned OpId;
       ;
       if (Pack.K == ProcessedVectorPack::Scalar)
@@ -189,18 +188,12 @@ computeProbInBatch(PackingModel Model, torch::Device Device,
 int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
 
-  int FD;
-  ExitOnError ExitOnErr("Error: ");
-  std::error_code EC = sys::fs::openFileForRead(InputFileName, FD);
-  ExitOnErr(errorCodeToError(EC));
-
-  PolicyReader Reader(FD);
-  PackingDataset Dataset(Reader);
+  PackingDataset Dataset(ArchivePath);
 
   // What a beautiful piece of code.
   using TransformTy = torch::data::transforms::BatchLambda<
-      std::vector<const PolicySupervision *>,
-      std::pair<BatchedFrontier, std::vector<const PolicySupervision *>>>;
+      std::vector<PolicySupervision>,
+      std::pair<BatchedFrontier, std::vector<PolicySupervision>>>;
   auto DataLoaderOpt =
       torch::data::DataLoaderOptions().batch_size(BatchSize).workers(
           NumWorkers);
@@ -225,16 +218,16 @@ int main(int argc, char **argv) {
   for (unsigned Epoch = 0; Epoch < NumEpochs; Epoch++) {
     for (auto &Batch : (*DataLoader)) {
       auto &Frt = Batch.first;
-      auto &Sup = Batch.second;
+      auto &Supervision = Batch.second;
       std::vector<PackDistribution> PDs = Model->batch_forward(
           Frt, Device, None /* We don't have IR indexes */, MsgPassingIters);
 
-      auto Probs = computeProbInBatch(Model, Device, PDs, Sup);
+      auto Probs = computeProbInBatch(Model, Device, PDs, Supervision);
       std::vector<torch::Tensor> Losses;
       for (unsigned i = 0; i < PDs.size(); i++) {
         auto Target =
-            torch::from_blob(const_cast<float *>(Sup[i]->Prob.data()),
-                             {(int64_t)Sup[i]->Prob.size()},
+            torch::from_blob(const_cast<float *>(Supervision[i].Prob.data()),
+                             {(int64_t)Supervision[i].Prob.size()},
                              torch::TensorOptions().dtype(torch::kFloat32));
         auto Predicted = Probs[i];
         auto Loss = -Target.dot(Predicted.log());
