@@ -1,5 +1,6 @@
 #include "Serialize.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/Support/FormatVariadic.h"
 
 using namespace llvm;
 
@@ -155,7 +156,7 @@ void PolicyWriter::write(const Frontier *Frt, Packer *Pkr,
   google::protobuf::util::SerializeDelimitedToZeroCopyStream(S, &OS);
 }
 
-void writeTreeSearchPolicy(PolicyWriter &Writer, UCTNode &Node, Packer &Pkr,
+void writeTreeSearchPolicy(PolicyArchiver &Archive, UCTNode &Node, Packer &Pkr,
                            PackingModel Model) {
   std::vector<const VectorPack *> Packs;
   std::vector<float> Prob;
@@ -164,5 +165,58 @@ void writeTreeSearchPolicy(PolicyWriter &Writer, UCTNode &Node, Packer &Pkr,
     Packs.push_back(T.VP);
     Prob.push_back(float(T.visitCount()) / VisitCount);
   }
-  Writer.write(Node.getFrontier(), &Pkr, Packs, Prob, Model);
+  Archive.write(Node.getFrontier(), &Pkr, Packs, Prob, Model);
+}
+
+static int openFile(std::string FileName) {
+  int FD;
+  std::error_code EC = sys::fs::openFileForWrite(FileName, FD);
+  ExitOnError ExitOnErr("Error opening new file for PolicyArchiver: ");
+  ExitOnErr(errorCodeToError(EC));
+  return FD;
+}
+
+std::string PolicyArchiver::getFileName() {
+  return formatv("{0}/decisions_{1}", ArchivePath, NumBlocks).str();
+}
+
+PolicyArchiver::PolicyArchiver(int BlockSize, llvm::StringRef ArchivePath)
+    : BlockSize(BlockSize), BlockCounter(0), NumBlocks(1),
+    Size(0),
+      ArchivePath(ArchivePath),
+      Writer(std::make_unique<PolicyWriter>(openFile(getFileName()))) {}
+
+// Write the meta file.
+PolicyArchiver::~PolicyArchiver() {
+  int FD = openFile(formatv("{0}/meta", ArchivePath).str());
+  google::protobuf::io::FileOutputStream OS(FD);
+  // Finish the block we are currently working with.
+  startNewBlock();
+  Meta.set_size(Size);
+  google::protobuf::util::SerializeDelimitedToZeroCopyStream(Meta, &OS);
+}
+
+void PolicyArchiver::startNewBlock() {
+  if (BlockCounter) {
+    auto *F = Meta.add_files();
+    F->set_num_entries(BlockCounter);
+    F->set_name(formatv("decisions_{0}", NumBlocks).str());
+  }
+
+  BlockCounter = 0;
+  NumBlocks++;
+}
+
+void PolicyArchiver::write(const Frontier *Frt, Packer *Pkr,
+                           llvm::ArrayRef<const VectorPack *> Packs,
+                           llvm::ArrayRef<float> Prob, PackingModel Model) {
+  Writer->write(Frt, Pkr, Packs, Prob, Model);
+  Size++;
+  BlockCounter++;
+
+  if (BlockCounter >= BlockSize) {
+    startNewBlock();
+    int FD = openFile(getFileName());
+    Writer.reset(new PolicyWriter(FD));
+  }
 }

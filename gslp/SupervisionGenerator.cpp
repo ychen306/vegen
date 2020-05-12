@@ -56,5 +56,5 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
   std::random_shuffle(Nodes.begin(), Nodes.end(), rand_int);
   unsigned NumSamples = std::min<unsigned>(SamplesPerBlock, Nodes.size());
   for (unsigned i = 0; i < NumSamples; i++)
-    writeTreeSearchPolicy(Writer, *Nodes[i], *Pkr, Model);
+    writeTreeSearchPolicy(Archiver, *Nodes[i], *Pkr, Model);
 }

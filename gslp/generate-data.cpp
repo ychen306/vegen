@@ -27,7 +27,7 @@ using namespace llvm;
 static cl::opt<std::string>
     TrainDir(cl::Positional,
              cl::desc("Specify a train directory of bitcode files"),
-             cl::value_desc("train directory"));
+             cl::value_desc("train directory"), cl::Required);
 
 static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path to the model"),
@@ -43,12 +43,15 @@ static cl::opt<unsigned> MaxNumLanes(
         "Specify maximum number of lanes the vectorizer is allowed to pack"),
     cl::value_desc("Maximum number of lanes"), cl::init(8));
 
-static cl::opt<std::string>
-    OutputFileName("o",
-                   cl::desc("Specify an output file path where we will dump "
-                            "the sampled tree search result."),
-                   cl::value_desc("Output file name"),
-                   cl::init("decisions.bin"));
+static cl::opt<std::string> ArchivePath(
+    "o",
+    cl::desc(
+        "Specify the output directory where will archive the sampled data"),
+    cl::value_desc("Output directory"), cl::init("decision-archive"));
+
+static cl::opt<unsigned> ArchiveBlockSize("archive-block-size",
+                                          cl::value_desc("Archive block size"),
+                                          cl::init(50));
 
 static cl::opt<unsigned> ParamC("c",
                                 cl::desc("Specify the exploration factor (C)"),
@@ -207,12 +210,13 @@ int main(int argc, char **argv) {
   torch::NoGradGuard Guard;
   Model->eval();
 
-  int FD;
-  EC = sys::fs::openFileForWrite(OutputFileName, FD);
+  EC = sys::fs::create_directory(ArchivePath);
   CheckError();
-  PolicyWriter Writer(FD);
+
+  PolicyArchiver Archiver(ArchiveBlockSize, ArchivePath);
+
   RolloutEvaluator Evaluator;
-  SupervisionGenerator SG(Writer, &Evaluator, Model, MaxSearchDist,
+  SupervisionGenerator SG(Archiver, &Evaluator, Model, MaxSearchDist,
                           SamplePerBlock, ParamC, ParamW, NumSimulations);
 
   for (auto &Pkr : PackerBuilder::Packers)

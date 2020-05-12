@@ -80,9 +80,31 @@ public:
     OS.Close();
   }
   void write(const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
-             llvm::ArrayRef<float> Prob, PackingModel Model);
+             llvm::ArrayRef<float> Prob, PackingModel);
+};
+
+// We want to split every `BlockSize` decisions into a separate compressed file.
+// This will allow (to some degree) random access to the final dataset.
+class PolicyArchiver {
+  int BlockSize;
+  // Number of supervisions we've written into this block.
+  int BlockCounter;
+  int NumBlocks;
+  size_t Size;
+  std::string ArchivePath;
+  std::unique_ptr<PolicyWriter> Writer;
+
+  serialize::ArchiveMeta Meta;
+
+  std::string getFileName();
+  void startNewBlock();
+public:
+  PolicyArchiver(int BlockSize, llvm::StringRef ArchivePath);
+  ~PolicyArchiver();
+  void write(const Frontier *, Packer *, llvm::ArrayRef<const VectorPack *>,
+             llvm::ArrayRef<float> Prob, PackingModel);
 };
 
 // Interpret result of tree search as a probability distr. and dump it.
-void writeTreeSearchPolicy(PolicyWriter &, UCTNode &, Packer &, PackingModel);
+void writeTreeSearchPolicy(PolicyArchiver &, UCTNode &, Packer &, PackingModel);
 #endif // SERIALIZE_H

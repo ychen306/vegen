@@ -15,7 +15,7 @@ class BasicBlock;
 // their corresponding final tree policy.
 //
 class SupervisionGenerator {
-  PolicyWriter &Writer;
+  PolicyArchiver &Archiver;
   FrontierEvaluator *Evaluator;
   // FIXME: we are only using a model here to assign integer IDs to opcodes,
   // remove this after we refactor PackingModel
@@ -28,11 +28,11 @@ class SupervisionGenerator {
   unsigned NumIters;
 
 public:
-  SupervisionGenerator(PolicyWriter &Writer, FrontierEvaluator *Evaluator,
+  SupervisionGenerator(PolicyArchiver &Archiver, FrontierEvaluator *Evaluator,
                        PackingModel Model, unsigned MaxSearchDist,
                        unsigned SamplesPerBlock, unsigned C, unsigned W,
                        unsigned NumIters = 1000)
-      : Writer(Writer), Evaluator(Evaluator), Model(Model),
+      : Archiver(Archiver), Evaluator(Evaluator), Model(Model),
         MaxSearchDist(MaxSearchDist), SamplesPerBlock(SamplesPerBlock), C(C),
         W(W), NumIters(NumIters) {}
   // Run a policy-augmented MCTS on a basic block to generate supervision data
