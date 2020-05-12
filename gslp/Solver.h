@@ -140,6 +140,17 @@ class UCTNode {
   float TotalCost;
   uint64_t Count;
 
+  // Record the max and min cost ever encountered starting from this node.
+  // We use this to normalize cost,
+  // which is necessary for the exploration factor to be meaningful.
+  float MaxCost;
+  float MinCost;
+  float normalize(float Cost) const {
+    if (MaxCost == MinCost)
+      return Cost;
+    return (Cost - MinCost) / (MaxCost - MinCost);
+  }
+
 public:
   // The next action state pair
   struct Transition {
@@ -157,20 +168,16 @@ public:
 
     // Average Q value
     float avgCost() const { return Cost + Next->avgCost(); }
-
-    // The ucb bias for this transition
-    float bias(uint64_t ParentCount, float C) const {
-      return C * sqrtf(logf(ParentCount) / float(Count));
-    }
-
-    // UCT2 formula from the paper
-    // ``Transpositions and Move Groups in Monte Carlo Tree Search''
-    float score(uint64_t ParentCount, float C) const {
-      return -avgCost() + bias(ParentCount, C);
-    }
   };
 
   std::atomic<std::vector<float> *> TransitionWeight;
+
+  // Score a transition using the UCT2 formula from
+  // ``Transpositions and Move Groups in Monte Carlo Tree Search''
+  float score(const Transition &T, float C) const {
+    return -normalize(T.avgCost()) +
+           C * sqrt(logf(visitCount()) / float(T.visitCount()));
+  }
 
 private:
   std::vector<Transition> Transitions;
@@ -187,7 +194,8 @@ public:
   }
 
   // Fill out the out edge
-  void expand(unsigned MaxNumLanes, unsigned MaxSearchDist, UCTNodeFactory *Factory, Packer *Pkr,
+  void expand(unsigned MaxNumLanes, unsigned MaxSearchDist,
+              UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
@@ -200,6 +208,8 @@ public:
   const Frontier *getFrontier() const { return Frt; }
   void update(float Cost) {
     TotalCost += Cost;
+    MinCost = std::min(Cost, MinCost);
+    MaxCost = std::max(Cost, MaxCost);
     Count++;
   }
 
@@ -217,8 +227,9 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(unsigned MaxNumLanes, unsigned MaxSearchDist, const Frontier *Frt,
-                         PackEnumerationCache &EnumCache, Packer *Pkr) = 0;
+  virtual float evaluate(unsigned MaxNumLanes, unsigned MaxSearchDist,
+                         const Frontier *Frt, PackEnumerationCache &EnumCache,
+                         Packer *Pkr) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {

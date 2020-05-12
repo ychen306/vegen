@@ -631,7 +631,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       unsigned VisitCount = CurNode->visitCount();
       auto ScoreTransition = [&](unsigned i) -> float {
         auto &T = Transitions[i];
-        float Score = T.score(VisitCount, C);
+        float Score = CurNode->score(T, C);
         if (HasPredictions)
           Score += W * TransitionWeight[i] / T.visitCount();
         return Score;

@@ -572,9 +572,9 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
     T.startTimer();
 #if 1
-    UCTSearch MCTS(100 /*exploration factor*/, 0, 10, &Factory, &Pkr, &Policy,
+    UCTSearch MCTS(0.25 /*exploration factor*/, 0, 10, &Factory, &Pkr, nullptr /*&Policy*/,
                    &Evaluator, TTI);
-    MCTS.run(Root, 1000);
+    MCTS.run(Root, 1000000);
     Policy.cancel();
 #else
     UCTSearch MCTS(50 /*exploration factor*/, &Factory, &Pkr, &Evaluator, TTI);

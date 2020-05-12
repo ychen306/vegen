@@ -55,7 +55,7 @@ static cl::opt<unsigned> ArchiveBlockSize("archive-block-size",
 
 static cl::opt<unsigned> ParamC("c",
                                 cl::desc("Specify the exploration factor (C)"),
-                                cl::value_desc("C"), cl::init(1.5));
+                                cl::value_desc("C"), cl::init(0.25));
 
 static cl::opt<unsigned>
     ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
