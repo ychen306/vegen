@@ -90,8 +90,7 @@ class GeneratorWrapper : public FunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
   static std::unique_ptr<SupervisionGenerator> SG;
-  GeneratorWrapper()
-    : FunctionPass(ID) {
+  GeneratorWrapper() : FunctionPass(ID) {
     initializeGeneratorWrapperPass(*PassRegistry::getPassRegistry());
   }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -116,10 +115,9 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   auto *DL = &F.getParent()->getDataLayout();
 
   // FIXME: make the list supported insts a parameter
-  Packer Pkr(VecBindingTable.getBindings(), F,
-      AA, DL, SE, TTI, BFI);
+  Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   for (auto &BB : F)
-    SG->run(nullptr/*policy*/, &Pkr, &BB);
+    SG->run(nullptr /*policy*/, &Pkr, &BB);
   return false;
 }
 
@@ -160,8 +158,9 @@ int main(int argc, char **argv) {
 
   PolicyArchiver Archiver(ArchiveBlockSize, ArchivePath);
   RolloutEvaluator Evaluator;
-  GeneratorWrapper::SG.reset(new SupervisionGenerator(Archiver, &Evaluator, Model, MaxSearchDist,
-                          SamplePerBlock, ParamC, ParamW, NumSimulations));
+  GeneratorWrapper::SG.reset(
+      new SupervisionGenerator(Archiver, &Evaluator, Model, MaxSearchDist,
+                               SamplePerBlock, ParamC, ParamW, NumSimulations));
 
   // Add the alias analysis pipeline
   legacy::PassManager Passes;
@@ -202,9 +201,18 @@ int main(int argc, char **argv) {
             continue;
           F.addFnAttr(
               "target-features",
-              "+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-waitpkg,-wbnoinvd,-xop");
+              "+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+"
+              "cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+"
+              "pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+"
+              "sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,"
+              "+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,"
+              "-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-"
+              "avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-"
+              "avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-"
+              "lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-"
+              "ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-"
+              "waitpkg,-wbnoinvd,-xop");
           F.addFnAttr("target-cpu", "skylake");
-
         }
         Passes.run(*M);
       }
