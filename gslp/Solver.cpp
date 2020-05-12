@@ -682,9 +682,6 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       FT.Parent->update(TotalCost);
       FT.T->Count += 1;
     }
-
-    if (TotalCost < 0)
-      errs() << "Total Cost: " << TotalCost << '\n';
   }
 }
 

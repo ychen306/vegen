@@ -196,11 +196,8 @@ PolicyArchiver::~PolicyArchiver() {
 }
 
 void PolicyArchiver::startNewBlock() {
-  if (BlockCounter) {
-    auto *F = Meta.add_files();
-    F->set_num_entries(BlockCounter);
-    F->set_name(formatv("decisions_{0}", NumBlocks).str());
-  }
+  if (BlockCounter)
+    Meta.add_files(formatv("decisions_{0}", NumBlocks).str());
 
   BlockCounter = 0;
   NumBlocks++;
@@ -236,13 +233,13 @@ PolicyArchiveReader::PolicyArchiveReader(llvm::StringRef ArchivePath)
                                                            nullptr);
 
   Size = Meta.size();
-  BlockSize = Meta.files()[0].num_entries();
+  BlockSize = Meta.block_size();
 }
 
 void PolicyArchiveReader::read(unsigned i, PolicySupervision &PS) const {
   unsigned BlockId = i / BlockSize;
   unsigned EntryId = i % BlockSize;
-  std::string FileName = Meta.files()[BlockId].name();
+  std::string FileName = Meta.files()[BlockId];
   int FD = openFileForRead(formatv("{0}/{1}", ArchivePath, FileName));
   PolicyReader Reader(FD);
   for (unsigned i = 0; i < EntryId; i++)

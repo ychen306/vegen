@@ -17,8 +17,6 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
   while (!Node->isTerminal()) {
     MCTS.run(Node, NumIters);
     assert(Node->expanded());
-    errs() << "~~ " << Nodes.size() << ", " << Node->transitions().size()
-           << ", " << Node << '\n';
 
     // The MCTS queries the policy (if there's one) asynchronously,
     // cancel all requests if they haven't been processed yet.

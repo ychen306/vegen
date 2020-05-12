@@ -44,12 +44,8 @@ message Supervision {
 }
 
 message ArchiveMeta {
-  message File {
-    required string name = 1;
-    required int32 num_entries = 2;
-  }
-
   // Total number of data points.
   required int64 size = 1;
-  repeated File files = 2;
+  required int32 block_size = 2;
+  repeated string files = 3;
 }
