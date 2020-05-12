@@ -181,8 +181,7 @@ std::string PolicyArchiver::getFileName() {
 }
 
 PolicyArchiver::PolicyArchiver(int BlockSize, llvm::StringRef ArchivePath)
-    : BlockSize(BlockSize), BlockCounter(0), NumBlocks(1),
-    Size(0),
+    : BlockSize(BlockSize), BlockCounter(0), NumBlocks(1), Size(0),
       ArchivePath(ArchivePath),
       Writer(std::make_unique<PolicyWriter>(openFileForWrite(getFileName()))) {}
 
@@ -230,10 +229,11 @@ static int openFileForRead(std::string FileName) {
 }
 
 PolicyArchiveReader::PolicyArchiveReader(llvm::StringRef ArchivePath)
-  : ArchivePath(ArchivePath) {
+    : ArchivePath(ArchivePath) {
   std::string MetaFilePath = formatv("{0}/meta", ArchivePath);
   google::protobuf::io::FileInputStream MetaFile(openFileForRead(MetaFilePath));
-  google::protobuf::util::ParseDelimitedFromZeroCopyStream(&Meta, &MetaFile, nullptr);
+  google::protobuf::util::ParseDelimitedFromZeroCopyStream(&Meta, &MetaFile,
+                                                           nullptr);
 
   Size = Meta.size();
   BlockSize = Meta.files()[0].num_entries();

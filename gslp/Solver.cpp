@@ -246,9 +246,10 @@ class PackEnumerator {
   // 2) it's no more than `MaxSearchDist` away from `Focus`.
   // The second criterion is to limit the number of packs we can enumerate.
   bool isUsable(Instruction *I, Instruction *Focus) const {
-    // Abusing the fact that instructions are ID'd in order by VectorPackContext.
+    // Abusing the fact that instructions are ID'd in order by
+    // VectorPackContext.
     return (I == Focus || I->comesBefore(Focus)) &&
-      VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
+           VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
   }
 
   void
