@@ -6,7 +6,7 @@ using namespace llvm;
 void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
                                BasicBlock *BB) {
   UCTNodeFactory Factory;
-  UCTSearch MCTS(C, W, MaxSearchDist, &Factory, Pkr, Policy, Evaluator, Pkr->getTTI());
+  UCTSearch MCTS(C, W, EnumCap, &Factory, Pkr, Policy, Evaluator, Pkr->getTTI());
 
   UCTNode *Root =
       Factory.getNode(std::make_unique<Frontier>(BB, Pkr->getContext(BB)));

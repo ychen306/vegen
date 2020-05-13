@@ -66,7 +66,7 @@ public:
   llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
-  nextAvailablePacks(unsigned MaxNumLanes, unsigned MaxSearchDist, Packer *,
+  nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap, Packer *,
                      PackEnumerationCache *) const;
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
@@ -194,7 +194,7 @@ public:
   }
 
   // Fill out the out edge
-  void expand(unsigned MaxNumLanes, unsigned MaxSearchDist,
+  void expand(unsigned MaxNumLanes, unsigned EnumCap,
               UCTNodeFactory *Factory, Packer *Pkr,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
@@ -227,7 +227,7 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(unsigned MaxNumLanes, unsigned MaxSearchDist,
+  virtual float evaluate(unsigned MaxNumLanes, unsigned EnumCap,
                          const Frontier *Frt, PackEnumerationCache &EnumCache,
                          Packer *Pkr) = 0;
 };
@@ -266,7 +266,7 @@ class UCTSearch {
   // Controlling how much we trust the policy bias.
   float W;
 
-  unsigned MaxSearchDist;
+  unsigned EnumCap;
 
   UCTNodeFactory *Factory;
   Packer *Pkr;
@@ -279,16 +279,16 @@ class UCTSearch {
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, float W, unsigned MaxSearchDist, UCTNodeFactory *Factory,
+  UCTSearch(float C, float W, unsigned EnumCap, UCTNodeFactory *Factory,
             Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
             llvm::TargetTransformInfo *TTI)
-      : C(C), W(W), MaxSearchDist(MaxSearchDist), Factory(Factory), Pkr(Pkr),
+      : C(C), W(W), EnumCap(EnumCap), Factory(Factory), Pkr(Pkr),
         Policy(Policy), Evaluator(Evaluator), TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
     return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8,
-                               MaxSearchDist, N->getFrontier(), EnumCache, Pkr);
+                               EnumCap, N->getFrontier(), EnumCache, Pkr);
   }
 };
 

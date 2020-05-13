@@ -232,7 +232,7 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
 
 class PackEnumerator {
   unsigned MaxNumLanes;
-  unsigned MaxSearchDist;
+  unsigned EnumCap;
   const VectorPackContext &VPCtx;
   ArrayRef<InstBinding *> Insts;
   const LocalDependenceAnalysis &LDA;
@@ -241,15 +241,8 @@ class PackEnumerator {
   const MatchManager &MM;
   TargetTransformInfo *TTI;
 
-  // We can use `I` if
-  // 1) it comes before `Focus` and
-  // 2) it's no more than `MaxSearchDist` away from `Focus`.
-  // The second criterion is to limit the number of packs we can enumerate.
   bool isUsable(Instruction *I, Instruction *Focus) const {
-    // Abusing the fact that instructions are ID'd in order by
-    // VectorPackContext.
-    return (I == Focus || I->comesBefore(Focus)) &&
-           VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
+    return I == Focus || I->comesBefore(Focus);
   }
 
   void
@@ -279,9 +272,9 @@ class PackEnumerator {
                             std::vector<const VectorPack *> &Enumerated) const;
 
 public:
-  PackEnumerator(unsigned MaxNumLanes, unsigned MaxSearchDist, BasicBlock *BB,
+  PackEnumerator(unsigned MaxNumLanes, unsigned EnumCap, BasicBlock *BB,
                  Packer *Pkr)
-      : MaxNumLanes(MaxNumLanes), MaxSearchDist(MaxSearchDist),
+      : MaxNumLanes(MaxNumLanes), EnumCap(EnumCap),
         VPCtx(*Pkr->getContext(BB)), Insts(Pkr->getInsts()),
         LDA(Pkr->getLDA(BB)), LoadDAG(Pkr->getLoadDAG(BB)),
         StoreDAG(Pkr->getStoreDAG(BB)), MM(Pkr->getMatchManager(BB)),
@@ -310,7 +303,7 @@ void PackEnumerator::enumeratePacksRec(
   auto BackupElements = Elements;
   auto BackupDepended = Depended;
 
-  // Try out all matched operation for this line
+  // Try out all matched operation for this lane.
   Lanes.push_back(nullptr);
   for (auto &Match : LaneMatches[LaneId]) {
     unsigned OutId = VPCtx.getScalarId(Match.Output);
@@ -341,6 +334,8 @@ void PackEnumerator::enumeratePacksRec(
     // Revert the change before we try out the next match
     Elements = BackupElements;
     Depended = BackupDepended;
+    if (Enumerated.size() >= EnumCap)
+      break;
   }
   Lanes.pop_back();
 }
@@ -469,7 +464,7 @@ void PackEnumerator::enumerateMemAccesses(
           Enumerated.push_back(createMemAccessPack<AccessType>(
               AccessChain, Elements, Depended, TTI));
         }
-        if (AccessChain.size() >= MaxNumLanes)
+        if (AccessChain.size() >= MaxNumLanes || Enumerated.size() >= EnumCap)
           return;
 
         // Extend this load chain
@@ -550,7 +545,7 @@ Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
 }
 
 std::vector<const VectorPack *>
-Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned MaxSearchDist,
+Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap,
                              Packer *Pkr,
                              PackEnumerationCache *EnumCache) const {
   Instruction *I = getNextFreeInst();
@@ -560,7 +555,7 @@ Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned MaxSearchDist,
     return filterFrozenPacks(CachedPacks);
 
   std::vector<const VectorPack *> AvailablePacks;
-  PackEnumerator Enumerator(MaxNumLanes, MaxSearchDist, BB, Pkr);
+  PackEnumerator Enumerator(MaxNumLanes, EnumCap, BB, Pkr);
 
   Enumerator.enumerate(I, AvailablePacks);
 
@@ -585,7 +580,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 }
 
 // Fill out the children node
-void UCTNode::expand(unsigned MaxNumLanes, unsigned MaxSearchDist,
+void UCTNode::expand(unsigned MaxNumLanes, unsigned EnumCap,
                      UCTNodeFactory *Factory, Packer *Pkr,
 
                      PackEnumerationCache *EnumCache,
@@ -599,7 +594,7 @@ void UCTNode::expand(unsigned MaxNumLanes, unsigned MaxSearchDist,
   Transitions.emplace_back(nullptr, Next, Cost);
 
   auto AvailablePacks =
-      Frt->nextAvailablePacks(MaxNumLanes, MaxSearchDist, Pkr, EnumCache);
+      Frt->nextAvailablePacks(MaxNumLanes, EnumCap, Pkr, EnumCache);
 
   Transitions.reserve(AvailablePacks.size());
   for (auto *VP : AvailablePacks) {
@@ -666,7 +661,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
       // FIXME: make max num lanes a parameter of MCTS ctor
-      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, MaxSearchDist,
+      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, EnumCap,
                       Factory, Pkr, &EnumCache, TTI);
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
@@ -686,12 +681,12 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
 }
 
 // Uniformly random rollout
-float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned MaxSearchDist,
+float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
                                  const Frontier *Frt,
                                  PackEnumerationCache &EnumCache, Packer *Pkr) {
   Frontier FrtScratch = *Frt;
   float Cost = 0;
-  PackEnumerator Enumerator(MaxNumLanes, MaxSearchDist, Frt->getBasicBlock(),
+  PackEnumerator Enumerator(MaxNumLanes, EnumCap, Frt->getBasicBlock(),
                             Pkr);
   auto *TTI = Pkr->getTTI();
 

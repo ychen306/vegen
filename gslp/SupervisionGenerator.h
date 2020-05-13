@@ -20,7 +20,7 @@ class SupervisionGenerator {
   // FIXME: we are only using a model here to assign integer IDs to opcodes,
   // remove this after we refactor PackingModel
   PackingModel Model;
-  unsigned MaxSearchDist;
+  unsigned EnumCap;
   unsigned SamplesPerBlock;
   unsigned C;
   unsigned W;
@@ -29,11 +29,11 @@ class SupervisionGenerator {
 
 public:
   SupervisionGenerator(PolicyArchiver &Archiver, FrontierEvaluator *Evaluator,
-                       PackingModel Model, unsigned MaxSearchDist,
+                       PackingModel Model, unsigned EnumCap,
                        unsigned SamplesPerBlock, unsigned C, unsigned W,
                        unsigned NumIters = 1000)
       : Archiver(Archiver), Evaluator(Evaluator), Model(Model),
-        MaxSearchDist(MaxSearchDist), SamplesPerBlock(SamplesPerBlock), C(C),
+        EnumCap(EnumCap), SamplesPerBlock(SamplesPerBlock), C(C),
         W(W), NumIters(NumIters) {}
   // Run a policy-augmented MCTS on a basic block to generate supervision data
   void run(PackingPolicy *, Packer *, llvm::BasicBlock *);

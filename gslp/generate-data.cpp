@@ -73,10 +73,11 @@ static cl::opt<unsigned>
     NumSimulations("simulations", cl::value_desc("Number of MCTS simulations"),
                    cl::init(5000));
 
-static cl::opt<unsigned> MaxSearchDist(
-    "max-search-dist",
-    cl::value_desc("Maximum distatance between two packable instructions"),
-    cl::init(50));
+static cl::opt<unsigned> EnumCap(
+    "enum-cap",
+    cl::desc("Cap the maximum number of packs enumerate for a instruction"),
+    cl::value_desc("Enumeration cap"),
+    cl::init(5000));
 
 static cl::opt<unsigned>
     NumThreads("threads", cl::desc("Number of threads to use"), cl::init(4));
@@ -91,16 +92,15 @@ class GeneratorWrapper : public FunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
   static std::unique_ptr<SupervisionGenerator> SG;
-  static std::unique_ptr<ThreadPool> Threads;
+  std::string FuncName;
+  int BBId;
 
-  // Keep track of number of functions we processed
-  static std::mutex Lock;
-  static std::condition_variable Cond;
-  static unsigned NumFuncs;
-
-  GeneratorWrapper() : FunctionPass(ID) {
+  GeneratorWrapper() : FunctionPass(ID), BBId(-1) {
     initializeGeneratorWrapperPass(*PassRegistry::getPassRegistry());
   }
+  GeneratorWrapper(std::string FuncName, int BBId)
+      : FunctionPass(ID), FuncName(FuncName), BBId(BBId) {}
+
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<AAResultsWrapperPass>();
@@ -114,11 +114,22 @@ public:
 
 static IRInstTable VecBindingTable;
 
-static void runGeneratorOnFunction(SupervisionGenerator *SG, Function *F,
-                                   Packer *Pkr) {
-  for (auto &BB : *F)
-    SG->run(nullptr /*policy*/, Pkr, &BB);
-  delete Pkr;
+static void runGeneratorOnBasicBlock(std::string ModulePath,
+                                     std::string FuncName, int BBId) {
+  LLVMContext Ctx;
+  SMDiagnostic Diag;
+  std::unique_ptr<Module> M = parseIRFile(ModulePath, Diag, Ctx);
+  if (!M)
+    Diag.print("Trainer failed to load bitcode:", errs());
+
+  // Add the alias analysis pipeline
+  legacy::PassManager Passes;
+  Passes.add(createTypeBasedAAWrapperPass());
+  Passes.add(createScopedNoAliasAAWrapperPass());
+  Passes.add(createGlobalsAAWrapperPass());
+  Passes.add(createBasicAAWrapperPass());
+  Passes.add(new GeneratorWrapper(FuncName, BBId));
+  Passes.run(*M);
 }
 
 bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
@@ -127,20 +138,30 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
 
+  if (BBId == -1) {
+    abort();
+  }
+
   auto *DL = &F.getParent()->getDataLayout();
 
-  // FIXME: make the list supported insts a parameter
-  // runGenerator(SG.get(), &F,
-  //    std::make_unique<Packer>(
-  //      VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI));
-  Threads->async(
-      runGeneratorOnFunction, SG.get(), &F,
-      new Packer(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI));
+  if (F.getName() != FuncName)
+    return false;
+
+  // The basic block we want to run the generator on.
+  BasicBlock *TargetBB = nullptr;
+  int i = 0;
+  for (auto &BB : F)
+    if (i++ == BBId) {
+      TargetBB = &BB;
+      break;
+    }
+
+  Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
+  SG->run(nullptr /*policy*/, &Pkr, TargetBB);
   return false;
 }
 
 std::unique_ptr<SupervisionGenerator> GeneratorWrapper::SG;
-std::unique_ptr<ThreadPool> GeneratorWrapper::Threads;
 
 char GeneratorWrapper::ID = 0;
 
@@ -155,7 +176,7 @@ int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
 
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
-    << '\n';
+         << '\n';
 
   std::error_code EC;
   ExitOnError ExitOnErr("Error: ");
@@ -178,10 +199,10 @@ int main(int argc, char **argv) {
   PolicyArchiver Archiver(ArchiveBlockSize, ArchivePath);
   RolloutEvaluator Evaluator;
   GeneratorWrapper::SG.reset(
-      new SupervisionGenerator(Archiver, &Evaluator, Model, MaxSearchDist,
-        SamplePerBlock, ParamC, ParamW, NumSimulations));
-  GeneratorWrapper::Threads.reset(
-      new ThreadPool(hardware_concurrency(NumThreads)));
+      new SupervisionGenerator(Archiver, &Evaluator, Model, EnumCap,
+                               SamplePerBlock, ParamC, ParamW, NumSimulations));
+
+  ThreadPool Threads(hardware_concurrency(NumThreads));
 
   // Add the alias analysis pipeline
   legacy::PassManager Passes;
@@ -215,39 +236,51 @@ int main(int argc, char **argv) {
     CheckError();
   }
 
-
   unsigned i = 0;
   for (auto &FilePath : ModulePaths) {
-    errs() << "\rProcessing module: " 
-      << FilePath
-      << ", " << i++ << "/" << ModulePaths.size();
+    errs() << "\rProcessing module: " << FilePath << ", " << i++ << "/"
+           << ModulePaths.size();
     SMDiagnostic Diag;
     std::unique_ptr<Module> M = parseIRFile(FilePath, Diag, Ctx);
     if (!M)
       Diag.print("Trainer failed to load bitcode:", errs());
     else {
-      // Set target feature. FIXME:
-      // make it configurable depending on which machine we want to tune for
+      std::mutex StatLock;
+      std::condition_variable StatCond;
+      std::atomic<int64_t> NumProcessedBlocks(0);
+
+      unsigned NumBlocks = 0;
       for (auto &F : *M) {
-        if (F.empty())
-          continue;
-        F.addFnAttr(
-            "target-features",
-            "+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+"
-            "cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+"
-            "pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+"
-            "sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,"
-            "+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,"
-            "-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-"
-            "avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-"
-            "avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-"
-            "lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-"
-            "ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-"
-            "waitpkg,-wbnoinvd,-xop");
-        F.addFnAttr("target-cpu", "skylake");
+        unsigned BBId = 0;
+        for (auto &BB : F) {
+          Threads.async(
+              [ModulePath = FilePath, FuncName = F.getName().str(), BBId,
+              &StatLock, &StatCond, &NumProcessedBlocks
+              ] {
+                runGeneratorOnBasicBlock(ModulePath, FuncName, BBId);
+                {
+                  std::unique_lock<std::mutex> LockGuard(StatLock);
+                  NumProcessedBlocks++;
+                }
+                StatCond.notify_all();
+              });
+          BBId++;
+          NumBlocks++;
+        }
       }
-      Passes.run(*M);
-      GeneratorWrapper::Threads->wait();
+      for (;;) {
+        unsigned Count = NumProcessedBlocks.load();
+        errs() << Count << ", " << NumBlocks << '\n';
+        if (Count == NumBlocks)
+          break;
+        {
+          std::unique_lock<std::mutex> LockGuard(StatLock);
+          StatCond.wait(LockGuard,
+              [&] { return NumProcessedBlocks.load() != Count; });
+        }
+      }
+
+      Threads.wait();
     }
   }
   errs() << '\n';
