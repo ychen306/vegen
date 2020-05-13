@@ -206,6 +206,8 @@ void PolicyArchiver::startNewBlock() {
 void PolicyArchiver::write(const Frontier *Frt, Packer *Pkr,
                            llvm::ArrayRef<const VectorPack *> Packs,
                            llvm::ArrayRef<float> Prob, PackingModel Model) {
+  std::unique_lock<std::mutex> LockGuard(WriteLock);
+
   Writer->write(Frt, Pkr, Packs, Prob, Model);
   Size++;
   BlockCounter++;

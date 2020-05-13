@@ -101,6 +101,8 @@ class PolicyArchiver {
 
   serialize::ArchiveMeta Meta;
 
+  std::mutex WriteLock;
+
   std::string getFileName();
   void startNewBlock();
 public:
