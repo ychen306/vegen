@@ -19,6 +19,7 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
+#include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -68,17 +69,17 @@ static cl::opt<unsigned> SamplePerBlock(
     cl::value_desc("Number of decisions to sample per basic block"),
     cl::init(20));
 
-static cl::opt<unsigned> NumSimulations(
-    "simulations",
-    cl::desc("Specify the number of MCTS simulations for each state"),
-    cl::desc("Number of MCTS simulations"), cl::init(5000));
+static cl::opt<unsigned>
+    NumSimulations("simulations", cl::value_desc("Number of MCTS simulations"),
+                   cl::init(5000));
 
 static cl::opt<unsigned> MaxSearchDist(
     "max-search-dist",
-    cl::desc(
-        "Maximum distance with which consider two instructions as independent"),
-    cl::desc("Maximum distatance between two packable instructions"),
+    cl::value_desc("Maximum distatance between two packable instructions"),
     cl::init(50));
+
+static cl::opt<unsigned>
+    NumThreads("threads", cl::desc("Number of threads to use"), cl::init(4));
 
 namespace llvm {
 void initializeGeneratorWrapperPass(PassRegistry &);
@@ -90,6 +91,13 @@ class GeneratorWrapper : public FunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
   static std::unique_ptr<SupervisionGenerator> SG;
+  static std::unique_ptr<ThreadPool> Threads;
+
+  // Keep track of number of functions we processed
+  static std::mutex Lock;
+  static std::condition_variable Cond;
+  static unsigned NumFuncs;
+
   GeneratorWrapper() : FunctionPass(ID) {
     initializeGeneratorWrapperPass(*PassRegistry::getPassRegistry());
   }
@@ -106,6 +114,13 @@ public:
 
 static IRInstTable VecBindingTable;
 
+static void runGeneratorOnFunction(SupervisionGenerator *SG, Function *F,
+                                   Packer *Pkr) {
+  for (auto &BB : *F)
+    SG->run(nullptr /*policy*/, Pkr, &BB);
+  delete Pkr;
+}
+
 bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
@@ -115,13 +130,17 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   auto *DL = &F.getParent()->getDataLayout();
 
   // FIXME: make the list supported insts a parameter
-  Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
-  for (auto &BB : F)
-    SG->run(nullptr /*policy*/, &Pkr, &BB);
+  // runGenerator(SG.get(), &F,
+  //    std::make_unique<Packer>(
+  //      VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI));
+  Threads->async(
+      runGeneratorOnFunction, SG.get(), &F,
+      new Packer(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI));
   return false;
 }
 
 std::unique_ptr<SupervisionGenerator> GeneratorWrapper::SG;
+std::unique_ptr<ThreadPool> GeneratorWrapper::Threads;
 
 char GeneratorWrapper::ID = 0;
 
@@ -136,7 +155,7 @@ int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
 
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
-         << '\n';
+    << '\n';
 
   std::error_code EC;
   ExitOnError ExitOnErr("Error: ");
@@ -160,7 +179,9 @@ int main(int argc, char **argv) {
   RolloutEvaluator Evaluator;
   GeneratorWrapper::SG.reset(
       new SupervisionGenerator(Archiver, &Evaluator, Model, MaxSearchDist,
-                               SamplePerBlock, ParamC, ParamW, NumSimulations));
+        SamplePerBlock, ParamC, ParamW, NumSimulations));
+  GeneratorWrapper::Threads.reset(
+      new ThreadPool(hardware_concurrency(NumThreads)));
 
   // Add the alias analysis pipeline
   legacy::PassManager Passes;
@@ -181,44 +202,51 @@ int main(int argc, char **argv) {
 
   LLVMContext Ctx;
 
-  std::vector<std::unique_ptr<Module>> Modules;
+  std::vector<std::string> ModulePaths;
   for (;;) {
     if (DirIt == DirEnd)
       break;
 
     std::string FilePath = DirIt->path();
-    if (BCPat.match(FilePath)) {
-      SMDiagnostic Diag;
-      std::unique_ptr<Module> M = parseIRFile(FilePath, Diag, Ctx);
-      if (!M)
-        Diag.print("Trainer failed to load bitcode:", errs());
-      else {
-        dbgs() << "Parsed module: " << FilePath << '\n';
-        // Set target feature. FIXME:
-        // make it configurable depending on which machine we want to tune for
-        for (auto &F : *M) {
-          if (F.empty())
-            continue;
-          F.addFnAttr(
-              "target-features",
-              "+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+"
-              "cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+"
-              "pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+"
-              "sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,"
-              "+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,"
-              "-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-"
-              "avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-"
-              "avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-"
-              "lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-"
-              "ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-"
-              "waitpkg,-wbnoinvd,-xop");
-          F.addFnAttr("target-cpu", "skylake");
-        }
-        Passes.run(*M);
-      }
-    }
+    if (BCPat.match(FilePath))
+      ModulePaths.push_back(FilePath);
 
     DirIt.increment(EC);
     CheckError();
   }
+
+
+  unsigned i = 0;
+  for (auto &FilePath : ModulePaths) {
+    errs() << "\rProgress: " << i++ << "/" << ModulePaths.size();
+    SMDiagnostic Diag;
+    std::unique_ptr<Module> M = parseIRFile(FilePath, Diag, Ctx);
+    if (!M)
+      Diag.print("Trainer failed to load bitcode:", errs());
+    else {
+      // Set target feature. FIXME:
+      // make it configurable depending on which machine we want to tune for
+      for (auto &F : *M) {
+        if (F.empty())
+          continue;
+        F.addFnAttr(
+            "target-features",
+            "+64bit,+adx,+aes,+avx,+avx2,+bmi,+bmi2,+clflushopt,+cmov,+cx16,+"
+            "cx8,+f16c,+fma,+fsgsbase,+fxsr,+invpcid,+lzcnt,+mmx,+movbe,+"
+            "pclmul,+popcnt,+prfchw,+rdrnd,+rdseed,+rtm,+sahf,+sgx,+sse,+"
+            "sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave,+xsavec,+xsaveopt,"
+            "+xsaves,-avx512bf16,-avx512bitalg,-avx512bw,-avx512cd,-avx512dq,"
+            "-avx512er,-avx512f,-avx512ifma,-avx512pf,-avx512vbmi,-"
+            "avx512vbmi2,-avx512vl,-avx512vnni,-avx512vp2intersect,-"
+            "avx512vpopcntdq,-cldemote,-clwb,-clzero,-enqcmd,-fma4,-gfni,-"
+            "lwp,-movdir64b,-movdiri,-mwaitx,-pconfig,-pku,-prefetchwt1,-"
+            "ptwrite,-rdpid,-sha,-shstk,-sse4a,-tbm,-vaes,-vpclmulqdq,-"
+            "waitpkg,-wbnoinvd,-xop");
+        F.addFnAttr("target-cpu", "skylake");
+      }
+      Passes.run(*M);
+      GeneratorWrapper::Threads->wait();
+    }
+  }
+  errs() << '\n';
 }
