@@ -218,7 +218,9 @@ int main(int argc, char **argv) {
 
   unsigned i = 0;
   for (auto &FilePath : ModulePaths) {
-    errs() << "\rProgress: " << i++ << "/" << ModulePaths.size();
+    errs() << "\rProcessing module: " 
+      << FilePath
+      << ", " << i++ << "/" << ModulePaths.size();
     SMDiagnostic Diag;
     std::unique_ptr<Module> M = parseIRFile(FilePath, Diag, Ctx);
     if (!M)
