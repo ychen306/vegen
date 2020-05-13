@@ -192,6 +192,7 @@ PolicyArchiver::~PolicyArchiver() {
   // Finish the block we are currently working with.
   startNewBlock();
   Meta.set_size(Size);
+  Meta.set_block_size(BlockSize);
   google::protobuf::util::SerializeDelimitedToZeroCopyStream(Meta, &OS);
 }
 
