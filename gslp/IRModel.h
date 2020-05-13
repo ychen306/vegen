@@ -1,11 +1,10 @@
 #ifndef IR_MODEL_H
 #define IR_MODEL_H
 
-#include "LocalDependenceAnalysis.h"
 #include "Preprocessing.h"
 #include "Util.h"
-#include <llvm/ADT/DenseMap.h>
 #include <torch/torch.h>
+#include <llvm/ADT/DenseMap.h>
 
 class InstBinding;
 

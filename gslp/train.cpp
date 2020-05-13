@@ -1,5 +1,5 @@
-#include "GraphUtil.h"
 #include "IRModel.h"
+#include "GraphUtil.h"
 #include "IRVec.h"
 #include "ModelUtil.h"
 #include "Serialize.h"
