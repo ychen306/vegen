@@ -91,7 +91,7 @@ void NeuralPackingPolicy::cancel() {
   Nodes.clear();
   {
     std::unique_lock<std::mutex> LockGuard(QueueLock);
-    Queue = {};
+    Queue = decltype(Queue)();
   }
   std::unique_lock<std::mutex> LockGuard(IdlingLock);
   IdlingCond.wait(LockGuard,
