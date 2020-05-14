@@ -240,8 +240,11 @@ int main(int argc, char **argv) {
   std::atomic<int64_t> NumProcessedBlocks(0);
 
   unsigned NumBlocks = 0;
+  unsigned Scanned = 0;
   for (auto &FilePath : ModulePaths) {
     SMDiagnostic Diag;
+    errs() << "\rScanning modules: " << ++Scanned << "/" << ModulePaths.size()
+           << '\n';
     std::unique_ptr<Module> M = parseIRFile(FilePath, Diag, Ctx);
     if (!M)
       Diag.print("Trainer failed to load bitcode:", errs());
@@ -249,8 +252,8 @@ int main(int argc, char **argv) {
 
       for (auto &F : *M) {
         for (unsigned i = 0; i < F.size(); i++) {
-          Threads.async([ModulePath = FilePath, FuncName = F.getName().str(),
-                         i, &StatLock, &StatCond, &NumProcessedBlocks] {
+          Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
+                         &StatLock, &StatCond, &NumProcessedBlocks] {
             runGeneratorOnBasicBlock(ModulePath, FuncName, i);
             {
               std::unique_lock<std::mutex> LockGuard(StatLock);

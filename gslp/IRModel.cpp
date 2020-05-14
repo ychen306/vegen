@@ -165,7 +165,6 @@ std::vector<PackDistribution>
 PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
                                 Packer *Pkr, torch::Device Device,
                                 unsigned NumIters) {
-  unsigned N = 0, NumUnresolvedUses = 0;
   std::vector<IRIndex> Indexes;
   FrontierPreprocessor<BatchedGraphBuilder> Preprocessor(MaxNumLanes);
 
