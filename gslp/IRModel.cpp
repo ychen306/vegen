@@ -36,12 +36,12 @@ MLPImpl::MLPImpl(unsigned InSize, unsigned OutSize, unsigned HiddenSize,
   assert(NumLayers > 1);
   Layers->push_back(
       register_module("layer0", torch::nn::Linear(InSize, HiddenSize)));
-  Layers->push_back(torch::nn::ReLU());
+  Layers->push_back(register_module("relu0", torch::nn::ReLU()));
   for (unsigned i = 0; i < NumLayers - 2; i++) {
+    Layers->push_back(register_module(
+        formatv("layer{0}", i + 1), torch::nn::Linear(HiddenSize, HiddenSize)));
     Layers->push_back(
-        register_module(formatv("layer{0}", i + 1),
-                        torch::nn::Linear(HiddenSize, HiddenSize)));
-    Layers->push_back(torch::nn::ReLU());
+        register_module(formatv("relu{0}", i + 1), torch::nn::ReLU()));
   }
   Layers->push_back(register_module(formatv("layer{0}", NumLayers - 1),
                                     torch::nn::Linear(HiddenSize, OutSize)));
