@@ -243,8 +243,7 @@ int main(int argc, char **argv) {
   unsigned Scanned = 0;
   for (auto &FilePath : ModulePaths) {
     SMDiagnostic Diag;
-    errs() << "\rScanning modules: " << ++Scanned << "/" << ModulePaths.size()
-           << '\n';
+    errs() << "\rScanning modules: " << ++Scanned << "/" << ModulePaths.size();
     std::unique_ptr<Module> M = parseIRFile(FilePath, Diag, Ctx);
     if (!M)
       Diag.print("Trainer failed to load bitcode:", errs());
