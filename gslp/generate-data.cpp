@@ -266,6 +266,8 @@ int main(int argc, char **argv) {
     }
   }
 
+  errs() << '\n';
+
   for (;;) {
     unsigned Count = NumProcessedBlocks.load();
     errs() << "\r" << Count << "/" << NumBlocks;
