@@ -62,7 +62,7 @@ static cl::opt<unsigned>
     ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
            cl::value_desc("W"), cl::init(100));
 
-static cl::opt<unsigned> SamplePerBlock(
+static cl::opt<unsigned> SamplesPerBlock(
     "samples",
     cl::desc("Specify the number of decisions we sample when dumping "
              "optimizing decisions of a basic block"),
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
   RolloutEvaluator Evaluator;
   GeneratorWrapper::SG.reset(
       new SupervisionGenerator(Archiver, &Evaluator, Model, EnumCap,
-                               SamplePerBlock, ParamC, ParamW, NumSimulations));
+                               SamplesPerBlock, ParamC, ParamW, NumSimulations));
 
   ThreadPool Threads(hardware_concurrency(NumThreads));
 
