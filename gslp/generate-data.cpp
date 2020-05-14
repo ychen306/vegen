@@ -71,13 +71,12 @@ static cl::opt<unsigned> SamplePerBlock(
 
 static cl::opt<unsigned>
     NumSimulations("simulations", cl::value_desc("Number of MCTS simulations"),
-                   cl::init(5000));
+                   cl::init(10000));
 
 static cl::opt<unsigned> EnumCap(
     "enum-cap",
     cl::desc("Cap the maximum number of packs enumerate for a instruction"),
-    cl::value_desc("Enumeration cap"),
-    cl::init(5000));
+    cl::value_desc("Enumeration cap"), cl::init(1000));
 
 static cl::opt<unsigned>
     NumThreads("threads", cl::desc("Number of threads to use"), cl::init(4));
@@ -236,52 +235,48 @@ int main(int argc, char **argv) {
     CheckError();
   }
 
-  unsigned i = 0;
+  std::mutex StatLock;
+  std::condition_variable StatCond;
+  std::atomic<int64_t> NumProcessedBlocks(0);
+
+  unsigned NumBlocks = 0;
   for (auto &FilePath : ModulePaths) {
-    errs() << "\rProcessing module: " << FilePath << ", " << i++ << "/"
-           << ModulePaths.size();
     SMDiagnostic Diag;
     std::unique_ptr<Module> M = parseIRFile(FilePath, Diag, Ctx);
     if (!M)
       Diag.print("Trainer failed to load bitcode:", errs());
     else {
-      std::mutex StatLock;
-      std::condition_variable StatCond;
-      std::atomic<int64_t> NumProcessedBlocks(0);
 
-      unsigned NumBlocks = 0;
       for (auto &F : *M) {
-        unsigned BBId = 0;
-        for (auto &BB : F) {
-          Threads.async(
-              [ModulePath = FilePath, FuncName = F.getName().str(), BBId,
-              &StatLock, &StatCond, &NumProcessedBlocks
-              ] {
-                runGeneratorOnBasicBlock(ModulePath, FuncName, BBId);
-                {
-                  std::unique_lock<std::mutex> LockGuard(StatLock);
-                  NumProcessedBlocks++;
-                }
-                StatCond.notify_all();
-              });
-          BBId++;
+        for (unsigned i = 0; i < F.size(); i++) {
+          Threads.async([ModulePath = FilePath, FuncName = F.getName().str(),
+                         i, &StatLock, &StatCond, &NumProcessedBlocks] {
+            runGeneratorOnBasicBlock(ModulePath, FuncName, i);
+            {
+              std::unique_lock<std::mutex> LockGuard(StatLock);
+              NumProcessedBlocks++;
+            }
+            StatCond.notify_all();
+          });
           NumBlocks++;
         }
       }
-      for (;;) {
-        unsigned Count = NumProcessedBlocks.load();
-        errs() << Count << ", " << NumBlocks << '\n';
-        if (Count == NumBlocks)
-          break;
-        {
-          std::unique_lock<std::mutex> LockGuard(StatLock);
-          StatCond.wait(LockGuard,
-              [&] { return NumProcessedBlocks.load() != Count; });
-        }
-      }
-
-      Threads.wait();
     }
   }
+
+  for (;;) {
+    unsigned Count = NumProcessedBlocks.load();
+    errs() << "\r" << Count << "/" << NumBlocks;
+    if (Count == NumBlocks)
+      break;
+    {
+      std::unique_lock<std::mutex> LockGuard(StatLock);
+      StatCond.wait(LockGuard,
+                    [&] { return NumProcessedBlocks.load() != Count; });
+    }
+  }
+
+  Threads.wait();
   errs() << '\n';
+  return 0;
 }
