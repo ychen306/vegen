@@ -12,7 +12,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
       Factory.getNode(std::make_unique<Frontier>(BB, Pkr->getContext(BB)));
 
   UCTNode *Node = Root;
-  std::vector<UCTNode *> Nodes = {};
+  std::vector<UCTNode *> Nodes;
   std::vector<float> Prob;
   while (!Node->isTerminal()) {
     MCTS.run(Node, NumIters);
