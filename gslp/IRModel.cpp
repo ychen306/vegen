@@ -31,16 +31,20 @@ torch::Tensor getValueTypesAsTensor(llvm::ArrayRef<IRIndex> Indexes) {
 
 } // end anonymous namespace
 
-MLPImpl::MLPImpl(
-      unsigned InSize, unsigned OutSize, unsigned HiddenSize, unsigned NumLayers) {
+MLPImpl::MLPImpl(unsigned InSize, unsigned OutSize, unsigned HiddenSize,
+                 unsigned NumLayers) {
   assert(NumLayers > 1);
-  Layers->push_back(torch::nn::Linear(InSize, HiddenSize));
+  Layers->push_back(
+      register_module("layer0", torch::nn::Linear(InSize, HiddenSize)));
   Layers->push_back(torch::nn::ReLU());
-  for (unsigned i = 0; i < NumLayers-1; i++) {
-    Layers->push_back(torch::nn::Linear(HiddenSize, HiddenSize));
+  for (unsigned i = 0; i < NumLayers - 2; i++) {
+    Layers->push_back(
+        register_module(formatv("layer{0}", i + 1),
+                        torch::nn::Linear(HiddenSize, HiddenSize)));
     Layers->push_back(torch::nn::ReLU());
   }
-  Layers->push_back(torch::nn::Linear(HiddenSize, OutSize));
+  Layers->push_back(register_module(formatv("layer{0}", NumLayers - 1),
+                                    torch::nn::Linear(HiddenSize, OutSize)));
 }
 
 unsigned PackingModelImpl::getInstId(const VectorPack *VP) const {
@@ -162,7 +166,7 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
     PackDistribution PD;
     if (Indexes)
       PD = PackDistribution(std::move(Indexes.getValue()[i]));
-    PD.OpProb = Slice(OpProb).log_softmax(1/*dim*/);
+    PD.OpProb = Slice(OpProb).log_softmax(1 /*dim*/);
     for (auto &StateToLaneEmb : StateToLaneEmbs)
       PD.LaneProbs.push_back(StateToLaneEmb->forward(Slice(H_value))
                                  .mm(Slice(Emb).t())
