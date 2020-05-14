@@ -31,6 +31,18 @@ torch::Tensor getValueTypesAsTensor(llvm::ArrayRef<IRIndex> Indexes) {
 
 } // end anonymous namespace
 
+MLPImpl::MLPImpl(
+      unsigned InSize, unsigned OutSize, unsigned HiddenSize, unsigned NumLayers) {
+  assert(NumLayers > 1);
+  Layers->push_back(torch::nn::Linear(InSize, HiddenSize));
+  Layers->push_back(torch::nn::ReLU());
+  for (unsigned i = 0; i < NumLayers-1; i++) {
+    Layers->push_back(torch::nn::Linear(HiddenSize, HiddenSize));
+    Layers->push_back(torch::nn::ReLU());
+  }
+  Layers->push_back(torch::nn::Linear(HiddenSize, OutSize));
+}
+
 unsigned PackingModelImpl::getInstId(const VectorPack *VP) const {
   if (VP->isLoad() || VP->isStore())
     return getMemAccessId(VP->getOrderedValues().size());
@@ -66,11 +78,11 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
   // ...>
   unsigned NumPackOps = InstPool.size() + 1 + (MaxNumLanes - 2 + 1);
   StateToOpcode =
-      register_module("state2inst", nn::Linear(EmbSize, NumPackOps));
-  StateToEmb = register_module("state2emb", nn::Linear(EmbSize, EmbSize));
+      register_module("state2inst", MLP(EmbSize, NumPackOps, EmbSize));
+  StateToEmb = register_module("state2emb", MLP(EmbSize, EmbSize, EmbSize));
   for (unsigned i = 0; i < MaxNumLanes; i++)
     StateToLaneEmbs.push_back(register_module(formatv("state2lane{0}", i),
-                                              nn::Linear(EmbSize, EmbSize)));
+                                              MLP(EmbSize, EmbSize, EmbSize)));
 
   // ======= RNN for aggregating state and messages =======
   // Input = operand1 x operand2 x <left mem> x <right mem> x <independent> x

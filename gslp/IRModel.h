@@ -38,6 +38,15 @@ struct BatchedFrontier {
   unsigned size() const { return NumValues.size(); }
 };
 
+class MLPImpl : public torch::nn::Module {
+  torch::nn::Sequential Layers;
+public:
+  MLPImpl(
+      unsigned InSize, unsigned OutSize, unsigned HiddenSize, unsigned NumLayers=2);
+  torch::Tensor forward(torch::Tensor X) { return Layers->forward(X); }
+};
+TORCH_MODULE(MLP);
+
 class Packer;
 class PackingModelImpl : public torch::nn::Module {
   unsigned EmbSize;
@@ -59,9 +68,9 @@ class PackingModelImpl : public torch::nn::Module {
   torch::nn::Linear UnresolvedToMsg = nullptr;
 
   // Read out
-  torch::nn::Linear StateToEmb = nullptr;
-  torch::nn::Linear StateToOpcode = nullptr;
-  std::vector<torch::nn::Linear> StateToLaneEmbs;
+  MLP StateToEmb = nullptr;
+  MLP StateToOpcode = nullptr;
+  std::vector<MLP> StateToLaneEmbs;
 
   // Used to combine messages and node embeddings
   torch::nn::GRUCell ValueGRU = nullptr;

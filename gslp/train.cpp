@@ -223,18 +223,18 @@ int main(int argc, char **argv) {
           Frt, Device, None /* We don't have IR indexes */, MsgPassingIters);
 
       auto Probs = computeProbInBatch(Model, Device, PDs, Supervision);
-      std::vector<torch::Tensor> Losses;
+      std::vector<torch::Tensor> Targets; 
       for (unsigned i = 0; i < PDs.size(); i++) {
         auto Target =
             torch::from_blob(const_cast<float *>(Supervision[i].Prob.data()),
                              {(int64_t)Supervision[i].Prob.size()},
                              torch::TensorOptions().dtype(torch::kFloat32));
-        auto Predicted = Probs[i];
-        auto Loss = -Target.dot(Predicted.log());
-        Losses.push_back(Loss);
+        Targets.push_back(Target);
       }
+      auto Loss =
+        -torch::cat(Targets).dot(torch::cat(Probs).log())/float(Targets.size());
+
       Optimizer.zero_grad();
-      auto Loss = torch::stack(Losses).mean();
       Loss.backward();
       errs() << "\r " << Loss.item<float>();
       Optimizer.step();
