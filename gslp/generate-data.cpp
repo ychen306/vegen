@@ -19,8 +19,8 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
-#include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/ThreadLocal.h"
+#include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -179,7 +179,7 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
     // Initialize the thread local policy.
     if (!Policy.get()) {
       Policy.set(new NeuralPackingPolicy(Model, NumMsgPassings, Device,
-            PolicyBatchSize, NumPolicyThreads));
+                                         PolicyBatchSize, NumPolicyThreads));
     }
   }
   SG->run(Policy.get(), &Pkr, TargetBB);
