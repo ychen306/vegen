@@ -192,6 +192,10 @@ int main(int argc, char **argv) {
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);
 
+  // If we are running the MCTS with a model.
+  if (ModelPath.getNumOccurrences())
+    torch::load(Model, ModelPath, Device);
+
   Model->to(Device);
   Model->eval();
 

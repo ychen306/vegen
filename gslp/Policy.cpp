@@ -1,4 +1,5 @@
 #include "Policy.h"
+#include "ModelUtil.h"
 
 using namespace llvm;
 
@@ -60,12 +61,37 @@ void NeuralPackingPolicy::evalNodes() {
     std::vector<PackDistribution> PDs =
         Model->batch_forward(Frontiers, Pkr, Device, NumIters);
 
-    for (unsigned i = 0; i < Frontiers.size(); i++) {
+    BatchPackProbability BPP(Model->getMaxNumLanes(), Device);
+    for (unsigned i = 0; i < Nodes.size(); i++) {
       auto *Node = Nodes[i];
-      auto Prob = computeProb(Model, PDs[i], Frontiers[i], Node->transitions());
-      Node->updateTransitionWeight(
-          new std::vector<float>(tensorToArrayRef(Prob).vec()));
+      auto &PD = PDs[i];
+
+      const IRIndex &Index = PD.Index.getValue();
+
+      auto *Focus = Node->getFrontier()->getNextFreeInst();
+      assert(Focus && "Can't evaluate terminal state");
+      BPP.start(PD, Index.getValueId(Focus));
+      for (auto &T : Node->transitions()) {
+        std::vector<unsigned> Lanes;
+        unsigned OpId;
+        if (!T.VP) {
+          OpId = Model->getNopId();
+        } else {
+          OpId = Model->getInstId(T.VP);
+          for (auto *V : T.VP->getOrderedValues())
+            Lanes.push_back(Index.getValueId(V));
+        }
+        BPP.addPack(OpId, Lanes);
+      }
+      BPP.finish();
     }
+
+    std::vector<torch::Tensor> Predictions = BPP.get();
+
+    torch::Device CPU(torch::kCPU);
+    for (unsigned i = 0; i < Nodes.size(); i++)
+      Nodes[i]->updateTransitionWeight(
+          new std::vector<float>(tensorToArrayRef(Predictions[i].to(CPU)).vec()));
 
     {
       std::unique_lock<std::mutex> LockGuard(IdlingLock);

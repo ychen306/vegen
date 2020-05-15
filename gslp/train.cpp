@@ -172,7 +172,6 @@ computeProbInBatch(PackingModel Model, torch::Device Device,
 
     for (auto &Pack : Supervisions[i].Packs) {
       unsigned OpId;
-      ;
       if (Pack.K == ProcessedVectorPack::Scalar)
         OpId = Model->getNopId();
       else
