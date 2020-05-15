@@ -9,7 +9,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
   UCTSearch MCTS(C, W, EnumCap, &Factory, Pkr, Policy, Evaluator, Pkr->getTTI());
 
   UCTNode *Root =
-      Factory.getNode(std::make_unique<Frontier>(BB, Pkr->getContext(BB)));
+      Factory.getNode(std::make_unique<Frontier>(BB, Pkr));
 
   UCTNode *Node = Root;
   std::vector<UCTNode *> Nodes;

@@ -33,6 +33,7 @@ public:
 
 class MatchManager;
 class Frontier {
+  Packer *Pkr;
   friend struct FrontierHashInfo;
   llvm::BasicBlock *BB;
   const VectorPackContext *VPCtx;
@@ -55,7 +56,7 @@ class Frontier {
 
 public:
   // Create the initial frontier, which surrounds the whole basic block
-  Frontier(llvm::BasicBlock *BB, const VectorPackContext *VPCtx);
+  Frontier(llvm::BasicBlock *BB, Packer *Pkr);
   std::unique_ptr<Frontier> advance(const VectorPack *VP, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
@@ -66,7 +67,7 @@ public:
   llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   std::vector<const VectorPack *>
-  nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap, Packer *,
+  nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap,
                      PackEnumerationCache *) const;
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
@@ -79,6 +80,7 @@ public:
     return VPCtx->iter_values(UnresolvedScalars);
   }
   unsigned numUnresolvedScalars() const { return UnresolvedScalars.count(); }
+  Packer *getPacker() const { return Pkr; }
 };
 
 // Hashing support for `Frontier`
@@ -182,7 +184,8 @@ public:
 private:
   std::vector<Transition> Transitions;
 
-  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {
+  UCTNode(const Frontier *Frt) 
+    : Frt(Frt), TotalCost(0), Count(0) {
     TransitionWeight.store(nullptr);
   }
 
@@ -195,7 +198,7 @@ public:
 
   // Fill out the out edge
   void expand(unsigned MaxNumLanes, unsigned EnumCap,
-              UCTNodeFactory *Factory, Packer *Pkr,
+              UCTNodeFactory *Factory,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
@@ -223,6 +226,8 @@ public:
       return *WeightPtr;
     return llvm::ArrayRef<float>();
   }
+
+  Packer *getPacker() const { return Frt->getPacker(); }
 };
 
 // Interface for state evaluation
@@ -251,8 +256,10 @@ class PackingPolicy {
 public:
   PackingPolicy() = delete;
   PackingPolicy(unsigned MaxNumLanes) : MaxNumLanes(MaxNumLanes) {}
+  virtual ~PackingPolicy() {}
   unsigned getMaxNumLanes() const { return MaxNumLanes; }
   // Predict transition probability *asynchronously*.
+  // Result if is update asynchronously via `UCTNode::updateTransitionWeight`.
   virtual void predictAsync(UCTNode *) = 0;
   // Predict transition probability *synchronously*.
   virtual void predict(UCTNode *, std::vector<float> &) = 0;

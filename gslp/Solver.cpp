@@ -3,8 +3,8 @@
 
 using namespace llvm;
 
-Frontier::Frontier(BasicBlock *BB, const VectorPackContext *VPCtx)
-    : BB(BB), VPCtx(VPCtx), BBIt(BB->rbegin()),
+Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
+    : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)), BBIt(BB->rbegin()),
       UnresolvedScalars(VPCtx->getNumValues(), false),
       FreeInsts(VPCtx->getNumValues(), true) {
   // Find external uses of any instruction `I` in `BB`
@@ -546,7 +546,6 @@ Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
 
 std::vector<const VectorPack *>
 Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap,
-                             Packer *Pkr,
                              PackEnumerationCache *EnumCache) const {
   Instruction *I = getNextFreeInst();
   bool InCache;
@@ -581,8 +580,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 
 // Fill out the children node
 void UCTNode::expand(unsigned MaxNumLanes, unsigned EnumCap,
-                     UCTNodeFactory *Factory, Packer *Pkr,
-
+                     UCTNodeFactory *Factory,
                      PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
@@ -594,7 +592,7 @@ void UCTNode::expand(unsigned MaxNumLanes, unsigned EnumCap,
   Transitions.emplace_back(nullptr, Next, Cost);
 
   auto AvailablePacks =
-      Frt->nextAvailablePacks(MaxNumLanes, EnumCap, Pkr, EnumCache);
+      Frt->nextAvailablePacks(MaxNumLanes, EnumCap, EnumCache);
 
   Transitions.reserve(AvailablePacks.size());
   for (auto *VP : AvailablePacks) {
@@ -661,7 +659,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       LeafCost = evalLeafNode(CurNode);
       // FIXME: make max num lanes a parameter of MCTS ctor
       CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, EnumCap,
-                      Factory, Pkr, &EnumCache, TTI);
+                      Factory, &EnumCache, TTI);
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
       if (Policy && Transitions.size() > 1)

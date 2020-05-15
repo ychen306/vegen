@@ -34,13 +34,14 @@ public:
                       torch::Device Device, unsigned BatchSize = 128,
                       unsigned NumThreads = 1)
       : PackingPolicy(Model->getMaxNumLanes()), Model(Model), Pkr(Pkr),
-        NumIters(NumIters), Device(Device), BatchSize(BatchSize), NumIdlingThreads(NumThreads) {
+        NumIters(NumIters), Device(Device), BatchSize(BatchSize),
+        NumIdlingThreads(NumThreads) {
     Nodes.reserve(BatchSize);
     for (unsigned i = 0; i < NumThreads; i++)
       Threads.emplace_back([this]() { evalNodes(); });
     Shutdown = false;
   }
-  ~NeuralPackingPolicy();
+  ~NeuralPackingPolicy() override;
   void predictAsync(UCTNode *) override;
   void predict(UCTNode *, std::vector<float> &) override;
   void cancel() override;

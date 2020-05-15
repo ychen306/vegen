@@ -35,8 +35,8 @@ static cl::opt<std::string>
               cl::value_desc("model path"), cl::init(""));
 
 static cl::opt<unsigned>
-    EmbeddingSize("emb-size", cl::desc("Specify size of the embedding"),
-                  cl::value_desc("model embedding sizes"), cl::init(32));
+    EmbSize("emb-size", cl::desc("Specify size of the embedding"),
+                  cl::value_desc("model embedding sizes"), cl::init(64));
 
 static cl::opt<unsigned> MaxNumLanes(
     "max-num-lanes",
@@ -81,6 +81,17 @@ static cl::opt<unsigned> EnumCap(
 static cl::opt<unsigned>
     NumThreads("threads", cl::desc("Number of threads to use"), cl::init(4));
 
+static cl::opt<unsigned> NumPolicyThreads(
+    "policy-threads", cl::value_desc("Number of threads used for policy evaluation"), cl::init(4));
+
+static cl::opt<unsigned>
+    PolicyBatchSize("policy-batch-size",
+                    cl::value_desc("Batch size for policy evaluation"), cl::init(8));
+
+static cl::opt<unsigned>
+    NumMsgPassings("num-message-passings",
+        cl::value_desc("Iterations of message passing"), cl::init(8));
+
 namespace llvm {
 void initializeGeneratorWrapperPass(PassRegistry &);
 }
@@ -91,6 +102,8 @@ class GeneratorWrapper : public FunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
   static std::unique_ptr<SupervisionGenerator> SG;
+  static torch::Device Device;
+  static PackingModel Model;
   std::string FuncName;
   int BBId;
 
@@ -137,16 +150,14 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
 
-  if (BBId == -1) {
-    abort();
-  }
+  assert(BBId != -1);
 
   auto *DL = &F.getParent()->getDataLayout();
 
   if (F.getName() != FuncName)
     return false;
 
-  // The basic block we want to run the generator on.
+  // Find the basic block we want to run the generator on.
   BasicBlock *TargetBB = nullptr;
   int i = 0;
   for (auto &BB : F)
@@ -156,11 +167,19 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
     }
 
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
-  SG->run(nullptr /*policy*/, &Pkr, TargetBB);
+  std::unique_ptr<PackingPolicy> Policy;
+  if (ModelPath.getNumOccurrences()) {
+    Policy.reset(new NeuralPackingPolicy(Model, &Pkr, NumMsgPassings, Device,
+                                         PolicyBatchSize, NumPolicyThreads));
+  }
+  SG->run(Policy.get(), &Pkr, TargetBB);
   return false;
 }
 
 std::unique_ptr<SupervisionGenerator> GeneratorWrapper::SG;
+// FIXME: we need to create a distribute the model on a pool of GPU devices.
+torch::Device GeneratorWrapper::Device(torch::kCPU);
+PackingModel GeneratorWrapper::Model = nullptr;
 
 char GeneratorWrapper::ID = 0;
 
@@ -186,24 +205,27 @@ int main(int argc, char **argv) {
   EC = sys::fs::create_directory(ArchivePath);
   CheckError();
 
-  PackingModel Model(EmbeddingSize, VecBindingTable.getBindings(), MaxNumLanes);
+  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes);
 
   torch::Device Device(torch::kCPU);
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);
 
-  // If we are running the MCTS with a model.
+  // If we are running the MCTS with a model...
   if (ModelPath.getNumOccurrences())
     torch::load(Model, ModelPath, Device);
 
   Model->to(Device);
   Model->eval();
 
+  GeneratorWrapper::Device = Device;
+  GeneratorWrapper::Model = Model;
+
   PolicyArchiver Archiver(ArchiveBlockSize, ArchivePath);
   RolloutEvaluator Evaluator;
-  GeneratorWrapper::SG.reset(
-      new SupervisionGenerator(Archiver, &Evaluator, Model, EnumCap,
-                               SamplesPerBlock, ParamC, ParamW, NumSimulations));
+  GeneratorWrapper::SG.reset(new SupervisionGenerator(
+      Archiver, &Evaluator, Model, EnumCap, SamplesPerBlock, ParamC, ParamW,
+      NumSimulations));
 
   ThreadPool Threads(hardware_concurrency(NumThreads));
 

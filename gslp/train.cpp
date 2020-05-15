@@ -42,6 +42,10 @@ static cl::opt<unsigned> NumEpochs("epochs",
                                    cl::value_desc("Number of epochs to train"),
                                    cl::init(5));
 
+static cl::opt<std::string> OutputModelPath("o",
+    cl::value_desc("Output model path"),
+    cl::init("model.pt"));
+
 namespace {
 
 class PackingDataset
@@ -136,29 +140,6 @@ void dumpShape(torch::Tensor X, OutStreamTy &Os) {
   Os << '\n';
 }
 
-static torch::Tensor computeProb(PackingModel Model, const PackDistribution &PD,
-                                 const PolicySupervision *S) {
-  std::vector<torch::Tensor> Prob;
-  auto &Frt = S->Frt;
-  unsigned FocusId = Frt.FocusId;
-  for (const auto &Pack : S->Packs) {
-    if (Pack.K == ProcessedVectorPack::Scalar) {
-      // Scalar (i.e., nop).
-      Prob.push_back(PD.OpProb[FocusId][Model->getNopId()]);
-    } else {
-      // T involves an actual pack.
-      // We pretend we can sample the opcode and lanes independently
-      auto PackProb = PD.OpProb[FocusId][Pack.InstId];
-      unsigned i = 0;
-      for (uint64_t j : Pack.Lanes)
-        PackProb *= PD.LaneProbs[i++][FocusId][j];
-      Prob.push_back(PackProb);
-    }
-  }
-  auto Predicted = torch::stack(Prob);
-  return Predicted / Predicted.sum();
-}
-
 static std::vector<torch::Tensor>
 computeProbInBatch(PackingModel Model, torch::Device Device,
                    llvm::ArrayRef<PackDistribution> PDs,
@@ -182,6 +163,12 @@ computeProbInBatch(PackingModel Model, torch::Device Device,
     BPP.finish();
   }
   return BPP.get();
+}
+
+static void saveModel(PackingModel &Model, std::string ModelPath) {
+  torch::serialize::OutputArchive Archive;
+  Model->save(Archive);
+  Archive.save_to(ModelPath);
 }
 
 int main(int argc, char **argv) {
@@ -214,6 +201,7 @@ int main(int argc, char **argv) {
   torch::optim::Adam Optimizer(Model->parameters(),
                                torch::optim::AdamOptions(LearningRate));
 
+  // TODO: checkpoint the model
   for (unsigned Epoch = 0; Epoch < NumEpochs; Epoch++) {
     for (auto &Batch : (*DataLoader)) {
       auto &Frt = Batch.first;
@@ -240,4 +228,6 @@ int main(int argc, char **argv) {
       Optimizer.step();
     }
   }
+
+  saveModel(Model, OutputModelPath);
 }
