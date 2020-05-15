@@ -34,9 +34,10 @@ static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path to the model"),
               cl::value_desc("model path"), cl::init(""));
 
-static cl::opt<unsigned>
-    EmbSize("emb-size", cl::desc("Specify size of the embedding"),
-                  cl::value_desc("model embedding sizes"), cl::init(64));
+static cl::opt<unsigned> EmbSize("emb-size",
+                                 cl::desc("Specify size of the embedding"),
+                                 cl::value_desc("model embedding sizes"),
+                                 cl::init(64));
 
 static cl::opt<unsigned> MaxNumLanes(
     "max-num-lanes",
@@ -82,15 +83,19 @@ static cl::opt<unsigned>
     NumThreads("threads", cl::desc("Number of threads to use"), cl::init(4));
 
 static cl::opt<unsigned> NumPolicyThreads(
-    "policy-threads", cl::value_desc("Number of threads used for policy evaluation"), cl::init(4));
+    "policy-threads",
+    cl::value_desc("Number of threads used for policy evaluation"),
+    cl::init(4));
 
 static cl::opt<unsigned>
     PolicyBatchSize("policy-batch-size",
-                    cl::value_desc("Batch size for policy evaluation"), cl::init(8));
+                    cl::value_desc("Batch size for policy evaluation"),
+                    cl::init(8));
 
 static cl::opt<unsigned>
     NumMsgPassings("num-message-passings",
-        cl::value_desc("Iterations of message passing"), cl::init(8));
+                   cl::value_desc("Iterations of message passing"),
+                   cl::init(8));
 
 namespace llvm {
 void initializeGeneratorWrapperPass(PassRegistry &);
