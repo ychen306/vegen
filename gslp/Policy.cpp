@@ -59,7 +59,7 @@ void NeuralPackingPolicy::evalNodes() {
     for (auto *Node : Nodes)
       Frontiers.push_back(Node->getFrontier());
     std::vector<PackDistribution> PDs =
-        Model->batch_forward(Frontiers, Pkr, Device, NumIters);
+        Model->batch_forward(Frontiers, Device, NumIters);
 
     BatchPackProbability BPP(Model->getMaxNumLanes(), Device);
     for (unsigned i = 0; i < Nodes.size(); i++) {
@@ -90,8 +90,8 @@ void NeuralPackingPolicy::evalNodes() {
 
     torch::Device CPU(torch::kCPU);
     for (unsigned i = 0; i < Nodes.size(); i++)
-      Nodes[i]->updateTransitionWeight(
-          new std::vector<float>(tensorToArrayRef(Predictions[i].to(CPU)).vec()));
+      Nodes[i]->updateTransitionWeight(new std::vector<float>(
+          tensorToArrayRef(Predictions[i].to(CPU)).vec()));
 
     {
       std::unique_lock<std::mutex> LockGuard(IdlingLock);
@@ -127,7 +127,7 @@ void NeuralPackingPolicy::cancel() {
 void NeuralPackingPolicy::predict(UCTNode *Node,
                                   std::vector<float> &Predicted) {
   auto *Frt = Node->getFrontier();
-  PackDistribution PD = Model->forward(Frt, Pkr, Device, NumIters);
+  PackDistribution PD = Model->forward(Frt, Device, NumIters);
   auto Prob = computeProb(Model, PD, Frt, Node->transitions());
   Predicted = tensorToArrayRef(Prob).vec();
 }

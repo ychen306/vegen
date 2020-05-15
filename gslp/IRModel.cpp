@@ -179,8 +179,7 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
 
 std::vector<PackDistribution>
 PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
-                                Packer *Pkr, torch::Device Device,
-                                unsigned NumIters) {
+                                torch::Device Device, unsigned NumIters) {
   std::vector<IRIndex> Indexes;
   FrontierPreprocessor<BatchedGraphBuilder> Preprocessor(MaxNumLanes);
 
@@ -191,7 +190,7 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
     unsigned NumValues;
     unsigned NumUses;
     // Build up the various graphs representing a frontier.
-    Preprocessor.process(Frt, Index, Pkr, NumValues, NumUses);
+    Preprocessor.process(Frt, Index, Frt->getPacker(), NumValues, NumUses);
 
     Indexes.push_back(std::move(Index));
 
@@ -216,9 +215,9 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
                        NumIters);
 }
 
-PackDistribution PackingModelImpl::forward(const Frontier *Frt, Packer *Pkr,
+PackDistribution PackingModelImpl::forward(const Frontier *Frt,
                                            torch::Device Device,
                                            unsigned NumIters) {
-  std::vector<PackDistribution> PDs = batch_forward(Frt, Pkr, Device, NumIters);
+  std::vector<PackDistribution> PDs = batch_forward(Frt, Device, NumIters);
   return std::move(PDs[0]);
 }

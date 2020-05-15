@@ -4,11 +4,8 @@
 #include "Solver.h"
 #include "llvm/Support/thread.h"
 
-class Packer;
-
 class NeuralPackingPolicy : public PackingPolicy {
   PackingModel Model;
-  Packer *Pkr;
   unsigned NumIters;
   torch::Device Device;
   unsigned BatchSize;
@@ -30,10 +27,10 @@ class NeuralPackingPolicy : public PackingPolicy {
   void evalNodes();
 
 public:
-  NeuralPackingPolicy(PackingModel Model, Packer *Pkr, unsigned NumIters,
+  NeuralPackingPolicy(PackingModel Model, unsigned NumIters,
                       torch::Device Device, unsigned BatchSize = 128,
                       unsigned NumThreads = 1)
-      : PackingPolicy(Model->getMaxNumLanes()), Model(Model), Pkr(Pkr),
+      : PackingPolicy(Model->getMaxNumLanes()), Model(Model),
         NumIters(NumIters), Device(Device), BatchSize(BatchSize),
         NumIdlingThreads(NumThreads) {
     Nodes.reserve(BatchSize);

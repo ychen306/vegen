@@ -562,7 +562,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   for (auto &BB : F) {
     errs() << F.getName() << "/" << BB.getName() << '\n';
     class Packer Pkr(SupportedInsts, F, AA, DL, SE, TTI, BFI);
-    NeuralPackingPolicy Policy(Model, &Pkr, 4, CPU, 4);
+    NeuralPackingPolicy Policy(Model, 4, CPU, 4);
 
     auto *VPCtx = Pkr.getContext(&BB);
     UCTNodeFactory Factory;

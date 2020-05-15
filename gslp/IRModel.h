@@ -3,8 +3,8 @@
 
 #include "Preprocessing.h"
 #include "Util.h"
-#include <torch/torch.h>
 #include <llvm/ADT/DenseMap.h>
+#include <torch/torch.h>
 
 class InstBinding;
 
@@ -40,14 +40,14 @@ struct BatchedFrontier {
 
 class MLPImpl : public torch::nn::Module {
   torch::nn::Sequential Layers;
+
 public:
-  MLPImpl(
-      unsigned InSize, unsigned OutSize, unsigned HiddenSize, unsigned NumLayers=2);
+  MLPImpl(unsigned InSize, unsigned OutSize, unsigned HiddenSize,
+          unsigned NumLayers = 2);
   torch::Tensor forward(torch::Tensor X) { return Layers->forward(X); }
 };
 TORCH_MODULE(MLP);
 
-class Packer;
 class PackingModelImpl : public torch::nn::Module {
   unsigned EmbSize;
   llvm::ArrayRef<InstBinding *> InstPool;
@@ -81,14 +81,12 @@ public:
   PackingModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts,
                    unsigned MaxNumLanes = 8);
   std::vector<PackDistribution> batch_forward(llvm::ArrayRef<const Frontier *>,
-                                              Packer *, torch::Device,
-                                              unsigned NumIters);
+                                              torch::Device, unsigned NumIters);
   std::vector<PackDistribution>
   batch_forward(const BatchedFrontier &Frt, torch::Device Device,
                 llvm::Optional<std::vector<IRIndex>> Indexes,
                 unsigned NumIters);
-  PackDistribution forward(const Frontier *, Packer *, torch::Device,
-                           unsigned NumIters);
+  PackDistribution forward(const Frontier *, torch::Device, unsigned NumIters);
   // TODO: pull `getNopID`, `getMemAccessId`, and `getInstId`
   // into a separate class that deals with assigning instruction id.
   unsigned getNopId() const { return InstPool.size(); }

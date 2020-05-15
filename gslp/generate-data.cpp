@@ -169,7 +169,7 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   std::unique_ptr<PackingPolicy> Policy;
   if (ModelPath.getNumOccurrences()) {
-    Policy.reset(new NeuralPackingPolicy(Model, &Pkr, NumMsgPassings, Device,
+    Policy.reset(new NeuralPackingPolicy(Model, NumMsgPassings, Device,
                                          PolicyBatchSize, NumPolicyThreads));
   }
   SG->run(Policy.get(), &Pkr, TargetBB);
