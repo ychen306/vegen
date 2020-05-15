@@ -20,6 +20,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
 #include "llvm/Support/ThreadPool.h"
+#include "llvm/Support/ThreadLocal.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -107,8 +108,10 @@ class GeneratorWrapper : public FunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
   static std::unique_ptr<SupervisionGenerator> SG;
+  // Allocate a distinct device to each main search thread if possible
   static torch::Device Device;
   static PackingModel Model;
+  static sys::ThreadLocal<PackingPolicy> Policy;
   std::string FuncName;
   int BBId;
 
@@ -172,10 +175,12 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
     }
 
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
-  std::unique_ptr<PackingPolicy> Policy;
   if (ModelPath.getNumOccurrences()) {
-    Policy.reset(new NeuralPackingPolicy(Model, NumMsgPassings, Device,
-                                         PolicyBatchSize, NumPolicyThreads));
+    // Initialize the thread local policy.
+    if (!Policy.get()) {
+      Policy.set(new NeuralPackingPolicy(Model, NumMsgPassings, Device,
+            PolicyBatchSize, NumPolicyThreads));
+    }
   }
   SG->run(Policy.get(), &Pkr, TargetBB);
   return false;
@@ -185,6 +190,7 @@ std::unique_ptr<SupervisionGenerator> GeneratorWrapper::SG;
 // FIXME: we need to create a distribute the model on a pool of GPU devices.
 torch::Device GeneratorWrapper::Device(torch::kCPU);
 PackingModel GeneratorWrapper::Model = nullptr;
+sys::ThreadLocal<PackingPolicy> GeneratorWrapper::Policy;
 
 char GeneratorWrapper::ID = 0;
 
