@@ -274,11 +274,10 @@ class PackEnumerator {
 public:
   PackEnumerator(unsigned MaxNumLanes, unsigned EnumCap, BasicBlock *BB,
                  Packer *Pkr)
-      : MaxNumLanes(MaxNumLanes), EnumCap(EnumCap),
-        VPCtx(*Pkr->getContext(BB)), Insts(Pkr->getInsts()),
-        LDA(Pkr->getLDA(BB)), LoadDAG(Pkr->getLoadDAG(BB)),
-        StoreDAG(Pkr->getStoreDAG(BB)), MM(Pkr->getMatchManager(BB)),
-        TTI(Pkr->getTTI()) {}
+      : MaxNumLanes(MaxNumLanes), EnumCap(EnumCap), VPCtx(*Pkr->getContext(BB)),
+        Insts(Pkr->getInsts()), LDA(Pkr->getLDA(BB)),
+        LoadDAG(Pkr->getLoadDAG(BB)), StoreDAG(Pkr->getStoreDAG(BB)),
+        MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
 
   void enumerate(Instruction *Focus,
                  std::vector<const VectorPack *> &Enumerated) const {
@@ -580,8 +579,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 
 // Fill out the children node
 void UCTNode::expand(unsigned MaxNumLanes, unsigned EnumCap,
-                     UCTNodeFactory *Factory,
-                     PackEnumerationCache *EnumCache,
+                     UCTNodeFactory *Factory, PackEnumerationCache *EnumCache,
                      llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
   float Cost;
@@ -658,8 +656,8 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
       // FIXME: make max num lanes a parameter of MCTS ctor
-      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, EnumCap,
-                      Factory, &EnumCache, TTI);
+      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, EnumCap, Factory,
+                      &EnumCache, TTI);
       auto &Transitions = CurNode->transitions();
       // Bias future exploration on this node if there is a prior
       if (Policy && Transitions.size() > 1)
@@ -683,8 +681,7 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
                                  PackEnumerationCache &EnumCache, Packer *Pkr) {
   Frontier FrtScratch = *Frt;
   float Cost = 0;
-  PackEnumerator Enumerator(MaxNumLanes, EnumCap, Frt->getBasicBlock(),
-                            Pkr);
+  PackEnumerator Enumerator(MaxNumLanes, EnumCap, Frt->getBasicBlock(), Pkr);
   auto *TTI = Pkr->getTTI();
 
   auto sampleFromPack = [&FrtScratch,

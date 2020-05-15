@@ -184,8 +184,7 @@ public:
 private:
   std::vector<Transition> Transitions;
 
-  UCTNode(const Frontier *Frt) 
-    : Frt(Frt), TotalCost(0), Count(0) {
+  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {
     TransitionWeight.store(nullptr);
   }
 
@@ -197,8 +196,7 @@ public:
   }
 
   // Fill out the out edge
-  void expand(unsigned MaxNumLanes, unsigned EnumCap,
-              UCTNodeFactory *Factory,
+  void expand(unsigned MaxNumLanes, unsigned EnumCap, UCTNodeFactory *Factory,
               PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
@@ -294,8 +292,8 @@ public:
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
-    return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8,
-                               EnumCap, N->getFrontier(), EnumCache, Pkr);
+    return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8, EnumCap,
+                               N->getFrontier(), EnumCache, Pkr);
   }
 };
 
