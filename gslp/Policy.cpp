@@ -47,7 +47,10 @@ void NeuralPackingPolicy::evalNodes() {
 
       Nodes = std::move(Queue.front());
       Queue.pop();
+      NumInflights -= Nodes.size();
     }
+    InflightCond.notify_all();
+
     {
       std::unique_lock<std::mutex> LockGuard(IdlingLock);
       --NumIdlingThreads;
@@ -103,12 +106,21 @@ void NeuralPackingPolicy::evalNodes() {
 
 void NeuralPackingPolicy::predictAsync(UCTNode *Node) {
   Nodes.push_back(Node);
+  int NumInflightsLocal = 0;
   if (Nodes.size() >= BatchSize) {
     {
       std::unique_lock<std::mutex> LockGuard(QueueLock);
       Queue.push(std::move(Nodes));
+      NumInflights += Nodes.size();
+      NumInflightsLocal = NumInflights;
     }
     QueueCond.notify_one();
+  }
+  if (MaxNumInflights != -1 && NumInflightsLocal > MaxNumInflights) {
+    // Block until the number of inflight evaluation requests die down.
+    std::unique_lock<std::mutex> LockGuard(QueueLock);
+    InflightCond.wait(
+        LockGuard, [&] { return NumInflights <= (unsigned)MaxNumInflights; });
   }
 }
 

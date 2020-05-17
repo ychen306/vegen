@@ -8,6 +8,7 @@ class NeuralPackingPolicy : public PackingPolicy {
   PackingModel Model;
   unsigned NumIters;
   torch::Device Device;
+  int MaxNumInflights;
   unsigned BatchSize;
 
   std::condition_variable QueueCond;
@@ -21,6 +22,10 @@ class NeuralPackingPolicy : public PackingPolicy {
 
   std::atomic<bool> Shutdown;
 
+  // Cap the size of the evaluation queue.
+  std::condition_variable InflightCond;
+  unsigned NumInflights;
+
   // Worklist of nodes we want to evaluate.
   std::vector<UCTNode *> Nodes;
 
@@ -28,11 +33,11 @@ class NeuralPackingPolicy : public PackingPolicy {
 
 public:
   NeuralPackingPolicy(PackingModel Model, unsigned NumIters,
-                      torch::Device Device, unsigned BatchSize = 128,
-                      unsigned NumThreads = 1)
+                      torch::Device Device, int MaxNumInflights = -1,
+                      unsigned BatchSize = 128, unsigned NumThreads = 1)
       : PackingPolicy(Model->getMaxNumLanes()), Model(Model),
-        NumIters(NumIters), Device(Device), BatchSize(BatchSize),
-        NumIdlingThreads(NumThreads) {
+        NumIters(NumIters), Device(Device), MaxNumInflights(MaxNumInflights),
+        BatchSize(BatchSize), NumIdlingThreads(NumThreads) {
     Nodes.reserve(BatchSize);
     for (unsigned i = 0; i < NumThreads; i++)
       Threads.emplace_back([this]() { evalNodes(); });

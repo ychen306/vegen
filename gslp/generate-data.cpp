@@ -98,6 +98,11 @@ static cl::opt<unsigned>
                    cl::value_desc("Iterations of message passing"),
                    cl::init(8));
 
+static cl::opt<unsigned> MaxInflightPolicyRequests(
+    "max-inflights",
+    cl::value_desc("Maximum number of policy network evaluation requests"),
+    cl::init(32));
+
 namespace llvm {
 void initializeGeneratorWrapperPass(PassRegistry &);
 }
@@ -179,6 +184,7 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
     // Initialize the thread local policy.
     if (!Policy.get()) {
       Policy.set(new NeuralPackingPolicy(Model, NumMsgPassings, Device,
+                                         MaxInflightPolicyRequests,
                                          PolicyBatchSize, NumPolicyThreads));
     }
   }
