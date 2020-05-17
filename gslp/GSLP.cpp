@@ -110,8 +110,8 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(llvm::Function &F) {
-  //IntrinsicBuilder Builder(*InstWrappers);
-  //Packs.codegen(Builder, LDAs);
+  // IntrinsicBuilder Builder(*InstWrappers);
+  // Packs.codegen(Builder, LDAs);
 
   assert(!verifyFunction(F, &errs()));
   return true;
