@@ -13,14 +13,16 @@
 #include "llvm/IR/Instruction.h"
 
 class IRIndex {
+  const Frontier *Frt;
   llvm::DenseMap<llvm::Value *, unsigned> Value2IdMap;
   std::vector<llvm::Value *> Values;
 
   void trackValue(llvm::Value *);
 
 public:
-  IRIndex(llvm::Function &F);
   IRIndex(const Frontier *Frt);
+  // Is the value with id `i` free in the frontier we build this index from?
+  bool isFree(unsigned i) const;
   unsigned getValueId(llvm::Value *V) const { return Value2IdMap.lookup(V); }
   llvm::Value *get(unsigned i) const { return Values[i]; }
   unsigned getNumValues() const { return Values.size(); }
@@ -236,7 +238,6 @@ public:
 };
 
 class OpcodeTable {
-  static unsigned getUnknownTypeId() { return 0; }
   static unsigned getConstId() { return 1; }
   static unsigned getCastId() { return 2; }
   static unsigned getBitwidth(llvm::Type *Ty) {
@@ -263,6 +264,7 @@ public:
     return Opcodes.size() * Bitwidths.size() + 1 + 1 + 1;
   }
 
+  static unsigned getUnknownTypeId() { return 0; }
   unsigned getValueTypeId(llvm::Value *V) const;
 };
 

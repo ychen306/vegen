@@ -64,15 +64,7 @@ void IRIndex::trackValue(Value *V) {
   Value2IdMap[V] = Id;
 }
 
-IRIndex::IRIndex(llvm::Function &F) {
-  for (auto &I : make_range(inst_begin(F), inst_end(F))) {
-    trackValue(&I);
-    for (Value *Operand : I.operands())
-      trackValue(Operand);
-  }
-}
-
-IRIndex::IRIndex(const Frontier *Frt) {
+IRIndex::IRIndex(const Frontier *Frt) : Frt(Frt) {
   BasicBlock *BB = Frt->getBasicBlock();
   for (auto &I : *BB) {
     if (!Frt->isFree(&I))
@@ -83,12 +75,25 @@ IRIndex::IRIndex(const Frontier *Frt) {
   }
 }
 
+bool IRIndex::isFree(unsigned i) const {
+  auto *I = dyn_cast<Instruction>(get(i));
+  if (I)
+    return I->getParent() == Frt->getBasicBlock() && Frt->isFree(I);
+  return true;
+}
+
 std::vector<int64_t> getValueTypes(ArrayRef<IRIndex> Indexes) {
   std::vector<int64_t> ValueTypes;
   for (auto &Index : Indexes) {
     unsigned N = Index.getNumValues();
-    for (unsigned i = 0; i < N; i++)
-      ValueTypes.push_back(OpTable.getValueTypeId(Index.get(i)));
+    for (unsigned i = 0; i < N; i++) {
+      unsigned TypeId;
+      if (Index.isFree(i))
+        TypeId = OpTable.getValueTypeId(Index.get(i));
+      else
+        TypeId = OpTable.getUnknownTypeId();
+      ValueTypes.push_back(TypeId);
+    }
   }
   return ValueTypes;
 }
