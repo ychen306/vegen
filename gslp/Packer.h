@@ -6,7 +6,6 @@
 #include "MatchManager.h"
 #include "Util.h"
 #include "VectorPackContext.h"
-#include "VectorPackSet.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -40,23 +39,6 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG,
   }
 };
 
-// FIXME: remove Insts and take the list of all supported instruction instead
-// FIXME: ignore lane order here.
-// Find vector packs that produces operand pack
-void extendWithDef(
-    const OperandPack &OpndPack, const VectorPackSet &ExistingPacks,
-    std::vector<VectorPack *> &Extensions,
-    llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-        &LoadDAGs,
-    llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> &MMs,
-    llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<VectorPackContext>>
-        &VPCtxs,
-    llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>>
-        &LDAs,
-    llvm::DenseMap<llvm::BasicBlock *,
-                   llvm::SmallPtrSet<const InstBinding *, 4>> &Insts,
-    llvm::TargetTransformInfo *TTI);
-
 class Packer {
   llvm::Function *F;
 
@@ -75,11 +57,6 @@ class Packer {
   llvm::TargetTransformInfo *TTI;
   llvm::BlockFrequencyInfo *BFI;
 
-  // First find out if which vector instruction we can emit.
-  // E.g. sometimes there is simply no `fadd` in a basic block..
-  llvm::DenseMap<llvm::BasicBlock *, llvm::SmallPtrSet<const InstBinding *, 4>>
-      InstBindings;
-
 public:
   Packer(llvm::ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
          llvm::AliasAnalysis *AA, const llvm::DataLayout *DL,
@@ -91,11 +68,6 @@ public:
     assert(It != VPCtxs.end());
     return It->second.get();
   }
-
-  void findExtensionForOnePack(const VectorPack &VP, const VectorPackSet &Packs,
-                               std::vector<VectorPack *> &Extensions);
-
-  float evalSeedPacks(const VectorPackSet &Packs, unsigned Alpha = 4);
 
   llvm::ArrayRef<InstBinding *> getInsts() const { return SupportedInsts; }
 

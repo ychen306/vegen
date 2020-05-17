@@ -226,6 +226,10 @@ public:
   }
 
   Packer *getPacker() const { return Frt->getPacker(); }
+  static inline bool compareByVisitCount(const UCTNode::Transition &A,
+                                         const UCTNode::Transition &B) {
+    return A.visitCount() < B.visitCount();
+  }
 };
 
 // Interface for state evaluation

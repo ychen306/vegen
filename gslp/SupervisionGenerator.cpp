@@ -6,10 +6,10 @@ using namespace llvm;
 void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
                                BasicBlock *BB) {
   UCTNodeFactory Factory;
-  UCTSearch MCTS(C, W, EnumCap, &Factory, Pkr, Policy, Evaluator, Pkr->getTTI());
+  UCTSearch MCTS(C, W, EnumCap, &Factory, Pkr, Policy, Evaluator,
+                 Pkr->getTTI());
 
-  UCTNode *Root =
-      Factory.getNode(std::make_unique<Frontier>(BB, Pkr));
+  UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(BB, Pkr));
 
   UCTNode *Node = Root;
   std::vector<UCTNode *> Nodes;
@@ -38,11 +38,8 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
       NextNode = Transitions[It - Prob.begin()].Next;
     } else {
       // Without a policy, we just follow the transition visited the most
-      auto It = std::max_element(
-          Transitions.begin(), Transitions.end(),
-          [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
-            return A.visitCount() < B.visitCount();
-          });
+      auto It = std::max_element(Transitions.begin(), Transitions.end(),
+                                 UCTNode::compareByVisitCount);
       NextNode = It->Next;
     }
 
