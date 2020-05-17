@@ -1,7 +1,14 @@
 #include "Solver.h"
 #include "MatchManager.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+
+static cl::opt<unsigned> MaxSearchDist(
+    "max-search-dist",
+    cl::value_desc(
+        "Max distance with which we consider two instructions packable."),
+    cl::init(20));
 
 Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)), BBIt(BB->rbegin()),
@@ -242,7 +249,8 @@ class PackEnumerator {
   TargetTransformInfo *TTI;
 
   bool isUsable(Instruction *I, Instruction *Focus) const {
-    return I == Focus || I->comesBefore(Focus);
+    return (I == Focus || I->comesBefore(Focus)) && 
+      VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
   }
 
   void
