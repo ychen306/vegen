@@ -172,6 +172,7 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
   PackEnumerationCache EnumCache;
 
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, &Pkr));
+  float TotalCost = 0;
   while (!Root->isTerminal()) {
     if (UseMCTS)
       MCTS.run(Root, NumSimulations);
@@ -198,12 +199,14 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
     if (T->VP)
       Packs.tryAdd(T->VP);
     Root = T->Next;
+    TotalCost += T->transitionCost();
 
     // The MCTS queries the policy (if there's one) asynchronously,
     // cancel all requests if they haven't been processed yet.
     if (Policy)
       Policy->cancel();
   }
+  errs() << "Total cost: " << TotalCost << '\n';
 }
 
 } // end anonymous namespace
