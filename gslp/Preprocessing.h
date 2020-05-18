@@ -55,9 +55,9 @@ template <typename Builder> struct BatchedUseGraph2 : public Builder {
       auto *I = dyn_cast<Instruction>(V);
       if (!I)
         continue;
-      if (I->getNumOperands() < 1)
+      if (I->getNumOperands() < 2)
         continue;
-      Builder::addEdge(Index.getValueId(I), Index.getValueId(I->getOperand(0)));
+      Builder::addEdge(Index.getValueId(I), Index.getValueId(I->getOperand(1)));
     }
     Builder::finishBatch(N, N);
   }
