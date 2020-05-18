@@ -485,12 +485,8 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
   assert((*ReorderedInsts.rbegin())->isTerminator());
 
   // Reorder the instruction according to the schedule
-  for (auto *I : ReorderedInsts) {
-    errs() << "!!! REMOVING " << *I 
-      << ", PARENT : " << I->getParent()
-      << '\n';
+  for (auto *I : ReorderedInsts)
     const_cast<Instruction *>(I)->removeFromParent();
-  }
   assert(BB->empty());
   auto &InstList = BB->getInstList();
   for (auto *I : ReorderedInsts)
