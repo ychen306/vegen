@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
       //auto Target = torch::cat(Targets).to(Device);
       //auto Predicted = torch::cat(Probs);
       ///auto Loss = -Target.dot(Predicted.log()) / float(Targets.size());
-      auto Losss = torch::stack(Losses).mean();
+      auto Loss = torch::stack(Losses).mean();
 
       Optimizer.zero_grad();
       Loss.backward();
