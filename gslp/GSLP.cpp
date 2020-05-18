@@ -54,6 +54,9 @@ static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
 static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path for the trained model"),
               cl::value_desc("output model path"), cl::Required);
+static cl::opt<bool> UseMCTS("use-mcts",
+                             cl::desc("Use tree search during optimization"),
+                             cl::init(false));
 
 ///////// MCTS configs ///////////
 static cl::opt<unsigned> EmbSize("emb-size",
@@ -161,27 +164,40 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
   RolloutEvaluator Evaluator;
   UCTSearch MCTS(ParamC, ParamW, EnumCap, &Factory, &Pkr, Policy, &Evaluator,
                  Pkr.getTTI());
+  PackEnumerationCache EnumCache;
 
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, &Pkr));
   while (!Root->isTerminal()) {
-    MCTS.run(Root, NumSimulations);
+    if (UseMCTS)
+      MCTS.run(Root, NumSimulations);
+    else
+      Root->expand(MaxNumLanes, EnumCap, &Factory, &EnumCache, Pkr.getTTI());
+
     assert(Root->expanded());
 
     auto &Transitions = Root->transitions();
 
-    auto It = std::max_element(Transitions.begin(), Transitions.end(),
-                               UCTNode::compareByVisitCount);
-    if (It->VP)
-      Packs.tryAdd(It->VP);
-    Root = It->Next;
+    UCTNode::Transition *T;
+    if (Transitions.size() == 1) {
+      T = &*Transitions.begin();
+    } else if (UseMCTS) {
+      T = &*std::max_element(Transitions.begin(), Transitions.end(),
+                             UCTNode::compareByVisitCount);
+    } else {
+      std::vector<float> Prob;
+      Policy->predict(Root, Prob);
+      auto It = std::max_element(Prob.begin(), Prob.end());
+      T = &Transitions[It - Prob.begin()];
+    }
+
+    if (T->VP)
+      Packs.tryAdd(T->VP);
+    Root = T->Next;
 
     // The MCTS queries the policy (if there's one) asynchronously,
     // cancel all requests if they haven't been processed yet.
-    if (Policy) {
-      errs() << "!!! waiting\n";
+    if (Policy)
       Policy->cancel();
-      errs() << "!!! DONE\n";
-    }
   }
 }
 
