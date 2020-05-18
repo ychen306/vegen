@@ -39,7 +39,7 @@ set_source_files_properties(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FL
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis)
 
 target_link_libraries(Packing ${TORCH_LIBRARIES})
-target_link_libraries(GSLP Packing ${TORCH_LIBRARIES})
+target_link_libraries(GSLP Packing Serialize ${TORCH_LIBRARIES})
 target_link_libraries(generate-data Packing Serialize 
   ${TORCH_LIBRARIES} ${LLVM_LIBRARIES} ${PROTOBUF_LIBRARY})
 # FIXME: `train` doesn't require a lot of these dependence.
