@@ -202,6 +202,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes);
   torch::load(Model, ModelPath, Device);
+  errs() << "Model loaded\n";
 
   Model->to(Device);
   Model->eval();
@@ -209,9 +210,11 @@ bool GSLP::runOnFunction(llvm::Function &F) {
                              MaxInflightPolicyRequests, PolicyBatchSize,
                              NumPolicyThreads);
 
+  errs() << "Built policy\n";
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
+    errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';
     vectorizeBasicBlock(BB, Packs, Pkr, &Policy);
   }
 
