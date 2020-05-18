@@ -177,8 +177,11 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
 
     // The MCTS queries the policy (if there's one) asynchronously,
     // cancel all requests if they haven't been processed yet.
-    if (Policy)
+    if (Policy) {
+      errs() << "!!! waiting\n";
       Policy->cancel();
+      errs() << "!!! DONE\n";
+    }
   }
 }
 
