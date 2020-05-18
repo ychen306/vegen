@@ -1,4 +1,5 @@
 #include "VectorPackSet.h"
+#include "Packer.h"
 #include "LocalDependenceAnalysis.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -497,9 +498,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
 
 // FIXME: maybe we need to do some LICM and CSE for these gathers??
 // LOOK INTO SLP
-void VectorPackSet::codegen(
-    IntrinsicBuilder &Builder,
-    DenseMap<BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>> &LDAs) {
+void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
 
@@ -513,7 +512,7 @@ void VectorPackSet::codegen(
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
-        sortPacksAndScheduleBB(BB, Packs[BB], *LDAs[BB]);
+        sortPacksAndScheduleBB(BB, Packs[BB], Pkr.getLDA(BB));
 
     // Now generate code according to the schedule
     for (auto *VP : OrderedPacks) {

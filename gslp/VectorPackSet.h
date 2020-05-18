@@ -9,6 +9,7 @@
 #include "VectorPack.h"
 
 class LocalDependenceAnalysis;
+class Packer;
 
 class VectorPackSet {
 protected:
@@ -76,9 +77,7 @@ public:
                       llvm::BlockFrequencyInfo *BFI) const;
 
   // Generate vector code from the packs
-  void codegen(IntrinsicBuilder &Builder,
-               llvm::DenseMap<llvm::BasicBlock *,
-                              std::unique_ptr<LocalDependenceAnalysis>> &LDAs);
+  void codegen(IntrinsicBuilder &Builder, Packer &Pkr);
 
   const VectorPack &getPack(unsigned i) const {
     assert(i < NumPacks);

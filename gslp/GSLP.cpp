@@ -90,8 +90,6 @@ public:
   }
 };
 
-static IRInstTable VecBindingTable;
-
 bool hasFeature(const llvm::Function &F, std::string Feature) {
   Attribute Features = F.getFnAttribute("target-features");
   return !Features.hasAttribute(Attribute::None) &&
@@ -110,8 +108,21 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
 char GSLP::ID = 0;
 
 bool GSLP::runOnFunction(llvm::Function &F) {
+  // Table holding all IR vector instructions
+  IRInstTable VecBindingTable;
+
+  auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+  auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+  auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+  auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
+  auto *DL = &F.getParent()->getDataLayout();
+
+  Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
+
+  VectorPackSet Packs(&F);
+
   IntrinsicBuilder Builder(*InstWrappers);
-  // Packs.codegen(Builder, LDAs);
+  Packs.codegen(Builder, Pkr);
 
   assert(!verifyFunction(F, &errs()));
   return true;
