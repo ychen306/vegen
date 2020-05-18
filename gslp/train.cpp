@@ -1,5 +1,5 @@
-#include "IRModel.h"
 #include "GraphUtil.h"
+#include "IRModel.h"
 #include "IRVec.h"
 #include "ModelUtil.h"
 #include "Serialize.h"
@@ -13,9 +13,8 @@
 
 using namespace llvm;
 
-static cl::opt<std::string> ArchivePath(cl::Positional,
-                                          cl::value_desc("Input file name"),
-                                          cl::Required);
+static cl::list<std::string> ArchivePaths(cl::Positional,
+                                          cl::value_desc("Input archives"));
 
 static cl::opt<unsigned>
     MaxNumLanes("max-num-lanes",
@@ -43,23 +42,35 @@ static cl::opt<unsigned> NumEpochs("epochs",
                                    cl::init(5));
 
 static cl::opt<std::string> OutputModelPath("o",
-    cl::value_desc("Output model path"),
-    cl::init("model.pt"));
+                                            cl::value_desc("Output model path"),
+                                            cl::init("model.pt"));
 
 namespace {
 
 class PackingDataset
     : public torch::data::Dataset<PackingDataset, PolicySupervision> {
-  PolicyArchiveReader Archive;
+  std::vector<PolicyArchiveReader> Archives;
+  // Prefix sum of the archive size.
+  std::vector<size_t> AccumSizes;
 
 public:
-  PackingDataset(std::string ArchivePath) : Archive(ArchivePath) {}
+  PackingDataset(llvm::ArrayRef<std::string> ArchivePaths) {
+    size_t TotalSize = 0;
+    for (auto &AP : ArchivePaths) {
+      Archives.emplace_back(AP);
+      TotalSize += Archives.back().size();
+      AccumSizes.push_back(TotalSize);
+    }
+  }
+
   PolicySupervision get(size_t i) override {
+    // Find the first place in `AccumSizes` greater than i
+    auto It = std::upper_bound(AccumSizes.begin(), AccumSizes.end(), i);
     PolicySupervision PS;
-    Archive.read(i, PS);
+    Archives[It - AccumSizes.begin()].read(i, PS);
     return PS;
   }
-  c10::optional<size_t> size() const override { return Archive.size(); }
+  c10::optional<size_t> size() const override { return AccumSizes.back(); }
 };
 
 // Add a util func that allows us to take a whole array of edges
@@ -174,7 +185,7 @@ static void saveModel(PackingModel &Model, std::string ModelPath) {
 int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
 
-  PackingDataset Dataset(ArchivePath);
+  PackingDataset Dataset(ArchivePaths);
 
   // What a beautiful piece of code.
   using TransformTy = torch::data::transforms::BatchLambda<
@@ -210,7 +221,7 @@ int main(int argc, char **argv) {
           Frt, Device, None /* We don't have IR indexes */, MsgPassingIters);
 
       auto Probs = computeProbInBatch(Model, Device, PDs, Supervision);
-      std::vector<torch::Tensor> Targets; 
+      std::vector<torch::Tensor> Targets;
       for (unsigned i = 0; i < PDs.size(); i++) {
         auto Target =
             torch::from_blob(const_cast<float *>(Supervision[i].Prob.data()),
@@ -220,7 +231,7 @@ int main(int argc, char **argv) {
       }
       auto Target = torch::cat(Targets).to(Device);
       auto Predicted = torch::cat(Probs);
-      auto Loss = -Target.dot(Predicted.log())/float(Targets.size());
+      auto Loss = -Target.dot(Predicted.log()) / float(Targets.size());
 
       Optimizer.zero_grad();
       Loss.backward();
