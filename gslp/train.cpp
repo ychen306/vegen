@@ -66,9 +66,14 @@ public:
   PolicySupervision get(size_t i) override {
     // Find the first place in `AccumSizes` greater than i
     auto It = std::upper_bound(AccumSizes.begin(), AccumSizes.end(), i);
+    unsigned ArchiveId = It - AccumSizes.begin();
     PolicySupervision PS;
-    errs() << "1!! " << It - AccumSizes.begin() << '\n';
-    Archives[It - AccumSizes.begin()].read(i, PS);
+    size_t j; 
+    if (ArchiveId == 0)
+      j = i;
+    else
+      j = i - AccumSizes[ArchiveId-1];
+    Archives[ArchiveId].read(j, PS);
     return PS;
   }
   c10::optional<size_t> size() const override { return AccumSizes.back(); }
