@@ -224,6 +224,8 @@ int main(int argc, char **argv) {
 
       Optimizer.zero_grad();
       Loss.backward();
+      for (auto &P : Model->parameters())
+        P.grad() = torch::clamp(P.grad(), -0.5, 0.5);
       errs() << "\r " << Loss.item<float>();
       Optimizer.step();
     }
