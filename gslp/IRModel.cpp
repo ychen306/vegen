@@ -67,15 +67,15 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
   InitUse = register_parameter("init_use", torch::randn(EmbSize));
 
   // ======= Message passing =======
-  StateToUseMsg1 = register_module("state2msg1", nn::Linear(EmbSize, EmbSize));
-  StateToUseMsg2 = register_module("state2msg2", nn::Linear(EmbSize, EmbSize));
-  StateToMemMsg = register_module("state2mem", nn::Linear(EmbSize, EmbSize));
+  StateToUseMsg1 = register_module("state2msg1", MLP(EmbSize, EmbSize, EmbSize));
+  StateToUseMsg2 = register_module("state2msg2", MLP(EmbSize, EmbSize, EmbSize));
+  StateToMemMsg = register_module("state2mem", MLP(EmbSize, EmbSize, EmbSize));
   StateToIndependentMsg =
-      register_module("state2ind", nn::Linear(EmbSize, EmbSize));
+      register_module("state2ind", MLP(EmbSize, EmbSize, EmbSize));
   StateToUnresolvedMsg =
-      register_module("state2unresolved", nn::Linear(EmbSize, EmbSize));
+      register_module("state2unresolved", MLP(EmbSize, EmbSize, EmbSize));
 
-  UnresolvedToMsg = register_module("use2msg", nn::Linear(EmbSize, EmbSize));
+  UnresolvedToMsg = register_module("use2msg", MLP(EmbSize, EmbSize, EmbSize));
 
   // ======= Read out =======
   // Opcode = nop + <insts from inst pool> + <stores from 2 to max vl> + <loads

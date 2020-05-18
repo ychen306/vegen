@@ -59,13 +59,13 @@ class PackingModelImpl : public torch::nn::Module {
   torch::Tensor InitUse;
 
   // Messagees
-  torch::nn::Linear StateToUseMsg1 = nullptr;
-  torch::nn::Linear StateToUseMsg2 = nullptr;
-  torch::nn::Linear StateToMemMsg = nullptr;
-  torch::nn::Linear StateToIndependentMsg = nullptr;
-  torch::nn::Linear StateToUnresolvedMsg = nullptr;
+  MLP StateToUseMsg1 = nullptr;
+  MLP StateToUseMsg2 = nullptr;
+  MLP StateToMemMsg = nullptr;
+  MLP StateToIndependentMsg = nullptr;
+  MLP StateToUnresolvedMsg = nullptr;
 
-  torch::nn::Linear UnresolvedToMsg = nullptr;
+  MLP UnresolvedToMsg = nullptr;
 
   // Read out
   MLP StateToEmb = nullptr;
