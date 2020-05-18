@@ -61,11 +61,11 @@ static cl::opt<unsigned> EmbSize("emb-size",
                                  cl::value_desc("model embedding sizes"),
                                  cl::init(64));
 
-static cl::opt<unsigned> ParamC("c",
-                                cl::desc("Specify the exploration factor (C)"),
-                                cl::value_desc("C"), cl::init(0.25));
+static cl::opt<float> ParamC("c",
+                             cl::desc("Specify the exploration factor (C)"),
+                             cl::value_desc("C"), cl::init(0.25));
 
-static cl::opt<unsigned>
+static cl::opt<float>
     ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
            cl::value_desc("W"), cl::init(100));
 
@@ -73,7 +73,6 @@ static cl::opt<unsigned>
     NumSimulations("simulations", cl::value_desc("Number of MCTS simulations"),
                    cl::init(10000));
 //////////////////////////////////
-
 
 static cl::opt<unsigned> EnumCap(
     "enum-cap",
