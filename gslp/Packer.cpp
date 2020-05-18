@@ -3,6 +3,30 @@
 
 using namespace llvm;
 
+namespace {
+
+// Do a quadratic search to build the access dags
+template <typename MemAccessTy>
+void buildAccessDAG(ConsecutiveAccessDAG &DAG,
+                    llvm::ArrayRef<MemAccessTy *> Accesses,
+                    const llvm::DataLayout *DL, llvm::ScalarEvolution *SE) {
+  using namespace llvm;
+  for (auto *A1 : Accesses) {
+    // Get type of the value being acccessed
+    auto *Ty =
+        cast<PointerType>(A1->getPointerOperand()->getType())->getElementType();
+    if (!isScalarType(Ty))
+      continue;
+    for (auto *A2 : Accesses) {
+      if (A1->getType() == A2->getType() &&
+          isConsecutiveAccess(A1, A2, *DL, *SE))
+        DAG[A1].insert(A2);
+    }
+  }
+}
+
+} // end anonymous namespace
+
 Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)

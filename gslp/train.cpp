@@ -228,6 +228,7 @@ int main(int argc, char **argv) {
       Optimizer.step();
     }
   }
+  errs() << '\n';
 
   saveModel(Model, OutputModelPath);
 }
