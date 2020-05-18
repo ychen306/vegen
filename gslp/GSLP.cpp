@@ -45,15 +45,68 @@
 using namespace llvm;
 using namespace PatternMatch;
 
-cl::opt<std::string> InstWrappersPath("inst-wrappers",
-                                      cl::desc("Path to InstWrappers.bc"),
-                                      cl::Required);
-cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
-                             cl::init(false));
+static cl::opt<std::string>
+    InstWrappersPath("inst-wrappers", cl::desc("Path to InstWrappers.bc"),
+                     cl::Required);
+static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
+                                    cl::init(false));
 
 static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path for the trained model"),
-              cl::value_desc("output model path"), cl::init("pack.pt"));
+              cl::value_desc("output model path"), cl::Required);
+
+///////// MCTS configs ///////////
+static cl::opt<unsigned> EmbSize("emb-size",
+                                 cl::desc("Specify size of the embedding"),
+                                 cl::value_desc("model embedding sizes"),
+                                 cl::init(64));
+
+static cl::opt<unsigned> ParamC("c",
+                                cl::desc("Specify the exploration factor (C)"),
+                                cl::value_desc("C"), cl::init(0.25));
+
+static cl::opt<unsigned>
+    ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
+           cl::value_desc("W"), cl::init(100));
+
+static cl::opt<unsigned>
+    NumSimulations("simulations", cl::value_desc("Number of MCTS simulations"),
+                   cl::init(10000));
+//////////////////////////////////
+
+
+static cl::opt<unsigned> EnumCap(
+    "enum-cap",
+    cl::desc("Cap the maximum number of packs enumerate for a instruction"),
+    cl::value_desc("Enumeration cap"), cl::init(1000));
+
+////// Policy eval configs. /////////
+static cl::opt<unsigned> NumPolicyThreads(
+    "policy-threads",
+    cl::value_desc("Number of threads used for policy evaluation"),
+    cl::init(4));
+
+static cl::opt<unsigned>
+    PolicyBatchSize("policy-batch-size",
+                    cl::value_desc("Batch size for policy evaluation"),
+                    cl::init(8));
+
+static cl::opt<unsigned>
+    NumMsgPassings("num-message-passings",
+                   cl::value_desc("Iterations of message passing"),
+                   cl::init(8));
+
+static cl::opt<unsigned> MaxInflightPolicyRequests(
+    "max-inflights",
+    cl::value_desc("Maximum number of policy network evaluation requests"),
+    cl::init(32));
+/////////////////////////////////////
+
+static cl::opt<unsigned> MaxNumLanes(
+    "max-num-lanes",
+    cl::desc(
+        "Specify maximum number of lanes the vectorizer is allowed to pack"),
+    cl::value_desc("Maximum number of lanes"), cl::init(8));
 
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
@@ -103,6 +156,33 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
   return true;
 }
 
+void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
+                         PackingPolicy *Policy) {
+  UCTNodeFactory Factory;
+  RolloutEvaluator Evaluator;
+  UCTSearch MCTS(ParamC, ParamW, EnumCap, &Factory, &Pkr, Policy, &Evaluator,
+                 Pkr.getTTI());
+
+  UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, &Pkr));
+  while (!Root->isTerminal()) {
+    MCTS.run(Root, NumSimulations);
+    assert(Root->expanded());
+
+    auto &Transitions = Root->transitions();
+
+    auto It = std::max_element(Transitions.begin(), Transitions.end(),
+                               UCTNode::compareByVisitCount);
+    if (It->VP)
+      Packs.tryAdd(It->VP);
+    Root = It->Next;
+
+    // The MCTS queries the policy (if there's one) asynchronously,
+    // cancel all requests if they haven't been processed yet.
+    if (Policy)
+      Policy->cancel();
+  }
+}
+
 } // end anonymous namespace
 
 char GSLP::ID = 0;
@@ -117,9 +197,23 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
   auto *DL = &F.getParent()->getDataLayout();
 
+  torch::Device Device(torch::kCPU);
+  if (torch::cuda::is_available())
+    Device = torch::Device(torch::kCUDA);
+
+  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes);
+  torch::load(Model, ModelPath, Device);
+
+  Model->to(Device);
+  Model->eval();
+  NeuralPackingPolicy Policy(Model, NumMsgPassings, Device,
+                             MaxInflightPolicyRequests, PolicyBatchSize,
+                             NumPolicyThreads);
+
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
+    vectorizeBasicBlock(BB, Packs, Pkr, &Policy);
   }
 
   IntrinsicBuilder Builder(*InstWrappers);

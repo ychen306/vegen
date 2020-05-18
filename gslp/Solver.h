@@ -170,6 +170,7 @@ public:
 
     // Average Q value
     float avgCost() const { return Cost + Next->avgCost(); }
+    float transitionCost() const { return Cost; }
   };
 
   std::atomic<std::vector<float> *> TransitionWeight;

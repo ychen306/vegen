@@ -67,8 +67,7 @@ public:
   }
 
   bool isKnownValue(const llvm::Value *V) const {
-    auto It = std::lower_bound(Scalars.begin(), Scalars.end(), V);
-    return It != Scalars.end() && Scalars[It - Scalars.begin()] == V;
+    return ScalarToIdMap.count(V);
   }
 
   unsigned getScalarId(const llvm::Value *V) const {
