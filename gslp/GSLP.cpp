@@ -118,8 +118,9 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   auto *DL = &F.getParent()->getDataLayout();
 
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
-
   VectorPackSet Packs(&F);
+  for (auto &BB : F) {
+  }
 
   IntrinsicBuilder Builder(*InstWrappers);
   Packs.codegen(Builder, Pkr);

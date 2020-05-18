@@ -2,6 +2,20 @@
 
 using namespace llvm;
 
+static bool isFloat(llvm::Instruction::BinaryOps Opcode) {
+  using namespace llvm;
+  switch (Opcode) {
+  case Instruction::FAdd:
+  case Instruction::FSub:
+  case Instruction::FMul:
+  case Instruction::FDiv:
+  case Instruction::FRem:
+    return true;
+  default:
+    return false;
+  }
+}
+
 int IRVectorBinding::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
   Type *ScalarTy;
   unsigned ElemWidth = Op->getBitwidth();

@@ -5,6 +5,10 @@ using namespace llvm;
 
 namespace {
 
+bool isScalarType(llvm::Type *Ty) {
+  return Ty->getScalarType() == Ty;
+}
+
 // Do a quadratic search to build the access dags
 template <typename MemAccessTy>
 void buildAccessDAG(ConsecutiveAccessDAG &DAG,
