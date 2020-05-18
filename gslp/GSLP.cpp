@@ -54,8 +54,13 @@ static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
 static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path for the trained model"),
               cl::value_desc("output model path"), cl::Required);
+
 static cl::opt<bool> UseMCTS("use-mcts",
                              cl::desc("Use tree search during optimization"),
+                             cl::init(false));
+
+static cl::opt<bool> NoPolicy("no-policy",
+                             cl::desc("Don't use the policy net"),
                              cl::init(false));
 
 ///////// MCTS configs ///////////
@@ -234,7 +239,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
     errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';
-    vectorizeBasicBlock(BB, Packs, Pkr, &Policy);
+    vectorizeBasicBlock(BB, Packs, Pkr, NoPolicy ? nullptr : &Policy);
   }
 
   IntrinsicBuilder Builder(*InstWrappers);
