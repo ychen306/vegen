@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
         //                     {(int64_t)Supervision[i].Prob.size()},
         //                     torch::TensorOptions().dtype(torch::kFloat32));
         //Targets.push_back(Target);
-        auto &Prob = Supervisions[i].Prob;
+        auto &Prob = Supervision[i].Prob;
         auto It = std::max_element(Prob.begin(), Prob.end());
         Losses.push_back(-Probs[i][It-Prob.begin()]);
       }
