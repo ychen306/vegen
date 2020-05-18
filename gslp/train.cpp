@@ -67,6 +67,7 @@ public:
     // Find the first place in `AccumSizes` greater than i
     auto It = std::upper_bound(AccumSizes.begin(), AccumSizes.end(), i);
     PolicySupervision PS;
+    errs() << "1!! " << It - AccumSizes.begin() << '\n';
     Archives[It - AccumSizes.begin()].read(i, PS);
     return PS;
   }
