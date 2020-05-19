@@ -295,7 +295,7 @@ int main(int argc, char **argv) {
       for (auto &F : *M) {
         for (unsigned i = 0; i < F.size(); i++) {
           auto It = std::next(F.begin(), i);
-          if (!It->getName().contains("preheader"))
+          if (It->getName() != "for.cond462.preheader.i")
             continue;
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks] {
