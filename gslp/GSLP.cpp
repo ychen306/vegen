@@ -101,7 +101,7 @@ static cl::opt<unsigned>
 static cl::opt<unsigned>
     NumMsgPassings("num-message-passings",
                    cl::value_desc("Iterations of message passing"),
-                   cl::init(8));
+                   cl::init(64));
 
 static cl::opt<unsigned> MaxInflightPolicyRequests(
     "max-inflights",
