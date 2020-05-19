@@ -73,9 +73,9 @@ class PackingModelImpl : public torch::nn::Module {
   std::vector<MLP> StateToLaneEmbs;
 
   // Used to combine messages and node embeddings
-  torch::nn::GRUCell ValueGRU = nullptr;
+  torch::nn::LSTMCell ValueRNN = nullptr;
   // Used to combine lanes of unresolved vector uses
-  torch::nn::GRUCell UseGRU = nullptr;
+  torch::nn::LSTMCell UseRNN = nullptr;
 
 public:
   PackingModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts,

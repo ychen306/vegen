@@ -67,8 +67,10 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
   InitUse = register_parameter("init_use", torch::randn(EmbSize));
 
   // ======= Message passing =======
-  StateToUseMsg1 = register_module("state2msg1", MLP(EmbSize, EmbSize, EmbSize));
-  StateToUseMsg2 = register_module("state2msg2", MLP(EmbSize, EmbSize, EmbSize));
+  StateToUseMsg1 =
+      register_module("state2msg1", MLP(EmbSize, EmbSize, EmbSize));
+  StateToUseMsg2 =
+      register_module("state2msg2", MLP(EmbSize, EmbSize, EmbSize));
   StateToMemMsg = register_module("state2mem", MLP(EmbSize, EmbSize, EmbSize));
   StateToIndependentMsg =
       register_module("state2ind", MLP(EmbSize, EmbSize, EmbSize));
@@ -91,9 +93,9 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
   // ======= RNN for aggregating state and messages =======
   // Input = operand1 x operand2 x <left mem> x <right mem> x <independent> x
   // <unresolved use>
-  ValueGRU = register_module(
-      "value_gru", nn::GRUCell(nn::GRUCellOptions(EmbSize * 6, EmbSize)));
-  UseGRU = register_module("use_gru", nn::GRUCell(nn::GRUCellOptions(
+  ValueRNN = register_module(
+      "value_rnn", nn::LSTMCell(nn::LSTMCellOptions(EmbSize * 6, EmbSize)));
+  UseRNN = register_module("use_rnn", nn::LSTMCell(nn::LSTMCellOptions(
                                           EmbSize * MaxNumLanes, EmbSize)));
 }
 
@@ -115,6 +117,8 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
   auto H_value =
       OpcodeEmb->forward(ValueTypes).view({Frt.TotalValues, EmbSize});
   auto H_use = InitUse.repeat({Frt.TotalUses, 1});
+  auto C_value = torch::zeros({Frt.TotalValues, EmbSize}).to(Device);
+  auto C_use = torch::zeros({Frt.TotalUses, EmbSize}).to(Device);
 
   // Pass message from values to unresolved uses
   auto SendToUses = [&](torch::Tensor H_value) -> torch::Tensor {
@@ -146,8 +150,10 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
 
   for (unsigned i = 0; i < NumIters; i++) {
     if (Frt.TotalUses)
-      H_use = UseGRU->forward(SendToUses(H_value), H_use);
-    H_value = ValueGRU->forward(SendToValues(H_value, H_use), H_value);
+      std::tie(H_use, C_use) =
+          UseRNN->forward(SendToUses(H_value), std::make_tuple(H_use, C_use));
+    std::tie(H_value, C_value) = ValueRNN->forward(
+        SendToValues(H_value, H_use), std::make_tuple(H_value, C_value));
   }
 
   // Read out the probs in batch
