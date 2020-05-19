@@ -91,7 +91,8 @@ public:
   // into a separate class that deals with assigning instruction id.
   unsigned getNopId() const { return InstPool.size(); }
   unsigned getMemAccessId(unsigned VL) const {
-    return InstPool.size() + VL - 2;
+    // A vectorized load/store has at least 2 lanes 
+    return InstPool.size() + 1 + VL - 2;
   }
   unsigned getInstId(const VectorPack *) const;
   unsigned getMaxNumLanes() const { return MaxNumLanes; }
