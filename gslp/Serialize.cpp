@@ -160,10 +160,10 @@ void writeTreeSearchPolicy(PolicyArchiver &Archive, UCTNode &Node, Packer &Pkr,
                            PackingModel Model) {
   std::vector<const VectorPack *> Packs;
   std::vector<float> Prob;
-  float VisitCount = Node.visitCount();
+  double VisitCount = Node.visitCount();
   for (const auto &T : Node.transitions()) {
     Packs.push_back(T.VP);
-    Prob.push_back(float(T.visitCount()) / VisitCount);
+    Prob.push_back(double(T.visitCount()) / VisitCount);
   }
   Archive.write(Node.getFrontier(), &Pkr, Packs, Prob, Model);
 }
