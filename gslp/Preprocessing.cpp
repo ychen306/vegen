@@ -9,7 +9,8 @@ using namespace llvm;
 OpcodeTable::OpcodeTable() {
   for (unsigned BW : Bitwidths)
     for (unsigned Opc : Opcodes) {
-      unsigned TypeId = ValueTypeIds.size();
+      // We reserve 3 values for unknown, cast and constant.
+      unsigned TypeId = ValueTypeIds.size() + 3;
       ValueTypeIds[{Opc, BW}] = TypeId;
     }
 }
