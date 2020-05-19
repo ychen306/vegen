@@ -180,7 +180,7 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
                                  .log_softmax(1 /*dim*/));
       assert(PD.LaneProbs.back().size(0) == N);
       torch::Tensor LP = PD.LaneProbs.back();
-      if ((LP != LP).any()) {
+      if ((LP != LP).any().item<bool>()) {
         errs() << "got nan\n";
         abort();
       }
