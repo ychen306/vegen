@@ -66,7 +66,7 @@ std::vector<torch::Tensor> BatchPackProbability::get() {
   unsigned Offset = 0;
   for (unsigned N : NumPacks) {
     auto Prob = RawProb.slice(0 /*dim*/, Offset, Offset + N);
-    Probs.push_back(Prob / Prob.sum());
+    Probs.push_back((Prob / Prob.sum()).clamp_min(1e-8));
     Offset += N;
   }
   return Probs;
