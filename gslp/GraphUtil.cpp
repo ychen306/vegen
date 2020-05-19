@@ -7,7 +7,7 @@ torch::Tensor buildAdjacencyMat(llvm::ArrayRef<DiEdge> Edges, unsigned N,
   auto CooIndices = torch::empty({2, (int64_t)Edges.size()}, Int64Ty);
   auto CooIndicesRef = CooIndices.accessor<int64_t, 2>();
   for (unsigned i = 0; i < Edges.size(); i++) {
-    if (Flip) {
+    if (!Flip) {
       CooIndicesRef[1][i] = (int64_t)Edges[i].Src;
       CooIndicesRef[0][i] = (int64_t)Edges[i].Dest;
     } else {
