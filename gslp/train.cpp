@@ -1,5 +1,5 @@
-#include "GraphUtil.h"
 #include "IRModel.h" // THIS NEEDS TO BE INCLUDED FIRST BECAUSE TORCH SCREWS UP NAMESPACES
+#include "GraphUtil.h"
 #include "IRVec.h"
 #include "ModelUtil.h"
 #include "Serialize.h"
