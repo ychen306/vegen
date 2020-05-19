@@ -51,8 +51,8 @@ unsigned PackingModelImpl::getInstId(const VectorPack *VP) const {
   if (VP->isLoad() || VP->isStore())
     return getMemAccessId(VP->getOrderedValues().size());
   auto *Inst = VP->getProducer();
-  auto It = std::lower_bound(InstPool.begin(), InstPool.end(), Inst);
-  assert(*It == Inst);
+  auto It = std::find(InstPool.begin(), InstPool.end(), Inst);
+  assert(It != InstPool.end());
   return It - InstPool.begin();
 }
 
@@ -167,10 +167,12 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
     if (Indexes)
       PD = PackDistribution(std::move(Indexes.getValue()[i]));
     PD.OpProb = Slice(OpProb).log_softmax(1 /*dim*/);
-    for (auto &StateToLaneEmb : StateToLaneEmbs)
+    for (auto &StateToLaneEmb : StateToLaneEmbs) {
       PD.LaneProbs.push_back(StateToLaneEmb->forward(Slice(H_value))
                                  .mm(Slice(Emb).t())
                                  .log_softmax(1 /*dim*/));
+      assert(PD.LaneProbs.back().size(0) == N);
+    }
     Offset += N;
     PDs.push_back(std::move(PD));
   }
