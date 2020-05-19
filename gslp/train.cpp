@@ -246,7 +246,7 @@ int main(int argc, char **argv) {
 
       Optimizer.zero_grad();
       Loss.backward();
-      torch::nn::utils::clip_grad_norm_(Model->parameters(), 0.5);
+      torch::nn::utils::clip_grad_norm_(Model->parameters(), 0.25);
       errs() << "\r " << Loss.item<float>();
       Optimizer.step();
     }
