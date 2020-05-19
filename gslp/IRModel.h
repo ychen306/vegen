@@ -43,7 +43,7 @@ class MLPImpl : public torch::nn::Module {
 
 public:
   MLPImpl(unsigned InSize, unsigned OutSize, unsigned HiddenSize,
-          unsigned NumLayers = 3);
+          unsigned NumLayers = 2);
   torch::Tensor forward(torch::Tensor X) { return Layers->forward(X); }
 };
 TORCH_MODULE(MLP);
