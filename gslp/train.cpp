@@ -32,7 +32,7 @@ static cl::opt<unsigned>
 
 static cl::opt<unsigned> MsgPassingIters(
     "msg-passing-iters",
-    cl::value_desc("Number of iterations we do message passing"), cl::init(8));
+    cl::value_desc("Number of iterations we do message passing"), cl::init(64));
 
 static cl::opt<float> LearningRate("lr", cl::value_desc("Learning rate"),
                                    cl::init(1e-2));
