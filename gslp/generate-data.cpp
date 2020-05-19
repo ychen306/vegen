@@ -293,6 +293,8 @@ int main(int argc, char **argv) {
     else {
 
       for (auto &F : *M) {
+        if (F.getName() != "binvcrhs")
+          continue;
         for (unsigned i = 0; i < F.size(); i++) {
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks] {
