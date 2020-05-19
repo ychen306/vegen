@@ -58,8 +58,9 @@ unsigned PackingModelImpl::getInstId(const VectorPack *VP) const {
 
 PackingModelImpl::PackingModelImpl(unsigned EmbSize,
                                    llvm::ArrayRef<InstBinding *> InstPool,
-                                   unsigned MaxNumLanes)
-    : EmbSize(EmbSize), InstPool(InstPool), MaxNumLanes(MaxNumLanes) {
+                                   unsigned MaxNumLanes, unsigned NumLayers)
+    : EmbSize(EmbSize), InstPool(InstPool), MaxNumLanes(MaxNumLanes),
+      NumLayers(NumLayers) {
   // ======= Parameters for initializing the states =======
   OpcodeEmb = register_module(
       "opcode_embedding",
@@ -93,15 +94,20 @@ PackingModelImpl::PackingModelImpl(unsigned EmbSize,
   // ======= RNN for aggregating state and messages =======
   // Input = operand1 x operand2 x <left mem> x <right mem> x <independent> x
   // <unresolved use>
-  ValueRNN = register_module(
-      "value_rnn", nn::LSTMCell(nn::LSTMCellOptions(EmbSize * 6, EmbSize)));
-  UseRNN = register_module("use_rnn", nn::LSTMCell(nn::LSTMCellOptions(
-                                          EmbSize * MaxNumLanes, EmbSize)));
+  for (unsigned i = 0; i < NumLayers; i++) {
+    ValueUpdates.push_back(
+        register_module(formatv("value_update_{0}", i),
+                        MLP(EmbSize * (6 + 1), EmbSize, EmbSize)));
+    UseUpdates.push_back(register_module(
+        formatv("use_update_{0}", i),
+        MLP(EmbSize * MaxNumLanes + EmbSize, EmbSize, EmbSize)));
+  }
 }
 
-std::vector<PackDistribution> PackingModelImpl::batch_forward(
-    const BatchedFrontier &Frt, torch::Device Device,
-    llvm::Optional<std::vector<IRIndex>> Indexes, unsigned NumIters) {
+std::vector<PackDistribution>
+PackingModelImpl::batch_forward(const BatchedFrontier &Frt,
+                                torch::Device Device,
+                                llvm::Optional<std::vector<IRIndex>> Indexes) {
   auto ValueTypes = Frt.ValueTypes.to(Device);
   auto UseGraph1 = Frt.Use1.to(Device);
   auto UseGraph2 = Frt.Use2.to(Device);
@@ -117,8 +123,6 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
   auto H_value =
       OpcodeEmb->forward(ValueTypes).view({Frt.TotalValues, EmbSize});
   auto H_use = InitUse.repeat({Frt.TotalUses, 1});
-  auto C_value = torch::zeros({Frt.TotalValues, EmbSize}).to(Device);
-  auto C_use = torch::zeros({Frt.TotalUses, EmbSize}).to(Device);
 
   // Pass message from values to unresolved uses
   auto SendToUses = [&](torch::Tensor H_value) -> torch::Tensor {
@@ -149,12 +153,13 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
         1 /*dim*/);
   };
 
-  for (unsigned i = 0; i < NumIters; i++) {
+  for (unsigned i = 0; i < NumLayers; i++) {
     if (Frt.TotalUses)
-      std::tie(H_use, C_use) =
-          UseRNN->forward(SendToUses(H_value), std::make_tuple(H_use, C_use));
-    std::tie(H_value, C_value) = ValueRNN->forward(
-        SendToValues(H_value, H_use), std::make_tuple(H_value, C_value));
+      H_use = UseUpdates[i]->forward(
+          torch::cat({SendToUses(H_value), H_use}, 1/*dim*/));
+    H_value = ValueUpdates[i]->forward(
+        torch::cat(
+          {SendToValues(H_value, H_use), H_value}, 1/*dim*/));
   }
 
   // Read out the probs in batch
@@ -193,7 +198,7 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
 
 std::vector<PackDistribution>
 PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
-                                torch::Device Device, unsigned NumIters) {
+                                torch::Device Device) {
   std::vector<IRIndex> Indexes;
   FrontierPreprocessor<BatchedGraphBuilder> Preprocessor(MaxNumLanes);
 
@@ -225,13 +230,11 @@ PackingModelImpl::batch_forward(llvm::ArrayRef<const Frontier *> Frontiers,
 
   Batched.ValueTypes = getValueTypesAsTensor(Indexes);
 
-  return batch_forward(std::move(Batched), Device, std::move(Indexes),
-                       NumIters);
+  return batch_forward(std::move(Batched), Device, std::move(Indexes));
 }
 
 PackDistribution PackingModelImpl::forward(const Frontier *Frt,
-                                           torch::Device Device,
-                                           unsigned NumIters) {
-  std::vector<PackDistribution> PDs = batch_forward(Frt, Device, NumIters);
+                                           torch::Device Device) {
+  std::vector<PackDistribution> PDs = batch_forward(Frt, Device);
   return std::move(PDs[0]);
 }

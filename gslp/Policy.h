@@ -6,7 +6,6 @@
 
 class NeuralPackingPolicy : public PackingPolicy {
   PackingModel Model;
-  unsigned NumIters;
   torch::Device Device;
   int MaxNumInflights;
   unsigned BatchSize;
@@ -32,12 +31,12 @@ class NeuralPackingPolicy : public PackingPolicy {
   void evalNodes();
 
 public:
-  NeuralPackingPolicy(PackingModel Model, unsigned NumIters,
-                      torch::Device Device, int MaxNumInflights = -1,
-                      unsigned BatchSize = 128, unsigned NumThreads = 1)
-      : PackingPolicy(Model->getMaxNumLanes()), Model(Model),
-        NumIters(NumIters), Device(Device), MaxNumInflights(MaxNumInflights),
-        BatchSize(BatchSize), NumIdlingThreads(NumThreads) {
+  NeuralPackingPolicy(PackingModel Model, torch::Device Device,
+                      int MaxNumInflights = -1, unsigned BatchSize = 128,
+                      unsigned NumThreads = 1)
+      : PackingPolicy(Model->getMaxNumLanes()), Model(Model), Device(Device),
+        MaxNumInflights(MaxNumInflights), BatchSize(BatchSize),
+        NumIdlingThreads(NumThreads) {
     Nodes.reserve(BatchSize);
     for (unsigned i = 0; i < NumThreads; i++)
       Threads.emplace_back([this]() { evalNodes(); });

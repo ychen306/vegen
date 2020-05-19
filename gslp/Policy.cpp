@@ -61,8 +61,7 @@ void NeuralPackingPolicy::evalNodes() {
     Frontiers.reserve(Nodes.size());
     for (auto *Node : Nodes)
       Frontiers.push_back(Node->getFrontier());
-    std::vector<PackDistribution> PDs =
-        Model->batch_forward(Frontiers, Device, NumIters);
+    std::vector<PackDistribution> PDs = Model->batch_forward(Frontiers, Device);
 
     BatchPackProbability BPP(Model->getMaxNumLanes(), Device);
     for (unsigned i = 0; i < Nodes.size(); i++) {
@@ -139,7 +138,7 @@ void NeuralPackingPolicy::cancel() {
 void NeuralPackingPolicy::predict(UCTNode *Node,
                                   std::vector<float> &Predicted) {
   auto *Frt = Node->getFrontier();
-  PackDistribution PD = Model->forward(Frt, Device, NumIters);
+  PackDistribution PD = Model->forward(Frt, Device);
   auto Prob = computeProb(Model, PD, Frt, Node->transitions());
   Predicted = tensorToArrayRef(Prob).vec();
 }
