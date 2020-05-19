@@ -123,7 +123,7 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
   // Pass message from values to unresolved uses
   auto SendToUses = [&](torch::Tensor H_value) -> torch::Tensor {
     std::vector<torch::Tensor> Messages;
-    Msg = StateToUnresolvedMsg->forward(H_value);
+    auto Msg = StateToUnresolvedMsg->forward(H_value);
     for (auto &G : UnresolvedUseGraphs)
       Messages.push_back(torch::mm(G, Msg));
     return torch::cat(Messages, 1 /*dim*/);
