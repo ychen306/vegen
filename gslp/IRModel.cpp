@@ -179,6 +179,11 @@ std::vector<PackDistribution> PackingModelImpl::batch_forward(
                                  .mm(Slice(Emb).t())
                                  .log_softmax(1 /*dim*/));
       assert(PD.LaneProbs.back().size(0) == N);
+      torch::Tensor LP = PD.LaneProbs.back();
+      if ((LP != LP).any()) {
+        errs() << "got nan\n";
+        abort();
+      }
     }
     Offset += N;
     PDs.push_back(std::move(PD));
