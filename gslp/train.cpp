@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
             -Probs[i].view({1,-1}), 
             torch::full({1,1},
               int64_t(It-Target.begin()),
-              torch::TensorOptions().dtype(torch::kFloat32)).to(Device));
+              torch::TensorOptions().dtype(torch::kInt64)).to(Device));
         Losses.push_back(Loss);
       }
       // auto Target = torch::cat(Targets).to(Device);
