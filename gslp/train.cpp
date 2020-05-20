@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
         //Losses.push_back((-Probs[i][It - Target.begin()].log()).clamp_max(1e10));
         auto Loss = torch::nn::functional::nll_loss(
             -Probs[i].view({1,-1}), 
-            torch::full({1,1},
+            torch::full({1},
               int64_t(It-Target.begin()),
               torch::TensorOptions().dtype(torch::kInt64)).to(Device));
         Losses.push_back(Loss);
