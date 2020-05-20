@@ -35,17 +35,14 @@ MLPImpl::MLPImpl(unsigned InSize, unsigned OutSize, unsigned HiddenSize,
                  unsigned NumLayers) {
   assert(NumLayers > 1);
   Layers->push_back(
-      register_module("layer0", torch::nn::Linear(InSize, HiddenSize)));
-  Layers->push_back(
       register_module("bm0", torch::nn::BatchNorm1d(
-          torch::nn::BatchNorm1dOptions(HiddenSize))));
+          torch::nn::BatchNorm1dOptions(InSize))));
+  Layers->push_back(
+      register_module("layer0", torch::nn::Linear(InSize, HiddenSize)));
   Layers->push_back(register_module("relu0", torch::nn::ReLU()));
   for (unsigned i = 0; i < NumLayers - 2; i++) {
     Layers->push_back(register_module(
         formatv("layer{0}", i + 1), torch::nn::Linear(HiddenSize, HiddenSize)));
-    Layers->push_back(
-        register_module(formatv("bm{0}", i+1), torch::nn::BatchNorm1d(
-            torch::nn::BatchNorm1dOptions(HiddenSize))));
     Layers->push_back(
         register_module(formatv("relu{0}", i + 1), torch::nn::ReLU()));
   }
