@@ -224,6 +224,11 @@ int main(int argc, char **argv) {
     for (auto &Batch : (*DataLoader)) {
       auto &Frt = Batch.first;
       auto &Supervision = Batch.second;
+
+      // This breaks batch norm...
+      if (Frt.TotalValues == 1 || Frt.TotalUses == 1)
+        continue;
+
       std::vector<PackDistribution> PDs = Model->batch_forward(
           Frt, Device, None /* We don't have IR indexes */);
 
