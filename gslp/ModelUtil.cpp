@@ -59,13 +59,13 @@ std::vector<torch::Tensor> BatchPackProbability::get() {
   auto RawLogProb = BatchOpProb.get();
   for (auto &LP : BatchLaneProbs)
     RawLogProb = RawLogProb + LP.get();
-  auto RawProb = RawLogProb.exp();
+  auto RawProb = RawLogProb.clamp(-1e8).exp();
 
   // Unpack the flatten probs and renormalize them.
   std::vector<torch::Tensor> Probs;
   unsigned Offset = 0;
   for (unsigned N : NumPacks) {
-    auto Prob = RawProb.slice(0 /*dim*/, Offset, Offset + N);
+    auto Prob = RawProb.slice(0 /*dim*/, Offset, Offset + N) + 1e-8;
     Probs.push_back(Prob / Prob.sum());
     Offset += N;
   }
