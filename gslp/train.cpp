@@ -238,7 +238,6 @@ int main(int argc, char **argv) {
         // Targets.push_back(Target);
         auto &Target = Supervision[i].Prob;
         auto It = std::max_element(Target.begin(), Target.end());
-        std::cerr << Probs[i][It - Target.begin()]<<", " <<  -Probs[i][It - Target.begin()].log() << '\n';
         Losses.push_back((-Probs[i][It - Target.begin()].log()).clamp_max(1e10));
       }
       // auto Target = torch::cat(Targets).to(Device);
