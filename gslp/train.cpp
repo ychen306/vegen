@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
         auto &Prob = Supervision[i].Prob;
         std::cerr << Prob << '\n';
         auto It = std::max_element(Prob.begin(), Prob.end());
-        Losses.push_back(-Probs[i][It - Prob.begin()].log());
+        Losses.push_back((-Probs[i][It - Prob.begin()].log()).clamp_max(1e10));
       }
       // auto Target = torch::cat(Targets).to(Device);
       // auto Predicted = torch::cat(Probs);
