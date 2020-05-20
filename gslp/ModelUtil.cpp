@@ -59,8 +59,9 @@ std::vector<torch::Tensor> BatchPackProbability::get() {
   auto RawLogProb = BatchOpProb.get();
   for (auto &LP : BatchLaneProbs)
     RawLogProb = RawLogProb + LP.get();
-  std::cerr << "~~~ " << RawLogProb << '\n';
+  std::cerr << "~~~ " << (RawLogProb != RawLogProb).any() << '\n';
   auto RawProb = RawLogProb.clamp(-1e8).exp();
+  std::cerr << "~~~ " << (RawProb != RawProb).any() << '\n';
 
   // Unpack the flatten probs and renormalize them.
   std::vector<torch::Tensor> Probs;
