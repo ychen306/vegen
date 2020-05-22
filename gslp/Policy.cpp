@@ -109,8 +109,8 @@ void NeuralPackingPolicy::predictAsync(UCTNode *Node) {
   if (Nodes.size() >= BatchSize) {
     {
       std::unique_lock<std::mutex> LockGuard(QueueLock);
-      Queue.push(std::move(Nodes));
       NumInflights += Nodes.size();
+      Queue.push(std::move(Nodes));
       NumInflightsLocal = NumInflights;
     }
     QueueCond.notify_one();
