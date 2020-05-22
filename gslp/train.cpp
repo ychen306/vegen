@@ -30,9 +30,9 @@ static cl::opt<unsigned>
 static cl::opt<unsigned>
     EmbSize("emb-size", cl::value_desc("Size of embedding"), cl::init(64));
 
-static cl::opt<unsigned> MsgPassingIters(
-    "msg-passing-iters",
-    cl::value_desc("Number of iterations we do message passing"), cl::init(32));
+static cl::opt<unsigned> NumGNNLayers("num-gnn-layers",
+                                      cl::value_desc("Number of GNN layers"),
+                                      cl::init(8));
 
 static cl::opt<float> LearningRate("lr", cl::value_desc("Learning rate"),
                                    cl::init(1e-2));
@@ -68,11 +68,11 @@ public:
     auto It = std::upper_bound(AccumSizes.begin(), AccumSizes.end(), i);
     unsigned ArchiveId = It - AccumSizes.begin();
     PolicySupervision PS;
-    size_t j; 
+    size_t j;
     if (ArchiveId == 0)
       j = i;
     else
-      j = i - AccumSizes[ArchiveId-1];
+      j = i - AccumSizes[ArchiveId - 1];
     Archives[ArchiveId].read(j, PS);
     return PS;
   }
@@ -209,7 +209,8 @@ int main(int argc, char **argv) {
   // and allow constructing a model w/ just the number of instruction w/o
   // telling it what the instructions are.
   static IRInstTable VecBindingTable;
-  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes);
+  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes,
+                     NumGNNLayers);
   torch::Device Device(torch::kCPU);
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);
@@ -223,25 +224,30 @@ int main(int argc, char **argv) {
     for (auto &Batch : (*DataLoader)) {
       auto &Frt = Batch.first;
       auto &Supervision = Batch.second;
+
+      // This breaks batch norm...
+      if (Frt.TotalValues == 1 || Frt.TotalUses == 1)
+        continue;
+
       std::vector<PackDistribution> PDs = Model->batch_forward(
-          Frt, Device, None /* We don't have IR indexes */, MsgPassingIters);
+          Frt, Device, None /* We don't have IR indexes */);
 
       auto Probs = computeProbInBatch(Model, Device, PDs, Supervision);
-      //std::vector<torch::Tensor> Targets;
+      // std::vector<torch::Tensor> Targets;
       std::vector<torch::Tensor> Losses;
       for (unsigned i = 0; i < PDs.size(); i++) {
-        //auto Target =
+        // auto Target =
         //    torch::from_blob(const_cast<float *>(Supervision[i].Prob.data()),
         //                     {(int64_t)Supervision[i].Prob.size()},
         //                     torch::TensorOptions().dtype(torch::kFloat32));
-        //Targets.push_back(Target);
-        auto &Prob = Supervision[i].Prob;
-        auto It = std::max_element(Prob.begin(), Prob.end());
-        Losses.push_back(-Probs[i][It-Prob.begin()].log());
+        // Targets.push_back(Target);
+        auto &Target = Supervision[i].Prob;
+        auto It = std::max_element(Target.begin(), Target.end());
+        Losses.push_back(-Probs[i][It - Target.begin()].log());
       }
-      //auto Target = torch::cat(Targets).to(Device);
-      //auto Predicted = torch::cat(Probs);
-      ///auto Loss = -Target.dot(Predicted.log()) / float(Targets.size());
+      // auto Target = torch::cat(Targets).to(Device);
+      // auto Predicted = torch::cat(Probs);
+      /// auto Loss = -Target.dot(Predicted.log()) / float(Targets.size());
       auto Loss = torch::stack(Losses).mean();
 
       Optimizer.zero_grad();

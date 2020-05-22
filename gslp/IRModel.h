@@ -52,6 +52,7 @@ class PackingModelImpl : public torch::nn::Module {
   unsigned EmbSize;
   llvm::ArrayRef<InstBinding *> InstPool;
   unsigned MaxNumLanes;
+  unsigned NumLayers;
 
   torch::nn::Embedding OpcodeEmb = nullptr;
 
@@ -73,20 +74,19 @@ class PackingModelImpl : public torch::nn::Module {
   std::vector<MLP> StateToLaneEmbs;
 
   // Used to combine messages and node embeddings
-  torch::nn::LSTMCell ValueRNN = nullptr;
+  std::vector<MLP> ValueUpdates;
   // Used to combine lanes of unresolved vector uses
-  torch::nn::LSTMCell UseRNN = nullptr;
+  std::vector<MLP> UseUpdates;
 
 public:
   PackingModelImpl(unsigned EmbSize, llvm::ArrayRef<InstBinding *> Insts,
-                   unsigned MaxNumLanes = 8);
+                   unsigned MaxNumLanes = 8, unsigned NumLayers = 8);
   std::vector<PackDistribution> batch_forward(llvm::ArrayRef<const Frontier *>,
-                                              torch::Device, unsigned NumIters);
+                                              torch::Device);
   std::vector<PackDistribution>
   batch_forward(const BatchedFrontier &Frt, torch::Device Device,
-                llvm::Optional<std::vector<IRIndex>> Indexes,
-                unsigned NumIters);
-  PackDistribution forward(const Frontier *, torch::Device, unsigned NumIters);
+                llvm::Optional<std::vector<IRIndex>> Indexes);
+  PackDistribution forward(const Frontier *, torch::Device);
   // TODO: pull `getNopID`, `getMemAccessId`, and `getInstId`
   // into a separate class that deals with assigning instruction id.
   unsigned getNopId() const { return InstPool.size(); }

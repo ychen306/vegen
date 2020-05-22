@@ -59,9 +59,8 @@ static cl::opt<bool> UseMCTS("use-mcts",
                              cl::desc("Use tree search during optimization"),
                              cl::init(false));
 
-static cl::opt<bool> NoPolicy("no-policy",
-                             cl::desc("Don't use the policy net"),
-                             cl::init(false));
+static cl::opt<bool> NoPolicy("no-policy", cl::desc("Don't use the policy net"),
+                              cl::init(false));
 
 ///////// MCTS configs ///////////
 static cl::opt<unsigned> EmbSize("emb-size",
@@ -99,9 +98,8 @@ static cl::opt<unsigned>
                     cl::init(8));
 
 static cl::opt<unsigned>
-    NumMsgPassings("num-message-passings",
-                   cl::value_desc("Iterations of message passing"),
-                   cl::init(32));
+    NumGNNLayers("num-gnn-layers",
+                 cl::value_desc("Iterations of message passing"), cl::init(8));
 
 static cl::opt<unsigned> MaxInflightPolicyRequests(
     "max-inflights",
@@ -227,15 +225,15 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);
 
-  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes);
+  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes,
+                     NumGNNLayers);
   torch::load(Model, ModelPath, Device);
   errs() << "Model loaded\n";
 
   Model->to(Device);
   Model->eval();
-  NeuralPackingPolicy Policy(Model, NumMsgPassings, Device,
-                             MaxInflightPolicyRequests, PolicyBatchSize,
-                             NumPolicyThreads);
+  NeuralPackingPolicy Policy(Model, Device, MaxInflightPolicyRequests,
+                             PolicyBatchSize, NumPolicyThreads);
 
   errs() << "Built policy\n";
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
