@@ -18,11 +18,6 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
     MCTS.run(Node, NumIters);
     assert(Node->expanded());
 
-    // The MCTS queries the policy (if there's one) asynchronously,
-    // cancel all requests if they haven't been processed yet.
-    if (Policy)
-      Policy->cancel();
-
     auto &Transitions = Node->transitions();
     // Don't bother querying the policy if there's no decision to make.
     if (Transitions.size() == 1) {
@@ -52,4 +47,9 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
   unsigned NumSamples = std::min<unsigned>(SamplesPerBlock, Nodes.size());
   for (unsigned i = 0; i < NumSamples; i++)
     writeTreeSearchPolicy(Archiver, *Nodes[i], *Pkr, Model);
+
+  // The MCTS queries the policy (if there's one) asynchronously,
+  // cancel all requests if they haven't been processed yet.
+  if (Policy)
+    Policy->cancel();
 }
