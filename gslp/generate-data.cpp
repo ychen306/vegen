@@ -23,6 +23,8 @@
 #include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/PrettyStackTrace.h"
+
 
 using namespace llvm;
 
@@ -211,7 +213,10 @@ INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(GeneratorWrapper, "pic", "pic", false, false)
 
 int main(int argc, char **argv) {
+  // Print a stack trace if we signal out.
+  PrettyStackTraceProgram X(argc, argv);
   cl::ParseCommandLineOptions(argc, argv);
+  llvm_shutdown_obj Y;
 
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
          << '\n';
