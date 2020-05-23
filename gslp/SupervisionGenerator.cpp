@@ -28,7 +28,15 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
     UCTNode *NextNode;
     if (Policy) {
       // If there's a policy, just take the transition w/ the highest prob.
-      Policy->predict(Node, Prob);
+      ArrayRef<float> TransitionWeight = Node->transitionWeight();
+
+      // In the unlikely event that we don't have the weights,
+      // query the network directly.
+      if (TransitionWeight.empty()) {
+        Policy->predict(Node, Prob);
+        TransitionWeight = Prob;
+      }
+
       auto It = std::max_element(Prob.begin(), Prob.end());
       NextNode = Transitions[It - Prob.begin()].Next;
     } else {
