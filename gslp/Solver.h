@@ -185,7 +185,9 @@ public:
 private:
   std::vector<Transition> Transitions;
 
-  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {
+  UCTNode(const Frontier *Frt)
+      : Frt(Frt), TotalCost(0), Count(0), MaxCost(0), MinCost(0) {
+
     TransitionWeight.store(nullptr);
   }
 
