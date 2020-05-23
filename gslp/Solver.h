@@ -277,6 +277,7 @@ class UCTSearch {
   float W;
 
   unsigned EnumCap;
+  unsigned ExpandThreshold;
 
   UCTNodeFactory *Factory;
   Packer *Pkr;
@@ -289,11 +290,12 @@ class UCTSearch {
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, float W, unsigned EnumCap, UCTNodeFactory *Factory,
-            Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
-            llvm::TargetTransformInfo *TTI)
-      : C(C), W(W), EnumCap(EnumCap), Factory(Factory), Pkr(Pkr),
-        Policy(Policy), Evaluator(Evaluator), TTI(TTI) {}
+  UCTSearch(float C, float W, unsigned EnumCap, unsigned ExpandThreshold,
+            UCTNodeFactory *Factory, Packer *Pkr, PackingPolicy *Policy,
+            FrontierEvaluator *Evaluator, llvm::TargetTransformInfo *TTI)
+      : C(C), W(W), EnumCap(EnumCap), ExpandThreshold(ExpandThreshold),
+        Factory(Factory), Pkr(Pkr), Policy(Policy), Evaluator(Evaluator),
+        TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {

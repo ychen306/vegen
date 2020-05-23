@@ -86,6 +86,10 @@ static cl::opt<unsigned> EnumCap(
     cl::desc("Cap the maximum number of packs enumerate for a instruction"),
     cl::value_desc("Enumeration cap"), cl::init(1000));
 
+static cl::opt<unsigned> ExpandThreshold("expand-after",
+                                         cl::value_desc("Expandsion threshold"),
+                                         cl::init(9));
+
 ////// Policy eval configs. /////////
 static cl::opt<unsigned> NumPolicyThreads(
     "policy-threads",
@@ -165,8 +169,8 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
                          PackingPolicy *Policy) {
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(ParamC, ParamW, EnumCap, &Factory, &Pkr, Policy, &Evaluator,
-                 Pkr.getTTI());
+  UCTSearch MCTS(ParamC, ParamW, EnumCap, ExpandThreshold, &Factory, &Pkr,
+                 Policy, &Evaluator, Pkr.getTTI());
   PackEnumerationCache EnumCache;
 
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(&BB, &Pkr));

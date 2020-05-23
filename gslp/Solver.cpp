@@ -249,8 +249,8 @@ class PackEnumerator {
   TargetTransformInfo *TTI;
 
   bool isUsable(Instruction *I, Instruction *Focus) const {
-    return (I == Focus || I->comesBefore(Focus)) && 
-      VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
+    return (I == Focus || I->comesBefore(Focus)) &&
+           VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
   }
 
   void
@@ -663,13 +663,15 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     if (!CurNode->isTerminal()) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
-      // FIXME: make max num lanes a parameter of MCTS ctor
-      CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, EnumCap, Factory,
-                      &EnumCache, TTI);
-      auto &Transitions = CurNode->transitions();
-      // Bias future exploration on this node if there is a prior
-      if (Policy && Transitions.size() > 1)
-        Policy->predictAsync(CurNode);
+      if (CurNode->visitCount() >= ExpandThreshold) {
+        // FIXME: make max num lanes a parameter of MCTS ctor
+        CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, EnumCap, Factory,
+                        &EnumCache, TTI);
+        auto &Transitions = CurNode->transitions();
+        // Bias future exploration on this node if there is a prior
+        if (Policy && Transitions.size() > 1)
+          Policy->predictAsync(CurNode);
+      }
     }
 
     // ========= 4) Backpropagation ===========

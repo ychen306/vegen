@@ -80,6 +80,10 @@ static cl::opt<unsigned> EnumCap(
     cl::desc("Cap the maximum number of packs enumerate for a instruction"),
     cl::value_desc("Enumeration cap"), cl::init(1000));
 
+static cl::opt<unsigned> ExpandThreshold("expand-after",
+                                         cl::value_desc("Expandsion threshold"),
+                                         cl::init(9));
+
 static cl::opt<unsigned>
     NumThreads("threads", cl::desc("Number of threads to use"), cl::init(4));
 
@@ -93,9 +97,9 @@ static cl::opt<unsigned>
                     cl::value_desc("Batch size for policy evaluation"),
                     cl::init(8));
 
-static cl::opt<unsigned>
-    NumGNNLayers("num-gnn-layers",
-                 cl::value_desc("Number of GNN layers"), cl::init(8));
+static cl::opt<unsigned> NumGNNLayers("num-gnn-layers",
+                                      cl::value_desc("Number of GNN layers"),
+                                      cl::init(8));
 
 static cl::opt<unsigned> MaxInflightPolicyRequests(
     "max-inflights",
@@ -241,8 +245,8 @@ int main(int argc, char **argv) {
   PolicyArchiver Archiver(ArchiveBlockSize, ArchivePath);
   RolloutEvaluator Evaluator;
   GeneratorWrapper::SG.reset(new SupervisionGenerator(
-      Archiver, &Evaluator, Model, EnumCap, SamplesPerBlock, ParamC, ParamW,
-      NumSimulations));
+      Archiver, &Evaluator, Model, EnumCap, ExpandThreshold, SamplesPerBlock,
+      ParamC, ParamW, NumSimulations));
 
   ThreadPool Threads(hardware_concurrency(NumThreads));
 
