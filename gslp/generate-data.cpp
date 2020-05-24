@@ -213,10 +213,7 @@ INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(GeneratorWrapper, "pic", "pic", false, false)
 
 int main(int argc, char **argv) {
-  // Print a stack trace if we signal out.
-  PrettyStackTraceProgram X(argc, argv);
   cl::ParseCommandLineOptions(argc, argv);
-  llvm_shutdown_obj Y;
 
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
          << '\n';
@@ -303,6 +300,9 @@ int main(int argc, char **argv) {
 
       for (auto &F : *M) {
         for (unsigned i = 0; i < F.size(); i++) {
+          // Print a stack trace if we signal out.
+          PrettyStackTraceProgram X(argc, argv);
+
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks] {
             runGeneratorOnBasicBlock(ModulePath, FuncName, i);

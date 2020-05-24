@@ -48,12 +48,12 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
 
     Nodes.push_back(Node);
     Node = NextNode;
-
-    // The MCTS queries the policy (if there's one) asynchronously,
-    // cancel all requests if they haven't been processed yet.
-    if (Policy)
-      Policy->cancel();
   }
+
+  // The MCTS queries the policy (if there's one) asynchronously,
+  // cancel all requests if they haven't been processed yet.
+  if (Policy)
+    Policy->cancel();
 
   // Sample `SamplesPerBlock` and dump the tree search result.
   std::random_shuffle(Nodes.begin(), Nodes.end(), rand_int);
