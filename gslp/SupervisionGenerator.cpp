@@ -48,6 +48,11 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
 
     Nodes.push_back(Node);
     Node = NextNode;
+
+    // The MCTS queries the policy (if there's one) asynchronously,
+    // cancel all requests if they haven't been processed yet.
+    if (Policy)
+      Policy->cancel();
   }
 
   // Sample `SamplesPerBlock` and dump the tree search result.
@@ -55,9 +60,4 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
   unsigned NumSamples = std::min<unsigned>(SamplesPerBlock, Nodes.size());
   for (unsigned i = 0; i < NumSamples; i++)
     writeTreeSearchPolicy(Archiver, *Nodes[i], *Pkr, Model);
-
-  // The MCTS queries the policy (if there's one) asynchronously,
-  // cancel all requests if they haven't been processed yet.
-  if (Policy)
-    Policy->cancel();
 }
