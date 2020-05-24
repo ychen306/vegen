@@ -37,6 +37,8 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
         TransitionWeight = Prob;
       }
 
+      assert(TransitionWeight.size() == Transitions.size());
+
       auto It = std::max_element(Prob.begin(), Prob.end());
       NextNode = Transitions[It - Prob.begin()].Next;
     } else {
