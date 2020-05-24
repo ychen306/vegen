@@ -19,12 +19,11 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
+#include "llvm/Support/PrettyStackTrace.h"
 #include "llvm/Support/ThreadLocal.h"
 #include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/PrettyStackTrace.h"
-
 
 using namespace llvm;
 
@@ -300,11 +299,11 @@ int main(int argc, char **argv) {
 
       for (auto &F : *M) {
         for (unsigned i = 0; i < F.size(); i++) {
-          // Print a stack trace if we signal out.
-          PrettyStackTraceProgram X(argc, argv);
-
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks] {
+            // Print a stack trace if we signal out.
+            PrettyStackTraceProgram X(argc, argv);
+
             runGeneratorOnBasicBlock(ModulePath, FuncName, i);
             {
               std::unique_lock<std::mutex> LockGuard(StatLock);
