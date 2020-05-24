@@ -301,6 +301,7 @@ int main(int argc, char **argv) {
         for (unsigned i = 0; i < F.size(); i++) {
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks, argc, argv] {
+            EnablePrettyStackTrace();
             // Print a stack trace if we signal out.
             PrettyStackTraceProgram X(argc, argv);
 
