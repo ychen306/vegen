@@ -36,7 +36,7 @@ public:
                       unsigned NumThreads = 1)
       : PackingPolicy(Model->getMaxNumLanes()), Model(Model), Device(Device),
         MaxNumInflights(MaxNumInflights), BatchSize(BatchSize),
-        NumIdlingThreads(NumThreads) {
+        NumIdlingThreads(NumThreads), NumInflights(0) {
     Nodes.reserve(BatchSize);
     for (unsigned i = 0; i < NumThreads; i++)
       Threads.emplace_back([this]() { evalNodes(); });
