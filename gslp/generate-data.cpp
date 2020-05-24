@@ -19,7 +19,6 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
-#include "llvm/Support/PrettyStackTrace.h"
 #include "llvm/Support/ThreadLocal.h"
 #include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/Timer.h"
@@ -301,10 +300,6 @@ int main(int argc, char **argv) {
         for (unsigned i = 0; i < F.size(); i++) {
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks, argc, argv] {
-            EnablePrettyStackTraceOnSigInfoForThisThread();
-            // Print a stack trace if we signal out.
-            PrettyStackTraceProgram X(argc, argv);
-
             runGeneratorOnBasicBlock(ModulePath, FuncName, i);
             {
               std::unique_lock<std::mutex> LockGuard(StatLock);
