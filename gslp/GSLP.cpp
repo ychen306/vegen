@@ -203,11 +203,12 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
     Root = T->Next;
     TotalCost += T->transitionCost();
 
-    // The MCTS queries the policy (if there's one) asynchronously,
-    // cancel all requests if they haven't been processed yet.
-    if (Policy)
-      Policy->cancel();
   }
+  // The MCTS queries the policy (if there's one) asynchronously,
+  // cancel all requests if they haven't been processed yet.
+  if (Policy)
+    Policy->cancel();
+
   errs() << "Total cost: " << TotalCost << '\n';
 }
 

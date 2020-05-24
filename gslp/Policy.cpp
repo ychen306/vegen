@@ -48,6 +48,7 @@ void NeuralPackingPolicy::evalNodes() {
       Nodes = std::move(Queue.front());
       Queue.pop();
       NumInflights -= Nodes.size();
+      errs() << "1!! " << NumInflights << '\n';
     }
     InflightCond.notify_all();
 
