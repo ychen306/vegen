@@ -134,6 +134,7 @@ void NeuralPackingPolicy::cancel() {
   std::unique_lock<std::mutex> LockGuard(IdlingLock);
   IdlingCond.wait(LockGuard,
                   [&] { return NumIdlingThreads == Threads.size(); });
+  NumInflights = 0;
 }
 
 void NeuralPackingPolicy::predict(UCTNode *Node,
