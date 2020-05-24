@@ -145,12 +145,15 @@ class UCTNode {
   // Record the max and min cost ever encountered starting from this node.
   // We use this to normalize cost,
   // which is necessary for the exploration factor to be meaningful.
-  float MaxCost;
-  float MinCost;
+  struct Range {
+    float Min, Max;
+    float range() const { return Max - Min; }
+  };
+  llvm::Optional<Range> CostRange;
   float normalize(float Cost) const {
-    if (MaxCost == MinCost)
-      return Cost;
-    return (Cost - MinCost) / (MaxCost - MinCost);
+    if (!CostRange || CostRange->Min == CostRange->Max)
+      return 1.0;
+    return (Cost - CostRange->Min) / CostRange->range();
   }
 
 public:
@@ -185,13 +188,14 @@ public:
 private:
   std::vector<Transition> Transitions;
 
-  UCTNode(const Frontier *Frt)
-      : Frt(Frt), TotalCost(0), Count(0), MaxCost(0), MinCost(0) {
+  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {
 
     TransitionWeight.store(nullptr);
   }
 
 public:
+  float minCost() const { return CostRange->Min; }
+  float maxCost() const { return CostRange->Max; }
   ~UCTNode() {
     auto Ptr = TransitionWeight.load();
     if (Ptr)
@@ -212,8 +216,14 @@ public:
   const Frontier *getFrontier() const { return Frt; }
   void update(float Cost) {
     TotalCost += Cost;
-    MinCost = std::min(Cost, MinCost);
-    MaxCost = std::max(Cost, MaxCost);
+
+    if (CostRange) {
+      CostRange->Min = std::min<float>(CostRange->Min, Cost);
+      CostRange->Max = std::max<float>(CostRange->Max, Cost);
+    } else {
+      CostRange = {Cost, Cost};
+    }
+
     Count++;
   }
 
