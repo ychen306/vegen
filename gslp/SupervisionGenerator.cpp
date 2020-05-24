@@ -13,7 +13,6 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
 
   UCTNode *Node = Root;
   std::vector<UCTNode *> Nodes;
-  std::vector<float> Prob;
   while (!Node->isTerminal()) {
     MCTS.run(Node, NumIters);
     assert(Node->expanded());
@@ -32,6 +31,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
 
       // In the unlikely event that we don't have the weights,
       // query the network directly.
+      std::vector<float> Prob;
       if (TransitionWeight.empty()) {
         Policy->predict(Node, Prob);
         TransitionWeight = Prob;
@@ -39,8 +39,8 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
 
       assert(TransitionWeight.size() == Transitions.size());
 
-      auto It = std::max_element(Prob.begin(), Prob.end());
-      NextNode = Transitions[It - Prob.begin()].Next;
+      auto It = std::max_element(TransitionWeight.begin(), TransitionWeight.end());
+      NextNode = Transitions[It - TransitionWeight.begin()].Next;
     } else {
       // Without a policy, we just follow the transition visited the most
       auto It = std::max_element(Transitions.begin(), Transitions.end(),
