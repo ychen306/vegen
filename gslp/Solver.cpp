@@ -80,7 +80,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     auto *VecTy = getVectorType(*OP);
 
     // Special case: we can build OP by broadcasting `I`.
-    if (is_splat(*OP)) {
+    if (is_splat(*OP) && (*OP)[i] == I) {
       Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
       ResolvedPackIds.push_back(i);
       continue;
