@@ -206,7 +206,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
       auto *I = dyn_cast<Instruction>(V);
       if (!I || I->getParent() != BB) {
         // Assume I is always scalar and pay the insert cost.
-        Cost += TTI->getVectorInstrCost(Instruction::ExtractElement, OperandTy,
+        Cost += TTI->getVectorInstrCost(Instruction::InsertElement, OperandTy,
                                         LaneId);
       }
     }
