@@ -112,6 +112,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
+  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
@@ -216,6 +217,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
+  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
@@ -224,7 +226,6 @@ Frontier::advance(const VectorPack *VP, float &Cost,
                   llvm::TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
-  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
   return Next;
 }
 
