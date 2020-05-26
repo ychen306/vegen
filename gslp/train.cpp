@@ -233,22 +233,18 @@ int main(int argc, char **argv) {
           Frt, Device, None /* We don't have IR indexes */);
 
       auto Probs = computeProbInBatch(Model, Device, PDs, Supervision);
-      // std::vector<torch::Tensor> Targets;
+      std::vector<torch::Tensor> Targets;
       std::vector<torch::Tensor> Losses;
       for (unsigned i = 0; i < PDs.size(); i++) {
-        // auto Target =
-        //    torch::from_blob(const_cast<float *>(Supervision[i].Prob.data()),
-        //                     {(int64_t)Supervision[i].Prob.size()},
-        //                     torch::TensorOptions().dtype(torch::kFloat32));
-        // Targets.push_back(Target);
-        auto &Target = Supervision[i].Prob;
-        auto It = std::max_element(Target.begin(), Target.end());
-        Losses.push_back(-Probs[i][It - Target.begin()].log());
+        auto Target =
+           torch::from_blob(const_cast<float *>(Supervision[i].Prob.data()),
+                            {(int64_t)Supervision[i].Prob.size()},
+                            torch::TensorOptions().dtype(torch::kFloat32));
+        Targets.push_back(Target);
       }
-      // auto Target = torch::cat(Targets).to(Device);
-      // auto Predicted = torch::cat(Probs);
-      /// auto Loss = -Target.dot(Predicted.log()) / float(Targets.size());
-      auto Loss = torch::stack(Losses).mean();
+      auto Target = torch::cat(Targets).to(Device);
+      auto Predicted = torch::cat(Probs);
+      auto Loss = -Target.dot(Predicted.log()) / float(Targets.size());
 
       Optimizer.zero_grad();
       Loss.backward();

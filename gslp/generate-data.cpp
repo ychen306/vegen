@@ -299,7 +299,7 @@ int main(int argc, char **argv) {
       for (auto &F : *M) {
         for (unsigned i = 0; i < F.size(); i++) {
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
-                         &StatLock, &StatCond, &NumProcessedBlocks, argc, argv] {
+                         &StatLock, &StatCond, &NumProcessedBlocks] {
             runGeneratorOnBasicBlock(ModulePath, FuncName, i);
             {
               std::unique_lock<std::mutex> LockGuard(StatLock);
