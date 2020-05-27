@@ -111,6 +111,7 @@ void NeuralPackingPolicy::predictAsync(UCTNode *Node) {
       std::unique_lock<std::mutex> LockGuard(QueueLock);
       NumInflights += Nodes.size();
       Queue.push(std::move(Nodes));
+      Nodes = {};
       NumInflightsLocal = NumInflights;
     }
     QueueCond.notify_one();
