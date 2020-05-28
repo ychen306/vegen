@@ -269,8 +269,13 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
                                     MaybeAlign(SI->getAlignment()), 0, SI);
     else if (isa<PHINode>(I))
       Saving = 0;
-    else
-      Saving = TTI->getArithmeticInstrCost(I->getOpcode(), I->getType());
+    else {
+      SmallVector<const Value *, 4> Operands(I->operand_values());
+      Saving = TTI->getArithmeticInstrCost(
+          I->getOpcode(), I->getType(), TargetTransformInfo::OK_AnyValue,
+          TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None,
+          TargetTransformInfo::OP_None, Operands, I);
+    }
     Cost -= Saving;
   }
 }

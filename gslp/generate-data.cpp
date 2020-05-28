@@ -5,12 +5,14 @@
 #include "Serialize.h"
 #include "Solver.h"
 #include "SupervisionGenerator.h"
+#include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
+#include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -19,10 +21,13 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GlobPattern.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ThreadLocal.h"
 #include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/TargetSelect.h"
 
 using namespace llvm;
 
@@ -34,6 +39,9 @@ static cl::opt<std::string>
 static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path to the model"),
               cl::value_desc("model path"), cl::init(""));
+
+static cl::opt<std::string>
+    TargetTriple("mtriple", cl::desc("Override target triple for module"));
 
 static cl::opt<unsigned> EmbSize("emb-size",
                                  cl::desc("Specify size of the embedding"),
@@ -106,6 +114,8 @@ static cl::opt<unsigned> MaxInflightPolicyRequests(
     cl::value_desc("Maximum number of policy network evaluation requests"),
     cl::init(32));
 
+static codegen::RegisterCodeGenFlags CGF;
+
 namespace llvm {
 void initializeGeneratorWrapperPass(PassRegistry &);
 }
@@ -120,6 +130,7 @@ public:
   static torch::Device Device;
   static PackingModel Model;
   static sys::ThreadLocal<PackingPolicy> Policy;
+  static std::unique_ptr<TargetMachine> TM;
   std::string FuncName;
   int BBId;
 
@@ -163,8 +174,9 @@ static void runGeneratorOnBasicBlock(std::string ModulePath,
 bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-  auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
+
+  auto TTI = TM->getTargetTransformInfo(F);
 
   assert(BBId != -1);
 
@@ -182,7 +194,7 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
       break;
     }
 
-  Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
+  Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, &TTI, BFI);
   if (ModelPath.getNumOccurrences()) {
     // Initialize the thread local policy.
     if (!Policy.get()) {
@@ -200,6 +212,7 @@ std::unique_ptr<SupervisionGenerator> GeneratorWrapper::SG;
 torch::Device GeneratorWrapper::Device(torch::kCPU);
 PackingModel GeneratorWrapper::Model = nullptr;
 sys::ThreadLocal<PackingPolicy> GeneratorWrapper::Policy;
+std::unique_ptr<TargetMachine> GeneratorWrapper::TM;
 
 char GeneratorWrapper::ID = 0;
 
@@ -210,8 +223,36 @@ INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(GeneratorWrapper, "pic", "pic", false, false)
 
+static std::unique_ptr<TargetMachine> createTargetMachine() {
+  Triple TheTriple(Triple::normalize(TargetTriple));
+  if (TheTriple.getTriple().empty() || !TargetTriple.getNumOccurrences())
+    TheTriple.setTriple(sys::getDefaultTargetTriple());
+
+  std::string Error;
+  const Target *TheTarget =
+      TargetRegistry::lookupTarget(codegen::getMArch(), TheTriple, Error);
+  if (!TheTarget) {
+    errs() << "Failed to build target machine: " << Error << '\n';
+    exit(1);
+  }
+
+  std::string CPUStr = codegen::getCPUStr();
+  std::string FeaturesStr = codegen::getFeaturesStr();
+  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags();
+  Optional<Reloc::Model> RM = codegen::getExplicitRelocModel();
+
+  return std::unique_ptr<TargetMachine>(TheTarget->createTargetMachine(
+      TheTriple.getTriple(), CPUStr, FeaturesStr, Options, RM,
+      codegen::getExplicitCodeModel(), CodeGenOpt::Aggressive));
+}
+
 int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv);
+
+  InitializeAllTargets();
+  InitializeAllTargetMCs();
+
+  GeneratorWrapper::TM = createTargetMachine();
 
   errs() << "Num vector insts: " << VecBindingTable.getBindings().size()
          << '\n';
