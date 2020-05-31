@@ -298,7 +298,7 @@ int main(int argc, char **argv) {
     torch::load(Model, OldModelPath, Device);
 
   if (NewModelPath.getNumOccurrences())
-    torch::load(Model, NewModelPath, Device);
+    torch::load(NewModel, NewModelPath, Device);
 
   Model->to(Device);
   Model->eval();
