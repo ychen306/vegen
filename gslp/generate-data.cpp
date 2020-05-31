@@ -302,6 +302,8 @@ int main(int argc, char **argv) {
 
   Model->to(Device);
   Model->eval();
+  NewModel->to(Device);
+  NewModel->eval();
 
   GeneratorWrapper::Device = Device;
   GeneratorWrapper::Model = Model;
