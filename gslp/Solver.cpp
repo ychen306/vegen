@@ -238,6 +238,130 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   return Next;
 }
 
+PartialPack::PartialPack(Instruction *Focus, unsigned NumLanes, Packer *Pkr)
+    : BB(Focus->getParent()), VPCtx(Pkr->getContext(BB)), Focus(Focus),
+      FocusUsed(false), Elements(VPCtx->getNumValues()),
+      Depended(VPCtx->getNumValues()), NumLanes(NumLanes), LaneId(0),
+      Producer(nullptr), LoadDAG(Pkr->getLoadDAG(BB)),
+      StoreDAG(Pkr->getStoreDAG(BB)), LDA(Pkr->getLDA(BB)),
+      MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
+
+PartialPack::PartialPack(Instruction *Focus, const InstBinding *Inst,
+                         Packer *Pkr)
+    : BB(Focus->getParent()), VPCtx(Pkr->getContext(BB)), Focus(Focus),
+      FocusUsed(false), Elements(VPCtx->getNumValues()),
+      Depended(VPCtx->getNumValues()), NumLanes(Inst->getLaneOps().size()),
+      LaneId(0), Producer(Inst), LoadDAG(Pkr->getLoadDAG(BB)),
+      StoreDAG(Pkr->getStoreDAG(BB)), LDA(Pkr->getLDA(BB)),
+      MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
+
+std::vector<Instruction *>
+PartialPack::getUsableInsts(const Frontier *Frt) const {
+  std::vector<Instruction *> UsableInsts;
+
+  // We can use an instruction if it's independent from the lanes we've filled
+  // so far and it's not frozen by `Frt`
+  auto IsUsable = [&](Instruction *I) -> bool {
+    return Frt->isFree(I) &&
+           checkIndependence(LDA, *VPCtx, I, Elements, Depended);
+  };
+
+  // Find out the longest access chain starting from a given instruction
+  DenseMap<Instruction *, unsigned> ChainLengths;
+  std::function<unsigned(Instruction *, const ConsecutiveAccessDAG &)>
+      GetMaxChainLength =
+          [&](Instruction *I,
+              const ConsecutiveAccessDAG &AccessDAG) -> unsigned {
+    if (ChainLengths.count(I))
+      return ChainLengths[I];
+
+    auto It = AccessDAG.find(I);
+    if (It == AccessDAG.end())
+      return (ChainLengths[I] = 1);
+
+    unsigned Longest = 0;
+    for (auto *Next : It->second) {
+      unsigned Len = GetMaxChainLength(Next, AccessDAG);
+      Longest = std::max(Longest, Len);
+    }
+    return (ChainLengths[I] = Longest);
+  };
+
+  bool IsLoad = isa<LoadInst>(Focus);
+  bool IsStore = isa<StoreInst>(Focus);
+  if (IsLoad || IsStore) {
+    const ConsecutiveAccessDAG *AccessDAG;
+    if (IsLoad)
+      AccessDAG = &LoadDAG;
+    else
+      AccessDAG = &StoreDAG;
+    // For the first lane of a load/store pack, we want to make sure that
+    // starting from the the first instruction we can both reach the focus and
+    // fill the enough lanes.
+    if (LaneId == 0) {
+      for (auto &AccessAndNext : *AccessDAG) {
+        Instruction *Access = AccessAndNext.first;
+        if (GetMaxChainLength(Access, *AccessDAG) >= NumLanes &&
+            IsUsable(Access))
+          UsableInsts.push_back(Access);
+      }
+    } else {
+      auto *LastAccess = FilledLanes[LaneId - 1];
+      auto It = AccessDAG->find(LastAccess);
+      if (It == AccessDAG->end())
+        return {};
+      for (auto *NextAccess : It->second) {
+        if (Frt->isFree(NextAccess) && IsUsable(NextAccess))
+          UsableInsts.push_back(NextAccess);
+      }
+    }
+  } else {
+    assert(Producer);
+    // Find all matched operation at a given lane that's also independent
+    const Operation *Op = Producer->getLaneOps()[LaneId].getOperation();
+    for (auto &M : MM.getMatches(Op)) {
+      auto *I = cast<Instruction>(M.Output);
+      if (IsUsable(I))
+        UsableInsts.push_back(I);
+    }
+  }
+
+  return UsableInsts;
+}
+
+std::unique_ptr<PartialPack>
+PartialPack::fillOneLane(llvm::Instruction *I) const {
+  auto Next = std::make_unique<PartialPack>(*this);
+  Next->Elements.set(VPCtx->getScalarId(I));
+  Next->Depended |= LDA.getDepended(I);
+  if (auto *LI = dyn_cast<LoadInst>(I))
+    Next->Loads.push_back(LI);
+  else if (auto *SI = dyn_cast<StoreInst>(I))
+    Next->Stores.push_back(SI);
+  else {
+    const Operation *Op = Producer->getLaneOps()[LaneId].getOperation();
+    ArrayRef<Operation::Match> Matches = MM.getMatchesForOutput(Op, I);
+    assert(!Matches.empty());
+    Next->Matches.push_back(&Matches[0]);
+  }
+
+  Next->FocusUsed |= I == Focus;
+  ++Next->LaneId;
+
+  return Next;
+}
+
+VectorPack *PartialPack::getPack() const {
+  if (Elements.count() != NumLanes)
+    return nullptr;
+
+  if (isa<LoadInst>(Focus))
+    return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
+  else if (isa<StoreInst>(Focus))
+    return VPCtx->createStorePack(Stores, Elements, Depended, TTI);
+  return VPCtx->createVectorPack(Matches, Elements, Depended, Producer, TTI);
+}
+
 class PackEnumerator {
   unsigned MaxNumLanes;
   unsigned EnumCap;
@@ -586,25 +710,72 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
   return It->second;
 }
 
+UCTNode *UCTNodeFactory::getNode(const Frontier *Frt,
+                                 std::unique_ptr<PartialPack> PP) {
+  Nodes.push_back(std::unique_ptr<UCTNode>(new UCTNode(Frt, std::move(PP))));
+  return Nodes.back().get();
+}
+
 // Fill out the children node
-void UCTNode::expand(unsigned MaxNumLanes, unsigned EnumCap,
-                     UCTNodeFactory *Factory, PackEnumerationCache *EnumCache,
+void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
                      llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
-  float Cost;
 
-  // Consider keeping the next free inst scalar
-  auto *Next =
-      Factory->getNode(Frt->advance(Frt->getNextFreeInst(), Cost, TTI));
-  Transitions.emplace_back(nullptr, Next, Cost);
+  if (!PP) {
+    // We are not working w/ any partial pack.
+    auto *Focus = Frt->getNextFreeInst();
 
-  auto AvailablePacks =
-      Frt->nextAvailablePacks(MaxNumLanes, EnumCap, EnumCache);
+    // Keep the next free inst scalar
+    float Cost;
+    auto *Next = Factory->getNode(Frt->advance(Focus, Cost, TTI));
+    Transitions.emplace_back(Next, Cost);
 
-  Transitions.reserve(AvailablePacks.size());
-  for (auto *VP : AvailablePacks) {
-    auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
-    Transitions.emplace_back(VP, Next, Cost);
+    auto *Pkr = getPacker();
+
+    // Make a pack that contain the next free inst
+    if (auto *LI = dyn_cast<LoadInst>(Focus)) {
+      for (unsigned i = 2; i < MaxNumLanes; i++)
+        Transitions.emplace_back(
+            Factory->getNode(Frt, std::make_unique<PartialPack>(LI, i, Pkr)));
+    } else if (auto *SI = dyn_cast<StoreInst>(Focus)) {
+      for (unsigned i = 2; i < MaxNumLanes; i++)
+        Transitions.emplace_back(
+            Factory->getNode(Frt, std::make_unique<PartialPack>(SI, i, Pkr)));
+    } else {
+      // FIXME: filter out vector instructions that are obviously infeasible
+      for (auto *Inst : getPacker()->getInsts())
+        Transitions.emplace_back(Factory->getNode(
+            Frt, std::make_unique<PartialPack>(Focus, Inst, Pkr)));
+    }
+  } else {
+    // We are filling out a partial pack
+    std::vector<Instruction *> UsableInsts = PP->getUsableInsts(Frt);
+
+    // We are at a dead end if we can't find an instruction to fill out this
+    // lane.
+    if (UsableInsts.empty()) {
+      Feasible = false;
+      return;
+    }
+
+    for (auto *I : UsableInsts) {
+      std::unique_ptr<PartialPack> NextPP = PP->fillOneLane(I);
+      if (auto *VP = NextPP->getPack()) {
+        // Finished filling out this pack; move to the next frontier.
+        float Cost;
+        std::unique_ptr<Frontier> NextFrt = Frt->advance(VP, Cost, TTI);
+        // If the focus is not used, additionally make the focus scalar.
+        if (!NextPP->focusUsed()) {
+          float Cost2;
+          NextFrt = NextFrt->advance(Frt->getNextFreeInst(), Cost2, TTI);
+          Cost += Cost2;
+        }
+        Transitions.emplace_back(VP, Factory->getNode(std::move(NextFrt)),
+                                 Cost);
+      } else {
+        Transitions.emplace_back(Factory->getNode(Frt, std::move(NextPP)));
+      }
+    }
   }
 }
 
@@ -616,12 +787,14 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
   };
 
   std::vector<FullTransition> Path;
-  for (unsigned Iter = 0; Iter < NumIters; Iter++) {
+  for (int Iter = 0; Iter < (int)NumIters; Iter++) {
     Path.clear();
 
     // ========= 1) Selection ==========
     UCTNode *CurNode = Root;
 
+    // Whether this *path* is feasible.
+    bool Feasible = true;
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
       auto &Transitions = CurNode->transitions();
@@ -633,7 +806,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
         auto &T = Transitions[i];
         float Score = CurNode->score(T, C);
         if (HasPredictions)
-          Score += W * TransitionWeight[i] / (float)(T.visitCount()+1);
+          Score += W * TransitionWeight[i] / (float)(T.visitCount() + 1);
         return Score;
       };
 
@@ -642,12 +815,24 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       if (BestT->visited())
         MaxUCTScore = ScoreTransition(0);
 
+      // Also check if all transitions are infeasible.
+      Feasible = false;
       for (unsigned i = 0; i < Transitions.size(); i++) {
         auto &T = Transitions[i];
         if (!T.visited()) {
+          Feasible = true;
           BestT = &T;
           break;
         }
+
+        // FIXME: prune infeasible branches
+        // Don't visit infeasible nodes
+        if (!T.Next->feasible()) {
+          T.Count = 0;
+          continue;
+        }
+
+        Feasible = true;
         float UCTScore = ScoreTransition(i);
         if (UCTScore > MaxUCTScore) {
           MaxUCTScore = UCTScore;
@@ -655,8 +840,20 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
         }
       }
 
+      // If all transitions are infeasible then this node is also infeasible.
+      if (!Feasible) {
+        CurNode->markInfeasible();
+        break;
+      }
+
       Path.push_back(FullTransition{CurNode, BestT});
       CurNode = BestT->Next;
+    }
+
+    // Retry when we go down an infeasible path
+    if (!Feasible) {
+      Iter--;
+      continue;
     }
 
     float LeafCost = 0;
@@ -666,8 +863,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       LeafCost = evalLeafNode(CurNode);
       if (CurNode->visitCount() >= ExpandThreshold) {
         // FIXME: make max num lanes a parameter of MCTS ctor
-        CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, EnumCap, Factory,
-                        &EnumCache, TTI);
+        CurNode->expand(Policy ? Policy->getMaxNumLanes() : 8, Factory, TTI);
         auto &Transitions = CurNode->transitions();
         // Bias future exploration on this node if there is a prior
         if (Policy && Transitions.size() > 1)

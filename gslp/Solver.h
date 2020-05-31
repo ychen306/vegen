@@ -122,6 +122,53 @@ struct FrontierHashInfo {
   }
 };
 
+// Represent a partial vector pack that we are trying to build up
+class PartialPack {
+  llvm::BasicBlock *BB;
+  VectorPackContext *VPCtx;
+  llvm::Instruction *Focus;
+  bool FocusUsed;
+
+  llvm::BitVector Elements;
+  llvm::BitVector Depended;
+  unsigned NumLanes;
+  // The lane we are filling out.
+  unsigned LaneId;
+  const InstBinding *Producer;
+
+  const ConsecutiveAccessDAG &LoadDAG;
+  const ConsecutiveAccessDAG &StoreDAG;
+  const LocalDependenceAnalysis &LDA;
+  const MatchManager &MM;
+  llvm::TargetTransformInfo *TTI;
+
+  std::vector<llvm::Instruction *> FilledLanes;
+  std::vector<const Operation::Match *> Matches;
+  std::vector<llvm::LoadInst *> Loads;
+  std::vector<llvm::StoreInst *> Stores;
+
+public:
+  // Start a partial load/store pack
+  PartialPack(llvm::Instruction *Focus, unsigned NumLanes, Packer *);
+
+  // Start a general pack
+  PartialPack(llvm::Instruction *Focus, const InstBinding *, Packer *);
+
+  unsigned getNumLanes() const { return NumLanes; }
+  // Return the lanes we've filled out so far
+  llvm::ArrayRef<llvm::Instruction *> getFilledLanes() const;
+
+  // Return the list of instructions we can place at the current lane.
+  std::vector<llvm::Instruction *> getUsableInsts(const Frontier *) const;
+
+  std::unique_ptr<PartialPack> fillOneLane(llvm::Instruction *) const;
+
+  bool focusUsed() const { return FocusUsed; }
+
+  // Return a filled vector pack if we are done.
+  VectorPack *getPack() const;
+};
+
 class UCTNode;
 class UCTNodeFactory {
   std::vector<std::unique_ptr<Frontier>> Frontiers;
@@ -130,7 +177,8 @@ class UCTNodeFactory {
 
 public:
   UCTNodeFactory() : FrontierToNodeMap(1000000) {}
-  UCTNode *getNode(std::unique_ptr<Frontier> Frontier);
+  UCTNode *getNode(std::unique_ptr<Frontier>);
+  UCTNode *getNode(const Frontier *, std::unique_ptr<PartialPack>);
 };
 
 class UCTNode {
@@ -138,6 +186,11 @@ class UCTNode {
 
   // State
   const Frontier *Frt;
+  std::unique_ptr<PartialPack> PP;
+  // It's possible for us to fill out the partial pack improperly
+  // and lead to a infeasible pack.
+  bool Feasible;
+
   // Return
   float TotalCost;
   uint64_t Count;
@@ -157,15 +210,24 @@ class UCTNode {
   }
 
 public:
+
   // The next action state pair
   struct Transition {
-    const VectorPack *VP; // NULL means we choose Frt->getNextFreeInst();
+    bool IsScalar;
+    // If non-null then we've finished filling out a pack w/ this transition
+    const VectorPack *VP;
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
 
     Transition(const VectorPack *VP, UCTNode *Next, float Cost)
-        : VP(VP), Next(Next), Count(0), Cost(Cost) {}
+        : IsScalar(false), VP(VP), Next(Next), Count(0), Cost(Cost) {}
+
+    Transition(UCTNode *Next)
+        : IsScalar(false), VP(nullptr), Next(Next), Count(0), Cost(0) {}
+
+    Transition(UCTNode *Next, float Cost)
+        : IsScalar(true), VP(nullptr), Next(Next), Count(0), Cost(Cost) {}
 
     float visited() const { return Count > 0; }
 
@@ -188,12 +250,15 @@ public:
 private:
   std::vector<Transition> Transitions;
 
-  UCTNode(const Frontier *Frt) : Frt(Frt), TotalCost(0), Count(0) {
+  UCTNode(const Frontier *Frt, std::unique_ptr<PartialPack> PP)
+    : Frt(Frt), PP(std::move(PP)), Feasible(true), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
 
-    TransitionWeight.store(nullptr);
-  }
+  UCTNode(const Frontier *Frt)
+    : Frt(Frt), Feasible(true), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
 
 public:
+  void markInfeasible() { Feasible = false; }
+  bool feasible() const { return Feasible; }
   float minCost() const { return CostRange->Min; }
   float maxCost() const { return CostRange->Max; }
   ~UCTNode() {
@@ -203,8 +268,8 @@ public:
   }
 
   // Fill out the out edge
-  void expand(unsigned MaxNumLanes, unsigned EnumCap, UCTNodeFactory *Factory,
-              PackEnumerationCache *EnumCache, llvm::TargetTransformInfo *);
+  void expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
+              llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return !Frt->getNextFreeInst(); }
 

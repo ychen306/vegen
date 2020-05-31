@@ -179,7 +179,7 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
     if (UseMCTS)
       MCTS.run(Root, NumSimulations);
     else
-      Root->expand(MaxNumLanes, EnumCap, &Factory, &EnumCache, Pkr.getTTI());
+      Root->expand(MaxNumLanes, &Factory, Pkr.getTTI());
 
     assert(Root->expanded());
 

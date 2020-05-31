@@ -13,19 +13,19 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
 
   UCTNode *Node = Root;
   std::vector<UCTNode *> Nodes;
+  float TotalCost = 0;
   while (!Node->isTerminal()) {
     MCTS.run(Node, NumIters);
+    errs() << "~~ feasible?? " << Node->feasible() << '\n';
     assert(Node->expanded());
 
     auto &Transitions = Node->transitions();
-    // Don't bother querying the policy if there's no decision to make.
-    if (Transitions.size() == 1) {
-      Node = Transitions.begin()->Next;
-      continue;
-    }
 
-    UCTNode *NextNode;
-    if (Policy) {
+    UCTNode::Transition *T;
+    if (Transitions.size() == 1) {
+      // Don't bother querying the policy if there's no decision to make.
+      T = &*Transitions.begin();
+    } else if (Policy) {
       // If there's a policy, just take the transition w/ the highest prob.
       ArrayRef<float> TransitionWeight = Node->transitionWeight();
 
@@ -40,17 +40,18 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
       assert(TransitionWeight.size() == Transitions.size());
 
       auto It = std::max_element(TransitionWeight.begin(), TransitionWeight.end());
-      NextNode = Transitions[It - TransitionWeight.begin()].Next;
+      T = &Transitions[It - TransitionWeight.begin()];
     } else {
       // Without a policy, we just follow the transition visited the most
-      auto It = std::max_element(Transitions.begin(), Transitions.end(),
+      T = &*std::max_element(Transitions.begin(), Transitions.end(),
                                  UCTNode::compareByVisitCount);
-      NextNode = It->Next;
     }
-
     Nodes.push_back(Node);
-    Node = NextNode;
+    Node = T->Next;
+    TotalCost += T->Cost;
   }
+
+  errs() << "Cost of " << BB->getParent()->getName() << "/" << BB->getName() << '\n';
 
   // The MCTS queries the policy (if there's one) asynchronously,
   // cancel all requests if they haven't been processed yet.
