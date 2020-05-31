@@ -23,11 +23,11 @@
 #include "llvm/Support/GlobPattern.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/ThreadLocal.h"
 #include "llvm/Support/ThreadPool.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/TargetSelect.h"
 
 using namespace llvm;
 
@@ -37,8 +37,16 @@ static cl::opt<std::string>
              cl::value_desc("train directory"), cl::Required);
 
 static cl::opt<std::string>
-    ModelPath("model", cl::desc("Specify a file path to the model"),
-              cl::value_desc("model path"), cl::init(""));
+    OldModelPath("old-model",
+                 cl::desc("Specify a file path to the old model (the one used "
+                          "to assist the tree search)"),
+                 cl::value_desc("model path"), cl::init(""));
+
+static cl::opt<std::string>
+    NewModelPath("new-model",
+                 cl::desc("Specify a file path to the new model (the one used "
+                          "to collect trajectory)"),
+                 cl::value_desc("model path"), cl::init(""));
 
 static cl::opt<std::string>
     TargetTriple("mtriple", cl::desc("Override target triple for module"));
@@ -129,6 +137,7 @@ public:
   // Allocate a distinct device to each main search thread if possible
   static torch::Device Device;
   static PackingModel Model;
+  static PackingModel NewModel;
   static sys::ThreadLocal<PackingPolicy> Policy;
   static std::unique_ptr<TargetMachine> TM;
   std::string FuncName;
@@ -195,7 +204,7 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
     }
 
   Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, &TTI, BFI);
-  if (ModelPath.getNumOccurrences()) {
+  if (OldModelPath.getNumOccurrences()) {
     // Initialize the thread local policy.
     if (!Policy.get()) {
       Policy.set(new NeuralPackingPolicy(Model, Device,
@@ -203,7 +212,15 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
                                          PolicyBatchSize, NumPolicyThreads));
     }
   }
-  SG->run(Policy.get(), &Pkr, TargetBB);
+
+  std::unique_ptr<PackingPolicy> NewPolicy;
+  if (NewModelPath.getNumOccurrences()) {
+    NewPolicy.reset(new NeuralPackingPolicy(NewModel, Device,
+                                            MaxInflightPolicyRequests,
+                                            PolicyBatchSize, NumPolicyThreads));
+  }
+
+  SG->run(Policy.get(), NewPolicy.get(), &Pkr, TargetBB);
   return false;
 }
 
@@ -211,6 +228,7 @@ std::unique_ptr<SupervisionGenerator> GeneratorWrapper::SG;
 // FIXME: we need to create a distribute the model on a pool of GPU devices.
 torch::Device GeneratorWrapper::Device(torch::kCPU);
 PackingModel GeneratorWrapper::Model = nullptr;
+PackingModel GeneratorWrapper::NewModel = nullptr;
 sys::ThreadLocal<PackingPolicy> GeneratorWrapper::Policy;
 std::unique_ptr<TargetMachine> GeneratorWrapper::TM;
 
@@ -268,20 +286,26 @@ int main(int argc, char **argv) {
 
   PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes,
                      NumGNNLayers);
+  PackingModel NewModel(EmbSize, VecBindingTable.getBindings(), MaxNumLanes,
+                        NumGNNLayers);
 
   torch::Device Device(torch::kCPU);
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);
 
   // If we are running the MCTS with a model...
-  if (ModelPath.getNumOccurrences())
-    torch::load(Model, ModelPath, Device);
+  if (OldModelPath.getNumOccurrences())
+    torch::load(Model, OldModelPath, Device);
+
+  if (NewModelPath.getNumOccurrences())
+    torch::load(Model, NewModelPath, Device);
 
   Model->to(Device);
   Model->eval();
 
   GeneratorWrapper::Device = Device;
   GeneratorWrapper::Model = Model;
+  GeneratorWrapper::NewModel = NewModel;
 
   PolicyArchiver Archiver(ArchiveBlockSize, ArchivePath);
   RolloutEvaluator Evaluator;

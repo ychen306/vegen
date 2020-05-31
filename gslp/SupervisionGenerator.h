@@ -30,15 +30,17 @@ class SupervisionGenerator {
 
 public:
   SupervisionGenerator(PolicyArchiver &Archiver, FrontierEvaluator *Evaluator,
-                       PackingModel Model, unsigned EnumCap, unsigned ExpandThreshold,
-                       unsigned SamplesPerBlock, float C, float W,
-                       unsigned NumIters = 1000)
+                       PackingModel Model, unsigned EnumCap,
+                       unsigned ExpandThreshold, unsigned SamplesPerBlock,
+                       float C, float W, unsigned NumIters = 1000)
       : Archiver(Archiver), Evaluator(Evaluator), Model(Model),
         EnumCap(EnumCap), ExpandThreshold(ExpandThreshold),
-        SamplesPerBlock(SamplesPerBlock), C(C),
-        W(W), NumIters(NumIters) {}
+        SamplesPerBlock(SamplesPerBlock), C(C), W(W), NumIters(NumIters) {}
   // Run a policy-augmented MCTS on a basic block to generate supervision data
-  void run(PackingPolicy *, Packer *, llvm::BasicBlock *);
+  // Use the old policy to run the tree search and the old policy to generate
+  // trajectory.
+  void run(PackingPolicy *OldPolicy, PackingPolicy *NewPolicy, Packer *,
+           llvm::BasicBlock *);
 };
 
 #endif // end SUPERVISION_GENERATOR_H
