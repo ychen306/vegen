@@ -140,6 +140,7 @@ public:
   static PackingModel NewModel;
   static sys::ThreadLocal<PackingPolicy> Policy;
   static std::unique_ptr<TargetMachine> TM;
+  static std::mutex TMLock;
   std::string FuncName;
   int BBId;
 
@@ -185,7 +186,9 @@ bool GeneratorWrapper::runOnFunction(llvm::Function &F) {
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
 
+  TMLock.lock();
   auto TTI = TM->getTargetTransformInfo(F);
+  TMLock.unlock();
 
   assert(BBId != -1);
 
@@ -231,6 +234,7 @@ PackingModel GeneratorWrapper::Model = nullptr;
 PackingModel GeneratorWrapper::NewModel = nullptr;
 sys::ThreadLocal<PackingPolicy> GeneratorWrapper::Policy;
 std::unique_ptr<TargetMachine> GeneratorWrapper::TM;
+std::mutex GeneratorWrapper::TMLock;
 
 char GeneratorWrapper::ID = 0;
 
