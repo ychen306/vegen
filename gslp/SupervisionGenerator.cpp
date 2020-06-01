@@ -29,7 +29,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
       // In the unlikely event that we don't have the weights,
       // query the network directly.
       std::vector<float> Prob;
-      Policy->predict(Node, Prob);
+      NewPolicy->predict(Node, Prob);
 
       assert(Prob.size() == Transitions.size());
 
