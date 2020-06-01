@@ -16,7 +16,6 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
   float TotalCost = 0;
   while (!Node->isTerminal()) {
     MCTS.run(Node, NumIters);
-    errs() << "~~ feasible?? " << Node->feasible() << '\n';
     assert(Node->expanded());
 
     auto &Transitions = Node->transitions();
@@ -50,8 +49,6 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
     Node = T->Next;
     TotalCost += T->Cost;
   }
-
-  errs() << "Cost of " << BB->getParent()->getName() << "/" << BB->getName() << '\n';
 
   // The MCTS queries the policy (if there's one) asynchronously,
   // cancel all requests if they haven't been processed yet.

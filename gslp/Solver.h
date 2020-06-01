@@ -167,6 +167,7 @@ public:
 
   // Return a filled vector pack if we are done.
   VectorPack *getPack() const;
+  bool isFilled() const { return Elements.count() == NumLanes; }
 };
 
 class UCTNode;
@@ -187,9 +188,6 @@ class UCTNode {
   // State
   const Frontier *Frt;
   std::unique_ptr<PartialPack> PP;
-  // It's possible for us to fill out the partial pack improperly
-  // and lead to a infeasible pack.
-  bool Feasible;
 
   // Return
   float TotalCost;
@@ -251,14 +249,12 @@ private:
   std::vector<Transition> Transitions;
 
   UCTNode(const Frontier *Frt, std::unique_ptr<PartialPack> PP)
-    : Frt(Frt), PP(std::move(PP)), Feasible(true), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
+    : Frt(Frt), PP(std::move(PP)), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
 
   UCTNode(const Frontier *Frt)
-    : Frt(Frt), Feasible(true), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
+    : Frt(Frt), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
 
 public:
-  void markInfeasible() { Feasible = false; }
-  bool feasible() const { return Feasible; }
   float minCost() const { return CostRange->Min; }
   float maxCost() const { return CostRange->Max; }
   ~UCTNode() {

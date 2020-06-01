@@ -716,6 +716,17 @@ UCTNode *UCTNodeFactory::getNode(const Frontier *Frt,
   return Nodes.back().get();
 }
 
+static bool isPartialPackFeasible(const PartialPack &PP, const Frontier *Frt) {
+  if (PP.isFilled())
+    return true;
+  for (auto *I : PP.getUsableInsts(Frt)) {
+    std::unique_ptr<PartialPack> PPExtended = PP.fillOneLane(I);
+    if (isPartialPackFeasible(*PPExtended, Frt))
+      return true;
+  }
+  return false;
+}
+
 // Fill out the children node
 void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
                      llvm::TargetTransformInfo *TTI) {
@@ -734,32 +745,37 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
 
     // Make a pack that contain the next free inst
     if (auto *LI = dyn_cast<LoadInst>(Focus)) {
-      for (unsigned i = 2; i < MaxNumLanes; i++)
-        Transitions.emplace_back(
-            Factory->getNode(Frt, std::make_unique<PartialPack>(LI, i, Pkr)));
+      for (unsigned i = 2; i < MaxNumLanes; i++) {
+        auto NewPP = std::make_unique<PartialPack>(LI, i, Pkr);
+        if (!isPartialPackFeasible(*NewPP, Frt))
+          continue;
+        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+      }
     } else if (auto *SI = dyn_cast<StoreInst>(Focus)) {
-      for (unsigned i = 2; i < MaxNumLanes; i++)
-        Transitions.emplace_back(
-            Factory->getNode(Frt, std::make_unique<PartialPack>(SI, i, Pkr)));
+      for (unsigned i = 2; i < MaxNumLanes; i++) {
+        auto NewPP = std::make_unique<PartialPack>(SI, i, Pkr);
+        if (!isPartialPackFeasible(*NewPP, Frt))
+          continue;
+        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+      }
     } else {
-      // FIXME: filter out vector instructions that are obviously infeasible
-      for (auto *Inst : getPacker()->getInsts())
-        Transitions.emplace_back(Factory->getNode(
-            Frt, std::make_unique<PartialPack>(Focus, Inst, Pkr)));
+      for (auto *Inst : getPacker()->getInsts()) {
+        auto NewPP = std::make_unique<PartialPack>(Focus, Inst, Pkr);
+        if (!isPartialPackFeasible(*NewPP, Frt))
+          continue;
+        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+      }
     }
   } else {
     // We are filling out a partial pack
     std::vector<Instruction *> UsableInsts = PP->getUsableInsts(Frt);
 
-    // We are at a dead end if we can't find an instruction to fill out this
-    // lane.
-    if (UsableInsts.empty()) {
-      Feasible = false;
-      return;
-    }
+    assert(!UsableInsts.empty());
 
     for (auto *I : UsableInsts) {
       std::unique_ptr<PartialPack> NextPP = PP->fillOneLane(I);
+      if (!isPartialPackFeasible(*NextPP, Frt))
+        continue;
       if (auto *VP = NextPP->getPack()) {
         // Finished filling out this pack; move to the next frontier.
         float Cost;
@@ -793,8 +809,6 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     // ========= 1) Selection ==========
     UCTNode *CurNode = Root;
 
-    // Whether this *path* is feasible.
-    bool Feasible = true;
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
       auto &Transitions = CurNode->transitions();
@@ -815,24 +829,13 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       if (BestT->visited())
         MaxUCTScore = ScoreTransition(0);
 
-      // Also check if all transitions are infeasible.
-      Feasible = false;
       for (unsigned i = 0; i < Transitions.size(); i++) {
         auto &T = Transitions[i];
         if (!T.visited()) {
-          Feasible = true;
           BestT = &T;
           break;
         }
 
-        // FIXME: prune infeasible branches
-        // Don't visit infeasible nodes
-        if (!T.Next->feasible()) {
-          T.Count = 0;
-          continue;
-        }
-
-        Feasible = true;
         float UCTScore = ScoreTransition(i);
         if (UCTScore > MaxUCTScore) {
           MaxUCTScore = UCTScore;
@@ -840,20 +843,8 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
         }
       }
 
-      // If all transitions are infeasible then this node is also infeasible.
-      if (!Feasible) {
-        CurNode->markInfeasible();
-        break;
-      }
-
       Path.push_back(FullTransition{CurNode, BestT});
       CurNode = BestT->Next;
-    }
-
-    // Retry when we go down an infeasible path
-    if (!Feasible) {
-      Iter--;
-      continue;
     }
 
     float LeafCost = 0;
