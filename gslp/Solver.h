@@ -275,6 +275,7 @@ public:
 
   uint64_t visitCount() const { return Count; }
   const Frontier *getFrontier() const { return Frt; }
+  const PartialPack *getPartialPack() const { return PP.get(); }
   void update(float Cost) {
     TotalCost += Cost;
 
@@ -309,19 +310,23 @@ public:
 // Interface for state evaluation
 struct FrontierEvaluator {
   virtual float evaluate(unsigned MaxNumLanes, unsigned EnumCap,
-                         const Frontier *Frt, PackEnumerationCache &EnumCache,
+                         const Frontier *Frt, const PartialPack *PP,
+                         PackEnumerationCache &EnumCache,
                          Packer *Pkr) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned, unsigned, const Frontier *, PackEnumerationCache &,
+  float evaluate(unsigned, unsigned, const Frontier *, const PartialPack *PP,
+      PackEnumerationCache &,
                  Packer *) override {
     return 0;
   }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned, unsigned, const Frontier *, PackEnumerationCache &,
+  float evaluate(unsigned, unsigned, const Frontier *, 
+      const PartialPack *PP,
+      PackEnumerationCache &,
                  Packer *) override;
 };
 
@@ -373,7 +378,7 @@ public:
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
     return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8, EnumCap,
-                               N->getFrontier(), EnumCache, Pkr);
+                               N->getFrontier(), N->getPartialPack(), EnumCache, Pkr);
   }
 };
 

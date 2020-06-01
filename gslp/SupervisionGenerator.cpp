@@ -43,7 +43,13 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
     } else {
       // Without a policy, we just follow the transition visited the most
       T = &*std::max_element(Transitions.begin(), Transitions.end(),
-                                 UCTNode::compareByVisitCount);
+
+          [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+            return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
+          }
+
+                                 //UCTNode::compareByVisitCount
+                                 );
     }
     Nodes.push_back(Node);
     Node = T->Next;
