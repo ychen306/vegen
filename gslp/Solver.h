@@ -90,6 +90,8 @@ public:
   }
   unsigned numUnresolvedScalars() const { return UnresolvedScalars.count(); }
   Packer *getPacker() const { return Pkr; }
+  bool hasFreeUser(llvm::Value *V) const;
+
 };
 
 // Hashing support for `Frontier`

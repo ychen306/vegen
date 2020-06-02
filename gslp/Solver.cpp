@@ -33,6 +33,17 @@ Instruction *Frontier::getNextFreeInst() const {
   return nullptr;
 }
 
+bool Frontier::hasFreeUser(Value *V) const {
+  for (User *U : V->users()) {
+    auto *I = dyn_cast<Instruction>(U);
+    if (!I || I->getParent() != BB)
+      continue;
+    if (isFree(I))
+      return true;
+  }
+  return false;
+}
+
 namespace {
 
 // Remove elements indexed by `ToRemove`, which is sorted in increasing order.
@@ -276,8 +287,10 @@ PartialPack::getUsableInsts(const Frontier *Frt) const {
   // We can use an instruction if it's independent from the lanes we've filled
   // so far and it's not frozen by `Frt`
   auto IsUsable = [&](Instruction *I) -> bool {
-    return Frt->isFree(I) &&
-           checkIndependence(LDA, *VPCtx, I, Elements, Depended);
+    return 
+      !Frt->hasFreeUser(I) &&
+      Frt->isFree(I) &&
+      checkIndependence(LDA, *VPCtx, I, Elements, Depended);
   };
 
   // Find out the longest access chain starting from a given instruction
@@ -711,17 +724,21 @@ Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap,
 
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
-  decltype(FrontierToNodeMap)::iterator It;
-  bool Inserted;
-  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
-  if (Inserted) {
-    It->first = Frt.get();
-    auto *NewNode = new UCTNode(Frt.get());
-    Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-    It->second = NewNode;
-    Frontiers.push_back(std::move(Frt));
-  }
-  return It->second;
+  //decltype(FrontierToNodeMap)::iterator It;
+  //bool Inserted;
+  //std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
+  //if (Inserted) {
+  //  It->first = Frt.get();
+  //  auto *NewNode = new UCTNode(Frt.get());
+  //  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+  //  It->second = NewNode;
+  //  Frontiers.push_back(std::move(Frt));
+  //}
+  //return It->second;
+  auto *NewNode = new UCTNode(Frt.get());
+  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+  Frontiers.push_back(std::move(Frt));
+  return Nodes.back().get();
 }
 
 UCTNode *UCTNodeFactory::getNode(const Frontier *Frt,
@@ -1007,6 +1024,5 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
     if (FrtScratch.getUnresolvedPacks().empty() && FrtScratch.numUnresolvedScalars() == 0)
       break;
   }
-
   return Cost;
 }
