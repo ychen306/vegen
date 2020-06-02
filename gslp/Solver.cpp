@@ -767,34 +767,46 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     // We are not working w/ any partial pack.
     auto *Focus = Frt->getNextFreeInst();
 
-    // Keep the next free inst scalar
-    float Cost;
-    auto *Next = Factory->getNode(Frt->advance(Focus, Cost, TTI));
-    Transitions.emplace_back(Next, Cost);
+    auto *BB = Frt->getBasicBlock();
+    for (auto &I : *BB) {
+      if (Frt->hasFreeUser(&I))
+        continue;
+      if (!Frt->isFree(&I))
+        continue;
+      float Cost;
+      auto *Next = Factory->getNode(Frt->advance(&I, Cost, TTI));
+      Transitions.emplace_back(Next, Cost);
+    }
 
     auto *Pkr = getPacker();
 
-    // Make a pack that contain the next free inst
-    if (auto *LI = dyn_cast<LoadInst>(Focus)) {
-      for (unsigned i = 2; i < MaxNumLanes; i++) {
-        auto NewPP = std::make_unique<PartialPack>(LI, i, Pkr);
-        if (!isPartialPackFeasible(*NewPP, Frt))
-          continue;
-        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
-      }
-    } else if (auto *SI = dyn_cast<StoreInst>(Focus)) {
-      for (unsigned i = 2; i < MaxNumLanes; i++) {
-        auto NewPP = std::make_unique<PartialPack>(SI, i, Pkr);
-        if (!isPartialPackFeasible(*NewPP, Frt))
-          continue;
-        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
-      }
-    } else {
-      for (auto *Inst : getPacker()->getInsts()) {
-        auto NewPP = std::make_unique<PartialPack>(Focus, Inst, Pkr);
-        if (!isPartialPackFeasible(*NewPP, Frt))
-          continue;
-        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+
+    for (auto &I : *BB) {
+      auto *Focus = &I;
+      if (Frt->hasFreeUser(Focus) || !Frt->isFree(Focus))
+        continue;
+      // Make a pack that contain the next free inst
+      if (auto *LI = dyn_cast<LoadInst>(Focus)) {
+        for (unsigned i = 2; i < MaxNumLanes; i++) {
+          auto NewPP = std::make_unique<PartialPack>(LI, i, Pkr);
+          if (!isPartialPackFeasible(*NewPP, Frt))
+            continue;
+          Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+        }
+      } else if (auto *SI = dyn_cast<StoreInst>(Focus)) {
+        for (unsigned i = 2; i < MaxNumLanes; i++) {
+          auto NewPP = std::make_unique<PartialPack>(SI, i, Pkr);
+          if (!isPartialPackFeasible(*NewPP, Frt))
+            continue;
+          Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+        }
+      } else {
+        for (auto *Inst : getPacker()->getInsts()) {
+          auto NewPP = std::make_unique<PartialPack>(Focus, Inst, Pkr);
+          if (!isPartialPackFeasible(*NewPP, Frt))
+            continue;
+          Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+        }
       }
     }
   } else {
