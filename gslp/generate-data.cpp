@@ -338,7 +338,11 @@ int main(int argc, char **argv) {
     else {
 
       for (auto &F : *M) {
+        if (F.getName() != "adi")
+          continue;
         for (unsigned i = 0; i < F.size(); i++) {
+          if (std::next(F.begin(), i)->getName() != "for.body895.i.i")
+            continue;
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks] {
             runGeneratorOnBasicBlock(ModulePath, FuncName, i);

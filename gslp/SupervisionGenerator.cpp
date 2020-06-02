@@ -44,17 +44,20 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
       // Without a policy, we just follow the transition visited the most
       T = &*std::max_element(Transitions.begin(), Transitions.end(),
 
-          [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
-            return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
-          }
+          //[](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+          //  return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
+          //}
 
-                                 //UCTNode::compareByVisitCount
+                                 UCTNode::compareByVisitCount
                                  );
     }
     Nodes.push_back(Node);
     Node = T->Next;
+    errs() << "~~~ " << TotalCost << ", " << T->Cost << '\n';
     TotalCost += T->Cost;
   }
+
+  errs() << "Cost of " << BB->getParent()->getName() << "/" << BB->getName() << ": " << TotalCost << '\n';
 
   // The MCTS queries the policy (if there's one) asynchronously,
   // cancel all requests if they haven't been processed yet.

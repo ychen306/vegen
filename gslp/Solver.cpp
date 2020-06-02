@@ -915,7 +915,7 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
     if (!I)
       break;
 
-    VectorPack *ExtensionVP = nullptr;
+    std::vector<VectorPack *> Extensions;
     for (auto *OP : FrtScratch.getUnresolvedPacks()) {
       unsigned NumLanes = OP->size();
       BitVector Elements(VPCtx->getNumValues());
@@ -957,10 +957,8 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
           }
           Loads.push_back(CurLoad);
         }
-        if (Consecutive) {
-          ExtensionVP = VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
-          break;
-        }
+        if (Consecutive)
+          Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
       }
 
       for (auto *Inst : Pkr->getInsts()) {
@@ -980,17 +978,15 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
         }
         
         if (Lanes.size() == NumLanes) {
-          ExtensionVP = VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI);
+          Extensions.push_back(VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
           break;
         }
       }
-
-      if (ExtensionVP)
-        break;
     }
 
-    if (ExtensionVP) {
-      Cost += FrtScratch.advanceInplace(ExtensionVP, TTI);
+    if (!Extensions.empty()) {
+      auto *VP = Extensions[rand_int(Extensions.size())];
+      Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
       Cost += FrtScratch.advanceInplace(I, TTI);
     }
