@@ -41,6 +41,11 @@ static cl::opt<unsigned> NumEpochs("epochs",
                                    cl::value_desc("Number of epochs to train"),
                                    cl::init(5));
 
+static cl::opt<std::string>
+    InitModelPath("old-model",
+                 cl::desc("Specify a file path to the initialize model"),
+                 cl::value_desc("init model path"), cl::init(""));
+
 static cl::opt<std::string> OutputModelPath("o",
                                             cl::value_desc("Output model path"),
                                             cl::init("model.pt"));
@@ -211,9 +216,13 @@ int main(int argc, char **argv) {
   static IRInstTable VecBindingTable;
   PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes,
                      NumGNNLayers);
+
   torch::Device Device(torch::kCPU);
   if (torch::cuda::is_available())
     Device = torch::Device(torch::kCUDA);
+
+  if (InitModelPath.getNumOccurrences())
+    torch::load(Model, InitModelPath, Device);
 
   Model->to(Device);
   torch::optim::Adam Optimizer(Model->parameters(),

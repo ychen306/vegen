@@ -3,8 +3,8 @@
 
 using namespace llvm;
 
-void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
-                               BasicBlock *BB) {
+void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
+                               Packer *Pkr, BasicBlock *BB) {
   UCTNodeFactory Factory;
   UCTSearch MCTS(C, W, EnumCap, ExpandThreshold, &Factory, Pkr, Policy,
                  Evaluator, Pkr->getTTI());
@@ -24,22 +24,16 @@ void SupervisionGenerator::run(PackingPolicy *Policy, Packer *Pkr,
     if (Transitions.size() == 1) {
       // Don't bother querying the policy if there's no decision to make.
       T = &*Transitions.begin();
-    } else if (Policy) {
-      // If there's a policy, just take the transition w/ the highest prob.
-      ArrayRef<float> TransitionWeight = Node->transitionWeight();
-
+    } else if (NewPolicy) {
       // In the unlikely event that we don't have the weights,
       // query the network directly.
       std::vector<float> Prob;
-      if (TransitionWeight.empty()) {
-        Policy->predict(Node, Prob);
-        TransitionWeight = Prob;
-      }
+      NewPolicy->predict(Node, Prob);
 
-      assert(TransitionWeight.size() == Transitions.size());
+      assert(Prob.size() == Transitions.size());
 
-      auto It = std::max_element(TransitionWeight.begin(), TransitionWeight.end());
-      T = &Transitions[It - TransitionWeight.begin()];
+      auto It = std::max_element(Prob.begin(), Prob.end());
+      T = &Transitions[It - Prob.begin()];
     } else {
       // Without a policy, we just follow the transition visited the most
       T = &*std::max_element(Transitions.begin(), Transitions.end(),
