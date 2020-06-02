@@ -68,12 +68,23 @@ bool Frontier::resolved(const OperandPack &OP) const {
   return true;
 }
 
+float Frontier::scalarizeFreeUsers(Value *V) {
+  float Cost = 0;
+  for (User *U : V->users()) {
+    auto *I = dyn_cast<Instruction>(U);
+    if (!I || I->getParent() != BB || !isFree(I))
+      continue;
+    Cost += advanceInplace(I, Pkr->getTTI());
+  }
+  return Cost;
+}
+
 float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
+  float Cost = scalarizeFreeUsers(I);
   freezeOneInst(VPCtx->getScalarId(I));
   advanceBBIt();
 
   // Go over unresolved packs and see if we've resolved any lanes
-  float Cost = 0;
   SmallVector<unsigned, 2> ResolvedPackIds;
   for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
     auto *OP = UnresolvedPacks[i];
@@ -162,7 +173,8 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
 float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
-  float Cost = VP->getCost();
+  float Cost = scalarizeFreeUsers(VP);
+  Cost += VP->getCost();
   Type *VecTy;
   // It doesn't make sense to get the value type of a store,
   // which returns nothing.

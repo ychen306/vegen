@@ -54,6 +54,15 @@ class Frontier {
   // Check if `OP` has been resolved.
   bool resolved(const OperandPack &OP) const;
 
+  // Mark free users of `V` as scalar and return the cost.
+  float scalarizeFreeUsers(llvm::Value *V);
+  float scalarizeFreeUsers(const VectorPack *VP){
+    float Cost = 0;
+    for (auto *V : VP->elementValues())
+      Cost += scalarizeFreeUsers(V);
+    return Cost;
+  }
+
 public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, Packer *Pkr);
