@@ -93,7 +93,7 @@ float Frontier::scalarizeFreeUsers(Value *V) {
 }
 
 float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
-  float Cost = scalarizeFreeUsers(I);
+  float Cost = 0;
   freezeOneInst(VPCtx->getScalarId(I));
   advanceBBIt();
 
@@ -186,8 +186,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
 float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
-  float Cost = scalarizeFreeUsers(VP);
-  Cost += VP->getCost();
+  float Cost = VP->getCost();
   Type *VecTy;
   // It doesn't make sense to get the value type of a store,
   // which returns nothing.
@@ -724,21 +723,21 @@ Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap,
 
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
-  //decltype(FrontierToNodeMap)::iterator It;
-  //bool Inserted;
-  //std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
-  //if (Inserted) {
-  //  It->first = Frt.get();
-  //  auto *NewNode = new UCTNode(Frt.get());
-  //  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-  //  It->second = NewNode;
-  //  Frontiers.push_back(std::move(Frt));
-  //}
-  //return It->second;
-  auto *NewNode = new UCTNode(Frt.get());
-  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-  Frontiers.push_back(std::move(Frt));
-  return Nodes.back().get();
+  decltype(FrontierToNodeMap)::iterator It;
+  bool Inserted;
+  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
+  if (Inserted) {
+    It->first = Frt.get();
+    auto *NewNode = new UCTNode(Frt.get());
+    Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+    It->second = NewNode;
+    Frontiers.push_back(std::move(Frt));
+  }
+  return It->second;
+  //auto *NewNode = new UCTNode(Frt.get());
+  //Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+  //Frontiers.push_back(std::move(Frt));
+  //return Nodes.back().get();
 }
 
 UCTNode *UCTNodeFactory::getNode(const Frontier *Frt,
@@ -781,8 +780,8 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     auto *Pkr = getPacker();
 
 
-    for (auto &I : *BB) {
-      auto *Focus = &I;
+    for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
+      auto *Focus = &*I;
       if (Frt->hasFreeUser(Focus) || !Frt->isFree(Focus))
         continue;
       // Make a pack that contain the next free inst
@@ -823,12 +822,6 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
         // Finished filling out this pack; move to the next frontier.
         float Cost;
         std::unique_ptr<Frontier> NextFrt = Frt->advance(VP, Cost, TTI);
-        // If the focus is not used, additionally make the focus scalar.
-        if (!NextPP->focusUsed()) {
-          float Cost2;
-          NextFrt = NextFrt->advance(Frt->getNextFreeInst(), Cost2, TTI);
-          Cost += Cost2;
-        }
         Transitions.emplace_back(VP, Factory->getNode(std::move(NextFrt)),
                                  Cost);
       } else {
