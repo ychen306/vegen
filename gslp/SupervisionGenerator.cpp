@@ -89,7 +89,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
 
   errs() << "Cost of " << BB->getParent()->getName() << "/" << BB->getName() << ": " << TotalCost
     << ", cost according to vector pack set: " << Packs.getCostSaving(Pkr->getTTI(), Pkr->getBFI()) 
-    << '\n\n';
+    << "\n\n";
 
   // The MCTS queries the policy (if there's one) asynchronously,
   // cancel all requests if they haven't been processed yet.
