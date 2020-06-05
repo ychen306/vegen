@@ -34,6 +34,8 @@ Instruction *Frontier::getNextFreeInst() const {
 }
 
 bool Frontier::hasFreeUser(Value *V) const {
+  if (isa<PHINode>(V))
+    return false;
   for (User *U : V->users()) {
     auto *I = dyn_cast<Instruction>(U);
     if (!I || I->getParent() != BB)
@@ -262,29 +264,30 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   return Next;
 }
 
-PartialPack::PartialPack(Instruction *Focus, unsigned NumLanes, Packer *Pkr)
-    : BB(Focus->getParent()), VPCtx(Pkr->getContext(BB)), Focus(Focus),
-      FocusUsed(false), Elements(VPCtx->getNumValues()),
+PartialPack::PartialPack(bool IsLoad, bool IsStore, BasicBlock *BB, unsigned NumLanes, Packer *Pkr)
+    : IsLoad(IsLoad), IsStore(IsStore), BB(BB),
+      VPCtx(Pkr->getContext(BB)),
+      Elements(VPCtx->getNumValues()),
       Depended(VPCtx->getNumValues()), NumLanes(NumLanes), LaneId(0),
       Producer(nullptr), LoadDAG(Pkr->getLoadDAG(BB)),
       StoreDAG(Pkr->getStoreDAG(BB)), LDA(Pkr->getLDA(BB)),
       MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
 
-PartialPack::PartialPack(Instruction *Focus, const InstBinding *Inst,
-                         Packer *Pkr)
-    : BB(Focus->getParent()), VPCtx(Pkr->getContext(BB)), Focus(Focus),
-      FocusUsed(false), Elements(VPCtx->getNumValues()),
+PartialPack::PartialPack(const InstBinding *Inst, BasicBlock *BB, Packer *Pkr)
+    : IsLoad(false), IsStore(false),
+      BB(BB), VPCtx(Pkr->getContext(BB)),
+      Elements(VPCtx->getNumValues()),
       Depended(VPCtx->getNumValues()), NumLanes(Inst->getLaneOps().size()),
       LaneId(0), Producer(Inst), LoadDAG(Pkr->getLoadDAG(BB)),
       StoreDAG(Pkr->getStoreDAG(BB)), LDA(Pkr->getLDA(BB)),
       MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
 
+
 std::vector<Instruction *>
 PartialPack::getUsableInsts(const Frontier *Frt) const {
+  assert(!isFilled());
   std::vector<Instruction *> UsableInsts;
 
-  // We can use an instruction if it's independent from the lanes we've filled
-  // so far and it's not frozen by `Frt`
   auto IsUsable = [&](Instruction *I) -> bool {
     return 
       !Frt->hasFreeUser(I) &&
@@ -292,29 +295,6 @@ PartialPack::getUsableInsts(const Frontier *Frt) const {
       checkIndependence(LDA, *VPCtx, I, Elements, Depended);
   };
 
-  // Find out the longest access chain starting from a given instruction
-  DenseMap<Instruction *, unsigned> ChainLengths;
-  std::function<unsigned(Instruction *, const ConsecutiveAccessDAG &)>
-      GetMaxChainLength =
-          [&](Instruction *I,
-              const ConsecutiveAccessDAG &AccessDAG) -> unsigned {
-    if (ChainLengths.count(I))
-      return ChainLengths[I];
-
-    auto It = AccessDAG.find(I);
-    if (It == AccessDAG.end())
-      return (ChainLengths[I] = 1);
-
-    unsigned Longest = 0;
-    for (auto *Next : It->second) {
-      unsigned Len = GetMaxChainLength(Next, AccessDAG);
-      Longest = std::max(Longest, Len);
-    }
-    return (ChainLengths[I] = Longest);
-  };
-
-  bool IsLoad = isa<LoadInst>(Focus);
-  bool IsStore = isa<StoreInst>(Focus);
   if (IsLoad || IsStore) {
     const ConsecutiveAccessDAG *AccessDAG;
     if (IsLoad)
@@ -326,18 +306,18 @@ PartialPack::getUsableInsts(const Frontier *Frt) const {
     // fill the enough lanes.
     if (LaneId == 0) {
       for (auto &AccessAndNext : *AccessDAG) {
-        Instruction *Access = AccessAndNext.first;
-        if (GetMaxChainLength(Access, *AccessDAG) >= NumLanes &&
-            IsUsable(Access))
+        auto *Access = AccessAndNext.first;
+        if (IsUsable(Access))
           UsableInsts.push_back(Access);
       }
     } else {
       auto *LastAccess = FilledLanes[LaneId - 1];
       auto It = AccessDAG->find(LastAccess);
-      if (It == AccessDAG->end())
+      if (It == AccessDAG->end()) {
         return {};
+      }
       for (auto *NextAccess : It->second) {
-        if (Frt->isFree(NextAccess) && IsUsable(NextAccess))
+        if (IsUsable(NextAccess))
           UsableInsts.push_back(NextAccess);
       }
     }
@@ -355,8 +335,7 @@ PartialPack::getUsableInsts(const Frontier *Frt) const {
   return UsableInsts;
 }
 
-std::unique_ptr<PartialPack>
-PartialPack::fillOneLane(llvm::Instruction *I) const {
+std::unique_ptr<PartialPack> PartialPack::fillOneLane(Instruction *I) const {
   auto Next = std::make_unique<PartialPack>(*this);
   Next->Elements.set(VPCtx->getScalarId(I));
   Next->Depended |= LDA.getDepended(I);
@@ -370,8 +349,7 @@ PartialPack::fillOneLane(llvm::Instruction *I) const {
     assert(!Matches.empty());
     Next->Matches.push_back(&Matches[0]);
   }
-
-  Next->FocusUsed |= I == Focus;
+  Next->FilledLanes.push_back(I);
   ++Next->LaneId;
 
   return Next;
@@ -381,9 +359,9 @@ VectorPack *PartialPack::getPack() const {
   if (Elements.count() != NumLanes)
     return nullptr;
 
-  if (isa<LoadInst>(Focus))
+  if (IsLoad) {
     return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
-  else if (isa<StoreInst>(Focus))
+  } else if (IsStore)
     return VPCtx->createStorePack(Stores, Elements, Depended, TTI);
   return VPCtx->createVectorPack(Matches, Elements, Depended, Producer, TTI);
 }
@@ -751,8 +729,9 @@ static bool isPartialPackFeasible(const PartialPack &PP, const Frontier *Frt) {
     return true;
   for (auto *I : PP.getUsableInsts(Frt)) {
     std::unique_ptr<PartialPack> PPExtended = PP.fillOneLane(I);
-    if (isPartialPackFeasible(*PPExtended, Frt))
+    if (isPartialPackFeasible(*PPExtended, Frt)) {
       return true;
+    }
   }
   return false;
 }
@@ -763,14 +742,10 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
   assert(Transitions.empty() && "expanded already");
 
   if (!PP) {
-    // We are not working w/ any partial pack.
-    auto *Focus = Frt->getNextFreeInst();
-
+    // We are not working w/ any partial pack, start partial packs!
     auto *BB = Frt->getBasicBlock();
     for (auto &I : *BB) {
-      if (Frt->hasFreeUser(&I))
-        continue;
-      if (!Frt->isFree(&I))
+      if (!Frt->isFree(&I) || Frt->hasFreeUser(&I))
         continue;
       float Cost;
       auto *Next = Factory->getNode(Frt->advance(&I, Cost, TTI));
@@ -780,32 +755,22 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     auto *Pkr = getPacker();
 
 
-    for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
-      auto *Focus = &*I;
-      if (Frt->hasFreeUser(Focus) || !Frt->isFree(Focus))
-        continue;
-      // Make a pack that contain the next free inst
-      if (auto *LI = dyn_cast<LoadInst>(Focus)) {
-        for (unsigned i = 2; i < MaxNumLanes; i++) {
-          auto NewPP = std::make_unique<PartialPack>(LI, i, Pkr);
-          if (!isPartialPackFeasible(*NewPP, Frt))
-            continue;
-          Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
-        }
-      } else if (auto *SI = dyn_cast<StoreInst>(Focus)) {
-        for (unsigned i = 2; i < MaxNumLanes; i++) {
-          auto NewPP = std::make_unique<PartialPack>(SI, i, Pkr);
-          if (!isPartialPackFeasible(*NewPP, Frt))
-            continue;
-          Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
-        }
-      } else {
-        for (auto *Inst : getPacker()->getInsts()) {
-          auto NewPP = std::make_unique<PartialPack>(Focus, Inst, Pkr);
-          if (!isPartialPackFeasible(*NewPP, Frt))
-            continue;
-          Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
-        }
+    static std::vector<unsigned> VL { 2, 4, 8 };
+    // Make a pack that contain the next free inst
+    for (unsigned i : VL) {
+      auto NewPP = std::make_unique<PartialPack>(true, false, BB, i, Pkr);
+      if (isPartialPackFeasible(*NewPP, Frt))
+        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+    }
+    for (unsigned i : VL) {
+      auto NewPP = std::make_unique<PartialPack>(false, true, BB, i, Pkr);
+      if (isPartialPackFeasible(*NewPP, Frt))
+        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
+    }
+    for (auto *Inst : getPacker()->getInsts()) {
+      auto NewPP = std::make_unique<PartialPack>(Inst, BB, Pkr);
+      if (isPartialPackFeasible(*NewPP, Frt)) {
+        Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
       }
     }
   } else {
@@ -816,8 +781,9 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
 
     for (auto *I : UsableInsts) {
       std::unique_ptr<PartialPack> NextPP = PP->fillOneLane(I);
-      if (!isPartialPackFeasible(*NextPP, Frt))
+      if (!isPartialPackFeasible(*NextPP, Frt)) {
         continue;
+      }
       if (auto *VP = NextPP->getPack()) {
         // Finished filling out this pack; move to the next frontier.
         float Cost;
@@ -839,7 +805,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
   };
 
   std::vector<FullTransition> Path;
-  for (int Iter = 0; Iter < (int)NumIters; Iter++) {
+  for (unsigned Iter = 0; Iter < NumIters; Iter++) {
     Path.clear();
 
     // ========= 1) Selection ==========
@@ -947,27 +913,24 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
 
 
   for (;;) {
-    auto *I = FrtScratch.getNextFreeInst();
-    if (!I)
-      break;
-
     std::vector<VectorPack *> Extensions;
     for (auto *OP : FrtScratch.getUnresolvedPacks()) {
       unsigned NumLanes = OP->size();
       BitVector Elements(VPCtx->getNumValues());
       BitVector Depended(VPCtx->getNumValues());
-      bool Extendable = true;
+      bool Extensible = true;
       bool AllLoads = true;
       for (unsigned i = 0; i < NumLanes; i++) {
         auto *V = (*OP)[i];
         auto *I = dyn_cast<Instruction>(V);
-        if (!I || I->getParent() != BB || !FrtScratch.isFree(I)) {
-          Extendable = false;
+        if (!I || I->getParent() != BB ||
+            !FrtScratch.isFree(I) || FrtScratch.hasFreeUser(I)) {
+          Extensible = false;
           break;
         }
         unsigned InstId = VPCtx->getScalarId(I);
         if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended)) {
-          Extendable = false;
+          Extensible = false;
           break;
         }
         if (!isa<LoadInst>(I))
@@ -976,7 +939,7 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
         Depended |= LDA.getDepended(I);
       }
 
-      if (!Extendable)
+      if (!Extensible)
         continue;
 
       if (AllLoads) {
@@ -1024,7 +987,12 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
       auto *VP = Extensions[rand_int(Extensions.size())];
       Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
-      Cost += FrtScratch.advanceInplace(I, TTI);
+      for (auto &I : *BB) {
+        if (FrtScratch.isFree(&I) && !FrtScratch.hasFreeUser(&I)) {
+          Cost += FrtScratch.advanceInplace(&I, TTI);
+          break;
+        }
+      }
     }
     if (FrtScratch.getUnresolvedPacks().empty() && FrtScratch.numUnresolvedScalars() == 0)
       break;

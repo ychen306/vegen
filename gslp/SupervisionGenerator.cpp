@@ -1,4 +1,5 @@
 #include "SupervisionGenerator.h"
+#include "VectorPackSet.h"
 #include "Util.h"
 
 using namespace llvm;
@@ -13,7 +14,14 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
 
   UCTNode *Node = Root;
   std::vector<UCTNode *> Nodes;
+
+  VectorPackSet Packs(BB->getParent());
+
   float TotalCost = 0;
+  outs() << BB->getModule()->getName() 
+    << '/' << BB->getParent()->getName()
+    << '/' << BB->getName() << ' ';
+
   while (!Node->isTerminal()) {
     MCTS.run(Node, NumIters);
     assert(Node->expanded());
@@ -45,11 +53,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
                                  UCTNode::compareByVisitCount
                                  );
     }
-    Nodes.push_back(Node);
-    Node = T->Next;
-    errs() << "~~~ " << TotalCost << ", " << T->Cost << '\n';
-    TotalCost += T->Cost;
-
+#if 1
     errs() << "====================================="
       << "\n\t t cost: " << T->transitionCost() 
       << "\n\t num transitions: " << Transitions.size()
@@ -63,11 +67,29 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
       << "\n\t max cost : " << Node->maxCost()
       << "\n\t avg cost : " << Node->avgCost()
       << '\n';
+    if (T->VP) {
+      errs() << "ADDING PACK " << *T->VP << '\n';
+      Packs.tryAdd(T->VP);
+    }
+#endif
+
+    unsigned NumPacks = 0;
+    for (auto &T : Transitions)
+      if (T.VP || T.Next->getPartialPack() || Node->getPartialPack())
+        NumPacks++;
+    outs() << NumPacks << '/' << Transitions.size() << ' ';
+    Nodes.push_back(Node);
+    Node = T->Next;
+    errs() << "~~~ " << TotalCost << ", " << T->Cost << '\n';
+    TotalCost += T->Cost;
 
   }
+  outs() << '\n';
 
 
-  errs() << "Cost of " << BB->getParent()->getName() << "/" << BB->getName() << ": " << TotalCost << '\n';
+  errs() << "Cost of " << BB->getParent()->getName() << "/" << BB->getName() << ": " << TotalCost
+    << ", cost according to vector pack set: " << Packs.getCostSaving(Pkr->getTTI(), Pkr->getBFI()) 
+    << '\n\n';
 
   // The MCTS queries the policy (if there's one) asynchronously,
   // cancel all requests if they haven't been processed yet.

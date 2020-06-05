@@ -357,6 +357,7 @@ int main(int argc, char **argv) {
   std::condition_variable StatCond;
   std::atomic<int64_t> NumProcessedBlocks(0);
 
+
   unsigned NumBlocks = 0;
   unsigned Scanned = 0;
   for (auto &FilePath : ModulePaths) {
@@ -368,10 +369,10 @@ int main(int argc, char **argv) {
     else {
 
       for (auto &F : *M) {
-        //if (F.getName() != "binvcrhs")
+        //if (F.getName() != "adi")
         //  continue;
         for (unsigned i = 0; i < F.size(); i++) {
-          //if (std::next(F.begin(), i)->getName() != "for.body895.i.i")
+          //if (std::next(F.begin(), i)->getName() != "for.body7.i.i")
           //  continue;
           Threads.async([ModulePath = FilePath, FuncName = F.getName().str(), i,
                          &StatLock, &StatCond, &NumProcessedBlocks] {

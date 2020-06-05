@@ -60,6 +60,7 @@ public:
   }
   LocalDependenceAnalysis &getLDA(llvm::BasicBlock *BB) { return *LDAs[BB]; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
+  llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
 
   llvm::Function *getFunction() const { return F; }
 };

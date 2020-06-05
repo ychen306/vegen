@@ -56,7 +56,7 @@ class Frontier {
 
   // Mark free users of `V` as scalar and return the cost.
   float scalarizeFreeUsers(llvm::Value *V);
-  float scalarizeFreeUsers(const VectorPack *VP){
+  float scalarizeFreeUsers(const VectorPack *VP) {
     float Cost = 0;
     for (auto *V : VP->elementValues())
       Cost += scalarizeFreeUsers(V);
@@ -91,7 +91,6 @@ public:
   unsigned numUnresolvedScalars() const { return UnresolvedScalars.count(); }
   Packer *getPacker() const { return Pkr; }
   bool hasFreeUser(llvm::Value *V) const;
-
 };
 
 // Hashing support for `Frontier`
@@ -135,10 +134,10 @@ struct FrontierHashInfo {
 
 // Represent a partial vector pack that we are trying to build up
 class PartialPack {
+  bool IsLoad, IsStore;
   llvm::BasicBlock *BB;
   VectorPackContext *VPCtx;
   llvm::Instruction *Focus;
-  bool FocusUsed;
 
   llvm::BitVector Elements;
   llvm::BitVector Depended;
@@ -159,22 +158,24 @@ class PartialPack {
   std::vector<llvm::StoreInst *> Stores;
 
 public:
+  PartialPack(const PartialPack &) = default;
+
   // Start a partial load/store pack
-  PartialPack(llvm::Instruction *Focus, unsigned NumLanes, Packer *);
+  PartialPack(bool, bool, llvm::BasicBlock *, unsigned NumLanes, Packer *);
 
   // Start a general pack
-  PartialPack(llvm::Instruction *Focus, const InstBinding *, Packer *);
+  PartialPack(const InstBinding *, llvm::BasicBlock *, Packer *);
 
   unsigned getNumLanes() const { return NumLanes; }
   // Return the lanes we've filled out so far
-  llvm::ArrayRef<llvm::Instruction *> getFilledLanes() const;
+  llvm::ArrayRef<llvm::Instruction *> getFilledLanes() const {
+    return FilledLanes;
+  }
 
   // Return the list of instructions we can place at the current lane.
   std::vector<llvm::Instruction *> getUsableInsts(const Frontier *) const;
 
   std::unique_ptr<PartialPack> fillOneLane(llvm::Instruction *) const;
-
-  bool focusUsed() const { return FocusUsed; }
 
   // Return a filled vector pack if we are done.
   VectorPack *getPack() const;
@@ -219,7 +220,6 @@ class UCTNode {
   }
 
 public:
-
   // The next action state pair
   struct Transition {
     bool IsScalar;
@@ -260,10 +260,11 @@ private:
   std::vector<Transition> Transitions;
 
   UCTNode(const Frontier *Frt, std::unique_ptr<PartialPack> PP)
-    : Frt(Frt), PP(std::move(PP)), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
+      : Frt(Frt), PP(std::move(PP)), TotalCost(0), Count(0),
+        TransitionWeight(nullptr) {}
 
   UCTNode(const Frontier *Frt)
-    : Frt(Frt), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
+      : Frt(Frt), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
 
 public:
   float minCost() const { return CostRange->Min; }
@@ -322,23 +323,19 @@ public:
 struct FrontierEvaluator {
   virtual float evaluate(unsigned MaxNumLanes, unsigned EnumCap,
                          const Frontier *Frt, const PartialPack *PP,
-                         PackEnumerationCache &EnumCache,
-                         Packer *Pkr) = 0;
+                         PackEnumerationCache &EnumCache, Packer *Pkr) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
   float evaluate(unsigned, unsigned, const Frontier *, const PartialPack *PP,
-      PackEnumerationCache &,
-                 Packer *) override {
+                 PackEnumerationCache &, Packer *) override {
     return 0;
   }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned, unsigned, const Frontier *, 
-      const PartialPack *PP,
-      PackEnumerationCache &,
-                 Packer *) override;
+  float evaluate(unsigned, unsigned, const Frontier *, const PartialPack *PP,
+                 PackEnumerationCache &, Packer *) override;
 };
 
 // Interface for asynchronous policy prediction.
@@ -389,7 +386,8 @@ public:
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
     return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8, EnumCap,
-                               N->getFrontier(), N->getPartialPack(), EnumCache, Pkr);
+                               N->getFrontier(), N->getPartialPack(), EnumCache,
+                               Pkr);
   }
 };
 
