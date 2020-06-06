@@ -132,7 +132,6 @@ struct FrontierHashInfo {
   }
 };
 
-// Represent a partial vector pack that we are trying to build up
 class PartialPack {
   bool IsLoad, IsStore;
   llvm::BasicBlock *BB;

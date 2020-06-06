@@ -182,7 +182,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 4;
+  return 2;
 }
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
@@ -712,10 +712,10 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
     Frontiers.push_back(std::move(Frt));
   }
   return It->second;
-  //auto *NewNode = new UCTNode(Frt.get());
-  //Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-  //Frontiers.push_back(std::move(Frt));
-  //return Nodes.back().get();
+  // auto *NewNode = new UCTNode(Frt.get());
+  // Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+  // Frontiers.push_back(std::move(Frt));
+  // return Nodes.back().get();
 }
 
 UCTNode *UCTNodeFactory::getNode(const Frontier *Frt,
@@ -736,10 +736,94 @@ static bool isPartialPackFeasible(const PartialPack &PP, const Frontier *Frt) {
   return false;
 }
 
+static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
+  auto *Pkr = Frt.getPacker();
+  auto *BB = Frt.getBasicBlock();
+  auto &LDA = Pkr->getLDA(BB);
+  auto *VPCtx = Pkr->getContext(BB);
+  auto *TTI = Pkr->getTTI();
+  auto &LoadDAG = Pkr->getLoadDAG(BB);
+  auto &MM = Pkr->getMatchManager(BB);
+
+  std::vector<const VectorPack *> Extensions;
+  for (auto *OP : Frt.getUnresolvedPacks()) {
+    unsigned NumLanes = OP->size();
+    BitVector Elements(VPCtx->getNumValues());
+    BitVector Depended(VPCtx->getNumValues());
+    bool Extensible = true;
+    bool AllLoads = true;
+    for (unsigned i = 0; i < NumLanes; i++) {
+      auto *V = (*OP)[i];
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I || I->getParent() != BB || !Frt.isFree(I) || Frt.hasFreeUser(I)) {
+        Extensible = false;
+        break;
+      }
+      unsigned InstId = VPCtx->getScalarId(I);
+      if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended)) {
+        Extensible = false;
+        break;
+      }
+      if (!isa<LoadInst>(I))
+        AllLoads = false;
+      Elements.set(InstId);
+      Depended |= LDA.getDepended(I);
+    }
+
+    if (!Extensible)
+      continue;
+
+    if (AllLoads) {
+      // Simply pack all of the loads if they are consecutive.
+      bool Consecutive = true;
+      std::vector<LoadInst *> Loads{cast<LoadInst>((*OP)[0])};
+      for (unsigned i = 1; i < NumLanes; i++) {
+        auto *CurLoad = cast<LoadInst>((*OP)[i]);
+        auto *PrevLoad = cast<LoadInst>((*OP)[i - 1]);
+        auto It = LoadDAG.find(PrevLoad);
+        if (It == LoadDAG.end() || !It->second.count(CurLoad)) {
+          Consecutive = false;
+          break;
+        }
+        Loads.push_back(CurLoad);
+      }
+      if (Consecutive)
+        Extensions.push_back(
+            VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+      continue;
+    }
+    for (auto *Inst : Pkr->getInsts()) {
+      ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+      if (LaneOps.size() != NumLanes)
+        continue;
+
+      std::vector<const Operation::Match *> Lanes;
+      for (unsigned i = 0; i < NumLanes; i++) {
+        auto *I = cast<Instruction>((*OP)[i]);
+        ArrayRef<Operation::Match> Matches =
+            MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
+        if (Matches.empty())
+          break;
+        // FIXME: consider multiple matches for the same operation
+        Lanes.push_back(&Matches[0]);
+      }
+
+      if (Lanes.size() == NumLanes) {
+        Extensions.push_back(
+            VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+        break;
+      }
+    }
+  }
+  return Extensions;
+}
+
+
 // Fill out the children node
 void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
                      llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
+  auto *Pkr = getPacker();
 
   if (!PP) {
     // We are not working w/ any partial pack, start partial packs!
@@ -752,10 +836,15 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
       Transitions.emplace_back(Next, Cost);
     }
 
-    auto *Pkr = getPacker();
+    // Also consider the extension packs
+    std::vector<const VectorPack *> Extensions = findExtensionPacks(*Frt);
+    for (auto *VP : Extensions) {
+      float Cost;
+      auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
+      Transitions.emplace_back(VP, Next, Cost);
+    }
 
-
-    static std::vector<unsigned> VL { 2, 4, 8 };
+    static std::vector<unsigned> VL{2, 4, 8};
     // Make a pack that contain the next free inst
     for (unsigned i : VL) {
       auto NewPP = std::make_unique<PartialPack>(true, false, BB, i, Pkr);
@@ -883,11 +972,7 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
   BasicBlock *BB = Frt->getBasicBlock();
   float Cost = 0;
   auto *TTI = Pkr->getTTI();
-  auto &MM = Pkr->getMatchManager(BB);
-  auto *VPCtx = Pkr->getContext(BB);
-  auto &LDA = Pkr->getLDA(BB);
-  auto &LoadDAG = Pkr->getLoadDAG(BB);
-  
+
   // If we are still filling out a partial pack,
   // use do a random rollout to fill out the partial pack.
   if (PP) {
@@ -911,77 +996,8 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
     }
   }
 
-
   for (;;) {
-    std::vector<VectorPack *> Extensions;
-    for (auto *OP : FrtScratch.getUnresolvedPacks()) {
-      unsigned NumLanes = OP->size();
-      BitVector Elements(VPCtx->getNumValues());
-      BitVector Depended(VPCtx->getNumValues());
-      bool Extensible = true;
-      bool AllLoads = true;
-      for (unsigned i = 0; i < NumLanes; i++) {
-        auto *V = (*OP)[i];
-        auto *I = dyn_cast<Instruction>(V);
-        if (!I || I->getParent() != BB ||
-            !FrtScratch.isFree(I) || FrtScratch.hasFreeUser(I)) {
-          Extensible = false;
-          break;
-        }
-        unsigned InstId = VPCtx->getScalarId(I);
-        if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended)) {
-          Extensible = false;
-          break;
-        }
-        if (!isa<LoadInst>(I))
-          AllLoads = false;
-        Elements.set(InstId);
-        Depended |= LDA.getDepended(I);
-      }
-
-      if (!Extensible)
-        continue;
-
-      if (AllLoads) {
-        // Simply pack all of the loads if they are consecutive.
-        bool Consecutive = true;
-        std::vector<LoadInst *> Loads { cast<LoadInst>((*OP)[0]) };
-        for (unsigned i = 1; i < NumLanes; i++) {
-          auto *CurLoad = cast<LoadInst>((*OP)[i]);
-          auto *PrevLoad = cast<LoadInst>((*OP)[i-1]);
-          auto It = LoadDAG.find(PrevLoad);
-          if (It == LoadDAG.end() || !It->second.count(CurLoad)) {
-            Consecutive = false;
-            break;
-          }
-          Loads.push_back(CurLoad);
-        }
-        if (Consecutive)
-          Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
-      }
-
-      for (auto *Inst : Pkr->getInsts()) {
-        ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
-        if (LaneOps.size() != NumLanes)
-          continue;
-
-        std::vector<const Operation::Match *> Lanes;
-        for (unsigned i = 0; i < NumLanes; i++) {
-          auto *I = cast<Instruction>((*OP)[i]);
-           ArrayRef<Operation::Match> Matches =
-             MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
-           if (Matches.empty())
-             break;
-           // FIXME: consider multiple matches for the same operation
-           Lanes.push_back(&Matches[0]);
-        }
-        
-        if (Lanes.size() == NumLanes) {
-          Extensions.push_back(VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
-          break;
-        }
-      }
-    }
+    std::vector<const VectorPack *> Extensions = findExtensionPacks(FrtScratch);
 
     if (!Extensions.empty()) {
       auto *VP = Extensions[rand_int(Extensions.size())];
@@ -994,7 +1010,8 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
         }
       }
     }
-    if (FrtScratch.getUnresolvedPacks().empty() && FrtScratch.numUnresolvedScalars() == 0)
+    if (FrtScratch.getUnresolvedPacks().empty() &&
+        FrtScratch.numUnresolvedScalars() == 0)
       break;
   }
   return Cost;

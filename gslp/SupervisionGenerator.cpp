@@ -52,6 +52,12 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
 
                                  UCTNode::compareByVisitCount
                                  );
+      //T = &*std::max_element(Transitions.begin(), Transitions.end(),
+
+      //    [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+      //      return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
+      //    }
+      //                           );
     }
 #if 1
     errs() << "====================================="
@@ -66,6 +72,8 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
       << "\n\t min cost : " << Node->minCost()
       << "\n\t max cost : " << Node->maxCost()
       << "\n\t avg cost : " << Node->avgCost()
+      << "\n\t num unresolved packs : " << Node->getFrontier()->getUnresolvedPacks().size()
+      << "\n\t num unresolved scalars : " << Node->getFrontier()->numUnresolvedScalars()
       << '\n';
     if (T->VP) {
       errs() << "ADDING PACK " << *T->VP << '\n';
@@ -78,6 +86,7 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
       if (T.VP || T.Next->getPartialPack() || Node->getPartialPack())
         NumPacks++;
     outs() << NumPacks << '/' << Transitions.size() << ' ';
+    errs() << NumPacks << '/' << Transitions.size() << ' ';
     Nodes.push_back(Node);
     Node = T->Next;
     errs() << "~~~ " << TotalCost << ", " << T->Cost << '\n';
