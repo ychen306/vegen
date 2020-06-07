@@ -77,8 +77,9 @@ public:
   unsigned numUnresolvedScalars() const { return UnresolvedScalars.count(); }
   Packer *getPacker() const { return Pkr; }
   bool isUsable(llvm::Instruction *I) const {
+    // FIXME: deal with PHINode properly
     if (llvm::isa<llvm::PHINode>(I))
-      return true;
+      return isFree(I);
     return UsableInsts.test(VPCtx->getScalarId(I));
   }
 

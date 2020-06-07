@@ -29,7 +29,7 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
       }
     }
 
-    if (AllUsersResolved || isa<PHINode>(&I))
+    if (AllUsersResolved || !isa<PHINode>(&I))
       UsableInsts.set(InstId);
   }
 }
@@ -66,6 +66,9 @@ void Frontier::freezeOneInst(Instruction *I) {
       continue;
 
     bool Usable = true;
+    if (!isFree(OI))
+      continue;
+
     // An instruction is usable if all of its users are frozen
     for (User *U : OI->users()) {
       auto *UserInst = dyn_cast<Instruction>(U);
