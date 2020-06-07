@@ -13,17 +13,24 @@ static cl::opt<unsigned> MaxSearchDist(
 Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)), BBIt(BB->rbegin()),
       UnresolvedScalars(VPCtx->getNumValues(), false),
-      FreeInsts(VPCtx->getNumValues(), true) {
+      FreeInsts(VPCtx->getNumValues(), true),
+      UsableInsts(VPCtx->getNumValues(), false) {
   // Find external uses of any instruction `I` in `BB`
   // and mark `I` as an unresolved scalar.
   for (auto &I : *BB) {
+    bool AllUsersResolved = true;
+    unsigned InstId = VPCtx->getScalarId(&I);
     for (User *U : I.users()) {
       auto UserInst = dyn_cast<Instruction>(U);
       if (UserInst && UserInst->getParent() != BB) {
-        UnresolvedScalars.set(VPCtx->getScalarId(&I));
-        break;
+        UnresolvedScalars.set(InstId);
+      } else if (UserInst) {
+        AllUsersResolved = false;
       }
     }
+
+    if (AllUsersResolved || isa<PHINode>(&I))
+      UsableInsts.set(InstId);
   }
 }
 
@@ -31,19 +38,6 @@ Instruction *Frontier::getNextFreeInst() const {
   if (BBIt != BB->rend())
     return &*BBIt;
   return nullptr;
-}
-
-bool Frontier::hasFreeUser(Value *V) const {
-  if (isa<PHINode>(V))
-    return false;
-  for (User *U : V->users()) {
-    auto *I = dyn_cast<Instruction>(U);
-    if (!I || I->getParent() != BB)
-      continue;
-    if (isFree(I))
-      return true;
-  }
-  return false;
 }
 
 namespace {
@@ -59,9 +53,30 @@ void remove(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
 
 } // namespace
 
-void Frontier::freezeOneInst(unsigned InstId) {
+void Frontier::freezeOneInst(Instruction *I) {
+  unsigned InstId = VPCtx->getScalarId(I);
   FreeInsts.reset(InstId);
   UnresolvedScalars.reset(InstId);
+  UsableInsts.reset(InstId);
+
+  // See if freezing `I` makes any of its operands *usable*
+  for (Value *Operand : I->operands()) {
+    auto OI = dyn_cast<Instruction>(Operand);
+    if (!OI || OI->getParent() != BB)
+      continue;
+
+    bool Usable = true;
+    // An instruction is usable if all of its users are frozen
+    for (User *U : OI->users()) {
+      auto *UserInst = dyn_cast<Instruction>(U);
+      if (UserInst && UserInst->getParent() == BB && isFree(UserInst)) {
+        Usable = false;
+        break;
+      }
+    }
+    if (Usable)
+      UsableInsts.set(VPCtx->getScalarId(OI));
+  }
 }
 
 void Frontier::advanceBBIt() {
@@ -81,22 +96,9 @@ bool Frontier::resolved(const OperandPack &OP) const {
   return true;
 }
 
-float Frontier::scalarizeFreeUsers(Value *V) {
-  if (isa<PHINode>(V))
-    return 0;
-  float Cost = 0;
-  for (User *U : V->users()) {
-    auto *I = dyn_cast<Instruction>(U);
-    if (!I || I->getParent() != BB || !isFree(I))
-      continue;
-    Cost += advanceInplace(I, Pkr->getTTI());
-  }
-  return Cost;
-}
-
 float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
   float Cost = 0;
-  freezeOneInst(VPCtx->getScalarId(I));
+  freezeOneInst(I);
   advanceBBIt();
 
   // Go over unresolved packs and see if we've resolved any lanes
@@ -182,7 +184,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 2;
+  return 4;
 }
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
@@ -206,7 +208,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
       Cost +=
           TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
 
-    freezeOneInst(InstId);
+    freezeOneInst(I);
   }
   advanceBBIt();
 
@@ -289,9 +291,7 @@ PartialPack::getUsableInsts(const Frontier *Frt) const {
   std::vector<Instruction *> UsableInsts;
 
   auto IsUsable = [&](Instruction *I) -> bool {
-    return 
-      !Frt->hasFreeUser(I) &&
-      Frt->isFree(I) &&
+    return Frt->isUsable(I) &&
       checkIndependence(LDA, *VPCtx, I, Elements, Depended);
   };
 
@@ -366,339 +366,6 @@ VectorPack *PartialPack::getPack() const {
   return VPCtx->createVectorPack(Matches, Elements, Depended, Producer, TTI);
 }
 
-class PackEnumerator {
-  unsigned MaxNumLanes;
-  unsigned EnumCap;
-  const VectorPackContext &VPCtx;
-  ArrayRef<InstBinding *> Insts;
-  const LocalDependenceAnalysis &LDA;
-  const ConsecutiveAccessDAG &LoadDAG;
-  const ConsecutiveAccessDAG &StoreDAG;
-  const MatchManager &MM;
-  TargetTransformInfo *TTI;
-
-  bool isUsable(Instruction *I, Instruction *Focus) const {
-    return (I == Focus || I->comesBefore(Focus)) &&
-           VPCtx.getScalarId(Focus) - VPCtx.getScalarId(I) <= MaxSearchDist;
-  }
-
-  void
-  enumeratePacksRec(Instruction *Focus, const InstBinding *Inst,
-                    const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
-                    std::vector<const VectorPack *> &Enumerated,
-                    BitVector &Elements, BitVector &Depended,
-                    std::vector<const Operation::Match *> &Lanes) const;
-
-  // Find the set of memory accesses that can lead to `FocusAccess`
-  // by following the store or load chain
-  SmallPtrSet<Instruction *, 16>
-  findSeedMemAccesses(Instruction *FocusAccess) const;
-
-  template <typename AccessType>
-  VectorPack *createMemAccessPack(ArrayRef<AccessType *> Accesses,
-                                  BitVector &Elements, BitVector &Depended,
-                                  TargetTransformInfo *) const {
-    return nullptr;
-  }
-
-  void enumeratePacks(Instruction *Focus,
-                      std::vector<const VectorPack *> &Enumerated) const;
-
-  template <typename AccessType>
-  void enumerateMemAccesses(AccessType *LI,
-                            std::vector<const VectorPack *> &Enumerated) const;
-
-public:
-  PackEnumerator(unsigned MaxNumLanes, unsigned EnumCap, BasicBlock *BB,
-                 Packer *Pkr)
-      : MaxNumLanes(MaxNumLanes), EnumCap(EnumCap), VPCtx(*Pkr->getContext(BB)),
-        Insts(Pkr->getInsts()), LDA(Pkr->getLDA(BB)),
-        LoadDAG(Pkr->getLoadDAG(BB)), StoreDAG(Pkr->getStoreDAG(BB)),
-        MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
-
-  void enumerate(Instruction *Focus,
-                 std::vector<const VectorPack *> &Enumerated) const {
-    if (auto *LI = dyn_cast<LoadInst>(Focus))
-      enumerateMemAccesses(LI, Enumerated);
-    else if (auto *SI = dyn_cast<StoreInst>(Focus))
-      enumerateMemAccesses(SI, Enumerated);
-    else {
-      enumeratePacks(Focus, Enumerated);
-    }
-  }
-};
-
-void PackEnumerator::enumeratePacksRec(
-    Instruction *Focus, const InstBinding *Inst,
-    const std::vector<ArrayRef<Operation::Match>> &LaneMatches,
-    std::vector<const VectorPack *> &Enumerated, BitVector &Elements,
-    BitVector &Depended, std::vector<const Operation::Match *> &Lanes) const {
-  // The lane we are enumerating
-  const unsigned LaneId = Lanes.size();
-
-  auto BackupElements = Elements;
-  auto BackupDepended = Depended;
-
-  // Try out all matched operation for this lane.
-  Lanes.push_back(nullptr);
-  for (auto &Match : LaneMatches[LaneId]) {
-    unsigned OutId = VPCtx.getScalarId(Match.Output);
-    // Make sure we are allowed to use the matched instruction
-    if (!isUsable(cast<Instruction>(Match.Output), Focus))
-      continue;
-    // Make sure adding this `Match` doesn't violate any dependence constraint
-    bool Independent = checkIndependence(
-        LDA, VPCtx, cast<Instruction>(Match.Output), Elements, Depended);
-    if (!Independent)
-      continue;
-
-    // Select this match.
-    Elements.set(OutId);
-    Depended |= LDA.getDepended(cast<Instruction>(Match.Output));
-    Lanes.back() = &Match;
-
-    if (LaneId < LaneMatches.size() - 1) {
-      // Recursivly fill out the next lane
-      enumeratePacksRec(Focus, Inst, LaneMatches, Enumerated, Elements,
-                        Depended, Lanes);
-    } else {
-      // We've filled the last lane
-      Enumerated.push_back(
-          VPCtx.createVectorPack(Lanes, Elements, Depended, Inst, TTI));
-    }
-
-    // Revert the change before we try out the next match
-    Elements = BackupElements;
-    Depended = BackupDepended;
-    if (Enumerated.size() >= EnumCap)
-      break;
-  }
-  Lanes.pop_back();
-}
-
-void PackEnumerator::enumeratePacks(
-    Instruction *Focus, std::vector<const VectorPack *> &Enumerated) const {
-  for (auto *Inst : Insts) {
-    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
-    unsigned NumLanes = LaneOps.size();
-    if (NumLanes > MaxNumLanes)
-      continue;
-
-    // Iterate over all combination of packs, fixing `Focus` at the `i`'th
-    // lane
-    for (unsigned i = 0; i < NumLanes; i++) {
-      std::vector<ArrayRef<Operation::Match>> LaneMatches;
-      for (unsigned LaneId = 0; LaneId < NumLanes; LaneId++) {
-        ArrayRef<Operation::Match> Matches;
-        if (LaneId == i)
-          Matches = MM.getMatchesForOutput(LaneOps[i].getOperation(), Focus);
-        else
-          Matches = MM.getMatches(LaneOps[i].getOperation());
-
-        // if we can't find matches for any given lanes, then we can't use
-        // `Inst`
-        if (Matches.empty())
-          break;
-        LaneMatches.push_back(Matches);
-      }
-
-      // Skip if we can't find a single match for some lane.
-      if (LaneMatches.size() != NumLanes)
-        continue;
-
-      std::vector<const Operation::Match *> EmptyPrefix;
-      BitVector Elements(VPCtx.getNumValues());
-      BitVector Depended(VPCtx.getNumValues());
-      enumeratePacksRec(Focus, Inst, LaneMatches, Enumerated, Elements,
-                        Depended, EmptyPrefix);
-    }
-  }
-}
-
-SmallPtrSet<Instruction *, 16>
-PackEnumerator::findSeedMemAccesses(Instruction *FocusAccess) const {
-  DenseSet<Instruction *> Visited;
-  SmallPtrSet<Instruction *, 16> Seeds;
-
-  const ConsecutiveAccessDAG *AccessDAG = nullptr;
-  if (isa<LoadInst>(FocusAccess))
-    AccessDAG = &LoadDAG;
-  else if (isa<StoreInst>(FocusAccess))
-    AccessDAG = &StoreDAG;
-
-  assert(AccessDAG && "FocusAccess should either be a load or store");
-
-  std::function<bool(Instruction *)> CanReachFocus =
-      [&](Instruction *I) -> bool {
-    if (I == FocusAccess)
-      return true;
-
-    bool Inserted = Visited.insert(I).second;
-    if (!Inserted)
-      return Seeds.count(I);
-
-    if (!isUsable(I, FocusAccess))
-      return false;
-
-    auto It = AccessDAG->find(I);
-    // `I` is at the end of the load chain
-    if (It == AccessDAG->end())
-      return false;
-
-    for (auto *Next : It->second) {
-      if (CanReachFocus(Next)) {
-        Seeds.insert(I);
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  for (auto &AccessAndNext : *AccessDAG) {
-    CanReachFocus(AccessAndNext.first);
-  }
-
-  return Seeds;
-}
-
-// Explicit specialization for creating load packs
-template <>
-VectorPack *
-PackEnumerator::createMemAccessPack(ArrayRef<LoadInst *> Loads,
-                                    BitVector &Elements, BitVector &Depended,
-                                    TargetTransformInfo *TTI) const {
-  return VPCtx.createLoadPack(Loads, Elements, Depended, TTI);
-}
-
-// Explicit specialization for creating store packs
-template <>
-VectorPack *
-PackEnumerator::createMemAccessPack(ArrayRef<StoreInst *> Stores,
-                                    BitVector &Elements, BitVector &Depended,
-                                    TargetTransformInfo *TTI) const {
-  return VPCtx.createStorePack(Stores, Elements, Depended, TTI);
-}
-
-template <typename AccessType>
-void PackEnumerator::enumerateMemAccesses(
-    AccessType *Focus, std::vector<const VectorPack *> &Enumerated) const {
-  auto Seeds = findSeedMemAccesses(Focus);
-
-  const ConsecutiveAccessDAG *AccessDAG = nullptr;
-  if (std::is_same<AccessType, LoadInst>::value)
-    AccessDAG = &LoadDAG;
-  else
-    AccessDAG = &StoreDAG;
-
-  SmallVector<AccessType *, 8> AccessChain;
-  std::function<void(Instruction *, BitVector &&, BitVector &&, bool)>
-      EnumerateRec = [&](Instruction *I, BitVector &&Elements,
-                         BitVector &&Depended, bool EncounteredFocus) {
-        // Include this prefix if we've included the focus.
-        if (AccessChain.size() > 1 && EncounteredFocus) {
-          Enumerated.push_back(createMemAccessPack<AccessType>(
-              AccessChain, Elements, Depended, TTI));
-        }
-        if (AccessChain.size() >= MaxNumLanes || Enumerated.size() >= EnumCap)
-          return;
-
-        // Extend this load chain
-        auto It = AccessDAG->find(I);
-        if (It == AccessDAG->end())
-          return;
-
-        // If the next set of loads contains the focus
-        // then we choose that unconditionally.
-        if (It->second.count(Focus)) {
-          AccessChain.push_back(Focus);
-          EncounteredFocus = true;
-          // Note that we don't need to update Elements and Depended because
-          // they are initialized with `FocusLoad`'s data already.
-          EnumerateRec(Focus, std::move(Elements), std::move(Depended),
-                       EncounteredFocus);
-          AccessChain.pop_back();
-          return;
-        }
-
-        for (auto *Next : It->second) {
-          if (!isUsable(Next, Focus))
-            continue;
-
-          bool Independent =
-              checkIndependence(LDA, VPCtx, Next, Elements, Depended);
-          if (!Independent)
-            continue;
-
-          // Include `Next` into the chain of load/store that we will vectorize
-          auto ElementsExt = Elements;
-          auto DependedExt = Depended;
-          AccessChain.push_back(cast<AccessType>(Next));
-          ElementsExt.set(VPCtx.getScalarId(Next));
-          DependedExt |= LDA.getDepended(Next);
-          // Recursively build up the chain
-          EnumerateRec(Next, std::move(ElementsExt), std::move(DependedExt),
-                       EncounteredFocus);
-          AccessChain.pop_back();
-        }
-      };
-
-  BitVector Elements(VPCtx.getNumValues());
-  Elements.set(VPCtx.getScalarId(Focus));
-  BitVector Depended = LDA.getDepended(Focus);
-  for (auto *Seed : Seeds) {
-
-    if (Seed != Focus) {
-      bool Independent =
-          checkIndependence(LDA, VPCtx, Seed, Elements, Depended);
-      if (!Independent)
-        continue;
-    }
-
-    auto ElementsExt = Elements;
-    auto DependedExt = Depended;
-    AccessChain.push_back(cast<AccessType>(Seed));
-    ElementsExt.set(VPCtx.getScalarId(Seed));
-    DependedExt |= LDA.getDepended(Seed);
-    // Recursively build up the load chain
-    EnumerateRec(Seed, std::move(ElementsExt), std::move(DependedExt),
-                 Seed == Focus);
-    AccessChain.pop_back();
-  }
-}
-
-std::vector<const VectorPack *>
-Frontier::filterFrozenPacks(ArrayRef<const VectorPack *> Packs) const {
-  BitVector FrozenInsts = FreeInsts;
-  FrozenInsts.flip();
-
-  std::vector<const VectorPack *> Filtered;
-  Filtered.reserve(Packs.size());
-  for (auto *VP : Packs)
-    if (!FrozenInsts.anyCommon(VP->getElements()))
-      Filtered.push_back(VP);
-  return Filtered;
-}
-
-std::vector<const VectorPack *>
-Frontier::nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap,
-                             PackEnumerationCache *EnumCache) const {
-  Instruction *I = getNextFreeInst();
-  bool InCache;
-  auto CachedPacks = EnumCache->getPacks(I, InCache);
-  if (InCache)
-    return filterFrozenPacks(CachedPacks);
-
-  std::vector<const VectorPack *> AvailablePacks;
-  PackEnumerator Enumerator(MaxNumLanes, EnumCap, BB, Pkr);
-
-  Enumerator.enumerate(I, AvailablePacks);
-
-  auto Packs = filterFrozenPacks(AvailablePacks);
-  EnumCache->insert(I, std::move(AvailablePacks));
-  return Packs;
-}
-
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
   decltype(FrontierToNodeMap)::iterator It;
@@ -755,7 +422,7 @@ static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
     for (unsigned i = 0; i < NumLanes; i++) {
       auto *V = (*OP)[i];
       auto *I = dyn_cast<Instruction>(V);
-      if (!I || I->getParent() != BB || !Frt.isFree(I) || Frt.hasFreeUser(I)) {
+      if (!I || I->getParent() != BB || !Frt.isUsable(I)) {
         Extensible = false;
         break;
       }
@@ -828,21 +495,20 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
   if (!PP) {
     // We are not working w/ any partial pack, start partial packs!
     auto *BB = Frt->getBasicBlock();
-    for (auto &I : *BB) {
-      if (!Frt->isFree(&I) || Frt->hasFreeUser(&I))
-        continue;
+    for (auto *V : Frt->usableInsts()) {
+      auto *I = cast<Instruction>(V);
       float Cost;
-      auto *Next = Factory->getNode(Frt->advance(&I, Cost, TTI));
+      auto *Next = Factory->getNode(Frt->advance(I, Cost, TTI));
       Transitions.emplace_back(Next, Cost);
     }
 
-    // Also consider the extension packs
-    std::vector<const VectorPack *> Extensions = findExtensionPacks(*Frt);
-    for (auto *VP : Extensions) {
-      float Cost;
-      auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
-      Transitions.emplace_back(VP, Next, Cost);
-    }
+    //// Also consider the extension packs
+    //std::vector<const VectorPack *> Extensions = findExtensionPacks(*Frt);
+    //for (auto *VP : Extensions) {
+    //  float Cost;
+    //  auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
+    //  Transitions.emplace_back(VP, Next, Cost);
+    //}
 
     static std::vector<unsigned> VL{2, 4, 8};
     // Make a pack that contain the next free inst
@@ -1003,11 +669,10 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
       auto *VP = Extensions[rand_int(Extensions.size())];
       Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
-      for (auto &I : *BB) {
-        if (FrtScratch.isFree(&I) && !FrtScratch.hasFreeUser(&I)) {
-          Cost += FrtScratch.advanceInplace(&I, TTI);
-          break;
-        }
+      for (auto *V : FrtScratch.usableInsts()) {
+        auto *I = cast<Instruction>(V);
+        Cost += FrtScratch.advanceInplace(I, TTI);
+        break;
       }
     }
     if (FrtScratch.getUnresolvedPacks().empty() &&

@@ -42,26 +42,15 @@ class Frontier {
   llvm::BitVector UnresolvedScalars;
   // Instructions we haven't assigned yet.
   llvm::BitVector FreeInsts;
+  // Free insts without free users
+  llvm::BitVector UsableInsts;
 
-  void freezeOneInst(unsigned);
+  void freezeOneInst(llvm::Instruction *);
   bool resolveOperandPack(const VectorPack &VP, const OperandPack &UP);
   void advanceBBIt();
 
-  // Remove any packs that use frozen instructions.
-  std::vector<const VectorPack *>
-      filterFrozenPacks(llvm::ArrayRef<const VectorPack *>) const;
-
   // Check if `OP` has been resolved.
   bool resolved(const OperandPack &OP) const;
-
-  // Mark free users of `V` as scalar and return the cost.
-  float scalarizeFreeUsers(llvm::Value *V);
-  float scalarizeFreeUsers(const VectorPack *VP) {
-    float Cost = 0;
-    for (auto *V : VP->elementValues())
-      Cost += scalarizeFreeUsers(V);
-    return Cost;
-  }
 
 public:
   // Create the initial frontier, which surrounds the whole basic block
@@ -75,9 +64,6 @@ public:
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
   llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
-  std::vector<const VectorPack *>
-  nextAvailablePacks(unsigned MaxNumLanes, unsigned EnumCap,
-                     PackEnumerationCache *) const;
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
   }
@@ -90,7 +76,19 @@ public:
   }
   unsigned numUnresolvedScalars() const { return UnresolvedScalars.count(); }
   Packer *getPacker() const { return Pkr; }
-  bool hasFreeUser(llvm::Value *V) const;
+  bool isUsable(llvm::Instruction *I) const {
+    if (llvm::isa<llvm::PHINode>(I))
+      return true;
+    return UsableInsts.test(VPCtx->getScalarId(I));
+  }
+
+  llvm::iterator_range<VectorPackContext::value_iterator> usableInsts() const {
+    return VPCtx->iter_values(UsableInsts);
+  }
+
+  unsigned numUsableInsts() const {
+    return UsableInsts.count();
+  }
 };
 
 // Hashing support for `Frontier`
