@@ -191,7 +191,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 4;
+  return 2;
 }
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
@@ -727,7 +727,8 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
     std::vector<const VectorPack *> Extensions = findExtensionPacks(FrtScratch);
 
     if (!Extensions.empty()) {
-      auto *VP = Extensions[rand_int(Extensions.size())];
+      //auto *VP = Extensions[rand_int(Extensions.size())];
+      auto *VP = Extensions[0];
       Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
       for (auto *V : FrtScratch.usableInsts()) {
