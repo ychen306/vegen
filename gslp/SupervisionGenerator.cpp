@@ -44,20 +44,20 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
       T = &Transitions[It - Prob.begin()];
     } else {
       // Without a policy, we just follow the transition visited the most
-      //T = &*std::max_element(Transitions.begin(), Transitions.end(),
-
-      //    //[](const UCTNode::Transition &A, const UCTNode::Transition &B) {
-      //    //  return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
-      //    //}
-
-      //                           UCTNode::compareByVisitCount
-      //                           );
       T = &*std::max_element(Transitions.begin(), Transitions.end(),
 
-          [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
-            return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
-          }
+          //[](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+          //  return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
+          //}
+
+                                 UCTNode::compareByVisitCount
                                  );
+      //T = &*std::max_element(Transitions.begin(), Transitions.end(),
+
+      //    [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+      //      return A.Cost + A.Next->minCost() > B.Cost + B.Next->minCost();
+      //    }
+      //                           );
     }
 #if 1
     errs() << "====================================="
