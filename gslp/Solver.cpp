@@ -712,7 +712,8 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
       }
     
       assert(!NextPPs.empty());
-      PPScratch = std::move(NextPPs[rand_int(NextPPs.size())]);
+      //PPScratch = std::move(NextPPs[rand_int(NextPPs.size())]);
+      PPScratch = std::move(NextPPs[0]);
       auto *VP = PPScratch->getPack();
       if (VP) {
         Cost += FrtScratch.advanceInplace(VP, TTI);
