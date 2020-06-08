@@ -712,8 +712,8 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
       }
     
       assert(!NextPPs.empty());
-      //PPScratch = std::move(NextPPs[rand_int(NextPPs.size())]);
-      PPScratch = std::move(NextPPs[0]);
+      PPScratch = std::move(NextPPs[rand_int(NextPPs.size())]);
+      //PPScratch = std::move(NextPPs[0]);
       auto *VP = PPScratch->getPack();
       if (VP) {
         Cost += FrtScratch.advanceInplace(VP, TTI);
@@ -727,8 +727,8 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
     std::vector<const VectorPack *> Extensions = findExtensionPacks(FrtScratch);
 
     if (!Extensions.empty()) {
-      //auto *VP = Extensions[rand_int(Extensions.size())];
-      auto *VP = Extensions[0];
+      auto *VP = Extensions[rand_int(Extensions.size())];
+      //auto *VP = Extensions[0];
       Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
       for (auto *V : FrtScratch.usableInsts()) {
