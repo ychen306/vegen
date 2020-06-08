@@ -61,11 +61,12 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
     }
 #if 1
     errs() << "====================================="
-      << "\n\t t cost: " << T->transitionCost() 
+      << "\n\t t transition cost: " << T->transitionCost() 
       << "\n\t num transitions: " << Transitions.size()
       << "\n\t scalar cost: " << Transitions.begin()->avgCost() 
-      << "\n\t t cost: " << T->avgCost()
-      << "\n\t t->next cost: " << T->Next->avgCost()
+      << "\n\t t avg cost: " << T->avgCost()
+      << "\n\t t->next avg cost: " << T->Next->avgCost()
+      << "\n\t t->next min cost: " << T->Next->minCost()
       << "\n\t t->next terminal? " << T->Next->isTerminal()
       << "\n\t t visit count : " << T->visitCount()
       << "\n\t node visit count: " << Node->visitCount()

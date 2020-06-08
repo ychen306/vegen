@@ -273,24 +273,20 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   return Next;
 }
 
-PartialPack::PartialPack(bool IsLoad, bool IsStore, BasicBlock *BB, unsigned NumLanes, Packer *Pkr)
-    : IsLoad(IsLoad), IsStore(IsStore), BB(BB),
-      VPCtx(Pkr->getContext(BB)),
-      Elements(VPCtx->getNumValues()),
-      Depended(VPCtx->getNumValues()), NumLanes(NumLanes), LaneId(0),
-      Producer(nullptr), LoadDAG(Pkr->getLoadDAG(BB)),
-      StoreDAG(Pkr->getStoreDAG(BB)), LDA(Pkr->getLDA(BB)),
-      MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
+PartialPack::PartialPack(bool IsLoad, bool IsStore, BasicBlock *BB,
+                         unsigned NumLanes, Packer *Pkr)
+    : IsLoad(IsLoad), IsStore(IsStore), BB(BB), VPCtx(Pkr->getContext(BB)),
+      Elements(VPCtx->getNumValues()), Depended(VPCtx->getNumValues()),
+      NumLanes(NumLanes), LaneId(0), Producer(nullptr),
+      LoadDAG(Pkr->getLoadDAG(BB)), StoreDAG(Pkr->getStoreDAG(BB)),
+      LDA(Pkr->getLDA(BB)), MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
 
 PartialPack::PartialPack(const InstBinding *Inst, BasicBlock *BB, Packer *Pkr)
-    : IsLoad(false), IsStore(false),
-      BB(BB), VPCtx(Pkr->getContext(BB)),
-      Elements(VPCtx->getNumValues()),
-      Depended(VPCtx->getNumValues()), NumLanes(Inst->getLaneOps().size()),
-      LaneId(0), Producer(Inst), LoadDAG(Pkr->getLoadDAG(BB)),
-      StoreDAG(Pkr->getStoreDAG(BB)), LDA(Pkr->getLDA(BB)),
-      MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
-
+    : IsLoad(false), IsStore(false), BB(BB), VPCtx(Pkr->getContext(BB)),
+      Elements(VPCtx->getNumValues()), Depended(VPCtx->getNumValues()),
+      NumLanes(Inst->getLaneOps().size()), LaneId(0), Producer(Inst),
+      LoadDAG(Pkr->getLoadDAG(BB)), StoreDAG(Pkr->getStoreDAG(BB)),
+      LDA(Pkr->getLDA(BB)), MM(Pkr->getMatchManager(BB)), TTI(Pkr->getTTI()) {}
 
 std::vector<Instruction *>
 PartialPack::getUsableInsts(const Frontier *Frt) const {
@@ -299,7 +295,7 @@ PartialPack::getUsableInsts(const Frontier *Frt) const {
 
   auto IsUsable = [&](Instruction *I) -> bool {
     return Frt->isUsable(I) &&
-      checkIndependence(LDA, *VPCtx, I, Elements, Depended);
+           checkIndependence(LDA, *VPCtx, I, Elements, Depended);
   };
 
   if (IsLoad || IsStore) {
@@ -375,21 +371,22 @@ VectorPack *PartialPack::getPack() const {
 
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
-  decltype(FrontierToNodeMap)::iterator It;
-  bool Inserted;
-  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
-  if (Inserted) {
-    It->first = Frt.get();
-    auto *NewNode = new UCTNode(Frt.get());
-    Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-    It->second = NewNode;
-    Frontiers.push_back(std::move(Frt));
-  }
-  return It->second;
-  // auto *NewNode = new UCTNode(Frt.get());
-  // Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-  // Frontiers.push_back(std::move(Frt));
-  // return Nodes.back().get();
+  // decltype(FrontierToNodeMap)::iterator It;
+  // bool Inserted;
+  // std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
+  // assert(Inserted || !It->second->getPartialPack());
+  // if (Inserted) {
+  //  It->first = Frt.get();
+  //  auto *NewNode = new UCTNode(Frt.get());
+  //  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+  //  It->second = NewNode;
+  //  Frontiers.push_back(std::move(Frt));
+  //}
+  // return It->second;
+  auto *NewNode = new UCTNode(Frt.get());
+  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+  Frontiers.push_back(std::move(Frt));
+  return Nodes.back().get();
 }
 
 UCTNode *UCTNodeFactory::getNode(const Frontier *Frt,
@@ -492,7 +489,6 @@ static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
   return Extensions;
 }
 
-
 // Fill out the children node
 void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
                      llvm::TargetTransformInfo *TTI) {
@@ -510,8 +506,8 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     }
 
     //// Also consider the extension packs
-    //std::vector<const VectorPack *> Extensions = findExtensionPacks(*Frt);
-    //for (auto *VP : Extensions) {
+    // std::vector<const VectorPack *> Extensions = findExtensionPacks(*Frt);
+    // for (auto *VP : Extensions) {
     //  float Cost;
     //  auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
     //  Transitions.emplace_back(VP, Next, Cost);
@@ -520,16 +516,22 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     static std::vector<unsigned> VL{2, 4, 8};
     // Make a pack that contain the next free inst
     for (unsigned i : VL) {
+      if (i > MaxNumLanes)
+        continue;
       auto NewPP = std::make_unique<PartialPack>(true, false, BB, i, Pkr);
       if (isPartialPackFeasible(*NewPP, Frt))
         Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
     }
     for (unsigned i : VL) {
+      if (i > MaxNumLanes)
+        continue;
       auto NewPP = std::make_unique<PartialPack>(false, true, BB, i, Pkr);
       if (isPartialPackFeasible(*NewPP, Frt))
         Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
     }
     for (auto *Inst : getPacker()->getInsts()) {
+      if (Inst->getLaneOps().size() > MaxNumLanes)
+        continue;
       auto NewPP = std::make_unique<PartialPack>(Inst, BB, Pkr);
       if (isPartialPackFeasible(*NewPP, Frt)) {
         Transitions.emplace_back(Factory->getNode(Frt, std::move(NewPP)));
@@ -565,6 +567,9 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     UCTNode *Parent;
     UCTNode::Transition *T;
   };
+
+  if (Root->expanded() && Root->transitions().size() == 1)
+    NumIters = 1;
 
   std::vector<FullTransition> Path;
   for (unsigned Iter = 0; Iter < NumIters; Iter++) {
@@ -637,6 +642,32 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
   }
 }
 
+// Find the subset of `Extensions` that are compatible with the partial pack
+// `PP`
+static std::vector<const VectorPack *>
+findCompatibleExtensions(const PartialPack &PP,
+                         ArrayRef<const VectorPack *> Extensions) {
+  ArrayRef<Instruction *> FilledLanes = PP.getFilledLanes();
+  std::vector<const VectorPack *> CompatibleExts;
+  for (auto *VP : Extensions) {
+    ArrayRef<Value *> OutputLanes = VP->getOrderedValues();
+    if (OutputLanes.size() != PP.getNumLanes())
+      continue;
+
+    // Check if the prefixes match
+    bool Compatible = true;
+    for (unsigned i = 0; i < FilledLanes.size(); i++) {
+      if (FilledLanes[i] != OutputLanes[i]) {
+        Compatible = false;
+        break;
+      }
+    }
+    if (Compatible)
+      CompatibleExts.push_back(VP);
+  }
+  return CompatibleExts;
+}
+
 // Uniformly random rollout
 float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
                                  const Frontier *Frt, const PartialPack *PP,
@@ -650,15 +681,37 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
   // use do a random rollout to fill out the partial pack.
   if (PP) {
     std::unique_ptr<PartialPack> PPScratch;
+    auto Extensions = findExtensionPacks(*Frt);
+    auto CompatibleExtensions = Extensions;
     for (;;) {
       auto UsableInsts = PP->getUsableInsts(Frt);
-      assert(!UsableInsts.empty());
+      CompatibleExtensions =
+          findCompatibleExtensions(*PP, CompatibleExtensions);
+      unsigned LaneId = PP->getFilledLanes().size();
+      DenseSet<Value *> ExtendingInsts;
+      for (auto *VP : CompatibleExtensions)
+        ExtendingInsts.insert(VP->getOrderedValues()[LaneId]);
+
       std::vector<std::unique_ptr<PartialPack>> NextPPs;
       for (auto *I : UsableInsts) {
         auto NextPP = PP->fillOneLane(I);
-        if (isPartialPackFeasible(*NextPP, Frt))
-          NextPPs.push_back(std::move(NextPP));
+        if (isPartialPackFeasible(*NextPP, Frt)) {
+          if (ExtendingInsts.count(I))
+            NextPPs.push_back(std::move(NextPP));
+        }
       }
+      // If there's no compatible extensions then we just fill the next pack randomly.
+      // Otherwise we only go with instruction that can lead to extensions
+      if (NextPPs.empty()) {
+        for (auto *I : UsableInsts) {
+          auto NextPP = PP->fillOneLane(I);
+          if (isPartialPackFeasible(*NextPP, Frt)) {
+            NextPPs.push_back(std::move(NextPP));
+          }
+        }
+      }
+    
+      assert(!NextPPs.empty());
       PPScratch = std::move(NextPPs[rand_int(NextPPs.size())]);
       auto *VP = PPScratch->getPack();
       if (VP) {
