@@ -22,14 +22,17 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     unsigned InstId = VPCtx->getScalarId(&I);
     for (User *U : I.users()) {
       auto UserInst = dyn_cast<Instruction>(U);
-      if (UserInst && UserInst->getParent() != BB) {
-        UnresolvedScalars.set(InstId);
-      } else if (UserInst) {
-        AllUsersResolved = false;
+      if (UserInst) {
+        if (UserInst->getParent() != BB)
+          // Mark that `I` has a scalar use.
+          UnresolvedScalars.set(InstId);
+        else
+          // `I` is used by some other instruction in `BB`
+          AllUsersResolved = false;
       }
     }
 
-    if (AllUsersResolved || !isa<PHINode>(&I))
+    if (AllUsersResolved || isa<PHINode>(&I))
       UsableInsts.set(InstId);
   }
 }
@@ -55,6 +58,7 @@ void remove(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
 
 void Frontier::freezeOneInst(Instruction *I) {
   unsigned InstId = VPCtx->getScalarId(I);
+  assert(FreeInsts.test(InstId));
   FreeInsts.reset(InstId);
   UnresolvedScalars.reset(InstId);
   UsableInsts.reset(InstId);
