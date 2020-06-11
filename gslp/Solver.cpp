@@ -502,7 +502,7 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
       auto *I = cast<Instruction>(V);
       float Cost;
       auto *Next = Factory->getNode(Frt->advance(I, Cost, TTI));
-      Transitions.emplace_back(Next, Cost);
+      Transitions.emplace_back(I, Next, Cost);
     }
 
     //// Also consider the extension packs

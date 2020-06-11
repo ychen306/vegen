@@ -190,7 +190,13 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
       T = &*Transitions.begin();
     } else if (UseMCTS) {
       T = &*std::max_element(Transitions.begin(), Transitions.end(),
-                             UCTNode::compareByVisitCount);
+
+          [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+              float ACost = -A.Cost - A.Next->minCost();
+              float BCost = -B.Cost - B.Next->minCost();
+            return std::tie(ACost, A.Count) < std::tie(BCost, B.Count);
+          }
+                              );
     } else {
       std::vector<float> Prob;
       Policy->predict(Root, Prob);

@@ -223,9 +223,11 @@ public:
     bool IsScalar;
     // If non-null then we've finished filling out a pack w/ this transition
     const VectorPack *VP;
+    llvm::Instruction *I {nullptr};
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
+    float Bias {0};
 
     Transition(const VectorPack *VP, UCTNode *Next, float Cost)
         : IsScalar(false), VP(VP), Next(Next), Count(0), Cost(Cost) {}
@@ -233,8 +235,8 @@ public:
     Transition(UCTNode *Next)
         : IsScalar(false), VP(nullptr), Next(Next), Count(0), Cost(0) {}
 
-    Transition(UCTNode *Next, float Cost)
-        : IsScalar(true), VP(nullptr), Next(Next), Count(0), Cost(Cost) {}
+    Transition(llvm::Instruction *I, UCTNode *Next, float Cost)
+        : IsScalar(true), VP(nullptr), I(I), Next(Next), Count(0), Cost(Cost) {}
 
     float visited() const { return Count > 0; }
 
@@ -251,7 +253,8 @@ public:
   // ``Transpositions and Move Groups in Monte Carlo Tree Search''
   float score(const Transition &T, float C) const {
     return -normalize(T.avgCost()) +
-           C * sqrt(logf(visitCount()) / float(T.visitCount()));
+           C * sqrt(logf(visitCount()) / float(T.visitCount()))
+           + T.Bias/float(T.visitCount());
   }
 
 private:
