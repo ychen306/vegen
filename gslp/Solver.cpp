@@ -371,18 +371,18 @@ VectorPack *PartialPack::getPack() const {
 
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
-  // decltype(FrontierToNodeMap)::iterator It;
-  // bool Inserted;
-  // std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
-  // assert(Inserted || !It->second->getPartialPack());
-  // if (Inserted) {
-  //  It->first = Frt.get();
-  //  auto *NewNode = new UCTNode(Frt.get());
-  //  Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-  //  It->second = NewNode;
-  //  Frontiers.push_back(std::move(Frt));
-  //}
-  // return It->second;
+   decltype(FrontierToNodeMap)::iterator It;
+   bool Inserted;
+   std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
+   assert(Inserted || !It->second->getPartialPack());
+   if (Inserted) {
+    It->first = Frt.get();
+    auto *NewNode = new UCTNode(Frt.get());
+    Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
+    It->second = NewNode;
+    Frontiers.push_back(std::move(Frt));
+  }
+   return It->second;
   auto *NewNode = new UCTNode(Frt.get());
   Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
   Frontiers.push_back(std::move(Frt));
