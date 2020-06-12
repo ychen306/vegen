@@ -191,7 +191,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 2;
+  return 4;
 }
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
