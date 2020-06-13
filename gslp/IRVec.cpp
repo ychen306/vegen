@@ -16,7 +16,7 @@ static bool isFloat(llvm::Instruction::BinaryOps Opcode) {
   }
 }
 
-int IRVectorBinding::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
+float IRVectorBinding::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
   Type *ScalarTy;
   unsigned ElemWidth = Op->getBitwidth();
   auto Opcode = Op->getOpcode();

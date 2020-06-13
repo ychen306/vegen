@@ -30,7 +30,7 @@ def get_spec_from_xml(node):
   rettype = node.attrib['rettype']
   return Spec(
       intrin=intrin,
-      inst=inst,
+      inst=inst.attrib.get('name'),
       spec=spec,
       params=params,
       rettype=rettype,

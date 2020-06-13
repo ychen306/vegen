@@ -42,7 +42,7 @@ public:
                                 unsigned VectorWidth);
   virtual Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                       IntrinsicBuilder &Builder) const override;
-  int getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const override;
+  float getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const override;
 };
 
 // Aux class enumerating vector ir that we can emit

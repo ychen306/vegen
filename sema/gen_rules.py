@@ -4,10 +4,37 @@ from collections import namedtuple, defaultdict
 from manual_parser import get_spec_from_xml
 from sig import get_inst_sigs
 import io
+import json
 
 def get_const_pattern(const):
   #return f'm_SpecificInt(APInt({const.bitwidth}, {const.value}ull))'
   return f'm_SpecificInt({const.value}ull)'
+
+def parse_perf_file(fname, uarch):
+  costs = {}
+  with open(fname) as f:
+    perf = json.load(f)
+    for _, insts in perf.items():
+      for inst, data in insts.items():
+        # data looks something like this [
+        #      {"Broadwell":{l:"1",t:"1",}},
+        #      {"Haswell":{l:"1",t:"1",}},
+        #      {"Ivy Bridge":{l:"1",t:"1",}},
+        #  ]
+        for entry in next(iter(data.values())):
+          if uarch not in entry:
+            continue
+          # throughput
+          tp = entry[uarch]['t']
+          if tp[0] == '~':
+            tp = tp[1:]
+          if '-' in tp:
+            # Throughput is a range in this case (e.g., '16-27').
+            # Just be pessimistic and pick the max.
+            lo, hi = tp.split('-')
+            tp = hi
+          costs[inst.lower()] = float(tp) / 0.5
+  return costs
 
 class VarGenerator:
   def __init__(self):
@@ -256,7 +283,7 @@ def emit_sig(sig):
   has_imm8 = 'true' if any(x.is_constant for x in xs) else 'false'
   return f'InstSignature {{ {{ {input_sizes} }}, {{ {output_sizes} }}, {has_imm8} }}' 
 
-def codegen(bundles, inst_features):
+def codegen(bundles, inst_features, costs):
   '''
   bundles : mapping inst -> bundles
   '''
@@ -284,7 +311,8 @@ def codegen(bundles, inst_features):
       bound_ops.append(
           f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
     sig = emit_sig(bundle.sig)
-    inst_defs[inst] = f'InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }})'
+    cost = costs[inst]
+    inst_defs[inst] = f'InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }}, {cost})'
 
   op_decls = '\n'.join(op_decl for op_decl in operation_defs.values()) 
   inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values()) 
@@ -304,9 +332,14 @@ if __name__ == '__main__':
   specs = parse_specs('data-latest.xml')
   sigs = get_inst_sigs(semas, specs)
 
-  lifted_f = sys.argv[1]
+  lifted_f, perf_f, uarch = sys.argv[1:]
   with open(lifted_f, 'rb') as f:
     lifted = pickle.load(f)
+
+  inst2cost = parse_perf_file(perf_f, uarch)
+  intrin2cost = {
+      inst: inst2cost.get(spec.inst, '1.0 /*default*/')
+      for inst, spec in specs.items() }
 
   debug = None
 
@@ -356,7 +389,7 @@ if __name__ == '__main__':
 using namespace llvm;
 using namespace PatternMatch;
     ''')
-    f.write(codegen(bundles, inst_features))
+    f.write(codegen(bundles, inst_features, intrin2cost))
 
   exit()
 

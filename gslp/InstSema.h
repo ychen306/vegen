@@ -142,15 +142,19 @@ class InstBinding {
   std::string Name;
   std::vector<std::string> TargetFeatures;
   std::vector<BoundOperation> LaneOps;
+  llvm::Optional<float> Cost;
 
 public:
   InstBinding(std::string Name, std::vector<std::string> TargetFeatures,
-              InstSignature Sig, std::vector<BoundOperation> LaneOps)
-      : Sig(Sig), Name(Name), TargetFeatures(TargetFeatures), LaneOps(LaneOps) {
+              InstSignature Sig, std::vector<BoundOperation> LaneOps,
+              llvm::Optional<float> Cost = llvm::None)
+      : Sig(Sig), Name(Name), TargetFeatures(TargetFeatures), LaneOps(LaneOps), Cost(Cost) {
   }
   virtual ~InstBinding() {}
-  virtual int getCost(llvm::TargetTransformInfo *, llvm::LLVMContext &) const {
-    return 1;
+  virtual float getCost(llvm::TargetTransformInfo *,
+                        llvm::LLVMContext &) const {
+    assert(Cost.hasValue());
+    return Cost.getValue();
   }
   llvm::ArrayRef<std::string> getTargetFeatures() const {
     return TargetFeatures;
