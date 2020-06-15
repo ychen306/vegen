@@ -30,6 +30,21 @@ float IRVectorBinding::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const
     ScalarTy = IntegerType::get(Ctx, ElemWidth);
   }
   unsigned NumElems = getLaneOps().size();
+
+  // FIXME: This is hard-coded for haswell... 
+  if (Opcode == Instruction::FDiv) {
+    if (NumElems <= 4 && ElemWidth == 32)
+      return 14;
+    else if (NumElems > 4 && ElemWidth == 32)
+      return 28;
+    else if (NumElems <= 4)
+      return 16;
+    else
+      return 32;
+  } else if (ScalarTy->isFloatingPointTy()) {
+    return TTI->getArithmeticInstrCost(Opcode, ScalarTy);
+  }
+
   auto *VecTy = VectorType::get(ScalarTy, NumElems);
   return TTI->getArithmeticInstrCost(Opcode, VecTy);
 }
