@@ -53,7 +53,7 @@ static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
 
 static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path for the trained model"),
-              cl::value_desc("output model path"), cl::Required);
+              cl::value_desc("output model path"));
 
 static cl::opt<bool> UseMCTS("use-mcts",
                              cl::desc("Use tree search during optimization"),
@@ -238,8 +238,10 @@ bool GSLP::runOnFunction(llvm::Function &F) {
 
   PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes,
                      NumGNNLayers);
-  torch::load(Model, ModelPath, Device);
-  errs() << "Model loaded\n";
+  if (ModelPath.getNumOccurrences()) {
+    torch::load(Model, ModelPath, Device);
+    errs() << "Model loaded\n";
+  }
 
   Model->to(Device);
   Model->eval();
