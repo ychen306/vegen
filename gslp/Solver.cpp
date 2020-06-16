@@ -972,7 +972,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       if (SeedVP) {
         float Est = estimateCost(Frt, SeedVP);
         if (Est < BestEst) {
-          errs() << "!!! INCLUDING SEED PACK : " << *SeedVP << '\n';
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
           BestEst = Est;
