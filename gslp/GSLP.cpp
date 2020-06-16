@@ -171,7 +171,7 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
 
 void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
                          PackingPolicy *Policy) {
-  VectorPackSet PacksScratch;
+  VectorPackSet PacksScratch = Packs;
   float BottomUpCost = optimizeBottomUp(PacksScratch, &Pkr, &BB);
   errs() << "Bottom-up cost: " << BottomUpCost << '\n';
   if (UseBottomUp) {
