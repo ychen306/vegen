@@ -267,6 +267,7 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   }
 
   IntrinsicBuilder Builder(*InstWrappers);
+  errs() << "Generating vector code\n";
   Packs.codegen(Builder, Pkr);
 
   assert(!verifyFunction(F, &errs()));

@@ -796,7 +796,8 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
         }
         Loads.push_back(CurLoad);
       }
-      return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
+      if (Consecutive)
+        return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
     }
     for (auto *Inst : Pkr->getInsts()) {
       ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
@@ -916,7 +917,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   std::vector<unsigned> VL { 8, 4, 2 };
   float Cost = 0;
   float BestEst = 0;
-  bool Changed = true;
   for (auto *SI : Stores) {
     for (unsigned i : VL) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
@@ -926,7 +926,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
           BestEst = Est;
-          Changed = true;
           break;
         }
       }
@@ -939,7 +938,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     Cost += Frt.advanceInplace(ExtVP, TTI);
     Packs.tryAdd(ExtVP);
   }
-  Changed = false;
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
     for (auto *V : Frt.usableInsts()) {
