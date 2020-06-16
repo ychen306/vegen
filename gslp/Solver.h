@@ -392,4 +392,7 @@ public:
   }
 };
 
+class VectorPackSet;
+float optimizeBottomUp(VectorPackSet &, Packer *, llvm::BasicBlock *);
+
 #endif

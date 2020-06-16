@@ -19,6 +19,9 @@ void SupervisionGenerator::run(PackingPolicy *Policy, PackingPolicy *NewPolicy,
 
   float TotalCost = 0;
 
+  //errs() << "BottumUp Cost of " << BB->getParent()->getName() << "/" << BB->getName()
+  //       << ": " << getBottomUpCost(Pkr, BB) << '\n';
+
   outs() << BB->getModule()->getName() << '/' << BB->getParent()->getName()
          << '/' << BB->getName() << ' ';
 

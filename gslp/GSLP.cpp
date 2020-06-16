@@ -55,6 +55,10 @@ static cl::opt<std::string>
     ModelPath("model", cl::desc("Specify a file path for the trained model"),
               cl::value_desc("output model path"));
 
+static cl::opt<bool> UseBottomUp("use-bottom-up",
+                             cl::desc("Use the bottom up heuristics"),
+                             cl::init(false));
+
 static cl::opt<bool> UseMCTS("use-mcts",
                              cl::desc("Use tree search during optimization"),
                              cl::init(false));
@@ -167,6 +171,12 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
 
 void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
                          PackingPolicy *Policy) {
+  if (UseBottomUp) {
+    float Cost = optimizeBottomUp(Packs, &Pkr, &BB);
+    errs() << "Total cost: " << Cost << '\n';
+    return;
+  }
+
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
   UCTSearch MCTS(ParamC, ParamW, EnumCap, ExpandThreshold, &Factory, &Pkr,

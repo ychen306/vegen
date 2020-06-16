@@ -369,8 +369,8 @@ int main(int argc, char **argv) {
     else {
 
       for (auto &F : *M) {
-        //if (F.getName() != "adi")
-        //  continue;
+        if (F.getName() != "binvcrhs")
+          continue;
         for (unsigned i = 0; i < F.size(); i++) {
           //if (std::next(F.begin(), i)->getName() != "for.body7.i.i")
           //  continue;

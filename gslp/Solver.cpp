@@ -1,5 +1,6 @@
 #include "Solver.h"
 #include "MatchManager.h"
+#include "VectorPackSet.h"
 #include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
@@ -741,5 +742,212 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
         FrtScratch.numUnresolvedScalars() == 0)
       break;
   }
+  return Cost;
+}
+
+static VectorPack *findExtensionPack(const Frontier &Frt) {
+  auto *Pkr = Frt.getPacker();
+  auto *BB = Frt.getBasicBlock();
+  auto &LDA = Pkr->getLDA(BB);
+  auto *VPCtx = Pkr->getContext(BB);
+  auto *TTI = Pkr->getTTI();
+  auto &LoadDAG = Pkr->getLoadDAG(BB);
+  auto &MM = Pkr->getMatchManager(BB);
+
+  std::vector<const VectorPack *> Extensions;
+  for (auto *OP : Frt.getUnresolvedPacks()) {
+    unsigned NumLanes = OP->size();
+    BitVector Elements(VPCtx->getNumValues());
+    BitVector Depended(VPCtx->getNumValues());
+    bool Extensible = true;
+    bool AllLoads = true;
+    for (unsigned i = 0; i < NumLanes; i++) {
+      auto *V = (*OP)[i];
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I || I->getParent() != BB || !Frt.isUsable(I)) {
+        Extensible = false;
+        break;
+      }
+      unsigned InstId = VPCtx->getScalarId(I);
+      if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended)) {
+        Extensible = false;
+        break;
+      }
+      if (!isa<LoadInst>(I))
+        AllLoads = false;
+      Elements.set(InstId);
+      Depended |= LDA.getDepended(I);
+    }
+
+    if (!Extensible)
+      continue;
+
+    if (AllLoads) {
+      // Simply pack all of the loads if they are consecutive.
+      bool Consecutive = true;
+      std::vector<LoadInst *> Loads{cast<LoadInst>((*OP)[0])};
+      for (unsigned i = 1; i < NumLanes; i++) {
+        auto *CurLoad = cast<LoadInst>((*OP)[i]);
+        auto *PrevLoad = cast<LoadInst>((*OP)[i - 1]);
+        auto It = LoadDAG.find(PrevLoad);
+        if (It == LoadDAG.end() || !It->second.count(CurLoad)) {
+          Consecutive = false;
+          break;
+        }
+        Loads.push_back(CurLoad);
+      }
+      return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
+    }
+    for (auto *Inst : Pkr->getInsts()) {
+      ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+      if (LaneOps.size() != NumLanes)
+        continue;
+
+      std::vector<const Operation::Match *> Lanes;
+      for (unsigned i = 0; i < NumLanes; i++) {
+        auto *I = cast<Instruction>((*OP)[i]);
+        ArrayRef<Operation::Match> Matches =
+            MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
+        if (Matches.empty())
+          break;
+        // FIXME: consider multiple matches for the same operation
+        Lanes.push_back(&Matches[0]);
+      }
+
+      if (Lanes.size() == NumLanes) {
+        return VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI);
+      }
+    }
+  }
+  return nullptr;
+}
+
+float estimateCost(Frontier Frt, VectorPack *VP) {
+  auto *Pkr = Frt.getPacker();
+  auto *BB = Frt.getBasicBlock();
+  auto &LDA = Pkr->getLDA(BB);
+  auto *VPCtx = Pkr->getContext(BB);
+  auto *TTI = Pkr->getTTI();
+
+  float Cost = Frt.advanceInplace(VP, TTI);
+  for (;;) {
+    auto *ExtVP = findExtensionPack(Frt);
+    if (!ExtVP)
+      break;
+    Cost += Frt.advanceInplace(ExtVP, TTI);
+  }
+
+  while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
+    for (auto *V : Frt.usableInsts()) {
+      auto *I = cast<Instruction>(V);
+      Cost += Frt.advanceInplace(I, TTI);
+      break;
+    }
+  }
+
+  return Cost;
+}
+
+VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI, unsigned VL) {
+  if (!Frt.isUsable(SI))
+    return nullptr;
+  
+  auto *Pkr = Frt.getPacker();
+  auto *BB = Frt.getBasicBlock();
+  auto &LDA = Pkr->getLDA(BB);
+  auto *VPCtx = Pkr->getContext(BB);
+  auto *TTI = Pkr->getTTI();
+  auto &StoreDAG = Pkr->getStoreDAG(BB);
+
+  BitVector Elements(VPCtx->getNumValues());
+  BitVector Depended(VPCtx->getNumValues());
+
+  Elements.set(VPCtx->getScalarId(SI));
+  Depended |= LDA.getDepended(SI);
+
+  std::vector<StoreInst *> Stores {SI};
+  for (unsigned i = 1; i < VL; i++) {
+    auto It = StoreDAG.find(Stores.back());
+    if (It == StoreDAG.end())
+      return nullptr;
+    auto *NextSI = cast<StoreInst>(*It->second.begin());
+    if (!Frt.isUsable(NextSI))
+      return nullptr;
+    if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
+      return nullptr;
+    }
+    Stores.push_back(NextSI);
+    Elements.set(VPCtx->getScalarId(NextSI));
+    Depended |= LDA.getDepended(NextSI);
+  }
+  return VPCtx->createStorePack(Stores, Elements, Depended, TTI);
+}
+
+float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
+  Frontier Frt(BB, Pkr);
+  auto &StoreDAG = Pkr->getStoreDAG(BB);
+
+  DenseMap<Instruction *, unsigned> StoreChainLen;
+  std::function<unsigned (Instruction *)> GetChainLen = 
+    [&](Instruction *I) -> unsigned {
+    if (StoreChainLen.count(I))
+      return StoreChainLen[I];
+    auto It = StoreDAG.find(I);
+    if (It == StoreDAG.end())
+      return StoreChainLen[I] = 1;
+    unsigned MaxLen = 0;
+    for (auto *Next : It->second) {
+      MaxLen = std::max<unsigned>(MaxLen, GetChainLen(Next));
+    }
+    return StoreChainLen[I] = MaxLen + 1;
+  };
+
+  std::vector<StoreInst *> Stores;
+  for (auto &StoreAndNext : StoreDAG)
+    Stores.push_back(cast<StoreInst>(StoreAndNext.first));
+
+  // Sort stores by store chain length
+  std::sort(Stores.begin(), Stores.end(), [&](StoreInst *A, StoreInst *B) {
+        return GetChainLen(A) > GetChainLen(B);
+      });
+
+  auto *TTI = Pkr->getTTI();
+
+  std::vector<unsigned> VL { 8, 4, 2 };
+  float Cost = 0;
+  float BestEst = 0;
+  bool Changed = true;
+  for (auto *SI : Stores) {
+    for (unsigned i : VL) {
+      auto *SeedVP = getSeedStorePack(Frt, SI, i);
+      if (SeedVP) {
+        float Est = estimateCost(Frt, SeedVP);
+        if (Est < BestEst) {
+          Cost += Frt.advanceInplace(SeedVP, TTI);
+          Packs.tryAdd(SeedVP);
+          BestEst = Est;
+          Changed = true;
+          break;
+        }
+      }
+    }
+  }
+  for (;;) {
+    auto *ExtVP = findExtensionPack(Frt);
+    if (!ExtVP)
+      break;
+    Cost += Frt.advanceInplace(ExtVP, TTI);
+    Packs.tryAdd(ExtVP);
+  }
+  Changed = false;
+
+  while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
+    for (auto *V : Frt.usableInsts()) {
+      auto *I = cast<Instruction>(V);
+      Cost += Frt.advanceInplace(I, TTI);
+      break;
+    }
+  }
+
   return Cost;
 }
