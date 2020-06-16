@@ -37,6 +37,7 @@ struct InputSlice {
 struct Operation {
   virtual ~Operation() {}
   struct Match {
+    bool Commutative; // applies when the operation is binary
     std::vector<llvm::Value *> Inputs;
     // FIXME: make this an Instruction instead
     llvm::Value *Output;

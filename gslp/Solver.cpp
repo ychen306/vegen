@@ -372,18 +372,18 @@ VectorPack *PartialPack::getPack() const {
 
 // If we already have a UCTNode for the same frontier, reuse that node.
 UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
-   decltype(FrontierToNodeMap)::iterator It;
-   bool Inserted;
-   std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
-   assert(Inserted || !It->second->getPartialPack());
-   if (Inserted) {
+  decltype(FrontierToNodeMap)::iterator It;
+  bool Inserted;
+  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
+  assert(Inserted || !It->second->getPartialPack());
+  if (Inserted) {
     It->first = Frt.get();
     auto *NewNode = new UCTNode(Frt.get());
     Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
     It->second = NewNode;
     Frontiers.push_back(std::move(Frt));
   }
-   return It->second;
+  return It->second;
   auto *NewNode = new UCTNode(Frt.get());
   Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
   Frontiers.push_back(std::move(Frt));
@@ -701,8 +701,9 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
             NextPPs.push_back(std::move(NextPP));
         }
       }
-      // If there's no compatible extensions then we just fill the next pack randomly.
-      // Otherwise we only go with instruction that can lead to extensions
+      // If there's no compatible extensions then we just fill the next pack
+      // randomly. Otherwise we only go with instruction that can lead to
+      // extensions
       if (NextPPs.empty()) {
         for (auto *I : UsableInsts) {
           auto NextPP = PP->fillOneLane(I);
@@ -711,10 +712,10 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
           }
         }
       }
-    
+
       assert(!NextPPs.empty());
       PPScratch = std::move(NextPPs[rand_int(NextPPs.size())]);
-      //PPScratch = std::move(NextPPs[0]);
+      // PPScratch = std::move(NextPPs[0]);
       auto *VP = PPScratch->getPack();
       if (VP) {
         Cost += FrtScratch.advanceInplace(VP, TTI);
@@ -729,7 +730,7 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
 
     if (!Extensions.empty()) {
       auto *VP = Extensions[rand_int(Extensions.size())];
-      //auto *VP = Extensions[0];
+      // auto *VP = Extensions[0];
       Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
       for (auto *V : FrtScratch.usableInsts()) {
@@ -835,7 +836,9 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
     auto *ExtVP = findExtensionPack(Frt);
     if (!ExtVP)
       break;
+    //errs() << "!!! extending with: " << *ExtVP << '\n';
     Cost += Frt.advanceInplace(ExtVP, TTI);
+    //errs() << "\tcost: " << Cost << '\n';
   }
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
@@ -849,10 +852,12 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
   return Cost;
 }
 
-VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI, unsigned VL) {
-  if (!Frt.isUsable(SI))
-    return nullptr;
-  
+std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt, StoreInst *SI,
+                                            unsigned VL) {
+  if (!Frt.isUsable(SI)) {
+    return {};
+  }
+
   auto *Pkr = Frt.getPacker();
   auto *BB = Frt.getBasicBlock();
   auto &LDA = Pkr->getLDA(BB);
@@ -860,28 +865,56 @@ VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI, unsigned VL) {
   auto *TTI = Pkr->getTTI();
   auto &StoreDAG = Pkr->getStoreDAG(BB);
 
+  std::vector<VectorPack *> Seeds;
+
+  std::function<void(std::vector<StoreInst *>, BitVector, BitVector)>
+      Enumerate = [&](std::vector<StoreInst *> Stores, BitVector Elements,
+                      BitVector Depended) {
+        if (Stores.size() == VL) {
+          Seeds.push_back(
+              VPCtx->createStorePack(Stores, Elements, Depended, TTI));
+          return;
+        }
+
+        auto It = StoreDAG.find(Stores.back());
+        if (It == StoreDAG.end()) {
+          return;
+        }
+        for (auto *Next : It->second) {
+          auto *NextSI = cast<StoreInst>(Next);
+          if (!Frt.isUsable(NextSI)) {
+            continue;
+          }
+          if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
+            continue;
+          }
+          auto StoresExt = Stores;
+          auto ElementsExt = Elements;
+          auto DependedExt = Depended;
+          StoresExt.push_back(NextSI);
+          ElementsExt.set(VPCtx->getScalarId(NextSI));
+          DependedExt |= LDA.getDepended(NextSI);
+          Enumerate(StoresExt, ElementsExt, DependedExt);
+        }
+      };
+
+  std::vector<StoreInst *> Stores{SI};
   BitVector Elements(VPCtx->getNumValues());
   BitVector Depended(VPCtx->getNumValues());
 
   Elements.set(VPCtx->getScalarId(SI));
   Depended |= LDA.getDepended(SI);
 
-  std::vector<StoreInst *> Stores {SI};
-  for (unsigned i = 1; i < VL; i++) {
-    auto It = StoreDAG.find(Stores.back());
-    if (It == StoreDAG.end())
-      return nullptr;
-    auto *NextSI = cast<StoreInst>(*It->second.begin());
-    if (!Frt.isUsable(NextSI))
-      return nullptr;
-    if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
-      return nullptr;
-    }
-    Stores.push_back(NextSI);
-    Elements.set(VPCtx->getScalarId(NextSI));
-    Depended |= LDA.getDepended(NextSI);
-  }
-  return VPCtx->createStorePack(Stores, Elements, Depended, TTI);
+
+  Enumerate(Stores, Elements, Depended);
+  return Seeds;
+}
+
+VectorPack * getSeedStorePack(const Frontier &Frt, StoreInst *SI, unsigned VL) {
+  auto Seeds = getSeedStorePacks(Frt, SI, VL);
+  if (Seeds.empty())
+    return nullptr;
+  return Seeds[0];
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
@@ -889,8 +922,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   auto &StoreDAG = Pkr->getStoreDAG(BB);
 
   DenseMap<Instruction *, unsigned> StoreChainLen;
-  std::function<unsigned (Instruction *)> GetChainLen = 
-    [&](Instruction *I) -> unsigned {
+  std::function<unsigned(Instruction *)> GetChainLen =
+      [&](Instruction *I) -> unsigned {
     if (StoreChainLen.count(I))
       return StoreChainLen[I];
     auto It = StoreDAG.find(I);
@@ -904,29 +937,45 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   };
 
   std::vector<StoreInst *> Stores;
-  for (auto &StoreAndNext : StoreDAG)
+  StoreInst *first = nullptr;
+  for (auto &StoreAndNext : StoreDAG) {
     Stores.push_back(cast<StoreInst>(StoreAndNext.first));
+    auto *SI = cast<StoreInst>(StoreAndNext.first);
+    if (SI->getValueOperand()->getName() == "sub1430")
+      first = SI;
+  }
 
   // Sort stores by store chain length
   std::sort(Stores.begin(), Stores.end(), [&](StoreInst *A, StoreInst *B) {
-        return GetChainLen(A) > GetChainLen(B);
-      });
+    return GetChainLen(A) > GetChainLen(B);
+  });
 
   auto *TTI = Pkr->getTTI();
 
-  std::vector<unsigned> VL { 8, 4, 2 };
+  //if (first) {
+  //  errs() << "!!! got first\n";
+  //  auto *SeedVP = getSeedStorePack(Frt, first, 4);
+  //  if (SeedVP) {
+  //    errs() << "Seed pack for first: " << *SeedVP << '\n';
+  //    float Est = estimateCost(Frt, SeedVP);
+  //    errs() << "Est cost of packing first: " << Est << '\n';
+  //  }
+  //  abort();
+  //}
+
+  std::vector<unsigned> VL{8, 4, 2};
   float Cost = 0;
   float BestEst = 0;
-  for (auto *SI : Stores) {
-    for (unsigned i : VL) {
+  for (unsigned i : VL) {
+    for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
         float Est = estimateCost(Frt, SeedVP);
         if (Est < BestEst) {
+          errs() << "!!! INCLUDING SEED PACK : " << *SeedVP << '\n';
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
           BestEst = Est;
-          break;
         }
       }
     }

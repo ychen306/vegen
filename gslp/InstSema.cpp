@@ -5,6 +5,7 @@ using namespace llvm;
 using namespace PatternMatch;
     
 
+#if 0
 class : public Operation {
   __attribute__((optnone)) bool match(
     Value *V, std::vector<Match> &Matches) const override {
@@ -14458,3 +14459,6 @@ InstBinding("_mm_mask_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128
 InstBinding("_mm_maskz_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation266, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation266, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation266, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation266, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0)
 };
   
+#endif
+
+std::vector<InstBinding> Insts;

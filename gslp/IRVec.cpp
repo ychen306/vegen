@@ -87,11 +87,11 @@ IRInstTable::IRInstTable() {
     }
 
   // enumerate vector insts
-  std::vector<unsigned> VectorBitwidths = {64, 128, 256};
+  unsigned MaxVB = 256;
   for (auto &Op : VectorizableOps) {
-    for (unsigned VB : VectorBitwidths) {
-      // Skip singleton pack
-      if (VB / Op.getBitwidth() == 1)
+    for (unsigned i = 2; i < 8; i++) {
+      unsigned VB = i * Op.getBitwidth();
+      if (VB > MaxVB)
         continue;
       VectorInsts.emplace_back(IRVectorBinding::Create(&Op, VB));
     }

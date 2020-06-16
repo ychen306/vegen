@@ -11,6 +11,17 @@ class BinaryIROperation : public Operation {
   const Instruction::BinaryOps Opcode;
   unsigned Bitwidth;
 
+  static bool isCommutative(unsigned Opcode) {
+    switch (Opcode) {
+      case Instruction::Add: case Instruction::FAdd:
+      case Instruction::Mul: case Instruction::FMul:
+      case Instruction::And: case Instruction::Or: case Instruction::Xor:
+        return true;
+      default:
+        return false;
+    }
+  }
+
 public:
   BinaryIROperation(Instruction::BinaryOps Opcode, unsigned Bitwidth)
       : Opcode(Opcode), Bitwidth(Bitwidth) {}
@@ -23,6 +34,7 @@ public:
         BinOp && BinOp->getOpcode() == Opcode && hasBitWidth(BinOp, Bitwidth);
     if (Matched)
       Matches.push_back({// live ins of this operation
+                         isCommutative(Opcode),
                          {BinOp->getOperand(0), BinOp->getOperand(1)},
                          V});
     return Matched;

@@ -47,7 +47,7 @@ public:
   llvm::ArrayRef<Operation::Match> getMatchesForOutput(const Operation *Op,
                                                        llvm::Value *Output) const {
     auto Matches = getMatches(Op);
-    Operation::Match DummyMatch{{}, Output};
+    Operation::Match DummyMatch{false, {}, Output};
     auto LowerIt = std::lower_bound(Matches.begin(), Matches.end(), DummyMatch,
                                     sortByOutput);
     auto UpperIt = std::upper_bound(Matches.begin(), Matches.end(), DummyMatch,
