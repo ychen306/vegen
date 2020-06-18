@@ -291,7 +291,6 @@ def parse(src):
   reset_parser_state(parser)
   ast = parser.parse(src)
   binary_exprs = parser.binary_exprs
-  reset_parser_state
 
   return ast, binary_exprs
 

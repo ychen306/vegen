@@ -36,6 +36,23 @@ def configure_spec(spec, num_tests=10, num_iters=32):
 
   configurable_exprs = [expr 
       for expr in spec.binary_exprs if expr.op in configurable_op]
+
+  postfix = spec.intrin.split('_')[-1]
+  if postfix.startswith('epu'):
+    # try to make everything unsigned
+    configs = {
+        expr.expr_id: False
+        for expr in configurable_exprs
+        }
+    new_spec = spec._replace(configs=configs)
+    ok, _ = fuzz_intrinsic(new_spec)
+    if ok:
+      # now turn on bitwidth minimization and see if it's still correct
+      set_bitwidth_minimization(True)
+      ok, _ = fuzz_intrinsic(new_spec, num_tests)
+      set_bitwidth_minimization(False)
+      return ok, True, new_spec
+
   num_configs = len(configurable_exprs)
   config_space = itertools.product(*[(True, False) for _ in range(num_configs)])
   for i, encoded_config in enumerate(config_space):
@@ -61,22 +78,33 @@ if __name__ == '__main__':
   from manual_parser import get_spec_from_xml
 
   sema = '''
-<intrinsic tech='SSSE3' vexEq='TRUE' rettype='__m128i' name='_mm_mulhrs_epi16'>
+<intrinsic tech="AVX-512" rettype="__m256i" name="_mm256_mask_max_epu8">
 	<type>Integer</type>
-	<CPUID>SSSE3</CPUID>
+	<CPUID>AVX512VL</CPUID>
+	<CPUID>AVX512BW</CPUID>
 	<category>Arithmetic</category>
-	<parameter varname='a' type='__m128i'/>
-	<parameter varname='b' type='__m128i'/>
-	<description>Multiply packed 16-bit integers in "a" and "b", producing intermediate signed 32-bit integers. Truncate each intermediate integer to the 18 most significant bits, round by adding 1, and store bits [16:1] to "dst". </description>
+	<parameter varname="src" type="__m256i"/>
+	<parameter varname="k" type="__mmask32"/>
+	<parameter varname="a" type="__m256i"/>
+	<parameter varname="b" type="__m256i"/>
+	<description>Compare packed unsigned 8-bit integers in "a" and "b", and store packed maximum values in "dst" using writemask "k" (elements are copied from "src" when the corresponding mask bit is not set). </description>
 	<operation>
-FOR j := 0 to 7
-	i := j*16
-	tmp[31:0] := ((a[i+15:i] * b[i+15:i]) &gt;&gt; 14) + 1
-	dst[i+15:i] := tmp[16:1]
+FOR j := 0 to 31
+	i := j*8
+	IF k[j]
+		IF a[i+7:i] &gt; b[i+7:i]
+			dst[i+7:i] := a[i+7:i]
+		ELSE
+			dst[i+7:i] := b[i+7:i]
+		FI
+	ELSE
+		dst[i+7:i] := src[i+7:i]
+	FI
 ENDFOR
+dst[MAX:256] := 0
 	</operation>
-	<instruction name='pmulhrsw' form='xmm, xmm'/>
-	<header>tmmintrin.h</header>
+	<instruction name="vpmaxub"/>
+	<header>immintrin.h</header>
 </intrinsic>
   '''
 

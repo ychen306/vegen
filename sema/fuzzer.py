@@ -66,12 +66,6 @@ def check_compiled_spec_with_examples(param_vals, outs, out_types, inputs, expec
     constraints.append(
         z3.And([equal(z3.BitVecVal(y_expected, y.size()), y, out_type)
           for y_expected, y, out_type in zip(expected, outs_concrete, out_types)]))
-    #preconditions = [x_sym == x_conc
-    #for x_sym, x_conc in zip(param_vals, input)]
-    #postconditions = [equal(z3.BitVecVal(y_expected, y.size()), y, out_type)
-    #    for y_expected, y, out_type in zip(expected, outs, out_types)]
-    #constraints.append(
-    #    z3.Implies(z3.And(preconditions), z3.And(postconditions)))
   spec_correct = z3.And(constraints)
   s.add(z3.Not(spec_correct))
   correct = s.check() == z3.unsat
@@ -431,48 +425,36 @@ if __name__ == '__main__':
   from intrinsic_types import IntegerType
 
   sema = '''
-<intrinsic tech="AVX-512/KNC" rettype="__m512d" name="_mm512_add_pd">
-	<type>Floating Point</type>
-	<CPUID>AVX512F/KNCNI</CPUID>
-	<category>Arithmetic</category>
-	<parameter varname="a" type="__m512d"/>
-	<parameter varname="b" type="__m512d"/>
-	<description>Add packed double-precision (64-bit) floating-point elements in "a" and "b", and store the results in "dst".</description>
-	<operation>
-FOR j := 0 to 7
-	i := j*64
-	dst[i+63:i] := a[i+63:i] + b[i+63:i]
-ENDFOR
-dst[MAX:512] := 0
-	</operation>
-	<instruction name='vaddpd' form='zmm {k}, zmm, zmm'/>
-	<header>immintrin.h</header>
-</intrinsic>
-  '''
-  sema = '''
-<intrinsic tech='AVX-512' rettype='__m512i' name='_mm512_shrdv_epi64'>
+<intrinsic tech="AVX-512" rettype="__m256i" name="_mm256_mask_max_epu8">
 	<type>Integer</type>
-	<CPUID>AVX512_VBMI2</CPUID>
-	<category>Shift</category>
-	<parameter varname='a' type='__m512i'/>
-	<parameter varname='b' type='__m512i'/>
-	<parameter varname='c' type='__m512i'/>
-	<description>
-		Concatenate packed 64-bit integers in "b" and "a" producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of "c", and store the lower 64-bits in "dst".
-	</description>
+	<CPUID>AVX512VL</CPUID>
+	<CPUID>AVX512BW</CPUID>
+	<category>Arithmetic</category>
+	<parameter varname="src" type="__m256i"/>
+	<parameter varname="k" type="__mmask32"/>
+	<parameter varname="a" type="__m256i"/>
+	<parameter varname="b" type="__m256i"/>
+	<description>Compare packed unsigned 8-bit integers in "a" and "b", and store packed maximum values in "dst" using writemask "k" (elements are copied from "src" when the corresponding mask bit is not set). </description>
 	<operation>
-FOR j := 0 to 7
-	i := j*64
-	dst[i+63:i] := concat(b[i+63:i], a[i+63:i]) &gt;&gt; (c[i+63:i] &amp; 63)
+FOR j := 0 to 31
+	i := j*8
+	IF k[j]
+		IF a[i+7:i] &gt; b[i+7:i]
+			dst[i+7:i] := a[i+7:i]
+		ELSE
+			dst[i+7:i] := b[i+7:i]
+		FI
+	ELSE
+		dst[i+7:i] := src[i+7:i]
+	FI
 ENDFOR
-dst[MAX:512] := 0
+dst[MAX:256] := 0
 	</operation>
-	
-	<instruction name='VPSHRDVQ' form='zmm {k}, zmm, zmm' xed=''/>
+	<instruction name="vpmaxub"/>
 	<header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
   spec = get_spec_from_xml(intrin_node)
-  ok = fuzz_intrinsic(spec, num_tests=32)
+  ok = fuzz_intrinsic(spec, num_tests=4)
   print(ok)
