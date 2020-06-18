@@ -763,7 +763,7 @@ builtin_convs = {
     }
 
 unary_real_arith = {
-    'SQRT',
+    #'SQRT', 'ln'
     }
 
 def is_number(expr):
