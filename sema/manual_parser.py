@@ -11,6 +11,12 @@ DEFINE MAX(a, b) {
 }
 '''
 
+def parse_cpuid(cpuid):
+  cpuid = cpuid.text.lower().replace('_', '')
+  if '/' in cpuid:
+    return cpuid.split('/')[0]
+  return cpuid
+
 def get_spec_from_xml(node):
   params = []
   for param_node in node.findall('parameter'):
@@ -19,7 +25,7 @@ def get_spec_from_xml(node):
     if name == '':
       continue
     params.append(Parameter(name, type))
-  cpuids = [cpuid.text.lower() for cpuid in node.findall('CPUID')]
+  cpuids = [parse_cpuid(cpuid) for cpuid in node.findall('CPUID')]
   intrin = node.attrib['name']
   inst = node.find('instruction')
   inst_form = inst.attrib.get('form', '')

@@ -396,18 +396,20 @@ int main() {
 
     os.system('cp %s %s' % (outf.name, 'debug.c'))
 
+    features = ' '.join('-m'+cpuid for cpuid in spec.cpuids)
+
     # TODO: add CPUIDs 
     try:
       subprocess.check_output(
-          'clang %s -o %s -I%s %s/printers.o >/dev/null 2>/dev/null -mavx -mavx2 -march=native -mfma' % (
-            outf.name, exe.name, src_path, src_path),
+          'clang %s -o %s -I%s %s/printers.o %s 2>/dev/null >/dev/null' % (
+            outf.name, exe.name, src_path, src_path, features),
           shell=True)
     except subprocess.CalledProcessError:
       return False, False
 
     num_outputs_per_intrinsic = len(out_types)
 
-    stdout = subprocess.check_output([exe.name])
+    stdout = subprocess.check_output(['sde64', '--', exe.name])
     lines = stdout.decode('utf-8').strip().split('\n')
     assert(len(lines) == num_tests * num_outputs_per_intrinsic)
 
@@ -429,23 +431,44 @@ if __name__ == '__main__':
   from intrinsic_types import IntegerType
 
   sema = '''
-<intrinsic tech='AVX' rettype='__m256' name='_mm256_insertf128_ps'>
+<intrinsic tech="AVX-512/KNC" rettype="__m512d" name="_mm512_add_pd">
 	<type>Floating Point</type>
-	<CPUID>AVX</CPUID>
-	<category>Swizzle</category>
-	<parameter varname='a' type='__m256'/>
-	<parameter varname='b' type='__m128'/>
-	<parameter varname="imm8" type='int'/>
-	<description>Copy "a" to "dst", then insert 128 bits (composed of 4 packed single-precision (32-bit) floating-point elements) from "b" into "dst" at the location specified by "imm8".</description>
+	<CPUID>AVX512F/KNCNI</CPUID>
+	<category>Arithmetic</category>
+	<parameter varname="a" type="__m512d"/>
+	<parameter varname="b" type="__m512d"/>
+	<description>Add packed double-precision (64-bit) floating-point elements in "a" and "b", and store the results in "dst".</description>
 	<operation>
-dst[255:0] := a[255:0]
-CASE (imm8[1:0]) OF
-0: dst[127:0] := b[127:0]
-1: dst[255:128] := b[127:0]
-ESAC
-dst[MAX:256] := 0
+FOR j := 0 to 7
+	i := j*64
+	dst[i+63:i] := a[i+63:i] + b[i+63:i]
+ENDFOR
+dst[MAX:512] := 0
 	</operation>
-	<instruction name='vinsertf128' form='ymm, ymm, xmm, imm'/>
+	<instruction name='vaddpd' form='zmm {k}, zmm, zmm'/>
+	<header>immintrin.h</header>
+</intrinsic>
+  '''
+  sema = '''
+<intrinsic tech='AVX-512' rettype='__m512i' name='_mm512_shrdv_epi64'>
+	<type>Integer</type>
+	<CPUID>AVX512_VBMI2</CPUID>
+	<category>Shift</category>
+	<parameter varname='a' type='__m512i'/>
+	<parameter varname='b' type='__m512i'/>
+	<parameter varname='c' type='__m512i'/>
+	<description>
+		Concatenate packed 64-bit integers in "b" and "a" producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of "c", and store the lower 64-bits in "dst".
+	</description>
+	<operation>
+FOR j := 0 to 7
+	i := j*64
+	dst[i+63:i] := concat(b[i+63:i], a[i+63:i]) &gt;&gt; (c[i+63:i] &amp; 63)
+ENDFOR
+dst[MAX:512] := 0
+	</operation>
+	
+	<instruction name='VPSHRDVQ' form='zmm {k}, zmm, zmm' xed=''/>
 	<header>immintrin.h</header>
 </intrinsic>
   '''
