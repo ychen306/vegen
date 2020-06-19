@@ -144,6 +144,8 @@ for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
 
 outf.close()
 
+pool.terminate()
+
 print('Parsed:', num_parsed,
     'Skipped:', num_skipped,
     'Num unique inst forms parsed:', len(supported_insts),

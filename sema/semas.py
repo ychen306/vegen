@@ -11,7 +11,7 @@ semas = {}
 
 # get semantics of intrinsics
 #with open('intrinsics.avx2.sema') as sema_f:
-with open('intrinsics.avx512.sema') as sema_f:
+with open('intrinsics.all.sema') as sema_f:
   while True:
     intrin_name = next(sema_f, None)
     if intrin_name is None:
