@@ -124,7 +124,9 @@ for intrin in data_root.iter('intrinsic'):
     intrins.append(intrin)
 
 pool = Pool(12)
+num_intrins = 0
 for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
+  num_intrins+=1
   if ok:
     spec_sema = dump_spec(spec, precision=False)
     outf.write(spec.intrin + '\n')
@@ -134,7 +136,7 @@ for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
     num_ok += ok
     num_parsed += 1
     print(spec.intrin, spec.cpuids, num_parsed, flush=True)
-    print('\t',ok, num_ok,'/', num_interpreted, flush=True)
+    print('\t',ok, num_ok,'/', num_intrins, flush=True)
     supported_insts.add(inst_form)
   else:
     print('Parsed', num_parsed, ' semantics, failling:')
