@@ -4,6 +4,7 @@ import sys
 from fuzzer import fuzz_intrinsic
 from compiler import compile
 from spec_serializer import dump_spec
+from multiprocessing import Pool
 
 data_f, out_fname = sys.argv[1:]
 data_root = ET.parse(data_f)
@@ -22,6 +23,15 @@ skip_to = None
 
 outf = open(out_fname, 'w')
 
+def get_verified_spec(intrin):
+  try:
+    spec = get_spec_from_xml(intrin)
+    ok, compiled = fuzz_intrinsic(spec, num_tests=100)
+  except SyntaxError:
+      return False, False, None
+  return ok, compiled, spec
+
+intrins = []
 for intrin in data_root.iter('intrinsic'):
   cpuid = intrin.find('CPUID')
   sema = intrin.find('operation') 
@@ -50,7 +60,10 @@ for intrin in data_root.iter('intrinsic'):
       '4dpwss' in intrin.attrib['name'] or
       'cvt' in intrin.attrib['name'] or
       intrin.attrib['name'].startswith('_bit') or
-      intrin.attrib['name'] in ('_rdpmc', '_rdtsc')):
+      intrin.attrib['name'] in ('_rdpmc', '_rdtsc') or
+      'lzcnt' in intrin.attrib['name'] or
+      'popcnt' in intrin.attrib['name'] or
+      'mask' in intrin.attrib['name']):
     continue
   cat = intrin.find('category')
   if cat is not None and cat.text in (
@@ -105,28 +118,28 @@ for intrin in data_root.iter('intrinsic'):
     num_skipped += 1
     continue
 
-  print(intrin.attrib['name'], cpuid_text, num_parsed, flush=True)
   if inst is not None and sema is not None:
-    try:
-      #if 'ELSE IF' in sema.text:
-      #  continue
-      spec = get_spec_from_xml(intrin)
-      ok, compiled = fuzz_intrinsic(spec, num_tests=100)
-      if ok:
-        spec_sema = dump_spec(spec, precision=False)
-        outf.write(intrin.attrib['name'] + '\n')
-        outf.write(spec_sema + '\n')
-        outf.flush()
-      num_interpreted += compiled
-      num_ok += ok
-      print('\t',ok, num_ok,'/', num_interpreted, flush=True)
-      supported_insts.add(inst_form)
-      num_parsed += 1
-    except SyntaxError:
-      print('Parsed', num_parsed, ' semantics, failling:')
-      print(sema.text)
-      print(intrin.attrib['name'])
-      break
+    #if 'ELSE IF' in sema.text:
+    #  continue
+    intrins.append(intrin)
+
+pool = Pool(12)
+for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
+  if ok:
+    spec_sema = dump_spec(spec, precision=False)
+    outf.write(spec.intrin + '\n')
+    outf.write(spec_sema + '\n')
+    outf.flush()
+    num_interpreted += compiled
+    num_ok += ok
+    num_parsed += 1
+    print(spec.intrin, spec.cpuids, num_parsed, flush=True)
+    print('\t',ok, num_ok,'/', num_interpreted, flush=True)
+    supported_insts.add(inst_form)
+  else:
+    print('Parsed', num_parsed, ' semantics, failling:')
+    print(sema.text)
+    print(intrin.attrib['name'])
 
 outf.close()
 

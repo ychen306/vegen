@@ -664,7 +664,13 @@ builtins = {
     'ZeroExtend': builtin_zero_extend,
     'ZeroExtend_To_512': builtin_zero_extend,
     'ZeroExtend64': builtin_zero_extend,
+    'ZeroExtend32': builtin_zero_extend,
+    'ZeroExtend16': builtin_zero_extend,
+
+    'SignExtend16': builtin_sign_extend,
     'SignExtend32': builtin_sign_extend,
+    'SignExtend64': builtin_sign_extend,
+
     'SignExtend': builtin_sign_extend,
 
     'APPROXIMATE': lambda args, _: args[0], # noop
@@ -743,10 +749,16 @@ def cast_to_fp(bitwidth):
     return x, FloatType(bitwidth)
   return impl
 
+def cast_to_signed(arg):
+  x, ty = arg
+  return x, ty._replace(is_signed=True)
+
 # mapping func -> type, ret-float?
 builtin_convs = {
+    'Signed': cast_to_signed,
     'FP32': cast_to_fp(32),
     'FP64': cast_to_fp(64),
+
     'Convert_Int32_To_FP32': gen_int2fp(True, 32, 32),
     'Convert_Int64_To_FP32': gen_int2fp(True, 64, 32),
     'Convert_Int32_To_FP64': gen_int2fp(True, 32, 64),
@@ -934,6 +946,7 @@ def compile_lookup(lookup, env, pred):
       'word': 16,
       'dword': 32,
       'qword': 64,
+      'm128': 128,
       }
   stride = strides[lookup.key]
   obj, ty = compile_expr(lookup.obj, env)
@@ -954,6 +967,7 @@ compilers = {
     Match: compile_match,
     While: compile_while,
     Lookup: compile_lookup,
+    PseudoStmt: lambda *_:None
     }
 
 if __name__ == '__main__':
