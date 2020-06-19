@@ -138,8 +138,7 @@ for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
     supported_insts.add(inst_form)
   else:
     print('Parsed', num_parsed, ' semantics, failling:')
-    print(sema.text)
-    print(intrin.attrib['name'])
+    print(spec.intrin)
 
 outf.close()
 
