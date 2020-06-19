@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 from manual_parser import get_spec_from_xml
 import sys
-from spec_configurer import configure_spec
+from fuzzer import fuzz_intrinsic
 from compiler import compile
 from spec_serializer import dump_spec
 
@@ -111,9 +111,9 @@ for intrin in data_root.iter('intrinsic'):
       #if 'ELSE IF' in sema.text:
       #  continue
       spec = get_spec_from_xml(intrin)
-      ok, compiled, new_spec = configure_spec(spec, num_tests=100)
+      ok, compiled = fuzz_intrinsic(spec, num_tests=100)
       if ok:
-        spec_sema = dump_spec(new_spec, precision=False)
+        spec_sema = dump_spec(spec, precision=False)
         outf.write(intrin.attrib['name'] + '\n')
         outf.write(spec_sema + '\n')
         outf.flush()

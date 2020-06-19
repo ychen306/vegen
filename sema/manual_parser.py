@@ -20,11 +20,12 @@ def parse_cpuid(cpuid):
 def get_spec_from_xml(node):
   params = []
   for param_node in node.findall('parameter'):
-    name = param_node.attrib['varname']
+    name = param_node.attrib.get('varname', '')
     type = param_node.attrib['type']
     if name == '':
       continue
-    params.append(Parameter(name, type))
+    is_signed = param_node.attrib.get('etype', '').startswith('SI')
+    params.append(Parameter(name, type, is_signed))
   cpuids = [parse_cpuid(cpuid) for cpuid in node.findall('CPUID')]
   intrin = node.attrib['name']
   inst = node.find('instruction')
@@ -33,7 +34,9 @@ def get_spec_from_xml(node):
   operation = node.find('operation')
   assert(operation is not None)
   spec, binary_exprs = parse(std_funcs+operation.text)
-  rettype = node.attrib['rettype']
+  output = node.find('return')
+  assert(output is not None)
+  rettype = output.attrib['type']
   return Spec(
       intrin=intrin,
       inst=inst.attrib.get('name'),

@@ -38,10 +38,12 @@ def configure_spec(spec, num_tests=10, num_iters=32):
       for expr in spec.binary_exprs if expr.op in configurable_op]
 
   postfix = spec.intrin.split('_')[-1]
-  if postfix.startswith('epu'):
-    # try to make everything unsigned
+  epi = postfix.startswith('epi')
+  epu = postfix.startswith('epu')
+  if epi or epu:
+    # try to make everything unsigned or signed
     configs = {
-        expr.expr_id: False
+        expr.expr_id: epi
         for expr in configurable_exprs
         }
     new_spec = spec._replace(configs=configs)
@@ -78,37 +80,35 @@ if __name__ == '__main__':
   from manual_parser import get_spec_from_xml
 
   sema = '''
-<intrinsic tech="AVX-512" rettype="__m256i" name="_mm256_mask_max_epu8">
+<intrinsic tech='AVX-512' rettype='__m512i' name='_mm512_maskz_dpwssd_epi32'>
 	<type>Integer</type>
-	<CPUID>AVX512VL</CPUID>
-	<CPUID>AVX512BW</CPUID>
+	<CPUID>AVX512_VNNI</CPUID>
 	<category>Arithmetic</category>
-	<parameter varname="src" type="__m256i"/>
-	<parameter varname="k" type="__mmask32"/>
-	<parameter varname="a" type="__m256i"/>
-	<parameter varname="b" type="__m256i"/>
-	<description>Compare packed unsigned 8-bit integers in "a" and "b", and store packed maximum values in "dst" using writemask "k" (elements are copied from "src" when the corresponding mask bit is not set). </description>
+	<parameter varname='k' type='__mmask16'/>
+	<parameter varname='src' type='__m512i'/>
+	<parameter varname='a' type='__m512i'/>
+	<parameter varname='b' type='__m512i'/>
+	<description>
+		Multiply groups of 2 adjacent pairs of signed 16-bit integers in "a" with corresponding 16-bit integers in "b", producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in "src", and store the packed 32-bit results in "dst" using zeromask "k" (elements are zeroed out when the corresponding mask bit is not set).
+	</description>
 	<operation>
-FOR j := 0 to 31
-	i := j*8
+FOR j := 0 to 15
 	IF k[j]
-		IF a[i+7:i] &gt; b[i+7:i]
-			dst[i+7:i] := a[i+7:i]
-		ELSE
-			dst[i+7:i] := b[i+7:i]
-		FI
+		tmp1 := a.word[2*j] * b.word[j]
+		tmp2 := a.word[2*j+1] * b.word[j+1]
+		dst.dword[j] := src.dword[j] + tmp1 + tmp2
 	ELSE
-		dst[i+7:i] := src[i+7:i]
+		dst.dword[j] := 0
 	FI
 ENDFOR
-dst[MAX:256] := 0
+dst[MAX:512] := 0
 	</operation>
-	<instruction name="vpmaxub"/>
+	<instruction name='VPDPWSSD' form='zmm {k}, zmm, zmm' xed=''/>
 	<header>immintrin.h</header>
 </intrinsic>
   '''
 
   intrin_node = ET.fromstring(sema)
   spec = get_spec_from_xml(intrin_node)
-  ok, compiled, new_spec = configure_spec(spec, num_tests=100)
+  ok, compiled, new_spec = configure_spec(spec, num_tests=5)
   print(ok, compiled)

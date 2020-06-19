@@ -51,7 +51,7 @@ def bv2fp(x):
   return z3.fpBVToFP(x, ty)
 
 def binary_float_op(op):
-  def impl(a, b, _=None):
+  def impl(a, b, *_):
     if z3.is_bv(a):
       bitwidth = a.size()
       if not z3.is_bv(b):
@@ -79,7 +79,7 @@ def binary_float_op(op):
   return impl
 
 def binary_float_cmp(op):
-  def impl(a, b, _=None):
+  def impl(a, b, *_):
     assert a.size() == b.size()
     bitwidth = a.size()
     assert bitwidth in (32, 64)

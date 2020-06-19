@@ -63,6 +63,12 @@ def check_compiled_spec_with_examples(param_vals, outs, out_types, inputs, expec
     subs = [(param, z3.BitVecVal(x, param.size())) for param, x in zip(param_vals, input)]
     outs_concrete = [z3.simplify(z3.substitute(out, *subs))
         for out in outs]
+    ############
+    #y_hat = outs_concrete[0].as_long()
+    #y = expected[0]
+    #print('Wrong:', bin(y_hat ^ y))
+    ############
+
     constraints.append(
         z3.And([equal(z3.BitVecVal(y_expected, y.size()), y, out_type)
           for y_expected, y, out_type in zip(expected, outs_concrete, out_types)]))
@@ -425,36 +431,115 @@ if __name__ == '__main__':
   from intrinsic_types import IntegerType
 
   sema = '''
-<intrinsic tech="AVX-512" rettype="__m256i" name="_mm256_mask_max_epu8">
+  <intrinsic tech="AVX-512" name="_mm256_maskz_dpwssds_epi32" rettype="__m256i">
+        <type>Integer</type>
+        <CPUID>AVX512_VNNI</CPUID>
+        <CPUID>AVX512VL</CPUID>
+        <category>Arithmetic</category>
+        <return type="__m256i" varname="dst" etype="SI32"/>
+        <parameter type="__mmask8" varname="k" etype="MASK"/>
+        <parameter type="__m256i" varname="src" etype="SI32"/>
+        <parameter type="__m256i" varname="a" etype="SI16"/>
+        <parameter type="__m256i" varname="b" etype="SI16"/>
+        <description>Multiply groups of 2 adjacent pairs of signed 16-bit integers in "a" with corresponding 16-bit integers in "b", producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in "src" using signed saturation, and store the packed 32-bit results in "dst" using zeromask "k" (elements are zeroed out when the corresponding mask bit is not set).</description>
+        <operation>
+FOR j := 0 to 7
+        IF k[j]
+                tmp1.dword := SignExtend32(a.word[2*j]) * SignExtend32(b.word[2*j])
+                tmp2.dword := SignExtend32(a.word[2*j+1]) * SignExtend32(b.word[2*j+1])
+                dst.dword[j] := Saturate32(src.dword[j] + tmp1 + tmp2)
+        ELSE
+                dst.dword[j] := 0
+        FI
+ENDFOR
+dst[MAX:256] := 0
+        </operation>
+        <instruction name="VPDPWSSDS" form="ymm {z}, ymm, ymm" xed="VPDPWSSDS_YMMi32_MASKmskw_YMMi16_YMMu32_AVX512"/>
+        <header>immintrin.h</header>
+</intrinsic>
+  '''
+  sema = '''
+<intrinsic tech="AVX2" name="_mm256_maddubs_epi16">
 	<type>Integer</type>
-	<CPUID>AVX512VL</CPUID>
-	<CPUID>AVX512BW</CPUID>
+	<CPUID>AVX2</CPUID>
 	<category>Arithmetic</category>
-	<parameter varname="src" type="__m256i"/>
-	<parameter varname="k" type="__mmask32"/>
-	<parameter varname="a" type="__m256i"/>
-	<parameter varname="b" type="__m256i"/>
-	<description>Compare packed unsigned 8-bit integers in "a" and "b", and store packed maximum values in "dst" using writemask "k" (elements are copied from "src" when the corresponding mask bit is not set). </description>
+	<return type="__m256i" varname="dst" etype="SI16"/>
+	<parameter type="__m256i" varname="a" etype="UI8"/>
+	<parameter type="__m256i" varname="b" etype="SI8"/>
+	<description>Vertically multiply each unsigned 8-bit integer from "a" with the corresponding signed 8-bit integer from "b", producing intermediate signed 16-bit integers. Horizontally add adjacent pairs of intermediate signed 16-bit integers, and pack the saturated results in "dst".</description>
 	<operation>
-FOR j := 0 to 31
-	i := j*8
-	IF k[j]
-		IF a[i+7:i] &gt; b[i+7:i]
-			dst[i+7:i] := a[i+7:i]
-		ELSE
-			dst[i+7:i] := b[i+7:i]
-		FI
-	ELSE
-		dst[i+7:i] := src[i+7:i]
-	FI
+FOR j := 0 to 15
+	i := j*16
+	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
 ENDFOR
 dst[MAX:256] := 0
 	</operation>
-	<instruction name="vpmaxub"/>
+	<instruction name="VPMADDUBSW" form="ymm, ymm, ymm" xed="VPMADDUBSW_YMMqq_YMMqq_YMMqq"/>
+	<header>immintrin.h</header>
+</intrinsic>
+'''
+  sema = '''
+<intrinsic tech="AVX" name="_mm256_dp_ps">
+	<type>Floating Point</type>
+	<CPUID>AVX</CPUID>
+	<category>Arithmetic</category>
+	<return type="__m256" varname="dst" etype="FP32"/>
+	<parameter type="__m256" varname="a" etype="FP32"/>
+	<parameter type="__m256" varname="b" etype="FP32"/>
+	<parameter type="const int" varname="imm8" etype="IMM" immwidth="8"/>
+	<description>Conditionally multiply the packed single-precision (32-bit) floating-point elements in "a" and "b" using the high 4 bits in "imm8", sum the four products, and conditionally store the sum in "dst" using the low 4 bits of "imm8".</description>
+	<operation>
+DEFINE DP(a[127:0], b[127:0], imm8[7:0]) {
+	FOR j := 0 to 3
+		i := j*32
+		IF imm8[(4+j)%8]
+			temp[i+31:i] := a[i+31:i] * b[i+31:i]
+		ELSE
+			temp[i+31:i] := FP32(0.0)
+		FI
+	ENDFOR
+	
+	sum[31:0] := (temp[127:96] + temp[95:64]) + (temp[63:32] + temp[31:0])
+	
+	FOR j := 0 to 3
+		i := j*32
+		IF imm8[j%8]
+			tmpdst[i+31:i] := sum[31:0]
+		ELSE
+			tmpdst[i+31:i] := FP32(0.0)
+		FI
+	ENDFOR
+	RETURN tmpdst[127:0]
+}
+dst[127:0] := DP(a[127:0], b[127:0], imm8[7:0])
+dst[255:128] := DP(a[255:128], b[255:128], imm8[7:0])
+dst[MAX:256] := 0
+	</operation>
+	<instruction name="VDPPS" form="ymm, ymm, ymm, imm8" xed="VDPPS_YMMqq_YMMqq_YMMqq_IMMb"/>
+	<header>immintrin.h</header>
+</intrinsic>
+'''
+  sema = '''
+<intrinsic tech="AVX" name="_mm256_div_ps">
+	<type>Floating Point</type>
+	<CPUID>AVX</CPUID>
+	<category>Arithmetic</category>
+	<return type="__m256" varname="dst" etype="FP32"/>
+	<parameter type="__m256" varname="a" etype="FP32"/>
+	<parameter type="__m256" varname="b" etype="FP32"/>
+	<description>Divide packed single-precision (32-bit) floating-point elements in "a" by packed elements in "b", and store the results in "dst".</description>
+	<operation>
+FOR j := 0 to 7
+	i := 32*j
+	dst[i+31:i] := a[i+31:i] / b[i+31:i]
+ENDFOR
+dst[MAX:256] := 0
+	</operation>
+	<instruction name="VDIVPS" form="ymm, ymm, ymm" xed="VDIVPS_YMMqq_YMMqq_YMMqq"/>
 	<header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
   spec = get_spec_from_xml(intrin_node)
-  ok = fuzz_intrinsic(spec, num_tests=4)
+  ok = fuzz_intrinsic(spec, num_tests=10)
   print(ok)

@@ -24,7 +24,7 @@ Lookup = namedtuple('Lookup', ['obj', 'key'])
 FuncDef = namedtuple('FuncDef', ['name', 'params', 'body'])
 Break = namedtuple('Break', [])
 
-Parameter = namedtuple('Parameter', ['name', 'type'])
+Parameter = namedtuple('Parameter', ['name', 'type', 'is_signed'])
 Spec = namedtuple('Spec', [
   'intrin', 'inst', 'params',
   'spec', 'rettype', 'binary_exprs',

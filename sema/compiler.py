@@ -135,12 +135,12 @@ def select_op(op, signed):
   return unsigned_ops.get(op, op)
 
 def binary_op(op, signed=True, trunc=False, get_bitwidth=lambda a, b:max(a.size(), b.size())):
-  def impl(a, b, signed_override=signed):
+  def impl(a, b, a_ty, b_ty, signed_override=signed):
     bitwidth = get_bitwidth(a, b)
     mask = (1 << get_max_arg_width(a,b))-1
-    a = fix_bitwidth(a, bitwidth, signed_override)
-    b = fix_bitwidth(b, bitwidth, signed_override)
-    c = select_op(op, signed_override)(a, b)
+    a = fix_bitwidth(a, bitwidth, a_ty.is_signed)
+    b = fix_bitwidth(b, bitwidth, b_ty.is_signed)
+    c = select_op(op, a_ty.is_signed or b_ty.is_signed)(a, b)
     if trunc:
       c = c & mask
     return c
@@ -369,7 +369,8 @@ def compile_update(update, env, pred):
   env.set_type(lhs.var, 
       lhs_type._replace(
         is_float=lhs_type.is_float or rhs_type.is_float,
-        is_double=lhs_type.is_float or rhs_type.is_double))
+        is_double=lhs_type.is_float or rhs_type.is_double,
+        is_signed=lhs_type.is_signed or rhs_type.is_signed))
 
   if sign_extending:
     lhs.mark_sign_extend()
@@ -412,13 +413,8 @@ def compile_binary_expr(expr, env, pred):
 
   impl_sig = expr.op, is_float(a_type)
   impl = binary_op_impls[impl_sig]
-  # check the configuration for whether this expression is signed
-  signedness = env.get_binary_expr_signedness(expr)
-  if signedness is not None:
-    result = impl(a, b, signedness)
-  else:
-    # if signedness is not specified, just use the default
-    result = impl(a, b)
+
+  result = impl(a, b, a_type, b_type)
 
   if a_type is not None:
     ty = a_type
@@ -427,7 +423,8 @@ def compile_binary_expr(expr, env, pred):
   assert ty is not None
   if z3.is_bool(result):
     result = bool2bv(result)
-  return result, ty._replace(bitwidth=result.size())
+  is_signed = (a_type and a_type.is_signed) or (b_type and b_type.is_signed)
+  return result, ty._replace(bitwidth=result.size(), is_signed=is_signed)
 
 def compile_var(var, env, pred=True):
   '''
@@ -472,6 +469,8 @@ def compile(spec):
       is_out_param = True
     else:
       param_type = intrinsic_types[param.type]
+    # override signedness of the variables
+    param_type = param_type._replace(is_signed=param.is_signed)
     param_val = new_sym_val(param_type)
     if not is_out_param: 
       param_vals.append(param_val)
@@ -560,9 +559,9 @@ def gen_saturation_func(bitwidth, in_signed, out_signed):
   hi = get_signed_max(bitwidth) if out_signed else get_unsigned_max(bitwidth)
   lo = get_signed_min(bitwidth) if out_signed else get_unsigned_min(bitwidth)
   def saturate(args, env):
-    [(val, _)] = args
-    lt = operator.lt if in_signed else z3.ULT
-    gt = operator.gt if in_signed else z3.UGT
+    [(val, ty)] = args
+    lt = operator.lt if ty.is_signed else z3.ULT
+    gt = operator.gt if ty.is_signed else z3.UGT
     new_val = z3.If(
         lt(val, lo),
         lo,
@@ -570,7 +569,7 @@ def gen_saturation_func(bitwidth, in_signed, out_signed):
           gt(val, hi),
           hi,
           val))
-    return fix_bitwidth(new_val, bitwidth), IntegerType(bitwidth)
+    return fix_bitwidth(new_val, bitwidth), IntegerType(bitwidth, is_signed=out_signed)
   return saturate
 
 def builtin_concat(args, _):
@@ -628,6 +627,14 @@ def builtin_select(args, _):
   return selected, a_ty._replace(bitwidth=32)
 
 builtins = {
+    'Saturate32': gen_saturation_func(32, True, True),
+    'Saturate16': gen_saturation_func(16, True, True),
+    'Saturate8': gen_saturation_func(8, True, True),
+
+    'SaturateU32': gen_saturation_func(32, True, False),
+    'SaturateU16': gen_saturation_func(16, True, False),
+    'SaturateU8': gen_saturation_func(8, True, False),
+
     'Saturate_Int16_To_Int8': gen_saturation_func(8, True, True),
     'Saturate_Int16_To_UnsignedInt8': gen_saturation_func(8, True, False),
     'Saturate_Int32_To_Int16': gen_saturation_func(16, True, True),
@@ -657,6 +664,7 @@ builtins = {
     'ZeroExtend': builtin_zero_extend,
     'ZeroExtend_To_512': builtin_zero_extend,
     'ZeroExtend64': builtin_zero_extend,
+    'SignExtend32': builtin_sign_extend,
     'SignExtend': builtin_sign_extend,
 
     'APPROXIMATE': lambda args, _: args[0], # noop
@@ -675,17 +683,19 @@ f64_64 = BV64, BV64
 
 def gen_int2fp(in_signed, in_bitwidth, out_bitwidth):
   assert out_bitwidth in (32, 64)
-  def precise_impl(x):
+  def precise_impl(arg):
+    x, x_ty = arg
     x = fix_bitwidth(x, in_bitwidth)
     if out_bitwidth == 32:
       ty = z3.Float32()
     else:
       ty = z3.Float64()
-    if in_singed:
-      return z3.fpSignedToFP(z3.RNE(), x, ty)
-    return z3.fpUnsignedToFP(z3.RNE(), x, ty), FloatType(out_bitwidth)
+    if x_ty.is_signed:
+      return z3.fpToIEEEBV(z3.fpSignedToFP(z3.RNE(), x, ty)), FloatType(out_bitwidth)
+    return z3.fpToIEEEBV(z3.fpUnsignedToFP(z3.RNE(), x, ty)), FloatType(out_bitwidth)
 
-  def uninterpreted_impl(x):
+  def uninterpreted_impl(arg):
+    x, ty = arg
     param_types = z3.BitVecSort(in_bitwidth), z3.BitVecSort(out_bitwidth)
     func_name = 'conv_%s%d_to_f%d' % (
         'i' if in_signed else 'u',
@@ -700,15 +710,17 @@ def gen_int2fp(in_signed, in_bitwidth, out_bitwidth):
 def gen_fp2int(out_signed, in_bitwidth, out_bitwidth):
   assert in_bitwidth in (32, 64)
   out_ty = z3.BitVecSort(out_bitwidth)
-  def precise_impl(x):
+  def precise_impl(arg):
+    x, ty = arg
     if trunc:
       x = x + 0.5
     x = bv2fp(fix_bitwidth(x, in_bitwidth))
     if out_signed:
-      return z3.fpToSBV(z3.RTZ(), x, out_ty)
-    return z3.fpToUBV(z3.RTZ(), x, out_ty), IntegerType(out_bitwidth)
+      return z3.fpToSBV(z3.RTZ(), x, out_ty), IntegerType(out_bitwidth, out_signed)
+    return z3.fpToUBV(z3.RTZ(), x, out_ty), IntegerType(out_bitwidth, out_signed)
 
-  def uninterpreted_impl(x):
+  def uninterpreted_impl(arg):
+    x, ty = arg
     func_name = 'conv_f%d_to_%s_%s%d' % (
         in_bitwidth,
         'i' if out_signed else 'u',
@@ -723,8 +735,18 @@ def gen_fp2int(out_signed, in_bitwidth, out_bitwidth):
 
   return precise_impl if precise else uninterpreted_impl
 
+def cast_to_fp(bitwidth):
+  def impl(arg):
+    x, ty = arg
+    if type(x) == float:
+      x = fp_literal(x, bitwidth)
+    return x, FloatType(bitwidth)
+  return impl
+
 # mapping func -> type, ret-float?
 builtin_convs = {
+    'FP32': cast_to_fp(32),
+    'FP64': cast_to_fp(64),
     'Convert_Int32_To_FP32': gen_int2fp(True, 32, 32),
     'Convert_Int64_To_FP32': gen_int2fp(True, 64, 32),
     'Convert_Int32_To_FP64': gen_int2fp(True, 32, 64),
@@ -940,24 +962,23 @@ if __name__ == '__main__':
 
   import xml.etree.ElementTree as ET
   sema = '''
-<intrinsic tech='AVX' rettype='__m256' name='_mm256_insertf128_ps'>
-        <type>Floating Point</type>
-        <CPUID>AVX</CPUID>
-        <category>Swizzle</category>
-        <parameter varname='a' type='__m256'/>
-        <parameter varname='b' type='__m128'/>
-        <parameter varname="imm8" type='int'/>
-        <description>Copy "a" to "dst", then insert 128 bits (composed of 4 packed single-precision (32-bit) floating-point elements) from "b" into "dst" at the location specified by "imm8".</description>
-        <operation>
-dst[255:0] := a[255:0]
-CASE (imm8[1:0]) OF
-0: dst[127:0] := b[127:0]
-1: dst[255:128] := b[127:0]
-ESAC
+<intrinsic tech="AVX" name="_mm256_div_ps">
+	<type>Floating Point</type>
+	<CPUID>AVX</CPUID>
+	<category>Arithmetic</category>
+	<return type="__m256" varname="dst" etype="FP32"/>
+	<parameter type="__m256" varname="a" etype="FP32"/>
+	<parameter type="__m256" varname="b" etype="FP32"/>
+	<description>Divide packed single-precision (32-bit) floating-point elements in "a" by packed elements in "b", and store the results in "dst".</description>
+	<operation>
+FOR j := 0 to 7
+	i := 32*j
+	dst[i+31:i] := a[i+31:i] / b[i+31:i]
+ENDFOR
 dst[MAX:256] := 0
-        </operation>
-        <instruction name='vinsertf128' form='ymm, ymm, xmm, imm'/>
-        <header>immintrin.h</header>
+	</operation>
+	<instruction name="VDIVPS" form="ymm, ymm, ymm" xed="VDIVPS_YMMqq_YMMqq_YMMqq"/>
+	<header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
