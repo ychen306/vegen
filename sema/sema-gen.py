@@ -27,7 +27,7 @@ def get_verified_spec(intrin):
   try:
     spec = get_spec_from_xml(intrin)
     ok, compiled = fuzz_intrinsic(spec, num_tests=100)
-  except e:
+  except:
     return False, False, None
   return ok, compiled, spec
 
