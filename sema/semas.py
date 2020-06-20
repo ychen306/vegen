@@ -21,6 +21,12 @@ with open('intrinsics.all.sema') as sema_f:
     #if 'fp' in spec:
     #  continue
 
+    #############
+    if intrin_name.strip() != '_mm_dpwssds_epi32':
+        continue
+    print(intrin_name)
+    #############
+
     #if 'mask' not in intrin_name:
     #  continue
     #if 'add_epi32' not in intrin_name:

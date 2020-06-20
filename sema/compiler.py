@@ -356,6 +356,10 @@ def compile_update(update, env, pred):
     sign_extending = True
   else:
     sign_extending = False
+   
+  if type(update.lhs) == Lookup:
+    # normalize `x.dword = foo` into `x.dword[0] = foo`
+    update = update._replace(lhs=BitSlice(update.lhs, hi=Number(0), lo=Number(0)))
 
   # TODO: refactor this shit out
   if type(update.lhs) == Var and not env.has(update.lhs.name):
@@ -444,6 +448,10 @@ def compile_stmt(stmt, env, pred=True):
   compilers[stmt_ty](stmt, env, pred)
 
 def compile_expr(expr, env, pred=True, deref=False):
+  if deref and type(expr) == Lookup:
+    # normalize `x.dword` to `x.dword[1]`
+    expr = BitSlice(expr, hi=Number(0), Lo=Number(0))
+
   expr_ty = type(expr)
   slice_or_val, ty = compilers[expr_ty](expr, env, pred)
   if deref:
@@ -583,6 +591,18 @@ def builtin_zero_extend(args, env):
   [(val, ty)] = args
   return z3.ZeroExt(max_vl, val), ty
 
+def builtin_zero_extend_to(bw):
+  def impl(args, env):
+    [(val, ty)] = args
+    return z3.ZeroExt(bw-val.size(), val), ty
+  return impl
+
+def builtin_sign_extend_to(bw):
+  def impl(args, env):
+    [(val, ty)] = args
+    return z3.SignExt(bw-val.size(), val), ty
+  return impl
+
 def builtin_sign_extend(args, env):
   [(val, ty)] = args
   return z3.SignExt(max_vl, val), ty
@@ -663,13 +683,13 @@ builtins = {
 
     'ZeroExtend': builtin_zero_extend,
     'ZeroExtend_To_512': builtin_zero_extend,
-    'ZeroExtend64': builtin_zero_extend,
-    'ZeroExtend32': builtin_zero_extend,
-    'ZeroExtend16': builtin_zero_extend,
+    'ZeroExtend64': builtin_zero_extend_to(64),
+    'ZeroExtend32': builtin_zero_extend_to(32),
+    'ZeroExtend16': builtin_zero_extend_to(16),
 
-    'SignExtend16': builtin_sign_extend,
-    'SignExtend32': builtin_sign_extend,
-    'SignExtend64': builtin_sign_extend,
+    'SignExtend16': builtin_sign_extend_to(16),
+    'SignExtend32': builtin_sign_extend_to(32),
+    'SignExtend64': builtin_sign_extend_to(64),
 
     'SignExtend': builtin_sign_extend,
 
