@@ -44,19 +44,6 @@ Instruction *Frontier::getNextFreeInst() const {
   return nullptr;
 }
 
-namespace {
-
-// Remove elements indexed by `ToRemove`, which is sorted in increasing order.
-template <typename T>
-void remove(std::vector<T> &X, ArrayRef<unsigned> ToRemove) {
-  for (unsigned i : make_range(ToRemove.rbegin(), ToRemove.rend())) {
-    std::swap(X[i], X.back());
-    X.pop_back();
-  }
-}
-
-} // namespace
-
 void Frontier::freezeOneInst(Instruction *I) {
   unsigned InstId = VPCtx->getScalarId(I);
   assert(FreeInsts.test(InstId));
@@ -755,7 +742,7 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
   auto &LoadDAG = Pkr->getLoadDAG(BB);
   auto &MM = Pkr->getMatchManager(BB);
 
-  std::vector<const VectorPack *> Extensions;
+  std::vector<VectorPack *> Extensions;
   for (auto *OP : Frt.getUnresolvedPacks()) {
     unsigned NumLanes = OP->size();
     BitVector Elements(VPCtx->getNumValues());
@@ -797,8 +784,10 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
         }
         Loads.push_back(CurLoad);
       }
-      if (Consecutive)
-        return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
+      if (Consecutive) {
+        Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+        continue;
+      }
     }
     for (auto *Inst : Pkr->getInsts()) {
       ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
@@ -817,11 +806,21 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
       }
 
       if (Lanes.size() == NumLanes) {
-        return VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI);
+        Extensions.push_back(
+            VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
       }
     }
   }
-  return nullptr;
+
+  if (Extensions.empty())
+    return nullptr;
+
+  // Take the extension pack with the lowest local cost
+  std::sort(Extensions.begin(), Extensions.end(),
+      [](const VectorPack *A, const VectorPack *B) {
+        return A->getCost() < B->getCost();
+      });
+  return Extensions[0];
 }
 
 float estimateCost(Frontier Frt, VectorPack *VP) {

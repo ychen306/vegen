@@ -5,7 +5,7 @@ using namespace llvm;
 using namespace PatternMatch;
     
 
-#if 0
+#if 1
 class : public Operation {
   __attribute__((optnone)) bool match(
     Value *V, std::vector<Match> &Matches) const override {
@@ -40,7 +40,7 @@ hasBitWidth(tmp1, 2) &&
 tmp1 == tmp3 &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -65,7 +65,7 @@ PatternMatch::match(V, m_c_FAdd(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -90,7 +90,7 @@ PatternMatch::match(V, m_FSub(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -115,7 +115,7 @@ PatternMatch::match(V, m_c_FMul(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -146,7 +146,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -175,7 +175,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -200,7 +200,7 @@ PatternMatch::match(V, m_c_Or(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -225,7 +225,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -254,7 +254,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -283,7 +283,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -312,7 +312,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -341,7 +341,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -370,7 +370,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -399,7 +399,7 @@ tmp0 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -428,7 +428,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -457,7 +457,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -486,7 +486,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -515,7 +515,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -544,7 +544,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -573,7 +573,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -602,7 +602,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -631,7 +631,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -660,7 +660,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -689,7 +689,7 @@ tmp0 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -714,7 +714,7 @@ PatternMatch::match(V, m_c_Add(
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -739,7 +739,7 @@ PatternMatch::match(V, m_c_Add(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -764,7 +764,7 @@ PatternMatch::match(V, m_c_Add(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -789,7 +789,7 @@ PatternMatch::match(V, m_c_Add(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -838,7 +838,7 @@ hasBitWidth(tmp2, 8) &&
 tmp2 == tmp5 &&
 tmp2 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -887,7 +887,7 @@ hasBitWidth(tmp2, 16) &&
 tmp2 == tmp5 &&
 tmp2 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -927,7 +927,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 8) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -967,7 +967,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 16) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -999,7 +999,7 @@ PatternMatch::match(V, m_Trunc(
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1031,7 +1031,7 @@ PatternMatch::match(V, m_Trunc(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1066,7 +1066,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -1096,7 +1096,7 @@ PatternMatch::match(V, m_Trunc(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1126,7 +1126,7 @@ PatternMatch::match(V, m_Trunc(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1151,7 +1151,7 @@ PatternMatch::match(V, m_c_Mul(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1178,7 +1178,7 @@ PatternMatch::match(V, m_c_Mul(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1203,7 +1203,7 @@ PatternMatch::match(V, m_Sub(
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1228,7 +1228,7 @@ PatternMatch::match(V, m_Sub(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1253,7 +1253,7 @@ PatternMatch::match(V, m_Sub(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1278,7 +1278,7 @@ PatternMatch::match(V, m_Sub(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1327,7 +1327,7 @@ hasBitWidth(tmp2, 8) &&
 tmp2 == tmp5 &&
 tmp2 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1376,7 +1376,7 @@ hasBitWidth(tmp2, 16) &&
 tmp2 == tmp5 &&
 tmp2 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1410,7 +1410,7 @@ hasBitWidth(tmp1, 8) &&
 tmp1 == tmp3 &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1443,7 +1443,7 @@ hasBitWidth(tmp1, 64) &&
 tmp1 == tmp3 &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1477,7 +1477,7 @@ hasBitWidth(tmp1, 8) &&
 tmp1 == tmp3 &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1510,7 +1510,7 @@ hasBitWidth(tmp1, 64) &&
 tmp1 == tmp3 &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1544,7 +1544,7 @@ hasBitWidth(tmp1, 8) &&
 tmp1 == tmp3 &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1576,7 +1576,7 @@ hasBitWidth(tmp1, 64) &&
 tmp1 == tmp3 &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1605,7 +1605,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1634,7 +1634,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1663,7 +1663,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1692,7 +1692,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1721,7 +1721,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -1758,7 +1758,7 @@ hasBitWidth(tmp1, 16) &&
 tmp1 == tmp3 &&
 tmp1 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -1795,7 +1795,7 @@ hasBitWidth(tmp1, 32) &&
 tmp1 == tmp3 &&
 tmp1 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -1832,7 +1832,7 @@ hasBitWidth(tmp1, 16) &&
 tmp1 == tmp3 &&
 tmp1 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -1857,7 +1857,7 @@ PatternMatch::match(V, m_c_FAdd(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1882,7 +1882,7 @@ PatternMatch::match(V, m_FDiv(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1907,7 +1907,7 @@ PatternMatch::match(V, m_c_FMul(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1932,7 +1932,7 @@ PatternMatch::match(V, m_FSub(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1963,7 +1963,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -1992,7 +1992,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2017,7 +2017,7 @@ PatternMatch::match(V, m_c_Or(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2042,7 +2042,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2071,7 +2071,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2100,7 +2100,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2129,7 +2129,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2158,7 +2158,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2187,7 +2187,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2216,7 +2216,7 @@ tmp0 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2245,7 +2245,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2274,7 +2274,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2303,7 +2303,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2332,7 +2332,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2361,7 +2361,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2390,7 +2390,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2419,7 +2419,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2448,7 +2448,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2477,7 +2477,7 @@ tmp0 == CmpInst::Predicate::FCMP_OGE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2506,7 +2506,7 @@ tmp0 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2540,7 +2540,7 @@ PatternMatch::match(V, m_Trunc(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2595,7 +2595,7 @@ tmp1 == tmp8 &&
 hasBitWidth(tmp4, 8) &&
 tmp4 == tmp9;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp4 },
       // the matched value itself
@@ -2650,7 +2650,7 @@ tmp1 == tmp8 &&
 hasBitWidth(tmp4, 16) &&
 tmp4 == tmp9;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp4 },
       // the matched value itself
@@ -2705,7 +2705,7 @@ tmp1 == tmp8 &&
 hasBitWidth(tmp4, 32) &&
 tmp4 == tmp9;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp4 },
       // the matched value itself
@@ -2753,7 +2753,7 @@ hasBitWidth(tmp10, 1) &&
 hasBitWidth(tmp11, 32) &&
 hasBitWidth(tmp12, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12 },
       // the matched value itself
@@ -2790,7 +2790,7 @@ hasBitWidth(tmp1, 32) &&
 tmp1 == tmp3 &&
 tmp1 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -2817,7 +2817,7 @@ PatternMatch::match(V, m_c_Mul(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2842,7 +2842,7 @@ PatternMatch::match(V, m_c_Mul(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2871,7 +2871,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -2896,7 +2896,7 @@ PatternMatch::match(V, m_AShr(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2921,7 +2921,7 @@ PatternMatch::match(V, m_LShr(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2946,7 +2946,7 @@ PatternMatch::match(V, m_LShr(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -2974,7 +2974,7 @@ hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3002,7 +3002,7 @@ hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3030,7 +3030,7 @@ hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3058,7 +3058,7 @@ hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3088,7 +3088,7 @@ hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3118,7 +3118,7 @@ hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3148,7 +3148,7 @@ hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3178,7 +3178,7 @@ hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -3211,7 +3211,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 32) &&
 tmp0 == tmp1;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3244,7 +3244,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 64) &&
 tmp0 == tmp1;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3271,7 +3271,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 32) &&
 tmp0 == tmp1;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3298,7 +3298,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 64) &&
 tmp0 == tmp1;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3331,7 +3331,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 32) &&
 tmp0 == tmp1;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3364,7 +3364,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 64) &&
 tmp0 == tmp1;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3395,7 +3395,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3426,7 +3426,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3455,7 +3455,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3484,7 +3484,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3508,7 +3508,7 @@ PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0))) &&
 hasBitWidth(tmp0, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3532,7 +3532,7 @@ PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0))) &&
 hasBitWidth(tmp0, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3556,7 +3556,7 @@ PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0))) &&
 hasBitWidth(tmp0, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3580,7 +3580,7 @@ PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0))) &&
 hasBitWidth(tmp0, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0 },
       // the matched value itself
@@ -3607,7 +3607,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3634,7 +3634,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3661,7 +3661,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3688,7 +3688,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3713,7 +3713,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3738,7 +3738,7 @@ PatternMatch::match(V, m_c_Xor(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -3769,7 +3769,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -3800,7 +3800,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -3831,7 +3831,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -3862,7 +3862,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -3893,7 +3893,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -3924,7 +3924,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -3955,7 +3955,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -3986,7 +3986,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4023,7 +4023,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4060,7 +4060,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4097,7 +4097,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4132,7 +4132,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4169,7 +4169,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4204,7 +4204,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4229,7 +4229,7 @@ PatternMatch::match(V, m_c_Or(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -4256,7 +4256,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -4282,7 +4282,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -4309,7 +4309,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -4335,7 +4335,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -4364,7 +4364,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4393,7 +4393,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4422,7 +4422,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4451,7 +4451,7 @@ tmp0 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4480,7 +4480,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4509,7 +4509,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4539,7 +4539,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4569,7 +4569,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4599,7 +4599,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4629,7 +4629,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4659,7 +4659,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4689,7 +4689,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4718,7 +4718,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4747,7 +4747,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4776,7 +4776,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4805,7 +4805,7 @@ tmp0 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4834,7 +4834,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4863,7 +4863,7 @@ tmp0 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -4893,7 +4893,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4923,7 +4923,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4953,7 +4953,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -4983,7 +4983,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -5013,7 +5013,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -5043,7 +5043,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -5070,7 +5070,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5096,7 +5096,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -5126,7 +5126,7 @@ hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5156,7 +5156,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5185,7 +5185,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5215,7 +5215,7 @@ hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5245,7 +5245,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5274,7 +5274,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5304,7 +5304,7 @@ hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5334,7 +5334,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5363,7 +5363,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5393,7 +5393,7 @@ hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5423,7 +5423,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5452,7 +5452,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5484,7 +5484,7 @@ hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5516,7 +5516,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5547,7 +5547,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5579,7 +5579,7 @@ hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5611,7 +5611,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5642,7 +5642,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5674,7 +5674,7 @@ hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5706,7 +5706,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5737,7 +5737,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5769,7 +5769,7 @@ hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32) &&
 tmp3 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5801,7 +5801,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5832,7 +5832,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5859,7 +5859,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5885,7 +5885,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -5912,7 +5912,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5938,7 +5938,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -5965,7 +5965,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -5991,7 +5991,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -6018,7 +6018,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -6044,7 +6044,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -6076,7 +6076,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -6107,7 +6107,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -6137,7 +6137,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -6168,7 +6168,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -6198,7 +6198,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -6231,7 +6231,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -6263,7 +6263,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -6292,7 +6292,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6321,7 +6321,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6350,7 +6350,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6380,7 +6380,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6410,7 +6410,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6440,7 +6440,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6469,7 +6469,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6498,7 +6498,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6527,7 +6527,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6557,7 +6557,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6587,7 +6587,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6617,7 +6617,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6646,7 +6646,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6675,7 +6675,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6705,7 +6705,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6735,7 +6735,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6764,7 +6764,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6793,7 +6793,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -6823,7 +6823,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6853,7 +6853,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -6882,7 +6882,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -6910,7 +6910,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -6937,7 +6937,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -6966,7 +6966,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -6994,7 +6994,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7021,7 +7021,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7047,7 +7047,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7074,7 +7074,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7100,7 +7100,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7127,7 +7127,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7153,7 +7153,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7180,7 +7180,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7206,7 +7206,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7231,7 +7231,7 @@ PatternMatch::match(V, m_AShr(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -7274,7 +7274,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 32) &&
 hasBitWidth(tmp7, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp7 },
       // the matched value itself
@@ -7318,7 +7318,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 32) &&
 hasBitWidth(tmp7, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp7 },
       // the matched value itself
@@ -7360,7 +7360,7 @@ hasBitWidth(tmp4, 64) &&
 tmp4 == tmp6 &&
 hasBitWidth(tmp5, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -7403,7 +7403,7 @@ hasBitWidth(tmp4, 8) &&
 tmp4 == tmp6 &&
 hasBitWidth(tmp5, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -7445,7 +7445,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 64) &&
 hasBitWidth(tmp7, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp7 },
       // the matched value itself
@@ -7489,7 +7489,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 64) &&
 hasBitWidth(tmp7, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp7 },
       // the matched value itself
@@ -7530,7 +7530,7 @@ hasBitWidth(tmp4, 64) &&
 tmp4 == tmp6 &&
 hasBitWidth(tmp5, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -7573,7 +7573,7 @@ hasBitWidth(tmp4, 8) &&
 tmp4 == tmp6 &&
 hasBitWidth(tmp5, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -7600,7 +7600,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7626,7 +7626,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7653,7 +7653,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7679,7 +7679,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7706,7 +7706,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7732,7 +7732,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7759,7 +7759,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -7785,7 +7785,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -7841,7 +7841,7 @@ tmp2 == tmp5 &&
 hasBitWidth(tmp3, 32) &&
 tmp3 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -7896,7 +7896,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 32) &&
 tmp2 == tmp6;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -7934,7 +7934,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -7971,7 +7971,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -8009,7 +8009,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -8046,7 +8046,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -8084,7 +8084,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -8121,7 +8121,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -8148,7 +8148,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -8174,7 +8174,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -8201,7 +8201,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -8227,7 +8227,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -8254,7 +8254,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -8280,7 +8280,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -8307,7 +8307,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -8333,7 +8333,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -8366,7 +8366,7 @@ hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
 hasBitWidth(tmp3, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -8398,7 +8398,7 @@ hasBitWidth(tmp1, 32) &&
 tmp1 == tmp2 &&
 tmp1 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -8432,7 +8432,7 @@ tmp2 == tmp3 &&
 tmp2 == tmp4 &&
 hasBitWidth(tmp5, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp5 },
       // the matched value itself
@@ -8464,7 +8464,7 @@ hasBitWidth(tmp1, 64) &&
 tmp1 == tmp2 &&
 tmp1 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -8498,7 +8498,7 @@ tmp2 == tmp3 &&
 tmp2 == tmp4 &&
 hasBitWidth(tmp5, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp5 },
       // the matched value itself
@@ -8531,7 +8531,7 @@ hasBitWidth(tmp3, 64) &&
 tmp3 == tmp5 &&
 hasBitWidth(tmp6, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp6 },
       // the matched value itself
@@ -8563,7 +8563,7 @@ tmp2 == tmp4 &&
 hasBitWidth(tmp3, 64) &&
 tmp3 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -8596,7 +8596,7 @@ hasBitWidth(tmp3, 32) &&
 tmp3 == tmp5 &&
 hasBitWidth(tmp6, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp6 },
       // the matched value itself
@@ -8628,7 +8628,7 @@ tmp2 == tmp4 &&
 hasBitWidth(tmp3, 32) &&
 tmp3 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -8661,7 +8661,7 @@ hasBitWidth(tmp3, 64) &&
 tmp3 == tmp5 &&
 hasBitWidth(tmp6, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp6 },
       // the matched value itself
@@ -8693,7 +8693,7 @@ tmp2 == tmp4 &&
 hasBitWidth(tmp3, 64) &&
 tmp3 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -8726,7 +8726,7 @@ hasBitWidth(tmp3, 32) &&
 tmp3 == tmp5 &&
 hasBitWidth(tmp6, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp6 },
       // the matched value itself
@@ -8758,7 +8758,7 @@ tmp2 == tmp4 &&
 hasBitWidth(tmp3, 32) &&
 tmp3 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -8792,7 +8792,7 @@ tmp2 == tmp3 &&
 tmp2 == tmp4 &&
 hasBitWidth(tmp5, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp5 },
       // the matched value itself
@@ -8825,7 +8825,7 @@ hasBitWidth(tmp2, 8) &&
 tmp2 == tmp3 &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -8857,7 +8857,7 @@ hasBitWidth(tmp1, 8) &&
 tmp1 == tmp2 &&
 tmp1 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -8891,7 +8891,7 @@ tmp2 == tmp3 &&
 tmp2 == tmp4 &&
 hasBitWidth(tmp5, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp5 },
       // the matched value itself
@@ -8924,7 +8924,7 @@ hasBitWidth(tmp2, 32) &&
 tmp2 == tmp3 &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -8956,7 +8956,7 @@ hasBitWidth(tmp1, 64) &&
 tmp1 == tmp2 &&
 tmp1 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -8990,7 +8990,7 @@ tmp2 == tmp3 &&
 tmp2 == tmp4 &&
 hasBitWidth(tmp5, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp5 },
       // the matched value itself
@@ -9023,7 +9023,7 @@ hasBitWidth(tmp2, 64) &&
 tmp2 == tmp3 &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -9057,7 +9057,7 @@ tmp2 == tmp3 &&
 tmp2 == tmp4 &&
 hasBitWidth(tmp5, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp5 },
       // the matched value itself
@@ -9090,7 +9090,7 @@ hasBitWidth(tmp2, 16) &&
 tmp2 == tmp3 &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -9122,7 +9122,7 @@ hasBitWidth(tmp1, 16) &&
 tmp1 == tmp2 &&
 tmp1 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1 },
       // the matched value itself
@@ -9161,7 +9161,7 @@ tmp2 == tmp4 &&
 tmp2 == tmp5 &&
 hasBitWidth(tmp6, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp6 },
       // the matched value itself
@@ -9199,7 +9199,7 @@ hasBitWidth(tmp2, 32) &&
 tmp2 == tmp4 &&
 tmp2 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -9238,7 +9238,7 @@ tmp2 == tmp4 &&
 tmp2 == tmp5 &&
 hasBitWidth(tmp6, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp6 },
       // the matched value itself
@@ -9276,7 +9276,7 @@ hasBitWidth(tmp2, 16) &&
 tmp2 == tmp4 &&
 tmp2 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -9315,7 +9315,7 @@ tmp2 == tmp4 &&
 tmp2 == tmp5 &&
 hasBitWidth(tmp6, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp6 },
       // the matched value itself
@@ -9353,7 +9353,7 @@ hasBitWidth(tmp2, 32) &&
 tmp2 == tmp4 &&
 tmp2 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -9392,7 +9392,7 @@ tmp2 == tmp4 &&
 tmp2 == tmp5 &&
 hasBitWidth(tmp6, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp6 },
       // the matched value itself
@@ -9430,7 +9430,7 @@ hasBitWidth(tmp2, 16) &&
 tmp2 == tmp4 &&
 tmp2 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2 },
       // the matched value itself
@@ -9457,7 +9457,7 @@ hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -9483,7 +9483,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -9534,7 +9534,7 @@ tmp3 == tmp6 &&
 tmp3 == tmp8 &&
 hasBitWidth(tmp9, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp9 },
       // the matched value itself
@@ -9584,7 +9584,7 @@ hasBitWidth(tmp3, 8) &&
 tmp3 == tmp6 &&
 tmp3 == tmp8;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -9635,7 +9635,7 @@ tmp3 == tmp6 &&
 tmp3 == tmp8 &&
 hasBitWidth(tmp9, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp9 },
       // the matched value itself
@@ -9685,7 +9685,7 @@ hasBitWidth(tmp3, 16) &&
 tmp3 == tmp6 &&
 tmp3 == tmp8;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -9727,7 +9727,7 @@ hasBitWidth(tmp3, 8) &&
 tmp3 == tmp5 &&
 hasBitWidth(tmp6, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp6 },
       // the matched value itself
@@ -9768,7 +9768,7 @@ tmp2 == tmp4 &&
 hasBitWidth(tmp3, 8) &&
 tmp3 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -9810,7 +9810,7 @@ hasBitWidth(tmp3, 16) &&
 tmp3 == tmp5 &&
 hasBitWidth(tmp6, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp6 },
       // the matched value itself
@@ -9851,7 +9851,7 @@ tmp2 == tmp4 &&
 hasBitWidth(tmp3, 16) &&
 tmp3 == tmp5;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -9878,7 +9878,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -9904,7 +9904,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -9938,7 +9938,7 @@ hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -9971,7 +9971,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -10005,7 +10005,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -10038,7 +10038,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -10067,7 +10067,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10096,7 +10096,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10125,7 +10125,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10154,7 +10154,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10184,7 +10184,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10214,7 +10214,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10244,7 +10244,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10274,7 +10274,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10303,7 +10303,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10332,7 +10332,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10362,7 +10362,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10392,7 +10392,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10421,7 +10421,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10450,7 +10450,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10479,7 +10479,7 @@ tmp0 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10508,7 +10508,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10538,7 +10538,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10568,7 +10568,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10598,7 +10598,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10628,7 +10628,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10657,7 +10657,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10686,7 +10686,7 @@ tmp0 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -10716,7 +10716,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10746,7 +10746,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -10769,7 +10769,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_SpecificInt(0ull), m_Value(tmp1
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -10801,7 +10801,7 @@ hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64) &&
 hasBitWidth(tmp4, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp4 },
       // the matched value itself
@@ -10838,7 +10838,7 @@ hasBitWidth(tmp3, 16) &&
 hasBitWidth(tmp4, 16) &&
 hasBitWidth(tmp5, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3, tmp4, tmp5 },
       // the matched value itself
@@ -10874,7 +10874,7 @@ hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16) &&
 hasBitWidth(tmp4, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3, tmp4 },
       // the matched value itself
@@ -10915,7 +10915,7 @@ hasBitWidth(tmp5, 8) &&
 tmp5 == tmp6 &&
 hasBitWidth(tmp8, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -10955,7 +10955,7 @@ tmp4 == tmp7 &&
 hasBitWidth(tmp5, 8) &&
 tmp5 == tmp6;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -10986,7 +10986,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 8) &&
 tmp2 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11027,7 +11027,7 @@ hasBitWidth(tmp5, 32) &&
 tmp5 == tmp6 &&
 hasBitWidth(tmp8, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -11067,7 +11067,7 @@ tmp4 == tmp7 &&
 hasBitWidth(tmp5, 32) &&
 tmp5 == tmp6;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -11108,7 +11108,7 @@ hasBitWidth(tmp5, 64) &&
 tmp5 == tmp6 &&
 hasBitWidth(tmp8, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -11148,7 +11148,7 @@ tmp4 == tmp7 &&
 hasBitWidth(tmp5, 64) &&
 tmp5 == tmp6;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -11179,7 +11179,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 64) &&
 tmp2 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11220,7 +11220,7 @@ hasBitWidth(tmp5, 16) &&
 tmp5 == tmp6 &&
 hasBitWidth(tmp8, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -11260,7 +11260,7 @@ tmp4 == tmp7 &&
 hasBitWidth(tmp5, 16) &&
 tmp5 == tmp6;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -11291,7 +11291,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 16) &&
 tmp2 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11322,7 +11322,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 8) &&
 tmp2 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11353,7 +11353,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 64) &&
 tmp2 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11384,7 +11384,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 16) &&
 tmp2 == tmp3;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11425,7 +11425,7 @@ hasBitWidth(tmp5, 8) &&
 tmp5 == tmp7 &&
 hasBitWidth(tmp8, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -11465,7 +11465,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 8) &&
 tmp5 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -11496,7 +11496,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 8) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11537,7 +11537,7 @@ hasBitWidth(tmp5, 32) &&
 tmp5 == tmp7 &&
 hasBitWidth(tmp8, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -11577,7 +11577,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 32) &&
 tmp5 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -11618,7 +11618,7 @@ hasBitWidth(tmp5, 64) &&
 tmp5 == tmp7 &&
 hasBitWidth(tmp8, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -11658,7 +11658,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 64) &&
 tmp5 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -11689,7 +11689,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 64) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11730,7 +11730,7 @@ hasBitWidth(tmp5, 16) &&
 tmp5 == tmp7 &&
 hasBitWidth(tmp8, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp8 },
       // the matched value itself
@@ -11770,7 +11770,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 16) &&
 tmp5 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -11801,7 +11801,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 16) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11832,7 +11832,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 8) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11863,7 +11863,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 64) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11894,7 +11894,7 @@ tmp1 == tmp3 &&
 hasBitWidth(tmp2, 16) &&
 tmp2 == tmp4;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -11930,7 +11930,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -11962,7 +11962,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -11993,7 +11993,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12025,7 +12025,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -12056,7 +12056,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12082,7 +12082,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12109,7 +12109,7 @@ hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
 hasBitWidth(tmp3, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -12135,7 +12135,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12160,7 +12160,7 @@ PatternMatch::match(V, m_c_Mul(
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -12187,7 +12187,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -12213,7 +12213,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12240,7 +12240,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -12266,7 +12266,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12291,7 +12291,7 @@ PatternMatch::match(V, m_AShr(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -12318,7 +12318,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -12344,7 +12344,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12369,7 +12369,7 @@ PatternMatch::match(V, m_LShr(
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1 },
       // the matched value itself
@@ -12412,7 +12412,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 16) &&
 hasBitWidth(tmp7, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp7 },
       // the matched value itself
@@ -12456,7 +12456,7 @@ tmp4 == tmp6 &&
 hasBitWidth(tmp5, 16) &&
 hasBitWidth(tmp7, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5, tmp7 },
       // the matched value itself
@@ -12499,7 +12499,7 @@ hasBitWidth(tmp4, 8) &&
 tmp4 == tmp6 &&
 hasBitWidth(tmp5, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -12541,7 +12541,7 @@ hasBitWidth(tmp4, 64) &&
 tmp4 == tmp6 &&
 hasBitWidth(tmp5, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp4, tmp5 },
       // the matched value itself
@@ -12568,7 +12568,7 @@ hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -12594,7 +12594,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12645,7 +12645,7 @@ tmp3 == tmp6 &&
 tmp3 == tmp8 &&
 hasBitWidth(tmp9, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp9 },
       // the matched value itself
@@ -12695,7 +12695,7 @@ hasBitWidth(tmp3, 8) &&
 tmp3 == tmp6 &&
 tmp3 == tmp8;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -12746,7 +12746,7 @@ tmp3 == tmp6 &&
 tmp3 == tmp8 &&
 hasBitWidth(tmp9, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3, tmp9 },
       // the matched value itself
@@ -12796,7 +12796,7 @@ hasBitWidth(tmp3, 16) &&
 tmp3 == tmp6 &&
 tmp3 == tmp8;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -12823,7 +12823,7 @@ hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2, tmp3 },
       // the matched value itself
@@ -12849,7 +12849,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp1, tmp2 },
       // the matched value itself
@@ -12905,7 +12905,7 @@ tmp2 == tmp5 &&
 hasBitWidth(tmp3, 8) &&
 tmp3 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -12960,7 +12960,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 8) &&
 tmp2 == tmp6;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -13016,7 +13016,7 @@ tmp2 == tmp5 &&
 hasBitWidth(tmp3, 16) &&
 tmp3 == tmp7;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -13071,7 +13071,7 @@ tmp1 == tmp4 &&
 hasBitWidth(tmp2, 16) &&
 tmp2 == tmp6;
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -13109,7 +13109,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
 hasBitWidth(tmp3, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -13146,7 +13146,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -13184,7 +13184,7 @@ hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
 hasBitWidth(tmp3, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp0, tmp2, tmp3 },
       // the matched value itself
@@ -13221,7 +13221,7 @@ tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
     if (Matched)
-      Matches.push_back({
+      Matches.push_back({false,
       // matched live ins
       { tmp1, tmp2 },
       // the matched value itself
@@ -13234,35 +13234,35 @@ hasBitWidth(tmp2, 16);
   
 std::vector<InstBinding> Insts { 
   InstBinding("_mm_insert_pi16", { "sse" }, InstSignature { { 64, 32, 32 }, { 64 }, true }, { BoundOperation(&Operation0, { InputSlice { 0, 0, 64 }, InputSlice { 2, 0, 2 }, InputSlice { 1, 0, 16 } }) }, 4.0),
-InstBinding("_mm_add_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation1, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_sub_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation2, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation2, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
+InstBinding("_mm_add_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation1, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_sub_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation2, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation2, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
 InstBinding("_mm_mul_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation3, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation3, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation3, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation3, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
-InstBinding("_mm_and_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation4, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation4, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation4, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation4, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_andnot_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation5, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation5, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation5, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation5, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_or_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation6, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation6, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation6, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation6, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_xor_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation7, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation7, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation7, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation7, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpeq_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation8, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation8, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation8, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation8, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmplt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation9, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation9, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation9, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation9, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmple_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation10, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation10, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation10, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation10, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpgt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation11, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation11, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation11, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation11, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpge_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation12, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation12, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation12, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation12, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpneq_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation13, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation13, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation13, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation13, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpnlt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation14, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation14, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation14, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation14, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpnle_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation15, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation15, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation15, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation15, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpngt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation16, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation16, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation16, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation16, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_cmpnge_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation17, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation17, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation17, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation17, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_comieq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation18, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_comilt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation19, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_comile_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation20, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_comigt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation21, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_comige_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation22, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_comineq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation23, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_ucomieq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation18, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_ucomilt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation19, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_ucomile_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation20, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_ucomigt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation21, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_ucomige_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation22, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
-InstBinding("_mm_ucomineq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation23, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 2.0),
+InstBinding("_mm_and_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation4, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation4, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation4, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation4, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_andnot_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation5, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation5, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation5, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation5, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_or_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation6, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation6, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation6, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation6, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_xor_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation7, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation7, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation7, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation7, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpeq_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation8, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation8, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation8, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation8, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmplt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation9, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation9, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation9, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation9, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmple_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation10, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation10, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation10, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation10, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpgt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation11, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation11, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation11, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation11, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpge_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation12, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation12, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation12, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation12, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpneq_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation13, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation13, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation13, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation13, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpnlt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation14, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation14, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation14, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation14, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpnle_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation15, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation15, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation15, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation15, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpngt_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation16, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation16, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation16, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation16, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_cmpnge_ps", { "sse" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation17, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation17, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation17, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation17, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_comieq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation18, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_comilt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation19, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_comile_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation20, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_comigt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation21, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_comige_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation22, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_comineq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation23, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_ucomieq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation18, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_ucomilt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation19, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_ucomile_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation20, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_ucomigt_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation21, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_ucomige_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation22, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
+InstBinding("_mm_ucomineq_ss", { "sse" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation23, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 1.0),
 InstBinding("_mm_add_epi8", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation24, { InputSlice { 0, 0, 8 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation24, { InputSlice { 0, 8, 16 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation24, { InputSlice { 0, 16, 24 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation24, { InputSlice { 0, 24, 32 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation24, { InputSlice { 0, 32, 40 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation24, { InputSlice { 0, 40, 48 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation24, { InputSlice { 0, 48, 56 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation24, { InputSlice { 0, 56, 64 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation24, { InputSlice { 0, 64, 72 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation24, { InputSlice { 0, 72, 80 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation24, { InputSlice { 0, 80, 88 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation24, { InputSlice { 0, 88, 96 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation24, { InputSlice { 0, 96, 104 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation24, { InputSlice { 0, 104, 112 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation24, { InputSlice { 0, 112, 120 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation24, { InputSlice { 0, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1.0),
 InstBinding("_mm_add_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation25, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation25, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation25, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation25, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation25, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation25, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation25, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation25, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
 InstBinding("_mm_add_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation26, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation26, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation26, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation26, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
@@ -13273,23 +13273,23 @@ InstBinding("_mm_adds_epu8", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, 
 InstBinding("_mm_adds_epu16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation31, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation31, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation31, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation31, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation31, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation31, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation31, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation31, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
 InstBinding("_mm_avg_epu8", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation32, { InputSlice { 0, 0, 8 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation32, { InputSlice { 0, 8, 16 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation32, { InputSlice { 0, 16, 24 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation32, { InputSlice { 0, 24, 32 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation32, { InputSlice { 0, 32, 40 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation32, { InputSlice { 0, 40, 48 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation32, { InputSlice { 0, 48, 56 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation32, { InputSlice { 0, 56, 64 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation32, { InputSlice { 0, 64, 72 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation32, { InputSlice { 0, 72, 80 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation32, { InputSlice { 0, 80, 88 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation32, { InputSlice { 0, 88, 96 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation32, { InputSlice { 0, 96, 104 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation32, { InputSlice { 0, 104, 112 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation32, { InputSlice { 0, 112, 120 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation32, { InputSlice { 0, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1.0),
 InstBinding("_mm_avg_epu16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation33, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation33, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation33, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation33, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation33, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation33, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation33, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation33, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
-InstBinding("_mm_madd_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation34, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation34, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation34, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation34, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }) }, 2.0),
-InstBinding("_mm_mulhi_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation35, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation35, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation35, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation35, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation35, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation35, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation35, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation35, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 2.0),
-InstBinding("_mm_mulhi_epu16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation36, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation36, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation36, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation36, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation36, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation36, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation36, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation36, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 2.0),
-InstBinding("_mm_mullo_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation37, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation37, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation37, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation37, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation37, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation37, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation37, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation37, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 2.0),
-InstBinding("_mm_mul_epu32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation38, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation38, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }) }, 2.0),
+InstBinding("_mm_madd_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation34, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation34, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation34, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation34, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }) }, 1.0),
+InstBinding("_mm_mulhi_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation35, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation35, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation35, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation35, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation35, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation35, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation35, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation35, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
+InstBinding("_mm_mulhi_epu16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation36, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation36, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation36, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation36, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation36, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation36, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation36, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation36, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
+InstBinding("_mm_mullo_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation37, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation37, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation37, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation37, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation37, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation37, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation37, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation37, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
+InstBinding("_mm_mul_epu32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation38, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation38, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }) }, 1.0),
 InstBinding("_mm_sub_epi8", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation39, { InputSlice { 0, 0, 8 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation39, { InputSlice { 0, 8, 16 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation39, { InputSlice { 0, 16, 24 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation39, { InputSlice { 0, 24, 32 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation39, { InputSlice { 0, 32, 40 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation39, { InputSlice { 0, 40, 48 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation39, { InputSlice { 0, 48, 56 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation39, { InputSlice { 0, 56, 64 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation39, { InputSlice { 0, 64, 72 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation39, { InputSlice { 0, 72, 80 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation39, { InputSlice { 0, 80, 88 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation39, { InputSlice { 0, 88, 96 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation39, { InputSlice { 0, 96, 104 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation39, { InputSlice { 0, 104, 112 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation39, { InputSlice { 0, 112, 120 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation39, { InputSlice { 0, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1.0),
 InstBinding("_mm_sub_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation40, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation40, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation40, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation40, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation40, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation40, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation40, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation40, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
 InstBinding("_mm_sub_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation41, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation41, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation41, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation41, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
 InstBinding("_mm_sub_epi64", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation42, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation42, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_subs_epi8", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation43, { InputSlice { 0, 0, 8 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation43, { InputSlice { 0, 8, 16 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation43, { InputSlice { 0, 16, 24 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation43, { InputSlice { 0, 24, 32 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation43, { InputSlice { 0, 32, 40 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation43, { InputSlice { 0, 40, 48 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation43, { InputSlice { 0, 48, 56 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation43, { InputSlice { 0, 56, 64 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation43, { InputSlice { 0, 64, 72 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation43, { InputSlice { 0, 72, 80 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation43, { InputSlice { 0, 80, 88 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation43, { InputSlice { 0, 88, 96 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation43, { InputSlice { 0, 96, 104 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation43, { InputSlice { 0, 104, 112 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation43, { InputSlice { 0, 112, 120 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation43, { InputSlice { 0, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1.0),
 InstBinding("_mm_subs_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation44, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation44, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation44, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation44, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation44, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation44, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation44, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation44, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
-InstBinding("_mm_srli_epi16", { "sse2" }, InstSignature { { 128, 32 }, { 128 }, true }, { BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 112, 128 } }) }, 2.0),
-InstBinding("_mm_srl_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 112, 128 } }) }, 2.0),
-InstBinding("_mm_srli_epi32", { "sse2" }, InstSignature { { 128, 32 }, { 128 }, true }, { BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_srl_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_srli_epi64", { "sse2" }, InstSignature { { 128, 32 }, { 128 }, true }, { BoundOperation(&Operation49, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation49, { InputSlice { 1, 0, 8 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_srl_epi64", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation50, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation50, { InputSlice { 1, 0, 64 }, InputSlice { 0, 64, 128 } }) }, 2.0),
+InstBinding("_mm_srli_epi16", { "sse2" }, InstSignature { { 128, 32 }, { 128 }, true }, { BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation45, { InputSlice { 1, 0, 8 }, InputSlice { 0, 112, 128 } }) }, 1.0),
+InstBinding("_mm_srl_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation46, { InputSlice { 1, 0, 64 }, InputSlice { 0, 112, 128 } }) }, 1.0),
+InstBinding("_mm_srli_epi32", { "sse2" }, InstSignature { { 128, 32 }, { 128 }, true }, { BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation47, { InputSlice { 1, 0, 8 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_srl_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation48, { InputSlice { 1, 0, 64 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_srli_epi64", { "sse2" }, InstSignature { { 128, 32 }, { 128 }, true }, { BoundOperation(&Operation49, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation49, { InputSlice { 1, 0, 8 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_srl_epi64", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation50, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation50, { InputSlice { 1, 0, 64 }, InputSlice { 0, 64, 128 } }) }, 1.0),
 InstBinding("_mm_cmpeq_epi8", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation51, { InputSlice { 0, 0, 8 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation51, { InputSlice { 0, 8, 16 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation51, { InputSlice { 0, 16, 24 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation51, { InputSlice { 0, 24, 32 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation51, { InputSlice { 0, 32, 40 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation51, { InputSlice { 0, 40, 48 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation51, { InputSlice { 0, 48, 56 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation51, { InputSlice { 0, 56, 64 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation51, { InputSlice { 0, 64, 72 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation51, { InputSlice { 0, 72, 80 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation51, { InputSlice { 0, 80, 88 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation51, { InputSlice { 0, 88, 96 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation51, { InputSlice { 0, 96, 104 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation51, { InputSlice { 0, 104, 112 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation51, { InputSlice { 0, 112, 120 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation51, { InputSlice { 0, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1.0),
 InstBinding("_mm_cmpeq_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation52, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation52, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation52, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation52, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation52, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation52, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation52, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation52, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
 InstBinding("_mm_cmpeq_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation8, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation8, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation8, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation8, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
@@ -13299,41 +13299,41 @@ InstBinding("_mm_cmpgt_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }
 InstBinding("_mm_cmplt_epi8", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation53, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation53, { InputSlice { 1, 8, 16 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation53, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation53, { InputSlice { 1, 24, 32 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation53, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation53, { InputSlice { 1, 40, 48 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation53, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation53, { InputSlice { 1, 56, 64 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation53, { InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation53, { InputSlice { 1, 72, 80 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation53, { InputSlice { 1, 80, 88 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation53, { InputSlice { 1, 88, 96 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation53, { InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation53, { InputSlice { 1, 104, 112 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation53, { InputSlice { 1, 112, 120 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation53, { InputSlice { 1, 120, 128 }, InputSlice { 0, 120, 128 } }) }, 1.0),
 InstBinding("_mm_cmplt_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation54, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation54, { InputSlice { 1, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation54, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation54, { InputSlice { 1, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation54, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation54, { InputSlice { 1, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation54, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation54, { InputSlice { 1, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0),
 InstBinding("_mm_cmplt_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation55, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation55, { InputSlice { 1, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation55, { InputSlice { 1, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation55, { InputSlice { 1, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
-InstBinding("_mm_packs_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation56, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 1, 112, 128 } }) }, 2.0),
-InstBinding("_mm_packs_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation57, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation57, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_packus_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation58, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation58, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation58, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation58, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation58, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation58, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation58, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation58, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation58, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation58, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation58, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation58, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation58, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation58, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation58, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation58, { InputSlice { 1, 112, 128 } }) }, 2.0),
-InstBinding("_mm_add_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
+InstBinding("_mm_packs_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation56, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 1, 112, 128 } }) }, 1.0),
+InstBinding("_mm_packs_epi32", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation57, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation57, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_packus_epi16", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation58, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation58, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation58, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation58, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation58, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation58, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation58, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation58, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation58, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation58, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation58, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation58, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation58, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation58, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation58, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation58, { InputSlice { 1, 112, 128 } }) }, 1.0),
+InstBinding("_mm_add_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
 InstBinding("_mm_div_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation60, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation60, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 26.0),
 InstBinding("_mm_mul_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation61, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation61, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
-InstBinding("_mm_sub_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation62, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_and_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation63, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation63, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_andnot_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation64, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation64, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_or_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation65, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation65, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_xor_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation66, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation66, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpeq_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation67, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation67, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmplt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation68, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation68, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmple_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation69, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation69, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpgt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation70, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation70, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpge_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation71, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation71, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpneq_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation72, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation72, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpnlt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation73, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation73, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpnle_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation74, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation74, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpngt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation75, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation75, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_cmpnge_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation76, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation76, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm_comieq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation77, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_comilt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation78, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_comile_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation79, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_comigt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation80, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_comige_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation81, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_comineq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation82, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_ucomieq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation77, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_ucomilt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation78, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_ucomile_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation79, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_ucomigt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation80, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_ucomige_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation81, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_ucomineq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation82, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 2.0),
-InstBinding("_mm_addsub_ps", { "sse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 2.0),
-InstBinding("_mm_addsub_pd", { "sse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
+InstBinding("_mm_sub_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation62, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_and_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation63, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation63, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_andnot_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation64, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation64, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_or_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation65, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation65, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_xor_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation66, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation66, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpeq_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation67, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation67, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmplt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation68, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation68, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmple_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation69, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation69, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpgt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation70, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation70, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpge_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation71, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation71, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpneq_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation72, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation72, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpnlt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation73, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation73, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpnle_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation74, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation74, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpngt_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation75, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation75, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_cmpnge_pd", { "sse2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation76, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation76, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm_comieq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation77, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_comilt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation78, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_comile_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation79, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_comigt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation80, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_comige_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation81, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_comineq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation82, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_ucomieq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation77, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_ucomilt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation78, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_ucomile_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation79, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_ucomigt_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation80, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_ucomige_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation81, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_ucomineq_sd", { "sse2" }, InstSignature { { 128, 128 }, { 32 }, false }, { BoundOperation(&Operation82, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }) }, 1.0),
+InstBinding("_mm_addsub_ps", { "sse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 1.0),
+InstBinding("_mm_addsub_pd", { "sse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
 InstBinding("_mm_hadd_pd", { "sse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 1, 64, 128 }, InputSlice { 1, 0, 64 } }) }, 4.0),
 InstBinding("_mm_hadd_ps", { "sse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 1, 32, 64 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 1, 96, 128 }, InputSlice { 1, 64, 96 } }) }, 4.0),
 InstBinding("_mm_hsub_pd", { "sse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation62, { InputSlice { 1, 0, 64 }, InputSlice { 1, 64, 128 } }) }, 4.0),
@@ -13344,24 +13344,24 @@ InstBinding("_mm_hadd_epi32", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }
 InstBinding("_mm_hsub_epi16", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation40, { InputSlice { 0, 0, 16 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation40, { InputSlice { 0, 32, 48 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation40, { InputSlice { 0, 64, 80 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation40, { InputSlice { 0, 96, 112 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation40, { InputSlice { 1, 0, 16 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation40, { InputSlice { 1, 32, 48 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation40, { InputSlice { 1, 64, 80 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation40, { InputSlice { 1, 96, 112 }, InputSlice { 1, 112, 128 } }) }, 4.0),
 InstBinding("_mm_hsubs_epi16", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation44, { InputSlice { 0, 0, 16 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation44, { InputSlice { 0, 32, 48 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation44, { InputSlice { 0, 64, 80 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation44, { InputSlice { 0, 96, 112 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation44, { InputSlice { 1, 0, 16 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation44, { InputSlice { 1, 32, 48 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation44, { InputSlice { 1, 64, 80 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation44, { InputSlice { 1, 96, 112 }, InputSlice { 1, 112, 128 } }) }, 4.0),
 InstBinding("_mm_hsub_epi32", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation41, { InputSlice { 0, 0, 32 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation41, { InputSlice { 0, 64, 96 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation41, { InputSlice { 1, 0, 32 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation41, { InputSlice { 1, 64, 96 }, InputSlice { 1, 96, 128 } }) }, 4.0),
-InstBinding("_mm_mulhrs_epi16", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation83, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation83, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation83, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation83, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation83, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation83, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation83, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation83, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 2.0),
+InstBinding("_mm_mulhrs_epi16", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation83, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation83, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation83, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation83, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation83, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation83, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation83, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation83, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0),
 InstBinding("_mm_sign_epi8", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation84, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation84, { InputSlice { 1, 8, 16 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation84, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation84, { InputSlice { 1, 24, 32 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation84, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation84, { InputSlice { 1, 40, 48 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation84, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation84, { InputSlice { 1, 56, 64 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation84, { InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation84, { InputSlice { 1, 72, 80 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation84, { InputSlice { 1, 80, 88 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation84, { InputSlice { 1, 88, 96 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation84, { InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation84, { InputSlice { 1, 104, 112 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation84, { InputSlice { 1, 112, 120 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation84, { InputSlice { 1, 120, 128 }, InputSlice { 0, 120, 128 } }) }, 1.0),
 InstBinding("_mm_sign_epi16", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation85, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation85, { InputSlice { 1, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation85, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation85, { InputSlice { 1, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation85, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation85, { InputSlice { 1, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation85, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation85, { InputSlice { 1, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0),
 InstBinding("_mm_sign_epi32", { "ssse3" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation86, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation86, { InputSlice { 1, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation86, { InputSlice { 1, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation86, { InputSlice { 1, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
 InstBinding("_mm_dp_ps", { "sse4.1" }, InstSignature { { 128, 128, 32 }, { 128 }, true }, { BoundOperation(&Operation87, { InputSlice { 2, 0, 1 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation87, { InputSlice { 2, 1, 2 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation87, { InputSlice { 2, 2, 3 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation87, { InputSlice { 2, 3, 4 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }) }, 4.0),
-InstBinding("_mm_packus_epi32", { "sse4.1" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation88, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 1, 96, 128 } }) }, 2.0),
+InstBinding("_mm_packus_epi32", { "sse4.1" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation88, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 1, 96, 128 } }) }, 1.0),
 InstBinding("_mm_cmpeq_epi64", { "sse4.1" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation67, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation67, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
-InstBinding("_mm_mul_epi32", { "sse4.1" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation89, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation89, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }) }, 2.0),
+InstBinding("_mm_mul_epi32", { "sse4.1" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation89, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation89, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }) }, 1.0),
 InstBinding("_mm_mullo_epi32", { "sse4.1" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation90, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation90, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation90, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation90, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }) }, 4.0),
-InstBinding("_mm_cmpgt_epi64", { "sse4.2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation91, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation91, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_add_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation59, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation59, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_add_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation1, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation1, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation1, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation1, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation1, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_addsub_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation62, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation59, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_addsub_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation1, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation1, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_and_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation63, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation63, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation63, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation63, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_and_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation4, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation4, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation4, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation4, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation4, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation4, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation4, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation4, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_andnot_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation64, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation64, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation64, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation64, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_andnot_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation5, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation5, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation5, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation5, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation5, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation5, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation5, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation5, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 2.0),
+InstBinding("_mm_cmpgt_epi64", { "sse4.2" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation91, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation91, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_add_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation59, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation59, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_add_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation1, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation1, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation1, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation1, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation1, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_addsub_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation62, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation59, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_addsub_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation1, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation1, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_and_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation63, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation63, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation63, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation63, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_and_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation4, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation4, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation4, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation4, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation4, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation4, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation4, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation4, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_andnot_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation64, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation64, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation64, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation64, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_andnot_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation5, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation5, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation5, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation5, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation5, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation5, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation5, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation5, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
 InstBinding("_mm256_div_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation60, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation60, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation60, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation60, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 54.0),
 InstBinding("_mm256_dp_ps", { "avx" }, InstSignature { { 256, 256, 32 }, { 256 }, true }, { BoundOperation(&Operation87, { InputSlice { 2, 0, 1 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation87, { InputSlice { 2, 1, 2 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation87, { InputSlice { 2, 2, 3 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation87, { InputSlice { 2, 3, 4 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation87, { InputSlice { 2, 0, 1 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation87, { InputSlice { 2, 1, 2 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation87, { InputSlice { 2, 2, 3 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation87, { InputSlice { 2, 3, 4 }, InputSlice { 2, 7, 8 }, InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 6, 7 }, InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 5, 6 }, InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 4, 5 }, InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }) }, 4.0),
 InstBinding("_mm256_hadd_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 1, 64, 128 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 192, 256 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation59, { InputSlice { 1, 192, 256 }, InputSlice { 1, 128, 192 } }) }, 1.0 /*default*/),
@@ -13370,12 +13370,12 @@ InstBinding("_mm256_hsub_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, 
 InstBinding("_mm256_hsub_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 1, 0, 32 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 1, 64, 96 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 160 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 224 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation2, { InputSlice { 1, 128, 160 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 1, 192, 224 }, InputSlice { 1, 224, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_mul_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation61, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation61, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation61, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation61, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
 InstBinding("_mm256_mul_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation3, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation3, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation3, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation3, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation3, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation3, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation3, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation3, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
-InstBinding("_mm256_or_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation65, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation65, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation65, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation65, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_or_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation6, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation6, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation6, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation6, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation6, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation6, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation6, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation6, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_sub_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation62, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation62, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation62, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_sub_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation2, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation2, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation2, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation2, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_xor_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation66, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation66, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation66, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation66, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_xor_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation7, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation7, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation7, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation7, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation7, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation7, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation7, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation7, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 2.0),
+InstBinding("_mm256_or_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation65, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation65, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation65, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation65, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_or_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation6, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation6, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation6, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation6, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation6, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation6, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation6, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation6, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_sub_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation62, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation62, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation62, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_sub_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation2, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation2, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation2, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation2, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_xor_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation66, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation66, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation66, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation66, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_xor_ps", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation7, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation7, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation7, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation7, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation7, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation7, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation7, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation7, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
 InstBinding("_mm256_add_epi8", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation24, { InputSlice { 0, 0, 8 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation24, { InputSlice { 0, 8, 16 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation24, { InputSlice { 0, 16, 24 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation24, { InputSlice { 0, 24, 32 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation24, { InputSlice { 0, 32, 40 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation24, { InputSlice { 0, 40, 48 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation24, { InputSlice { 0, 48, 56 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation24, { InputSlice { 0, 56, 64 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation24, { InputSlice { 0, 64, 72 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation24, { InputSlice { 0, 72, 80 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation24, { InputSlice { 0, 80, 88 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation24, { InputSlice { 0, 88, 96 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation24, { InputSlice { 0, 96, 104 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation24, { InputSlice { 0, 104, 112 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation24, { InputSlice { 0, 112, 120 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation24, { InputSlice { 0, 120, 128 }, InputSlice { 1, 120, 128 } }), BoundOperation(&Operation24, { InputSlice { 0, 128, 136 }, InputSlice { 1, 128, 136 } }), BoundOperation(&Operation24, { InputSlice { 0, 136, 144 }, InputSlice { 1, 136, 144 } }), BoundOperation(&Operation24, { InputSlice { 0, 144, 152 }, InputSlice { 1, 144, 152 } }), BoundOperation(&Operation24, { InputSlice { 0, 152, 160 }, InputSlice { 1, 152, 160 } }), BoundOperation(&Operation24, { InputSlice { 0, 160, 168 }, InputSlice { 1, 160, 168 } }), BoundOperation(&Operation24, { InputSlice { 0, 168, 176 }, InputSlice { 1, 168, 176 } }), BoundOperation(&Operation24, { InputSlice { 0, 176, 184 }, InputSlice { 1, 176, 184 } }), BoundOperation(&Operation24, { InputSlice { 0, 184, 192 }, InputSlice { 1, 184, 192 } }), BoundOperation(&Operation24, { InputSlice { 0, 192, 200 }, InputSlice { 1, 192, 200 } }), BoundOperation(&Operation24, { InputSlice { 0, 200, 208 }, InputSlice { 1, 200, 208 } }), BoundOperation(&Operation24, { InputSlice { 0, 208, 216 }, InputSlice { 1, 208, 216 } }), BoundOperation(&Operation24, { InputSlice { 0, 216, 224 }, InputSlice { 1, 216, 224 } }), BoundOperation(&Operation24, { InputSlice { 0, 224, 232 }, InputSlice { 1, 224, 232 } }), BoundOperation(&Operation24, { InputSlice { 0, 232, 240 }, InputSlice { 1, 232, 240 } }), BoundOperation(&Operation24, { InputSlice { 0, 240, 248 }, InputSlice { 1, 240, 248 } }), BoundOperation(&Operation24, { InputSlice { 0, 248, 256 }, InputSlice { 1, 248, 256 } }) }, 1.0),
 InstBinding("_mm256_add_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation25, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation25, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation25, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation25, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation25, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation25, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation25, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation25, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation25, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation25, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation25, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation25, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation25, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation25, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation25, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation25, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 1.0),
 InstBinding("_mm256_add_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation26, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation26, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation26, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation26, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation26, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation26, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation26, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation26, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0),
@@ -13393,23 +13393,23 @@ InstBinding("_mm256_cmpeq_epi64", { "avx2" }, InstSignature { { 256, 256 }, { 25
 InstBinding("_mm256_cmpgt_epi8", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation53, { InputSlice { 0, 0, 8 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation53, { InputSlice { 0, 8, 16 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation53, { InputSlice { 0, 16, 24 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation53, { InputSlice { 0, 24, 32 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation53, { InputSlice { 0, 32, 40 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation53, { InputSlice { 0, 40, 48 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation53, { InputSlice { 0, 48, 56 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation53, { InputSlice { 0, 56, 64 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation53, { InputSlice { 0, 64, 72 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation53, { InputSlice { 0, 72, 80 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation53, { InputSlice { 0, 80, 88 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation53, { InputSlice { 0, 88, 96 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation53, { InputSlice { 0, 96, 104 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation53, { InputSlice { 0, 104, 112 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation53, { InputSlice { 0, 112, 120 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation53, { InputSlice { 0, 120, 128 }, InputSlice { 1, 120, 128 } }), BoundOperation(&Operation53, { InputSlice { 0, 128, 136 }, InputSlice { 1, 128, 136 } }), BoundOperation(&Operation53, { InputSlice { 0, 136, 144 }, InputSlice { 1, 136, 144 } }), BoundOperation(&Operation53, { InputSlice { 0, 144, 152 }, InputSlice { 1, 144, 152 } }), BoundOperation(&Operation53, { InputSlice { 0, 152, 160 }, InputSlice { 1, 152, 160 } }), BoundOperation(&Operation53, { InputSlice { 0, 160, 168 }, InputSlice { 1, 160, 168 } }), BoundOperation(&Operation53, { InputSlice { 0, 168, 176 }, InputSlice { 1, 168, 176 } }), BoundOperation(&Operation53, { InputSlice { 0, 176, 184 }, InputSlice { 1, 176, 184 } }), BoundOperation(&Operation53, { InputSlice { 0, 184, 192 }, InputSlice { 1, 184, 192 } }), BoundOperation(&Operation53, { InputSlice { 0, 192, 200 }, InputSlice { 1, 192, 200 } }), BoundOperation(&Operation53, { InputSlice { 0, 200, 208 }, InputSlice { 1, 200, 208 } }), BoundOperation(&Operation53, { InputSlice { 0, 208, 216 }, InputSlice { 1, 208, 216 } }), BoundOperation(&Operation53, { InputSlice { 0, 216, 224 }, InputSlice { 1, 216, 224 } }), BoundOperation(&Operation53, { InputSlice { 0, 224, 232 }, InputSlice { 1, 224, 232 } }), BoundOperation(&Operation53, { InputSlice { 0, 232, 240 }, InputSlice { 1, 232, 240 } }), BoundOperation(&Operation53, { InputSlice { 0, 240, 248 }, InputSlice { 1, 240, 248 } }), BoundOperation(&Operation53, { InputSlice { 0, 248, 256 }, InputSlice { 1, 248, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_cmpgt_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation54, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation54, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation54, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation54, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation54, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation54, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation54, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation54, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation54, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation54, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation54, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation54, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation54, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation54, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation54, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation54, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_cmpgt_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation55, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation55, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation55, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation55, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation55, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation55, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation55, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation55, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_cmpgt_epi64", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation91, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation91, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation91, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation91, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 2.0),
+InstBinding("_mm256_cmpgt_epi64", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation91, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation91, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation91, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation91, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 1.0),
 InstBinding("_mm256_hadd_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation26, { InputSlice { 0, 32, 64 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation26, { InputSlice { 0, 96, 128 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation26, { InputSlice { 1, 32, 64 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation26, { InputSlice { 1, 96, 128 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation26, { InputSlice { 0, 160, 192 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation26, { InputSlice { 0, 224, 256 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation26, { InputSlice { 1, 160, 192 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation26, { InputSlice { 1, 224, 256 }, InputSlice { 1, 192, 224 } }) }, 4.0),
 InstBinding("_mm256_hsub_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation40, { InputSlice { 0, 0, 16 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation40, { InputSlice { 0, 32, 48 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation40, { InputSlice { 0, 64, 80 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation40, { InputSlice { 0, 96, 112 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation40, { InputSlice { 1, 0, 16 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation40, { InputSlice { 1, 32, 48 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation40, { InputSlice { 1, 64, 80 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation40, { InputSlice { 1, 96, 112 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation40, { InputSlice { 0, 128, 144 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation40, { InputSlice { 0, 160, 176 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation40, { InputSlice { 0, 192, 208 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation40, { InputSlice { 0, 224, 240 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation40, { InputSlice { 1, 128, 144 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation40, { InputSlice { 1, 160, 176 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation40, { InputSlice { 1, 192, 208 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation40, { InputSlice { 1, 224, 240 }, InputSlice { 1, 240, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_hsub_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation41, { InputSlice { 0, 0, 32 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation41, { InputSlice { 0, 64, 96 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation41, { InputSlice { 1, 0, 32 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation41, { InputSlice { 1, 64, 96 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation41, { InputSlice { 0, 128, 160 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation41, { InputSlice { 0, 192, 224 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation41, { InputSlice { 1, 128, 160 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation41, { InputSlice { 1, 192, 224 }, InputSlice { 1, 224, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_hsubs_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation44, { InputSlice { 0, 0, 16 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation44, { InputSlice { 0, 32, 48 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation44, { InputSlice { 0, 64, 80 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation44, { InputSlice { 0, 96, 112 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation44, { InputSlice { 1, 0, 16 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation44, { InputSlice { 1, 32, 48 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation44, { InputSlice { 1, 64, 80 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation44, { InputSlice { 1, 96, 112 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation44, { InputSlice { 0, 128, 144 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation44, { InputSlice { 0, 160, 176 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation44, { InputSlice { 0, 192, 208 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation44, { InputSlice { 0, 224, 240 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation44, { InputSlice { 1, 128, 144 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation44, { InputSlice { 1, 160, 176 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation44, { InputSlice { 1, 192, 208 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation44, { InputSlice { 1, 224, 240 }, InputSlice { 1, 240, 256 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_madd_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation34, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation34, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation34, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation34, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation34, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 }, InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation34, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 }, InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation34, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 }, InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation34, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 }, InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }) }, 2.0),
-InstBinding("_mm256_mul_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation89, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation89, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation89, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation89, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }) }, 2.0),
-InstBinding("_mm256_mul_epu32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation38, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation38, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation38, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation38, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }) }, 2.0),
-InstBinding("_mm256_mulhi_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation35, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation35, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation35, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation35, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation35, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation35, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation35, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation35, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation35, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation35, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation35, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation35, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation35, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation35, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation35, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation35, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 2.0),
+InstBinding("_mm256_madd_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation34, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation34, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation34, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation34, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation34, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 }, InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation34, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 }, InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation34, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 }, InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation34, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 }, InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }) }, 1.0),
+InstBinding("_mm256_mul_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation89, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation89, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation89, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation89, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }) }, 1.0),
+InstBinding("_mm256_mul_epu32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation38, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation38, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation38, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation38, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }) }, 1.0),
+InstBinding("_mm256_mulhi_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation35, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation35, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation35, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation35, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation35, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation35, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation35, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation35, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation35, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation35, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation35, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation35, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation35, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation35, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation35, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation35, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 1.0),
 InstBinding("_mm256_mulhi_epu16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation36, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation36, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation36, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation36, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation36, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation36, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation36, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation36, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation36, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation36, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation36, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation36, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation36, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation36, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation36, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation36, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mulhrs_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation83, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation83, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation83, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation83, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation83, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation83, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation83, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation83, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation83, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation83, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation83, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation83, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation83, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation83, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation83, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation83, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 2.0),
-InstBinding("_mm256_mullo_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation37, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation37, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation37, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation37, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation37, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation37, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation37, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation37, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation37, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation37, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation37, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation37, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation37, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation37, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation37, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation37, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 2.0),
+InstBinding("_mm256_mulhrs_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation83, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation83, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation83, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation83, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation83, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation83, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation83, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation83, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation83, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation83, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation83, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation83, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation83, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation83, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation83, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation83, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 1.0),
+InstBinding("_mm256_mullo_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation37, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation37, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation37, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation37, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation37, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation37, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation37, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation37, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation37, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation37, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation37, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation37, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation37, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation37, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation37, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation37, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }) }, 1.0),
 InstBinding("_mm256_mullo_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation90, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation90, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation90, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation90, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation90, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation90, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation90, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation90, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }) }, 4.0),
-InstBinding("_mm256_packs_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation56, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 1, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 0, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 0, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 0, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 0, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 0, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 0, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 0, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 0, 240, 256 } }), BoundOperation(&Operation56, { InputSlice { 1, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 1, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 1, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 1, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 1, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 1, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 1, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 1, 240, 256 } }) }, 2.0),
+InstBinding("_mm256_packs_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation56, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 1, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 0, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 0, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 0, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 0, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 0, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 0, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 0, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 0, 240, 256 } }), BoundOperation(&Operation56, { InputSlice { 1, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 1, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 1, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 1, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 1, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 1, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 1, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 1, 240, 256 } }) }, 1.0),
 InstBinding("_mm256_packs_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation57, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation57, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 1, 96, 128 } }), BoundOperation(&Operation57, { InputSlice { 0, 128, 160 } }), BoundOperation(&Operation57, { InputSlice { 0, 160, 192 } }), BoundOperation(&Operation57, { InputSlice { 0, 192, 224 } }), BoundOperation(&Operation57, { InputSlice { 0, 224, 256 } }), BoundOperation(&Operation57, { InputSlice { 1, 128, 160 } }), BoundOperation(&Operation57, { InputSlice { 1, 160, 192 } }), BoundOperation(&Operation57, { InputSlice { 1, 192, 224 } }), BoundOperation(&Operation57, { InputSlice { 1, 224, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_packus_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation58, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation58, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation58, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation58, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation58, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation58, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation58, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation58, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation58, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation58, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation58, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation58, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation58, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation58, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation58, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation58, { InputSlice { 1, 112, 128 } }), BoundOperation(&Operation58, { InputSlice { 0, 128, 144 } }), BoundOperation(&Operation58, { InputSlice { 0, 144, 160 } }), BoundOperation(&Operation58, { InputSlice { 0, 160, 176 } }), BoundOperation(&Operation58, { InputSlice { 0, 176, 192 } }), BoundOperation(&Operation58, { InputSlice { 0, 192, 208 } }), BoundOperation(&Operation58, { InputSlice { 0, 208, 224 } }), BoundOperation(&Operation58, { InputSlice { 0, 224, 240 } }), BoundOperation(&Operation58, { InputSlice { 0, 240, 256 } }), BoundOperation(&Operation58, { InputSlice { 1, 128, 144 } }), BoundOperation(&Operation58, { InputSlice { 1, 144, 160 } }), BoundOperation(&Operation58, { InputSlice { 1, 160, 176 } }), BoundOperation(&Operation58, { InputSlice { 1, 176, 192 } }), BoundOperation(&Operation58, { InputSlice { 1, 192, 208 } }), BoundOperation(&Operation58, { InputSlice { 1, 208, 224 } }), BoundOperation(&Operation58, { InputSlice { 1, 224, 240 } }), BoundOperation(&Operation58, { InputSlice { 1, 240, 256 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_packus_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation88, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 1, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 0, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 0, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 0, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 0, 224, 256 } }), BoundOperation(&Operation88, { InputSlice { 1, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 1, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 1, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 1, 224, 256 } }) }, 2.0),
+InstBinding("_mm256_packus_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation88, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 1, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 0, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 0, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 0, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 0, 224, 256 } }), BoundOperation(&Operation88, { InputSlice { 1, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 1, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 1, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 1, 224, 256 } }) }, 1.0),
 InstBinding("_mm256_sign_epi8", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation84, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation84, { InputSlice { 1, 8, 16 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation84, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation84, { InputSlice { 1, 24, 32 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation84, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation84, { InputSlice { 1, 40, 48 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation84, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation84, { InputSlice { 1, 56, 64 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation84, { InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation84, { InputSlice { 1, 72, 80 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation84, { InputSlice { 1, 80, 88 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation84, { InputSlice { 1, 88, 96 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation84, { InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation84, { InputSlice { 1, 104, 112 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation84, { InputSlice { 1, 112, 120 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation84, { InputSlice { 1, 120, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation84, { InputSlice { 1, 128, 136 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation84, { InputSlice { 1, 136, 144 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation84, { InputSlice { 1, 144, 152 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation84, { InputSlice { 1, 152, 160 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation84, { InputSlice { 1, 160, 168 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation84, { InputSlice { 1, 168, 176 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation84, { InputSlice { 1, 176, 184 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation84, { InputSlice { 1, 184, 192 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation84, { InputSlice { 1, 192, 200 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation84, { InputSlice { 1, 200, 208 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation84, { InputSlice { 1, 208, 216 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation84, { InputSlice { 1, 216, 224 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation84, { InputSlice { 1, 224, 232 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation84, { InputSlice { 1, 232, 240 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation84, { InputSlice { 1, 240, 248 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation84, { InputSlice { 1, 248, 256 }, InputSlice { 0, 248, 256 } }) }, 1.0),
 InstBinding("_mm256_sign_epi16", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation85, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation85, { InputSlice { 1, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation85, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation85, { InputSlice { 1, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation85, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation85, { InputSlice { 1, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation85, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation85, { InputSlice { 1, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation85, { InputSlice { 1, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation85, { InputSlice { 1, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation85, { InputSlice { 1, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation85, { InputSlice { 1, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation85, { InputSlice { 1, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation85, { InputSlice { 1, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation85, { InputSlice { 1, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation85, { InputSlice { 1, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 1.0),
 InstBinding("_mm256_sign_epi32", { "avx2" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation86, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation86, { InputSlice { 1, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation86, { InputSlice { 1, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation86, { InputSlice { 1, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation86, { InputSlice { 1, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation86, { InputSlice { 1, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation86, { InputSlice { 1, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation86, { InputSlice { 1, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
@@ -13514,36 +13514,36 @@ InstBinding("_mm512_knot", { "kncni" }, InstSignature { { 16 }, { 16 }, false },
 InstBinding("_mm512_kor", { "kncni" }, InstSignature { { 16, 16 }, { 16 }, false }, { BoundOperation(&Operation137, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_kxnor", { "kncni" }, InstSignature { { 16, 16 }, { 16 }, false }, { BoundOperation(&Operation118, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_kxor", { "kncni" }, InstSignature { { 16, 16 }, { 16 }, false }, { BoundOperation(&Operation122, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }) }, 1.0 /*default*/),
-InstBinding("_mm512_add_pd", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation59, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation59, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation59, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation59, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation59, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation59, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_add_pd", { "avx512f/kncni" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation138, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation138, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation138, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation138, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation138, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation138, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation138, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation138, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_add_pd", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation139, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation139, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation139, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation139, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation139, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation139, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation139, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation139, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_add_ps", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation1, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation1, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation1, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation1, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation1, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation1, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation1, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation1, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation1, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation1, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation1, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation1, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation1, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_add_ps", { "avx512f/kncni" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation140, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation140, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation140, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation140, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation140, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation140, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation140, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation140, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation140, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation140, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation140, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation140, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation140, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation140, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation140, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation140, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_add_ps", { "avx512f" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation141, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation141, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation141, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation141, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation141, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation141, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation141, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation141, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation141, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation141, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation141, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation141, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation141, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation141, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation141, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation141, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpeq_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation142, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation142, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation142, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation142, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation142, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation142, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation142, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation142, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_cmple_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation143, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation143, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation143, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation143, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation143, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation143, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation143, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation143, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_cmplt_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation144, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation144, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation144, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation144, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation144, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation144, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation144, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation144, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpneq_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation145, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation145, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation145, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation145, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation145, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation145, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation145, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation145, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpnle_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation146, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation146, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation146, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation146, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation146, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation146, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation146, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation146, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpnlt_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation147, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation147, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation147, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation147, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation147, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation147, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation147, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation147, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpeq_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation148, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation148, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation148, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation148, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation148, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation148, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation148, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation148, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmple_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation149, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation149, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation149, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation149, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation149, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation149, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation149, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation149, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmplt_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation150, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation150, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation150, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation150, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation150, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation150, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation150, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation150, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpneq_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation151, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation151, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation151, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation151, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation151, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation151, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation151, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation151, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpnle_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation152, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation152, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation152, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation152, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation152, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation152, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation152, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation152, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpnlt_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation153, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation153, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation153, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation153, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation153, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation153, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation153, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation153, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpeq_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation154, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation154, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation154, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation154, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation154, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation154, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation154, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation154, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation154, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation154, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation154, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation154, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation154, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation154, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation154, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation154, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_cmple_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation155, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation155, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation155, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation155, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation155, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation155, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation155, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation155, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation155, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation155, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation155, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation155, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation155, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation155, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation155, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation155, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_cmplt_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation156, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation156, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation156, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation156, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation156, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation156, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation156, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation156, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation156, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation156, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation156, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation156, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation156, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation156, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation156, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation156, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpneq_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation157, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation157, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation157, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation157, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation157, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation157, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation157, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation157, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation157, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation157, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation157, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation157, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation157, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation157, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation157, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation157, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpnle_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation158, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation158, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation158, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation158, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation158, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation158, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation158, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation158, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation158, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation158, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation158, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation158, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation158, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation158, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation158, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation158, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_cmpnlt_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation159, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation159, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation159, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation159, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation159, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation159, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation159, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation159, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation159, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation159, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation159, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation159, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation159, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation159, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation159, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation159, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpeq_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation160, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation160, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation160, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation160, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation160, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation160, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation160, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation160, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation160, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation160, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation160, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation160, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation160, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation160, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation160, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation160, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmple_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation161, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation161, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation161, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation161, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation161, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation161, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation161, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation161, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation161, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation161, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation161, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation161, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation161, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation161, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation161, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation161, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmplt_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation162, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation162, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation162, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation162, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation162, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation162, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation162, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation162, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation162, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation162, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation162, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation162, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation162, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation162, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation162, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation162, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpneq_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation163, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation163, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation163, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation163, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation163, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation163, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation163, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation163, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation163, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation163, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation163, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation163, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation163, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation163, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation163, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation163, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpnle_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation164, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation164, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation164, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation164, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation164, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation164, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation164, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation164, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation164, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation164, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation164, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation164, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation164, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation164, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation164, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation164, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_cmpnlt_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation165, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation165, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation165, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation165, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation165, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation165, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation165, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation165, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation165, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation165, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation165, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation165, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation165, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation165, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation165, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation165, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
+InstBinding("_mm512_add_pd", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation59, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation59, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation59, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation59, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation59, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation59, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation59, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation59, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_add_pd", { "avx512f/kncni" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation138, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation138, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation138, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation138, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation138, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation138, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation138, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation138, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_add_pd", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation139, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation139, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation139, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation139, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation139, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation139, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation139, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation139, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_add_ps", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation1, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation1, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation1, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation1, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation1, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation1, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation1, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation1, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation1, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation1, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation1, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation1, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation1, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_add_ps", { "avx512f/kncni" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation140, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation140, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation140, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation140, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation140, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation140, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation140, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation140, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation140, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation140, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation140, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation140, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation140, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation140, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation140, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation140, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_add_ps", { "avx512f" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation141, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation141, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation141, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation141, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation141, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation141, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation141, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation141, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation141, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation141, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation141, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation141, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation141, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation141, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation141, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation141, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpeq_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation142, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation142, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation142, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation142, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation142, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation142, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation142, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation142, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_cmple_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation143, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation143, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation143, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation143, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation143, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation143, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation143, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation143, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_cmplt_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation144, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation144, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation144, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation144, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation144, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation144, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation144, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation144, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpneq_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation145, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation145, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation145, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation145, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation145, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation145, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation145, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation145, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpnle_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation146, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation146, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation146, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation146, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation146, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation146, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation146, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation146, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpnlt_pd_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation147, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation147, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation147, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation147, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation147, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation147, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation147, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation147, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpeq_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation148, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation148, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation148, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation148, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation148, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation148, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation148, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation148, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmple_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation149, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation149, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation149, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation149, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation149, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation149, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation149, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation149, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmplt_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation150, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation150, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation150, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation150, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation150, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation150, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation150, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation150, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpneq_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation151, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation151, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation151, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation151, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation151, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation151, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation151, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation151, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpnle_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation152, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation152, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation152, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation152, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation152, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation152, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation152, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation152, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpnlt_pd_mask", { "avx512f/kncni" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation153, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation153, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation153, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation153, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation153, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation153, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation153, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation153, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpeq_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation154, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation154, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation154, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation154, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation154, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation154, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation154, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation154, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation154, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation154, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation154, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation154, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation154, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation154, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation154, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation154, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_cmple_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation155, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation155, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation155, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation155, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation155, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation155, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation155, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation155, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation155, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation155, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation155, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation155, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation155, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation155, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation155, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation155, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_cmplt_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation156, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation156, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation156, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation156, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation156, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation156, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation156, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation156, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation156, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation156, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation156, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation156, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation156, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation156, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation156, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation156, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpneq_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation157, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation157, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation157, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation157, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation157, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation157, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation157, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation157, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation157, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation157, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation157, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation157, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation157, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation157, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation157, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation157, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpnle_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation158, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation158, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation158, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation158, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation158, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation158, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation158, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation158, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation158, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation158, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation158, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation158, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation158, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation158, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation158, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation158, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_cmpnlt_ps_mask", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 16 }, false }, { BoundOperation(&Operation159, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation159, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation159, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation159, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation159, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation159, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation159, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation159, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation159, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation159, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation159, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation159, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation159, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation159, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation159, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation159, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpeq_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation160, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation160, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation160, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation160, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation160, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation160, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation160, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation160, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation160, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation160, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation160, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation160, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation160, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation160, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation160, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation160, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmple_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation161, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation161, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation161, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation161, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation161, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation161, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation161, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation161, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation161, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation161, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation161, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation161, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation161, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation161, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation161, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation161, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmplt_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation162, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation162, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation162, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation162, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation162, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation162, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation162, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation162, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation162, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation162, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation162, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation162, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation162, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation162, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation162, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation162, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpneq_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation163, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation163, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation163, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation163, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation163, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation163, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation163, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation163, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation163, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation163, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation163, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation163, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation163, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation163, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation163, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation163, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpnle_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation164, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation164, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation164, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation164, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation164, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation164, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation164, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation164, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation164, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation164, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation164, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation164, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation164, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation164, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation164, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation164, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_cmpnlt_ps_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation165, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation165, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation165, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation165, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation165, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation165, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation165, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation165, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation165, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation165, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation165, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation165, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation165, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation165, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation165, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation165, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
 InstBinding("_mm512_div_pd", { "avx512f" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation60, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation60, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation60, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation60, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation60, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation60, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation60, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation60, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 54.0),
 InstBinding("_mm512_mask_div_pd", { "avx512f" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation166, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation166, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation166, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation166, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation166, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation166, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation166, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation166, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 54.0),
 InstBinding("_mm512_maskz_div_pd", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation167, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation167, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation167, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation167, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation167, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation167, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation167, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation167, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 54.0),
@@ -13629,13 +13629,13 @@ InstBinding("_mm512_mask_cmplt_epi32_mask", { "kncni" }, InstSignature { { 16, 5
 InstBinding("_mm512_mask_cmpneq_epi32_mask", { "avx512f/kncni" }, InstSignature { { 16, 512, 512 }, { 16 }, false }, { BoundOperation(&Operation212, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation212, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation212, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation212, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation212, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation212, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation212, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation212, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation212, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation212, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation212, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation212, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation212, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation212, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation212, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation212, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_cmpeq_epi64_mask", { "avx512f" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation142, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation142, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation142, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation142, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation142, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation142, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation142, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation142, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
 InstBinding("_mm512_cmpge_epi64_mask", { "avx512f" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation213, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation213, { InputSlice { 1, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation213, { InputSlice { 1, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation213, { InputSlice { 1, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation213, { InputSlice { 1, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation213, { InputSlice { 1, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation213, { InputSlice { 1, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation213, { InputSlice { 1, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0 /*default*/),
-InstBinding("_mm512_cmpgt_epi64_mask", { "avx512f" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation214, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation214, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation214, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation214, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation214, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation214, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation214, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation214, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
+InstBinding("_mm512_cmpgt_epi64_mask", { "avx512f" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation214, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation214, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation214, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation214, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation214, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation214, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation214, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation214, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
 InstBinding("_mm512_cmple_epi64_mask", { "avx512f" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation213, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation213, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation213, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation213, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation213, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation213, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation213, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation213, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_cmplt_epi64_mask", { "avx512f" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation214, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation214, { InputSlice { 1, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation214, { InputSlice { 1, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation214, { InputSlice { 1, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation214, { InputSlice { 1, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation214, { InputSlice { 1, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation214, { InputSlice { 1, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation214, { InputSlice { 1, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_cmpneq_epi64_mask", { "avx512f" }, InstSignature { { 512, 512 }, { 8 }, false }, { BoundOperation(&Operation215, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation215, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation215, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation215, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation215, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation215, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation215, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation215, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_cmpeq_epi64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation148, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation148, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation148, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation148, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation148, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation148, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation148, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation148, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
 InstBinding("_mm512_mask_cmpge_epi64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation216, { InputSlice { 0, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation216, { InputSlice { 0, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation216, { InputSlice { 0, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation216, { InputSlice { 0, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation216, { InputSlice { 0, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation216, { InputSlice { 0, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation216, { InputSlice { 0, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation216, { InputSlice { 0, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0 /*default*/),
-InstBinding("_mm512_mask_cmpgt_epi64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation217, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation217, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation217, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation217, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation217, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation217, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation217, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation217, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
+InstBinding("_mm512_mask_cmpgt_epi64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation217, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation217, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation217, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation217, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation217, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation217, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation217, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation217, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
 InstBinding("_mm512_mask_cmple_epi64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation216, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation216, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation216, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation216, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation216, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation216, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation216, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation216, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_cmplt_epi64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation217, { InputSlice { 0, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation217, { InputSlice { 0, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation217, { InputSlice { 0, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation217, { InputSlice { 0, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation217, { InputSlice { 0, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation217, { InputSlice { 0, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation217, { InputSlice { 0, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation217, { InputSlice { 0, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_cmpneq_epi64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation218, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation218, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation218, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation218, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation218, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation218, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation218, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation218, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0 /*default*/),
@@ -13663,14 +13663,14 @@ InstBinding("_mm512_mask_cmpgt_epu64_mask", { "avx512f" }, InstSignature { { 8, 
 InstBinding("_mm512_mask_cmple_epu64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation225, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation225, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation225, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation225, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation225, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation225, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation225, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation225, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_cmplt_epu64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation226, { InputSlice { 0, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation226, { InputSlice { 0, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation226, { InputSlice { 0, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation226, { InputSlice { 0, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation226, { InputSlice { 0, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation226, { InputSlice { 0, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation226, { InputSlice { 0, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation226, { InputSlice { 0, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_cmpneq_epu64_mask", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 8 }, false }, { BoundOperation(&Operation218, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation218, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation218, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation218, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation218, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation218, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation218, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation218, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0 /*default*/),
-InstBinding("_mm512_mask_mul_epi32", { "avx512f" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation227, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation227, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation227, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation227, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation227, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation227, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation227, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation227, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_mul_epi32", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation228, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation228, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation228, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation228, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation228, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation228, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation228, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation228, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }) }, 2.0),
-InstBinding("_mm512_mul_epi32", { "avx512f" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation89, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation89, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation89, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation89, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation89, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation89, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation89, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation89, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }) }, 2.0),
+InstBinding("_mm512_mask_mul_epi32", { "avx512f" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation227, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation227, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation227, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation227, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation227, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation227, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation227, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation227, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_mul_epi32", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation228, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation228, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation228, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation228, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation228, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation228, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation228, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation228, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }) }, 1.0),
+InstBinding("_mm512_mul_epi32", { "avx512f" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation89, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation89, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation89, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation89, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation89, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation89, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation89, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation89, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }) }, 1.0),
 InstBinding("_mm512_mask_mullo_epi32", { "avx512f/kncni" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation229, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation229, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation229, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation229, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation229, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation229, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation229, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation229, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation229, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation229, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation229, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation229, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation229, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation229, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation229, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation229, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 4.0),
 InstBinding("_mm512_mullo_epi32", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation90, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation90, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation90, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation90, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation90, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation90, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation90, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation90, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation90, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation90, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation90, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation90, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation90, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation90, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation90, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation90, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 4.0),
-InstBinding("_mm512_mask_mul_epu32", { "avx512f" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation230, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation230, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation230, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation230, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation230, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation230, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation230, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation230, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_mul_epu32", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation231, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation231, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation231, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation231, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation231, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation231, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation231, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation231, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }) }, 2.0),
-InstBinding("_mm512_mul_epu32", { "avx512f" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation38, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation38, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation38, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation38, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation38, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation38, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation38, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation38, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }) }, 2.0),
+InstBinding("_mm512_mask_mul_epu32", { "avx512f" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation230, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation230, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation230, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation230, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation230, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation230, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation230, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation230, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_mul_epu32", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation231, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation231, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation231, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation231, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation231, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation231, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation231, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation231, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }) }, 1.0),
+InstBinding("_mm512_mul_epu32", { "avx512f" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation38, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation38, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation38, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation38, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation38, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation38, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation38, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation38, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }) }, 1.0),
 InstBinding("_mm512_mask_or_epi32", { "avx512f/kncni" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation232, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation232, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation232, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation232, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation232, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation232, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation232, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation232, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation232, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation232, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation232, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation232, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_maskz_or_epi32", { "avx512f" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation233, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation233, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation233, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation233, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation233, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation233, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation233, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation233, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation233, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation233, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation233, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation233, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_or_epi32", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation6, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation6, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation6, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation6, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation6, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation6, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation6, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation6, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation6, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation6, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation6, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation6, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation6, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation6, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation6, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation6, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0 /*default*/),
@@ -13721,53 +13721,53 @@ InstBinding("_mm512_xor_epi32", { "avx512f/kncni" }, InstSignature { { 512, 512 
 InstBinding("_mm512_mask_xor_epi64", { "avx512f/kncni" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation267, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation267, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation267, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation267, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation267, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation267, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_maskz_xor_epi64", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation268, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation268, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation268, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation268, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation268, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation268, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_xor_epi64", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation66, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation66, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation66, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation66, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation66, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation66, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation66, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation66, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0 /*default*/),
-InstBinding("_mm512_mask_sub_pd", { "avx512f/kncni" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation269, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation269, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation269, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation269, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation269, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation269, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation269, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation269, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_sub_pd", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation270, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation270, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation270, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation270, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation270, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation270, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation270, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation270, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_sub_pd", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation62, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation62, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation62, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation62, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation62, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation62, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation62, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_sub_ps", { "avx512f/kncni" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation271, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation271, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation271, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation271, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation271, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation271, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation271, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation271, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation271, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation271, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation271, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation271, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation271, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation271, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation271, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation271, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_sub_ps", { "avx512f" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation272, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation272, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation272, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation272, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation272, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation272, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation272, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation272, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation272, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation272, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation272, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation272, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation272, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation272, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation272, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation272, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_sub_ps", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation2, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation2, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation2, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation2, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation2, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation2, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation2, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation2, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation2, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation2, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation2, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation2, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
+InstBinding("_mm512_mask_sub_pd", { "avx512f/kncni" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation269, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation269, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation269, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation269, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation269, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation269, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation269, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation269, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_sub_pd", { "avx512f" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation270, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation270, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation270, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation270, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation270, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation270, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation270, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation270, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_sub_pd", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation62, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation62, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation62, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation62, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation62, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation62, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation62, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation62, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_sub_ps", { "avx512f/kncni" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation271, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation271, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation271, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation271, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation271, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation271, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation271, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation271, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation271, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation271, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation271, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation271, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation271, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation271, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation271, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation271, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_sub_ps", { "avx512f" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation272, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation272, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation272, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation272, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation272, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation272, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation272, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation272, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation272, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation272, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation272, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation272, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation272, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation272, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation272, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation272, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_sub_ps", { "avx512f/kncni" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation2, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation2, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation2, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation2, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation2, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation2, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation2, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation2, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation2, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation2, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation2, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation2, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
 InstBinding("_mm512_mask_and_epi32", { "avx512f/kncni" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation273, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation273, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation273, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation273, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation273, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation273, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation273, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation273, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation273, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation273, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation273, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation273, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation273, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation273, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation273, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation273, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_abs_ps", { "avx512f/kncni" }, InstSignature { { 512 }, { 512 }, false }, { BoundOperation(&Operation274, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation274, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation274, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation274, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation274, { InputSlice { 0, 128, 160 } }), BoundOperation(&Operation274, { InputSlice { 0, 160, 192 } }), BoundOperation(&Operation274, { InputSlice { 0, 192, 224 } }), BoundOperation(&Operation274, { InputSlice { 0, 224, 256 } }), BoundOperation(&Operation274, { InputSlice { 0, 256, 288 } }), BoundOperation(&Operation274, { InputSlice { 0, 288, 320 } }), BoundOperation(&Operation274, { InputSlice { 0, 320, 352 } }), BoundOperation(&Operation274, { InputSlice { 0, 352, 384 } }), BoundOperation(&Operation274, { InputSlice { 0, 384, 416 } }), BoundOperation(&Operation274, { InputSlice { 0, 416, 448 } }), BoundOperation(&Operation274, { InputSlice { 0, 448, 480 } }), BoundOperation(&Operation274, { InputSlice { 0, 480, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_abs_ps", { "avx512f/kncni" }, InstSignature { { 512, 16, 512 }, { 512 }, false }, { BoundOperation(&Operation275, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation275, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation275, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation275, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation275, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation275, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation275, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation275, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation275, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation275, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation275, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation275, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation275, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation275, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation275, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation275, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_abs_pd", { "avx512f/kncni" }, InstSignature { { 512 }, { 512 }, false }, { BoundOperation(&Operation276, { InputSlice { 0, 0, 64 } }), BoundOperation(&Operation276, { InputSlice { 0, 64, 128 } }), BoundOperation(&Operation276, { InputSlice { 0, 128, 192 } }), BoundOperation(&Operation276, { InputSlice { 0, 192, 256 } }), BoundOperation(&Operation276, { InputSlice { 0, 256, 320 } }), BoundOperation(&Operation276, { InputSlice { 0, 320, 384 } }), BoundOperation(&Operation276, { InputSlice { 0, 384, 448 } }), BoundOperation(&Operation276, { InputSlice { 0, 448, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_abs_pd", { "avx512f/kncni" }, InstSignature { { 512, 8, 512 }, { 512 }, false }, { BoundOperation(&Operation277, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation277, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation277, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation277, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation277, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation277, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation277, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation277, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mask_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation138, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation138, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation138, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation138, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation139, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation139, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation139, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation139, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm_mask_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation138, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation138, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation139, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation139, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation140, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation140, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation140, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation140, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation140, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation140, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation140, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation140, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation141, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation141, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation141, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation141, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation141, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation141, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation141, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation141, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm_mask_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation140, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation140, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation140, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation140, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation141, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation141, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation141, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation141, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation203, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation203, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation203, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation203, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation204, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation204, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation204, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation204, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm512_andnot_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation64, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation64, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation64, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation64, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation64, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation64, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation64, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation64, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_andnot_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation203, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation203, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation203, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation203, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation203, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation203, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation203, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation203, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_andnot_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation204, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation204, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation204, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation204, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation204, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation204, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation204, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation204, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm_mask_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation203, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation203, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation204, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation204, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation201, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation201, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation201, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation201, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation201, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation201, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation201, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation201, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation202, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation202, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation202, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation202, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation202, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation202, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation202, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation202, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm512_andnot_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation5, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation5, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation5, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation5, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation5, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation5, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation5, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation5, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation5, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation5, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation5, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation5, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation5, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation5, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation5, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation5, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_andnot_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation201, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation201, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation201, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation201, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation201, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation201, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation201, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation201, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation201, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation201, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation201, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation201, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation201, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation201, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation201, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation201, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_andnot_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation202, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation202, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation202, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation202, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation202, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation202, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation202, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation202, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation202, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation202, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation202, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation202, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation202, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation202, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation202, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation202, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm_mask_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation201, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation201, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation201, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation201, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation202, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation202, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation202, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation202, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation205, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation205, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation205, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation205, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation206, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation206, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation206, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation206, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm512_and_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation63, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation63, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation63, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation63, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation63, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation63, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation63, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation63, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_and_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation205, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation205, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation205, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation205, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation205, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation205, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation205, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation205, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_and_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation206, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation206, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation206, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation206, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation206, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation206, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation206, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation206, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm_mask_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation205, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation205, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation206, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation206, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation273, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation273, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation273, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation273, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation273, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation273, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation273, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation273, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation200, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation200, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation200, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation200, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation200, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation200, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation200, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation200, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm512_and_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation4, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation4, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation4, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation4, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation4, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation4, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation4, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation4, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation4, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation4, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation4, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation4, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation4, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation4, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation4, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation4, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_mask_and_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation273, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation273, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation273, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation273, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation273, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation273, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation273, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation273, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation273, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation273, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation273, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation273, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation273, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation273, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation273, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation273, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_and_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation200, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation200, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation200, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation200, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation200, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation200, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation200, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation200, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation200, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation200, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation200, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation200, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation200, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation200, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation200, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation200, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm_mask_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation273, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation273, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation273, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation273, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation200, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation200, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation200, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation200, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0),
+InstBinding("_mm256_mask_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation138, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation138, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation138, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation138, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation139, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation139, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation139, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation139, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm_mask_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation138, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation138, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_add_pd", { "avx512f", "avx512vl" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation139, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation139, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation140, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation140, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation140, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation140, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation140, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation140, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation140, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation140, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation141, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation141, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation141, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation141, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation141, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation141, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation141, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation141, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm_mask_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation140, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation140, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation140, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation140, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_add_ps", { "avx512f", "avx512vl" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation141, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation141, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation141, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation141, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation203, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation203, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation203, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation203, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation204, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation204, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation204, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation204, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm512_andnot_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation64, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation64, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation64, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation64, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation64, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation64, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation64, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation64, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_andnot_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation203, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation203, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation203, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation203, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation203, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation203, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation203, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation203, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_andnot_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation204, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation204, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation204, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation204, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation204, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation204, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation204, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation204, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm_mask_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation203, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation203, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_andnot_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation204, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation204, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation201, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation201, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation201, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation201, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation201, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation201, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation201, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation201, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation202, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation202, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation202, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation202, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation202, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation202, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation202, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation202, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm512_andnot_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation5, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation5, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation5, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation5, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation5, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation5, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation5, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation5, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation5, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation5, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation5, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation5, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation5, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation5, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation5, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation5, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_andnot_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation201, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation201, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation201, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation201, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation201, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation201, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation201, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation201, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation201, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation201, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation201, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation201, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation201, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation201, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation201, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation201, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_andnot_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation202, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation202, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation202, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation202, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation202, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation202, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation202, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation202, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation202, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation202, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation202, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation202, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation202, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation202, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation202, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation202, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm_mask_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation201, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation201, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation201, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation201, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_andnot_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation202, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation202, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation202, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation202, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation205, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation205, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation205, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation205, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation206, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation206, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation206, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation206, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm512_and_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation63, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation63, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation63, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation63, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation63, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation63, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation63, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation63, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_and_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation205, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation205, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation205, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation205, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation205, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation205, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation205, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation205, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_and_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation206, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation206, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation206, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation206, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation206, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation206, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation206, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation206, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm_mask_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation205, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation205, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_and_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation206, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation206, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation273, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation273, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation273, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation273, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation273, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation273, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation273, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation273, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation200, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation200, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation200, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation200, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation200, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation200, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation200, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation200, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm512_and_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation4, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation4, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation4, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation4, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation4, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation4, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation4, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation4, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation4, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation4, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation4, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation4, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation4, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation4, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation4, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation4, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_mask_and_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation273, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation273, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation273, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation273, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation273, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation273, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation273, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation273, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation273, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation273, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation273, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation273, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation273, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation273, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation273, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation273, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_and_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation200, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation200, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation200, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation200, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation200, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation200, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation200, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation200, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation200, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation200, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation200, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation200, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation200, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation200, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation200, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation200, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm_mask_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation273, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation273, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation273, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation273, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_and_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation200, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation200, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation200, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation200, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
 InstBinding("_mm256_mask_div_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation166, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation166, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation166, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation166, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 54.0),
 InstBinding("_mm256_maskz_div_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation167, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation167, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation167, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation167, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 54.0),
 InstBinding("_mm_mask_div_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation166, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation166, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 54.0),
@@ -13844,22 +13844,22 @@ InstBinding("_mm256_maskz_fnmsub_ps", { "avx512vl", "avx512f" }, InstSignature {
 InstBinding("_mm_mask3_fnmsub_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 128, 128, 8 }, { 128 }, false }, { BoundOperation(&Operation189, { InputSlice { 3, 0, 1 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation189, { InputSlice { 3, 1, 2 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation189, { InputSlice { 3, 2, 3 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation189, { InputSlice { 3, 3, 4 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
 InstBinding("_mm_mask_fnmsub_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation190, { InputSlice { 1, 0, 1 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 } }), BoundOperation(&Operation190, { InputSlice { 1, 1, 2 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 } }), BoundOperation(&Operation190, { InputSlice { 1, 2, 3 }, InputSlice { 0, 64, 96 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 } }), BoundOperation(&Operation190, { InputSlice { 1, 3, 4 }, InputSlice { 0, 96, 128 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 } }) }, 1.0),
 InstBinding("_mm_maskz_fnmsub_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation191, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 } }), BoundOperation(&Operation191, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 } }), BoundOperation(&Operation191, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 } }), BoundOperation(&Operation191, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 } }) }, 1.0),
-InstBinding("_mm256_mask_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation278, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation278, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation278, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation278, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation279, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation279, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation279, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation279, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm_mask_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation278, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation278, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation279, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation279, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation280, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation280, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation280, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation280, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation280, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation280, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation280, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation280, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation281, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation281, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation281, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation281, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation281, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation281, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation281, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation281, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm_mask_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation280, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation280, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation280, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation280, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation281, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation281, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation281, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation281, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation282, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation282, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation282, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation282, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation283, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation283, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation283, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation283, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm_mask_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation282, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation282, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation283, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation283, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation284, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation284, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation284, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation284, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation284, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation284, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation284, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation284, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation285, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation285, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation285, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation285, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation285, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation285, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation285, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation285, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm_mask_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation284, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation284, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation284, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation284, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation285, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation285, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation285, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation285, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0),
+InstBinding("_mm256_mask_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation278, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation278, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation278, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation278, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation279, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation279, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation279, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation279, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm_mask_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation278, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation278, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_max_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation279, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation279, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation280, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation280, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation280, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation280, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation280, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation280, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation280, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation280, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation281, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation281, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation281, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation281, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation281, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation281, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation281, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation281, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm_mask_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation280, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation280, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation280, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation280, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_max_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation281, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation281, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation281, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation281, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation282, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation282, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation282, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation282, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation283, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation283, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation283, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation283, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm_mask_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation282, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation282, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_min_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation283, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation283, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation284, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation284, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation284, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation284, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation284, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation284, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation284, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation284, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation285, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation285, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation285, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation285, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation285, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation285, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation285, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation285, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm_mask_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation284, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation284, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation284, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation284, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_min_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation285, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation285, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation285, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation285, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
 InstBinding("_mm256_mask_mul_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation192, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation192, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation192, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation192, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
 InstBinding("_mm256_maskz_mul_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation193, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation193, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation193, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation193, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
 InstBinding("_mm_mask_mul_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation192, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation192, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
@@ -13868,20 +13868,20 @@ InstBinding("_mm256_mask_mul_ps", { "avx512vl", "avx512f" }, InstSignature { { 2
 InstBinding("_mm256_maskz_mul_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation195, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation195, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation195, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation195, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation195, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation195, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation195, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation195, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
 InstBinding("_mm_mask_mul_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation194, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation194, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation194, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation194, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
 InstBinding("_mm_maskz_mul_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation195, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation195, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation195, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation195, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
-InstBinding("_mm256_mask_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation234, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation234, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation234, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation234, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation235, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation235, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation235, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation235, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_or_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation234, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation234, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation234, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation234, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation234, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation234, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation234, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation234, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_or_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation235, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation235, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation235, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation235, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation235, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation235, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation235, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation235, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_or_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation65, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation65, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation65, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation65, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation65, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation65, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation65, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation65, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm_mask_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation234, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation234, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation235, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation235, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation232, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation232, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation232, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation232, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation233, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation233, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation233, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation233, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_or_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation232, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation232, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation232, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation232, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation232, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation232, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation232, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation232, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation232, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation232, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation232, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation232, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_or_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation233, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation233, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation233, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation233, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation233, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation233, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation233, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation233, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation233, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation233, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation233, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation233, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_or_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation6, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation6, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation6, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation6, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation6, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation6, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation6, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation6, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation6, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation6, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation6, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation6, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation6, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation6, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation6, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation6, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm_mask_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0),
+InstBinding("_mm256_mask_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation234, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation234, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation234, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation234, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation235, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation235, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation235, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation235, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_or_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation234, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation234, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation234, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation234, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation234, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation234, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation234, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation234, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_or_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation235, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation235, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation235, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation235, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation235, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation235, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation235, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation235, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_or_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation65, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation65, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation65, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation65, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation65, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation65, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation65, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation65, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm_mask_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation234, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation234, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_or_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation235, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation235, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation232, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation232, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation232, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation232, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation233, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation233, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation233, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation233, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_or_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation232, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation232, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation232, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation232, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation232, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation232, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation232, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation232, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation232, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation232, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation232, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation232, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_or_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation233, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation233, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation233, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation233, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation233, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation233, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation233, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation233, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation233, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation233, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation233, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation233, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_or_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation6, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation6, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation6, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation6, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation6, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation6, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation6, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation6, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation6, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation6, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation6, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation6, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation6, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation6, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation6, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation6, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm_mask_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_or_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
 InstBinding("_mm256_mask_abs_epi8", { "avx512vl", "avx512bw" }, InstSignature { { 256, 32, 256 }, { 256 }, false }, { BoundOperation(&Operation286, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 8 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation286, { InputSlice { 1, 1, 2 }, InputSlice { 2, 8, 16 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation286, { InputSlice { 1, 2, 3 }, InputSlice { 2, 16, 24 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation286, { InputSlice { 1, 3, 4 }, InputSlice { 2, 24, 32 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation286, { InputSlice { 1, 4, 5 }, InputSlice { 2, 32, 40 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation286, { InputSlice { 1, 5, 6 }, InputSlice { 2, 40, 48 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation286, { InputSlice { 1, 6, 7 }, InputSlice { 2, 48, 56 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation286, { InputSlice { 1, 7, 8 }, InputSlice { 2, 56, 64 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation286, { InputSlice { 1, 8, 9 }, InputSlice { 2, 64, 72 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation286, { InputSlice { 1, 9, 10 }, InputSlice { 2, 72, 80 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation286, { InputSlice { 1, 10, 11 }, InputSlice { 2, 80, 88 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation286, { InputSlice { 1, 11, 12 }, InputSlice { 2, 88, 96 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation286, { InputSlice { 1, 12, 13 }, InputSlice { 2, 96, 104 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation286, { InputSlice { 1, 13, 14 }, InputSlice { 2, 104, 112 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation286, { InputSlice { 1, 14, 15 }, InputSlice { 2, 112, 120 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation286, { InputSlice { 1, 15, 16 }, InputSlice { 2, 120, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation286, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 136 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation286, { InputSlice { 1, 17, 18 }, InputSlice { 2, 136, 144 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation286, { InputSlice { 1, 18, 19 }, InputSlice { 2, 144, 152 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation286, { InputSlice { 1, 19, 20 }, InputSlice { 2, 152, 160 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation286, { InputSlice { 1, 20, 21 }, InputSlice { 2, 160, 168 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation286, { InputSlice { 1, 21, 22 }, InputSlice { 2, 168, 176 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation286, { InputSlice { 1, 22, 23 }, InputSlice { 2, 176, 184 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation286, { InputSlice { 1, 23, 24 }, InputSlice { 2, 184, 192 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation286, { InputSlice { 1, 24, 25 }, InputSlice { 2, 192, 200 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation286, { InputSlice { 1, 25, 26 }, InputSlice { 2, 200, 208 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation286, { InputSlice { 1, 26, 27 }, InputSlice { 2, 208, 216 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation286, { InputSlice { 1, 27, 28 }, InputSlice { 2, 216, 224 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation286, { InputSlice { 1, 28, 29 }, InputSlice { 2, 224, 232 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation286, { InputSlice { 1, 29, 30 }, InputSlice { 2, 232, 240 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation286, { InputSlice { 1, 30, 31 }, InputSlice { 2, 240, 248 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation286, { InputSlice { 1, 31, 32 }, InputSlice { 2, 248, 256 }, InputSlice { 0, 248, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_maskz_abs_epi8", { "avx512vl", "avx512bw" }, InstSignature { { 32, 256 }, { 256 }, false }, { BoundOperation(&Operation287, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 8 } }), BoundOperation(&Operation287, { InputSlice { 0, 1, 2 }, InputSlice { 1, 8, 16 } }), BoundOperation(&Operation287, { InputSlice { 0, 2, 3 }, InputSlice { 1, 16, 24 } }), BoundOperation(&Operation287, { InputSlice { 0, 3, 4 }, InputSlice { 1, 24, 32 } }), BoundOperation(&Operation287, { InputSlice { 0, 4, 5 }, InputSlice { 1, 32, 40 } }), BoundOperation(&Operation287, { InputSlice { 0, 5, 6 }, InputSlice { 1, 40, 48 } }), BoundOperation(&Operation287, { InputSlice { 0, 6, 7 }, InputSlice { 1, 48, 56 } }), BoundOperation(&Operation287, { InputSlice { 0, 7, 8 }, InputSlice { 1, 56, 64 } }), BoundOperation(&Operation287, { InputSlice { 0, 8, 9 }, InputSlice { 1, 64, 72 } }), BoundOperation(&Operation287, { InputSlice { 0, 9, 10 }, InputSlice { 1, 72, 80 } }), BoundOperation(&Operation287, { InputSlice { 0, 10, 11 }, InputSlice { 1, 80, 88 } }), BoundOperation(&Operation287, { InputSlice { 0, 11, 12 }, InputSlice { 1, 88, 96 } }), BoundOperation(&Operation287, { InputSlice { 0, 12, 13 }, InputSlice { 1, 96, 104 } }), BoundOperation(&Operation287, { InputSlice { 0, 13, 14 }, InputSlice { 1, 104, 112 } }), BoundOperation(&Operation287, { InputSlice { 0, 14, 15 }, InputSlice { 1, 112, 120 } }), BoundOperation(&Operation287, { InputSlice { 0, 15, 16 }, InputSlice { 1, 120, 128 } }), BoundOperation(&Operation287, { InputSlice { 0, 16, 17 }, InputSlice { 1, 128, 136 } }), BoundOperation(&Operation287, { InputSlice { 0, 17, 18 }, InputSlice { 1, 136, 144 } }), BoundOperation(&Operation287, { InputSlice { 0, 18, 19 }, InputSlice { 1, 144, 152 } }), BoundOperation(&Operation287, { InputSlice { 0, 19, 20 }, InputSlice { 1, 152, 160 } }), BoundOperation(&Operation287, { InputSlice { 0, 20, 21 }, InputSlice { 1, 160, 168 } }), BoundOperation(&Operation287, { InputSlice { 0, 21, 22 }, InputSlice { 1, 168, 176 } }), BoundOperation(&Operation287, { InputSlice { 0, 22, 23 }, InputSlice { 1, 176, 184 } }), BoundOperation(&Operation287, { InputSlice { 0, 23, 24 }, InputSlice { 1, 184, 192 } }), BoundOperation(&Operation287, { InputSlice { 0, 24, 25 }, InputSlice { 1, 192, 200 } }), BoundOperation(&Operation287, { InputSlice { 0, 25, 26 }, InputSlice { 1, 200, 208 } }), BoundOperation(&Operation287, { InputSlice { 0, 26, 27 }, InputSlice { 1, 208, 216 } }), BoundOperation(&Operation287, { InputSlice { 0, 27, 28 }, InputSlice { 1, 216, 224 } }), BoundOperation(&Operation287, { InputSlice { 0, 28, 29 }, InputSlice { 1, 224, 232 } }), BoundOperation(&Operation287, { InputSlice { 0, 29, 30 }, InputSlice { 1, 232, 240 } }), BoundOperation(&Operation287, { InputSlice { 0, 30, 31 }, InputSlice { 1, 240, 248 } }), BoundOperation(&Operation287, { InputSlice { 0, 31, 32 }, InputSlice { 1, 248, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_abs_epi8", { "avx512bw" }, InstSignature { { 512 }, { 512 }, false }, { BoundOperation(&Operation288, { InputSlice { 0, 0, 8 } }), BoundOperation(&Operation288, { InputSlice { 0, 8, 16 } }), BoundOperation(&Operation288, { InputSlice { 0, 16, 24 } }), BoundOperation(&Operation288, { InputSlice { 0, 24, 32 } }), BoundOperation(&Operation288, { InputSlice { 0, 32, 40 } }), BoundOperation(&Operation288, { InputSlice { 0, 40, 48 } }), BoundOperation(&Operation288, { InputSlice { 0, 48, 56 } }), BoundOperation(&Operation288, { InputSlice { 0, 56, 64 } }), BoundOperation(&Operation288, { InputSlice { 0, 64, 72 } }), BoundOperation(&Operation288, { InputSlice { 0, 72, 80 } }), BoundOperation(&Operation288, { InputSlice { 0, 80, 88 } }), BoundOperation(&Operation288, { InputSlice { 0, 88, 96 } }), BoundOperation(&Operation288, { InputSlice { 0, 96, 104 } }), BoundOperation(&Operation288, { InputSlice { 0, 104, 112 } }), BoundOperation(&Operation288, { InputSlice { 0, 112, 120 } }), BoundOperation(&Operation288, { InputSlice { 0, 120, 128 } }), BoundOperation(&Operation288, { InputSlice { 0, 128, 136 } }), BoundOperation(&Operation288, { InputSlice { 0, 136, 144 } }), BoundOperation(&Operation288, { InputSlice { 0, 144, 152 } }), BoundOperation(&Operation288, { InputSlice { 0, 152, 160 } }), BoundOperation(&Operation288, { InputSlice { 0, 160, 168 } }), BoundOperation(&Operation288, { InputSlice { 0, 168, 176 } }), BoundOperation(&Operation288, { InputSlice { 0, 176, 184 } }), BoundOperation(&Operation288, { InputSlice { 0, 184, 192 } }), BoundOperation(&Operation288, { InputSlice { 0, 192, 200 } }), BoundOperation(&Operation288, { InputSlice { 0, 200, 208 } }), BoundOperation(&Operation288, { InputSlice { 0, 208, 216 } }), BoundOperation(&Operation288, { InputSlice { 0, 216, 224 } }), BoundOperation(&Operation288, { InputSlice { 0, 224, 232 } }), BoundOperation(&Operation288, { InputSlice { 0, 232, 240 } }), BoundOperation(&Operation288, { InputSlice { 0, 240, 248 } }), BoundOperation(&Operation288, { InputSlice { 0, 248, 256 } }), BoundOperation(&Operation288, { InputSlice { 0, 256, 264 } }), BoundOperation(&Operation288, { InputSlice { 0, 264, 272 } }), BoundOperation(&Operation288, { InputSlice { 0, 272, 280 } }), BoundOperation(&Operation288, { InputSlice { 0, 280, 288 } }), BoundOperation(&Operation288, { InputSlice { 0, 288, 296 } }), BoundOperation(&Operation288, { InputSlice { 0, 296, 304 } }), BoundOperation(&Operation288, { InputSlice { 0, 304, 312 } }), BoundOperation(&Operation288, { InputSlice { 0, 312, 320 } }), BoundOperation(&Operation288, { InputSlice { 0, 320, 328 } }), BoundOperation(&Operation288, { InputSlice { 0, 328, 336 } }), BoundOperation(&Operation288, { InputSlice { 0, 336, 344 } }), BoundOperation(&Operation288, { InputSlice { 0, 344, 352 } }), BoundOperation(&Operation288, { InputSlice { 0, 352, 360 } }), BoundOperation(&Operation288, { InputSlice { 0, 360, 368 } }), BoundOperation(&Operation288, { InputSlice { 0, 368, 376 } }), BoundOperation(&Operation288, { InputSlice { 0, 376, 384 } }), BoundOperation(&Operation288, { InputSlice { 0, 384, 392 } }), BoundOperation(&Operation288, { InputSlice { 0, 392, 400 } }), BoundOperation(&Operation288, { InputSlice { 0, 400, 408 } }), BoundOperation(&Operation288, { InputSlice { 0, 408, 416 } }), BoundOperation(&Operation288, { InputSlice { 0, 416, 424 } }), BoundOperation(&Operation288, { InputSlice { 0, 424, 432 } }), BoundOperation(&Operation288, { InputSlice { 0, 432, 440 } }), BoundOperation(&Operation288, { InputSlice { 0, 440, 448 } }), BoundOperation(&Operation288, { InputSlice { 0, 448, 456 } }), BoundOperation(&Operation288, { InputSlice { 0, 456, 464 } }), BoundOperation(&Operation288, { InputSlice { 0, 464, 472 } }), BoundOperation(&Operation288, { InputSlice { 0, 472, 480 } }), BoundOperation(&Operation288, { InputSlice { 0, 480, 488 } }), BoundOperation(&Operation288, { InputSlice { 0, 488, 496 } }), BoundOperation(&Operation288, { InputSlice { 0, 496, 504 } }), BoundOperation(&Operation288, { InputSlice { 0, 504, 512 } }) }, 1.0 /*default*/),
@@ -13913,20 +13913,20 @@ InstBinding("_mm512_maskz_packs_epi32", { "avx512bw" }, InstSignature { { 32, 51
 InstBinding("_mm512_packs_epi32", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation57, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation57, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation57, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation57, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation57, { InputSlice { 1, 96, 128 } }), BoundOperation(&Operation57, { InputSlice { 0, 128, 160 } }), BoundOperation(&Operation57, { InputSlice { 0, 160, 192 } }), BoundOperation(&Operation57, { InputSlice { 0, 192, 224 } }), BoundOperation(&Operation57, { InputSlice { 0, 224, 256 } }), BoundOperation(&Operation57, { InputSlice { 1, 128, 160 } }), BoundOperation(&Operation57, { InputSlice { 1, 160, 192 } }), BoundOperation(&Operation57, { InputSlice { 1, 192, 224 } }), BoundOperation(&Operation57, { InputSlice { 1, 224, 256 } }), BoundOperation(&Operation57, { InputSlice { 0, 256, 288 } }), BoundOperation(&Operation57, { InputSlice { 0, 288, 320 } }), BoundOperation(&Operation57, { InputSlice { 0, 320, 352 } }), BoundOperation(&Operation57, { InputSlice { 0, 352, 384 } }), BoundOperation(&Operation57, { InputSlice { 1, 256, 288 } }), BoundOperation(&Operation57, { InputSlice { 1, 288, 320 } }), BoundOperation(&Operation57, { InputSlice { 1, 320, 352 } }), BoundOperation(&Operation57, { InputSlice { 1, 352, 384 } }), BoundOperation(&Operation57, { InputSlice { 0, 384, 416 } }), BoundOperation(&Operation57, { InputSlice { 0, 416, 448 } }), BoundOperation(&Operation57, { InputSlice { 0, 448, 480 } }), BoundOperation(&Operation57, { InputSlice { 0, 480, 512 } }), BoundOperation(&Operation57, { InputSlice { 1, 384, 416 } }), BoundOperation(&Operation57, { InputSlice { 1, 416, 448 } }), BoundOperation(&Operation57, { InputSlice { 1, 448, 480 } }), BoundOperation(&Operation57, { InputSlice { 1, 480, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm_mask_packs_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation297, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation297, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation297, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation297, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation297, { InputSlice { 1, 4, 5 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation297, { InputSlice { 1, 5, 6 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation297, { InputSlice { 1, 6, 7 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation297, { InputSlice { 1, 7, 8 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_maskz_packs_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation298, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation298, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation298, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation298, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation298, { InputSlice { 0, 4, 5 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation298, { InputSlice { 0, 5, 6 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation298, { InputSlice { 0, 6, 7 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation298, { InputSlice { 0, 7, 8 }, InputSlice { 2, 96, 128 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mask_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation299, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation299, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation299, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation299, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation299, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation299, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation299, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation299, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation299, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation299, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation299, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation299, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation299, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation299, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation299, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation299, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation299, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 144 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation299, { InputSlice { 1, 17, 18 }, InputSlice { 2, 144, 160 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation299, { InputSlice { 1, 18, 19 }, InputSlice { 2, 160, 176 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation299, { InputSlice { 1, 19, 20 }, InputSlice { 2, 176, 192 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation299, { InputSlice { 1, 20, 21 }, InputSlice { 2, 192, 208 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation299, { InputSlice { 1, 21, 22 }, InputSlice { 2, 208, 224 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation299, { InputSlice { 1, 22, 23 }, InputSlice { 2, 224, 240 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation299, { InputSlice { 1, 23, 24 }, InputSlice { 2, 240, 256 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation299, { InputSlice { 1, 24, 25 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation299, { InputSlice { 1, 25, 26 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation299, { InputSlice { 1, 26, 27 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation299, { InputSlice { 1, 27, 28 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation299, { InputSlice { 1, 28, 29 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation299, { InputSlice { 1, 29, 30 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation299, { InputSlice { 1, 30, 31 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation299, { InputSlice { 1, 31, 32 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 248, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation300, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 8, 9 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 9, 10 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 10, 11 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 11, 12 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 12, 13 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 13, 14 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 14, 15 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 15, 16 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 16, 17 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 17, 18 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 18, 19 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 19, 20 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 20, 21 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 21, 22 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 22, 23 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 23, 24 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation300, { InputSlice { 0, 24, 25 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 25, 26 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 26, 27 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 27, 28 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 28, 29 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 29, 30 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 30, 31 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 31, 32 }, InputSlice { 2, 240, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_packs_epi16", { "avx512bw" }, InstSignature { { 512, 64, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation299, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation299, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation299, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation299, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation299, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation299, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation299, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation299, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation299, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation299, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation299, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation299, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation299, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation299, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation299, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation299, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation299, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 144 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation299, { InputSlice { 1, 17, 18 }, InputSlice { 2, 144, 160 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation299, { InputSlice { 1, 18, 19 }, InputSlice { 2, 160, 176 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation299, { InputSlice { 1, 19, 20 }, InputSlice { 2, 176, 192 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation299, { InputSlice { 1, 20, 21 }, InputSlice { 2, 192, 208 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation299, { InputSlice { 1, 21, 22 }, InputSlice { 2, 208, 224 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation299, { InputSlice { 1, 22, 23 }, InputSlice { 2, 224, 240 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation299, { InputSlice { 1, 23, 24 }, InputSlice { 2, 240, 256 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation299, { InputSlice { 1, 24, 25 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation299, { InputSlice { 1, 25, 26 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation299, { InputSlice { 1, 26, 27 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation299, { InputSlice { 1, 27, 28 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation299, { InputSlice { 1, 28, 29 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation299, { InputSlice { 1, 29, 30 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation299, { InputSlice { 1, 30, 31 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation299, { InputSlice { 1, 31, 32 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 248, 256 } }), BoundOperation(&Operation299, { InputSlice { 1, 32, 33 }, InputSlice { 2, 256, 272 }, InputSlice { 0, 256, 264 } }), BoundOperation(&Operation299, { InputSlice { 1, 33, 34 }, InputSlice { 2, 272, 288 }, InputSlice { 0, 264, 272 } }), BoundOperation(&Operation299, { InputSlice { 1, 34, 35 }, InputSlice { 2, 288, 304 }, InputSlice { 0, 272, 280 } }), BoundOperation(&Operation299, { InputSlice { 1, 35, 36 }, InputSlice { 2, 304, 320 }, InputSlice { 0, 280, 288 } }), BoundOperation(&Operation299, { InputSlice { 1, 36, 37 }, InputSlice { 2, 320, 336 }, InputSlice { 0, 288, 296 } }), BoundOperation(&Operation299, { InputSlice { 1, 37, 38 }, InputSlice { 2, 336, 352 }, InputSlice { 0, 296, 304 } }), BoundOperation(&Operation299, { InputSlice { 1, 38, 39 }, InputSlice { 2, 352, 368 }, InputSlice { 0, 304, 312 } }), BoundOperation(&Operation299, { InputSlice { 1, 39, 40 }, InputSlice { 2, 368, 384 }, InputSlice { 0, 312, 320 } }), BoundOperation(&Operation299, { InputSlice { 1, 40, 41 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 320, 328 } }), BoundOperation(&Operation299, { InputSlice { 1, 41, 42 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 328, 336 } }), BoundOperation(&Operation299, { InputSlice { 1, 42, 43 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 336, 344 } }), BoundOperation(&Operation299, { InputSlice { 1, 43, 44 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 344, 352 } }), BoundOperation(&Operation299, { InputSlice { 1, 44, 45 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 352, 360 } }), BoundOperation(&Operation299, { InputSlice { 1, 45, 46 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 360, 368 } }), BoundOperation(&Operation299, { InputSlice { 1, 46, 47 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 368, 376 } }), BoundOperation(&Operation299, { InputSlice { 1, 47, 48 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 376, 384 } }), BoundOperation(&Operation299, { InputSlice { 1, 48, 49 }, InputSlice { 2, 384, 400 }, InputSlice { 0, 384, 392 } }), BoundOperation(&Operation299, { InputSlice { 1, 49, 50 }, InputSlice { 2, 400, 416 }, InputSlice { 0, 392, 400 } }), BoundOperation(&Operation299, { InputSlice { 1, 50, 51 }, InputSlice { 2, 416, 432 }, InputSlice { 0, 400, 408 } }), BoundOperation(&Operation299, { InputSlice { 1, 51, 52 }, InputSlice { 2, 432, 448 }, InputSlice { 0, 408, 416 } }), BoundOperation(&Operation299, { InputSlice { 1, 52, 53 }, InputSlice { 2, 448, 464 }, InputSlice { 0, 416, 424 } }), BoundOperation(&Operation299, { InputSlice { 1, 53, 54 }, InputSlice { 2, 464, 480 }, InputSlice { 0, 424, 432 } }), BoundOperation(&Operation299, { InputSlice { 1, 54, 55 }, InputSlice { 2, 480, 496 }, InputSlice { 0, 432, 440 } }), BoundOperation(&Operation299, { InputSlice { 1, 55, 56 }, InputSlice { 2, 496, 512 }, InputSlice { 0, 440, 448 } }), BoundOperation(&Operation299, { InputSlice { 1, 56, 57 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 448, 456 } }), BoundOperation(&Operation299, { InputSlice { 1, 57, 58 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 456, 464 } }), BoundOperation(&Operation299, { InputSlice { 1, 58, 59 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 464, 472 } }), BoundOperation(&Operation299, { InputSlice { 1, 59, 60 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 472, 480 } }), BoundOperation(&Operation299, { InputSlice { 1, 60, 61 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 480, 488 } }), BoundOperation(&Operation299, { InputSlice { 1, 61, 62 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 488, 496 } }), BoundOperation(&Operation299, { InputSlice { 1, 62, 63 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 496, 504 } }), BoundOperation(&Operation299, { InputSlice { 1, 63, 64 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 504, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_packs_epi16", { "avx512bw" }, InstSignature { { 64, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation300, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 8, 9 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 9, 10 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 10, 11 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 11, 12 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 12, 13 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 13, 14 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 14, 15 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 15, 16 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 16, 17 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 17, 18 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 18, 19 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 19, 20 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 20, 21 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 21, 22 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 22, 23 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 23, 24 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation300, { InputSlice { 0, 24, 25 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 25, 26 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 26, 27 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 27, 28 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 28, 29 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 29, 30 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 30, 31 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 31, 32 }, InputSlice { 2, 240, 256 } }), BoundOperation(&Operation300, { InputSlice { 0, 32, 33 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation300, { InputSlice { 0, 33, 34 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation300, { InputSlice { 0, 34, 35 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation300, { InputSlice { 0, 35, 36 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation300, { InputSlice { 0, 36, 37 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation300, { InputSlice { 0, 37, 38 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation300, { InputSlice { 0, 38, 39 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation300, { InputSlice { 0, 39, 40 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation300, { InputSlice { 0, 40, 41 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation300, { InputSlice { 0, 41, 42 }, InputSlice { 2, 272, 288 } }), BoundOperation(&Operation300, { InputSlice { 0, 42, 43 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation300, { InputSlice { 0, 43, 44 }, InputSlice { 2, 304, 320 } }), BoundOperation(&Operation300, { InputSlice { 0, 44, 45 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation300, { InputSlice { 0, 45, 46 }, InputSlice { 2, 336, 352 } }), BoundOperation(&Operation300, { InputSlice { 0, 46, 47 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation300, { InputSlice { 0, 47, 48 }, InputSlice { 2, 368, 384 } }), BoundOperation(&Operation300, { InputSlice { 0, 48, 49 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation300, { InputSlice { 0, 49, 50 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation300, { InputSlice { 0, 50, 51 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation300, { InputSlice { 0, 51, 52 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation300, { InputSlice { 0, 52, 53 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation300, { InputSlice { 0, 53, 54 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation300, { InputSlice { 0, 54, 55 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation300, { InputSlice { 0, 55, 56 }, InputSlice { 1, 496, 512 } }), BoundOperation(&Operation300, { InputSlice { 0, 56, 57 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation300, { InputSlice { 0, 57, 58 }, InputSlice { 2, 400, 416 } }), BoundOperation(&Operation300, { InputSlice { 0, 58, 59 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation300, { InputSlice { 0, 59, 60 }, InputSlice { 2, 432, 448 } }), BoundOperation(&Operation300, { InputSlice { 0, 60, 61 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation300, { InputSlice { 0, 61, 62 }, InputSlice { 2, 464, 480 } }), BoundOperation(&Operation300, { InputSlice { 0, 62, 63 }, InputSlice { 2, 480, 496 } }), BoundOperation(&Operation300, { InputSlice { 0, 63, 64 }, InputSlice { 2, 496, 512 } }) }, 2.0),
-InstBinding("_mm512_packs_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation56, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 1, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 0, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 0, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 0, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 0, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 0, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 0, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 0, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 0, 240, 256 } }), BoundOperation(&Operation56, { InputSlice { 1, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 1, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 1, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 1, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 1, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 1, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 1, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 1, 240, 256 } }), BoundOperation(&Operation56, { InputSlice { 0, 256, 272 } }), BoundOperation(&Operation56, { InputSlice { 0, 272, 288 } }), BoundOperation(&Operation56, { InputSlice { 0, 288, 304 } }), BoundOperation(&Operation56, { InputSlice { 0, 304, 320 } }), BoundOperation(&Operation56, { InputSlice { 0, 320, 336 } }), BoundOperation(&Operation56, { InputSlice { 0, 336, 352 } }), BoundOperation(&Operation56, { InputSlice { 0, 352, 368 } }), BoundOperation(&Operation56, { InputSlice { 0, 368, 384 } }), BoundOperation(&Operation56, { InputSlice { 1, 256, 272 } }), BoundOperation(&Operation56, { InputSlice { 1, 272, 288 } }), BoundOperation(&Operation56, { InputSlice { 1, 288, 304 } }), BoundOperation(&Operation56, { InputSlice { 1, 304, 320 } }), BoundOperation(&Operation56, { InputSlice { 1, 320, 336 } }), BoundOperation(&Operation56, { InputSlice { 1, 336, 352 } }), BoundOperation(&Operation56, { InputSlice { 1, 352, 368 } }), BoundOperation(&Operation56, { InputSlice { 1, 368, 384 } }), BoundOperation(&Operation56, { InputSlice { 0, 384, 400 } }), BoundOperation(&Operation56, { InputSlice { 0, 400, 416 } }), BoundOperation(&Operation56, { InputSlice { 0, 416, 432 } }), BoundOperation(&Operation56, { InputSlice { 0, 432, 448 } }), BoundOperation(&Operation56, { InputSlice { 0, 448, 464 } }), BoundOperation(&Operation56, { InputSlice { 0, 464, 480 } }), BoundOperation(&Operation56, { InputSlice { 0, 480, 496 } }), BoundOperation(&Operation56, { InputSlice { 0, 496, 512 } }), BoundOperation(&Operation56, { InputSlice { 1, 384, 400 } }), BoundOperation(&Operation56, { InputSlice { 1, 400, 416 } }), BoundOperation(&Operation56, { InputSlice { 1, 416, 432 } }), BoundOperation(&Operation56, { InputSlice { 1, 432, 448 } }), BoundOperation(&Operation56, { InputSlice { 1, 448, 464 } }), BoundOperation(&Operation56, { InputSlice { 1, 464, 480 } }), BoundOperation(&Operation56, { InputSlice { 1, 480, 496 } }), BoundOperation(&Operation56, { InputSlice { 1, 496, 512 } }) }, 2.0),
-InstBinding("_mm_mask_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 16, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation299, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation299, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation299, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation299, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation299, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation299, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation299, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation299, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation299, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation299, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation299, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation299, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation299, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation299, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation299, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation299, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 16, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation300, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 8, 9 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 9, 10 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 10, 11 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 11, 12 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 12, 13 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 13, 14 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 14, 15 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 15, 16 }, InputSlice { 2, 112, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation301, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation301, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation301, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation301, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation301, { InputSlice { 1, 4, 5 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation301, { InputSlice { 1, 5, 6 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation301, { InputSlice { 1, 6, 7 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation301, { InputSlice { 1, 7, 8 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation301, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 160 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation301, { InputSlice { 1, 9, 10 }, InputSlice { 2, 160, 192 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation301, { InputSlice { 1, 10, 11 }, InputSlice { 2, 192, 224 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation301, { InputSlice { 1, 11, 12 }, InputSlice { 2, 224, 256 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation301, { InputSlice { 1, 12, 13 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation301, { InputSlice { 1, 13, 14 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation301, { InputSlice { 1, 14, 15 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation301, { InputSlice { 1, 15, 16 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 240, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation302, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 4, 5 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 5, 6 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 6, 7 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 7, 8 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 9, 10 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 10, 11 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 11, 12 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation302, { InputSlice { 0, 12, 13 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 13, 14 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 14, 15 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 15, 16 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_packus_epi32", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation301, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation301, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation301, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation301, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation301, { InputSlice { 1, 4, 5 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation301, { InputSlice { 1, 5, 6 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation301, { InputSlice { 1, 6, 7 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation301, { InputSlice { 1, 7, 8 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation301, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 160 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation301, { InputSlice { 1, 9, 10 }, InputSlice { 2, 160, 192 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation301, { InputSlice { 1, 10, 11 }, InputSlice { 2, 192, 224 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation301, { InputSlice { 1, 11, 12 }, InputSlice { 2, 224, 256 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation301, { InputSlice { 1, 12, 13 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation301, { InputSlice { 1, 13, 14 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation301, { InputSlice { 1, 14, 15 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation301, { InputSlice { 1, 15, 16 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation301, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 288 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation301, { InputSlice { 1, 17, 18 }, InputSlice { 2, 288, 320 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation301, { InputSlice { 1, 18, 19 }, InputSlice { 2, 320, 352 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation301, { InputSlice { 1, 19, 20 }, InputSlice { 2, 352, 384 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation301, { InputSlice { 1, 20, 21 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation301, { InputSlice { 1, 21, 22 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation301, { InputSlice { 1, 22, 23 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation301, { InputSlice { 1, 23, 24 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation301, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 416 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation301, { InputSlice { 1, 25, 26 }, InputSlice { 2, 416, 448 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation301, { InputSlice { 1, 26, 27 }, InputSlice { 2, 448, 480 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation301, { InputSlice { 1, 27, 28 }, InputSlice { 2, 480, 512 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation301, { InputSlice { 1, 28, 29 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation301, { InputSlice { 1, 29, 30 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation301, { InputSlice { 1, 30, 31 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation301, { InputSlice { 1, 31, 32 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 496, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_packus_epi32", { "avx512bw" }, InstSignature { { 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation302, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 4, 5 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 5, 6 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 6, 7 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 7, 8 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 9, 10 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 10, 11 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 11, 12 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation302, { InputSlice { 0, 12, 13 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 13, 14 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 14, 15 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 15, 16 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation302, { InputSlice { 0, 16, 17 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation302, { InputSlice { 0, 17, 18 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation302, { InputSlice { 0, 18, 19 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation302, { InputSlice { 0, 19, 20 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation302, { InputSlice { 0, 20, 21 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation302, { InputSlice { 0, 21, 22 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation302, { InputSlice { 0, 22, 23 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation302, { InputSlice { 0, 23, 24 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation302, { InputSlice { 0, 24, 25 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation302, { InputSlice { 0, 25, 26 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation302, { InputSlice { 0, 26, 27 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation302, { InputSlice { 0, 27, 28 }, InputSlice { 1, 480, 512 } }), BoundOperation(&Operation302, { InputSlice { 0, 28, 29 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation302, { InputSlice { 0, 29, 30 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation302, { InputSlice { 0, 30, 31 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation302, { InputSlice { 0, 31, 32 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_packus_epi32", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation88, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 1, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 0, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 0, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 0, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 0, 224, 256 } }), BoundOperation(&Operation88, { InputSlice { 1, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 1, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 1, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 1, 224, 256 } }), BoundOperation(&Operation88, { InputSlice { 0, 256, 288 } }), BoundOperation(&Operation88, { InputSlice { 0, 288, 320 } }), BoundOperation(&Operation88, { InputSlice { 0, 320, 352 } }), BoundOperation(&Operation88, { InputSlice { 0, 352, 384 } }), BoundOperation(&Operation88, { InputSlice { 1, 256, 288 } }), BoundOperation(&Operation88, { InputSlice { 1, 288, 320 } }), BoundOperation(&Operation88, { InputSlice { 1, 320, 352 } }), BoundOperation(&Operation88, { InputSlice { 1, 352, 384 } }), BoundOperation(&Operation88, { InputSlice { 0, 384, 416 } }), BoundOperation(&Operation88, { InputSlice { 0, 416, 448 } }), BoundOperation(&Operation88, { InputSlice { 0, 448, 480 } }), BoundOperation(&Operation88, { InputSlice { 0, 480, 512 } }), BoundOperation(&Operation88, { InputSlice { 1, 384, 416 } }), BoundOperation(&Operation88, { InputSlice { 1, 416, 448 } }), BoundOperation(&Operation88, { InputSlice { 1, 448, 480 } }), BoundOperation(&Operation88, { InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm_mask_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation301, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation301, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation301, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation301, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation301, { InputSlice { 1, 4, 5 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation301, { InputSlice { 1, 5, 6 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation301, { InputSlice { 1, 6, 7 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation301, { InputSlice { 1, 7, 8 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 112, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation302, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 4, 5 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 5, 6 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 6, 7 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 7, 8 }, InputSlice { 2, 96, 128 } }) }, 2.0),
+InstBinding("_mm256_mask_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation299, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation299, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation299, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation299, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation299, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation299, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation299, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation299, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation299, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation299, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation299, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation299, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation299, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation299, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation299, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation299, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation299, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 144 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation299, { InputSlice { 1, 17, 18 }, InputSlice { 2, 144, 160 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation299, { InputSlice { 1, 18, 19 }, InputSlice { 2, 160, 176 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation299, { InputSlice { 1, 19, 20 }, InputSlice { 2, 176, 192 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation299, { InputSlice { 1, 20, 21 }, InputSlice { 2, 192, 208 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation299, { InputSlice { 1, 21, 22 }, InputSlice { 2, 208, 224 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation299, { InputSlice { 1, 22, 23 }, InputSlice { 2, 224, 240 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation299, { InputSlice { 1, 23, 24 }, InputSlice { 2, 240, 256 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation299, { InputSlice { 1, 24, 25 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation299, { InputSlice { 1, 25, 26 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation299, { InputSlice { 1, 26, 27 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation299, { InputSlice { 1, 27, 28 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation299, { InputSlice { 1, 28, 29 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation299, { InputSlice { 1, 29, 30 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation299, { InputSlice { 1, 30, 31 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation299, { InputSlice { 1, 31, 32 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 248, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation300, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 8, 9 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 9, 10 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 10, 11 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 11, 12 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 12, 13 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 13, 14 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 14, 15 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 15, 16 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 16, 17 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 17, 18 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 18, 19 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 19, 20 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 20, 21 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 21, 22 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 22, 23 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 23, 24 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation300, { InputSlice { 0, 24, 25 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 25, 26 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 26, 27 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 27, 28 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 28, 29 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 29, 30 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 30, 31 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 31, 32 }, InputSlice { 2, 240, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_packs_epi16", { "avx512bw" }, InstSignature { { 512, 64, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation299, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation299, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation299, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation299, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation299, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation299, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation299, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation299, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation299, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation299, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation299, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation299, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation299, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation299, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation299, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation299, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation299, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 144 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation299, { InputSlice { 1, 17, 18 }, InputSlice { 2, 144, 160 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation299, { InputSlice { 1, 18, 19 }, InputSlice { 2, 160, 176 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation299, { InputSlice { 1, 19, 20 }, InputSlice { 2, 176, 192 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation299, { InputSlice { 1, 20, 21 }, InputSlice { 2, 192, 208 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation299, { InputSlice { 1, 21, 22 }, InputSlice { 2, 208, 224 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation299, { InputSlice { 1, 22, 23 }, InputSlice { 2, 224, 240 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation299, { InputSlice { 1, 23, 24 }, InputSlice { 2, 240, 256 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation299, { InputSlice { 1, 24, 25 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation299, { InputSlice { 1, 25, 26 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation299, { InputSlice { 1, 26, 27 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation299, { InputSlice { 1, 27, 28 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation299, { InputSlice { 1, 28, 29 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation299, { InputSlice { 1, 29, 30 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation299, { InputSlice { 1, 30, 31 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation299, { InputSlice { 1, 31, 32 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 248, 256 } }), BoundOperation(&Operation299, { InputSlice { 1, 32, 33 }, InputSlice { 2, 256, 272 }, InputSlice { 0, 256, 264 } }), BoundOperation(&Operation299, { InputSlice { 1, 33, 34 }, InputSlice { 2, 272, 288 }, InputSlice { 0, 264, 272 } }), BoundOperation(&Operation299, { InputSlice { 1, 34, 35 }, InputSlice { 2, 288, 304 }, InputSlice { 0, 272, 280 } }), BoundOperation(&Operation299, { InputSlice { 1, 35, 36 }, InputSlice { 2, 304, 320 }, InputSlice { 0, 280, 288 } }), BoundOperation(&Operation299, { InputSlice { 1, 36, 37 }, InputSlice { 2, 320, 336 }, InputSlice { 0, 288, 296 } }), BoundOperation(&Operation299, { InputSlice { 1, 37, 38 }, InputSlice { 2, 336, 352 }, InputSlice { 0, 296, 304 } }), BoundOperation(&Operation299, { InputSlice { 1, 38, 39 }, InputSlice { 2, 352, 368 }, InputSlice { 0, 304, 312 } }), BoundOperation(&Operation299, { InputSlice { 1, 39, 40 }, InputSlice { 2, 368, 384 }, InputSlice { 0, 312, 320 } }), BoundOperation(&Operation299, { InputSlice { 1, 40, 41 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 320, 328 } }), BoundOperation(&Operation299, { InputSlice { 1, 41, 42 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 328, 336 } }), BoundOperation(&Operation299, { InputSlice { 1, 42, 43 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 336, 344 } }), BoundOperation(&Operation299, { InputSlice { 1, 43, 44 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 344, 352 } }), BoundOperation(&Operation299, { InputSlice { 1, 44, 45 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 352, 360 } }), BoundOperation(&Operation299, { InputSlice { 1, 45, 46 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 360, 368 } }), BoundOperation(&Operation299, { InputSlice { 1, 46, 47 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 368, 376 } }), BoundOperation(&Operation299, { InputSlice { 1, 47, 48 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 376, 384 } }), BoundOperation(&Operation299, { InputSlice { 1, 48, 49 }, InputSlice { 2, 384, 400 }, InputSlice { 0, 384, 392 } }), BoundOperation(&Operation299, { InputSlice { 1, 49, 50 }, InputSlice { 2, 400, 416 }, InputSlice { 0, 392, 400 } }), BoundOperation(&Operation299, { InputSlice { 1, 50, 51 }, InputSlice { 2, 416, 432 }, InputSlice { 0, 400, 408 } }), BoundOperation(&Operation299, { InputSlice { 1, 51, 52 }, InputSlice { 2, 432, 448 }, InputSlice { 0, 408, 416 } }), BoundOperation(&Operation299, { InputSlice { 1, 52, 53 }, InputSlice { 2, 448, 464 }, InputSlice { 0, 416, 424 } }), BoundOperation(&Operation299, { InputSlice { 1, 53, 54 }, InputSlice { 2, 464, 480 }, InputSlice { 0, 424, 432 } }), BoundOperation(&Operation299, { InputSlice { 1, 54, 55 }, InputSlice { 2, 480, 496 }, InputSlice { 0, 432, 440 } }), BoundOperation(&Operation299, { InputSlice { 1, 55, 56 }, InputSlice { 2, 496, 512 }, InputSlice { 0, 440, 448 } }), BoundOperation(&Operation299, { InputSlice { 1, 56, 57 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 448, 456 } }), BoundOperation(&Operation299, { InputSlice { 1, 57, 58 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 456, 464 } }), BoundOperation(&Operation299, { InputSlice { 1, 58, 59 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 464, 472 } }), BoundOperation(&Operation299, { InputSlice { 1, 59, 60 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 472, 480 } }), BoundOperation(&Operation299, { InputSlice { 1, 60, 61 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 480, 488 } }), BoundOperation(&Operation299, { InputSlice { 1, 61, 62 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 488, 496 } }), BoundOperation(&Operation299, { InputSlice { 1, 62, 63 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 496, 504 } }), BoundOperation(&Operation299, { InputSlice { 1, 63, 64 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 504, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_packs_epi16", { "avx512bw" }, InstSignature { { 64, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation300, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 8, 9 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 9, 10 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 10, 11 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 11, 12 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 12, 13 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 13, 14 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 14, 15 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 15, 16 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 16, 17 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 17, 18 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 18, 19 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 19, 20 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 20, 21 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 21, 22 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 22, 23 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 23, 24 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation300, { InputSlice { 0, 24, 25 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation300, { InputSlice { 0, 25, 26 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation300, { InputSlice { 0, 26, 27 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation300, { InputSlice { 0, 27, 28 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation300, { InputSlice { 0, 28, 29 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation300, { InputSlice { 0, 29, 30 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation300, { InputSlice { 0, 30, 31 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation300, { InputSlice { 0, 31, 32 }, InputSlice { 2, 240, 256 } }), BoundOperation(&Operation300, { InputSlice { 0, 32, 33 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation300, { InputSlice { 0, 33, 34 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation300, { InputSlice { 0, 34, 35 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation300, { InputSlice { 0, 35, 36 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation300, { InputSlice { 0, 36, 37 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation300, { InputSlice { 0, 37, 38 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation300, { InputSlice { 0, 38, 39 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation300, { InputSlice { 0, 39, 40 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation300, { InputSlice { 0, 40, 41 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation300, { InputSlice { 0, 41, 42 }, InputSlice { 2, 272, 288 } }), BoundOperation(&Operation300, { InputSlice { 0, 42, 43 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation300, { InputSlice { 0, 43, 44 }, InputSlice { 2, 304, 320 } }), BoundOperation(&Operation300, { InputSlice { 0, 44, 45 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation300, { InputSlice { 0, 45, 46 }, InputSlice { 2, 336, 352 } }), BoundOperation(&Operation300, { InputSlice { 0, 46, 47 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation300, { InputSlice { 0, 47, 48 }, InputSlice { 2, 368, 384 } }), BoundOperation(&Operation300, { InputSlice { 0, 48, 49 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation300, { InputSlice { 0, 49, 50 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation300, { InputSlice { 0, 50, 51 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation300, { InputSlice { 0, 51, 52 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation300, { InputSlice { 0, 52, 53 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation300, { InputSlice { 0, 53, 54 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation300, { InputSlice { 0, 54, 55 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation300, { InputSlice { 0, 55, 56 }, InputSlice { 1, 496, 512 } }), BoundOperation(&Operation300, { InputSlice { 0, 56, 57 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation300, { InputSlice { 0, 57, 58 }, InputSlice { 2, 400, 416 } }), BoundOperation(&Operation300, { InputSlice { 0, 58, 59 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation300, { InputSlice { 0, 59, 60 }, InputSlice { 2, 432, 448 } }), BoundOperation(&Operation300, { InputSlice { 0, 60, 61 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation300, { InputSlice { 0, 61, 62 }, InputSlice { 2, 464, 480 } }), BoundOperation(&Operation300, { InputSlice { 0, 62, 63 }, InputSlice { 2, 480, 496 } }), BoundOperation(&Operation300, { InputSlice { 0, 63, 64 }, InputSlice { 2, 496, 512 } }) }, 1.0),
+InstBinding("_mm512_packs_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation56, { InputSlice { 0, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 0, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 0, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 0, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 0, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 0, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 0, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 0, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 1, 0, 16 } }), BoundOperation(&Operation56, { InputSlice { 1, 16, 32 } }), BoundOperation(&Operation56, { InputSlice { 1, 32, 48 } }), BoundOperation(&Operation56, { InputSlice { 1, 48, 64 } }), BoundOperation(&Operation56, { InputSlice { 1, 64, 80 } }), BoundOperation(&Operation56, { InputSlice { 1, 80, 96 } }), BoundOperation(&Operation56, { InputSlice { 1, 96, 112 } }), BoundOperation(&Operation56, { InputSlice { 1, 112, 128 } }), BoundOperation(&Operation56, { InputSlice { 0, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 0, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 0, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 0, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 0, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 0, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 0, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 0, 240, 256 } }), BoundOperation(&Operation56, { InputSlice { 1, 128, 144 } }), BoundOperation(&Operation56, { InputSlice { 1, 144, 160 } }), BoundOperation(&Operation56, { InputSlice { 1, 160, 176 } }), BoundOperation(&Operation56, { InputSlice { 1, 176, 192 } }), BoundOperation(&Operation56, { InputSlice { 1, 192, 208 } }), BoundOperation(&Operation56, { InputSlice { 1, 208, 224 } }), BoundOperation(&Operation56, { InputSlice { 1, 224, 240 } }), BoundOperation(&Operation56, { InputSlice { 1, 240, 256 } }), BoundOperation(&Operation56, { InputSlice { 0, 256, 272 } }), BoundOperation(&Operation56, { InputSlice { 0, 272, 288 } }), BoundOperation(&Operation56, { InputSlice { 0, 288, 304 } }), BoundOperation(&Operation56, { InputSlice { 0, 304, 320 } }), BoundOperation(&Operation56, { InputSlice { 0, 320, 336 } }), BoundOperation(&Operation56, { InputSlice { 0, 336, 352 } }), BoundOperation(&Operation56, { InputSlice { 0, 352, 368 } }), BoundOperation(&Operation56, { InputSlice { 0, 368, 384 } }), BoundOperation(&Operation56, { InputSlice { 1, 256, 272 } }), BoundOperation(&Operation56, { InputSlice { 1, 272, 288 } }), BoundOperation(&Operation56, { InputSlice { 1, 288, 304 } }), BoundOperation(&Operation56, { InputSlice { 1, 304, 320 } }), BoundOperation(&Operation56, { InputSlice { 1, 320, 336 } }), BoundOperation(&Operation56, { InputSlice { 1, 336, 352 } }), BoundOperation(&Operation56, { InputSlice { 1, 352, 368 } }), BoundOperation(&Operation56, { InputSlice { 1, 368, 384 } }), BoundOperation(&Operation56, { InputSlice { 0, 384, 400 } }), BoundOperation(&Operation56, { InputSlice { 0, 400, 416 } }), BoundOperation(&Operation56, { InputSlice { 0, 416, 432 } }), BoundOperation(&Operation56, { InputSlice { 0, 432, 448 } }), BoundOperation(&Operation56, { InputSlice { 0, 448, 464 } }), BoundOperation(&Operation56, { InputSlice { 0, 464, 480 } }), BoundOperation(&Operation56, { InputSlice { 0, 480, 496 } }), BoundOperation(&Operation56, { InputSlice { 0, 496, 512 } }), BoundOperation(&Operation56, { InputSlice { 1, 384, 400 } }), BoundOperation(&Operation56, { InputSlice { 1, 400, 416 } }), BoundOperation(&Operation56, { InputSlice { 1, 416, 432 } }), BoundOperation(&Operation56, { InputSlice { 1, 432, 448 } }), BoundOperation(&Operation56, { InputSlice { 1, 448, 464 } }), BoundOperation(&Operation56, { InputSlice { 1, 464, 480 } }), BoundOperation(&Operation56, { InputSlice { 1, 480, 496 } }), BoundOperation(&Operation56, { InputSlice { 1, 496, 512 } }) }, 1.0),
+InstBinding("_mm_mask_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 16, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation299, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation299, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation299, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation299, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation299, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation299, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation299, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation299, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation299, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation299, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation299, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation299, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation299, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation299, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation299, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation299, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_packs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 16, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation300, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation300, { InputSlice { 0, 8, 9 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation300, { InputSlice { 0, 9, 10 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation300, { InputSlice { 0, 10, 11 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation300, { InputSlice { 0, 11, 12 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation300, { InputSlice { 0, 12, 13 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation300, { InputSlice { 0, 13, 14 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation300, { InputSlice { 0, 14, 15 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation300, { InputSlice { 0, 15, 16 }, InputSlice { 2, 112, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation301, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation301, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation301, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation301, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation301, { InputSlice { 1, 4, 5 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation301, { InputSlice { 1, 5, 6 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation301, { InputSlice { 1, 6, 7 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation301, { InputSlice { 1, 7, 8 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation301, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 160 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation301, { InputSlice { 1, 9, 10 }, InputSlice { 2, 160, 192 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation301, { InputSlice { 1, 10, 11 }, InputSlice { 2, 192, 224 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation301, { InputSlice { 1, 11, 12 }, InputSlice { 2, 224, 256 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation301, { InputSlice { 1, 12, 13 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation301, { InputSlice { 1, 13, 14 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation301, { InputSlice { 1, 14, 15 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation301, { InputSlice { 1, 15, 16 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 240, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation302, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 4, 5 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 5, 6 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 6, 7 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 7, 8 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 9, 10 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 10, 11 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 11, 12 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation302, { InputSlice { 0, 12, 13 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 13, 14 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 14, 15 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 15, 16 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_packus_epi32", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation301, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation301, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation301, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation301, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation301, { InputSlice { 1, 4, 5 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation301, { InputSlice { 1, 5, 6 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation301, { InputSlice { 1, 6, 7 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation301, { InputSlice { 1, 7, 8 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation301, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 160 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation301, { InputSlice { 1, 9, 10 }, InputSlice { 2, 160, 192 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation301, { InputSlice { 1, 10, 11 }, InputSlice { 2, 192, 224 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation301, { InputSlice { 1, 11, 12 }, InputSlice { 2, 224, 256 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation301, { InputSlice { 1, 12, 13 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation301, { InputSlice { 1, 13, 14 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation301, { InputSlice { 1, 14, 15 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation301, { InputSlice { 1, 15, 16 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation301, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 288 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation301, { InputSlice { 1, 17, 18 }, InputSlice { 2, 288, 320 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation301, { InputSlice { 1, 18, 19 }, InputSlice { 2, 320, 352 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation301, { InputSlice { 1, 19, 20 }, InputSlice { 2, 352, 384 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation301, { InputSlice { 1, 20, 21 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation301, { InputSlice { 1, 21, 22 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation301, { InputSlice { 1, 22, 23 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation301, { InputSlice { 1, 23, 24 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation301, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 416 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation301, { InputSlice { 1, 25, 26 }, InputSlice { 2, 416, 448 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation301, { InputSlice { 1, 26, 27 }, InputSlice { 2, 448, 480 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation301, { InputSlice { 1, 27, 28 }, InputSlice { 2, 480, 512 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation301, { InputSlice { 1, 28, 29 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation301, { InputSlice { 1, 29, 30 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation301, { InputSlice { 1, 30, 31 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation301, { InputSlice { 1, 31, 32 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 496, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_packus_epi32", { "avx512bw" }, InstSignature { { 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation302, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 4, 5 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 5, 6 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 6, 7 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 7, 8 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 9, 10 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 10, 11 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 11, 12 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation302, { InputSlice { 0, 12, 13 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation302, { InputSlice { 0, 13, 14 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation302, { InputSlice { 0, 14, 15 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation302, { InputSlice { 0, 15, 16 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation302, { InputSlice { 0, 16, 17 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation302, { InputSlice { 0, 17, 18 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation302, { InputSlice { 0, 18, 19 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation302, { InputSlice { 0, 19, 20 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation302, { InputSlice { 0, 20, 21 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation302, { InputSlice { 0, 21, 22 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation302, { InputSlice { 0, 22, 23 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation302, { InputSlice { 0, 23, 24 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation302, { InputSlice { 0, 24, 25 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation302, { InputSlice { 0, 25, 26 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation302, { InputSlice { 0, 26, 27 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation302, { InputSlice { 0, 27, 28 }, InputSlice { 1, 480, 512 } }), BoundOperation(&Operation302, { InputSlice { 0, 28, 29 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation302, { InputSlice { 0, 29, 30 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation302, { InputSlice { 0, 30, 31 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation302, { InputSlice { 0, 31, 32 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_packus_epi32", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation88, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 0, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 1, 0, 32 } }), BoundOperation(&Operation88, { InputSlice { 1, 32, 64 } }), BoundOperation(&Operation88, { InputSlice { 1, 64, 96 } }), BoundOperation(&Operation88, { InputSlice { 1, 96, 128 } }), BoundOperation(&Operation88, { InputSlice { 0, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 0, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 0, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 0, 224, 256 } }), BoundOperation(&Operation88, { InputSlice { 1, 128, 160 } }), BoundOperation(&Operation88, { InputSlice { 1, 160, 192 } }), BoundOperation(&Operation88, { InputSlice { 1, 192, 224 } }), BoundOperation(&Operation88, { InputSlice { 1, 224, 256 } }), BoundOperation(&Operation88, { InputSlice { 0, 256, 288 } }), BoundOperation(&Operation88, { InputSlice { 0, 288, 320 } }), BoundOperation(&Operation88, { InputSlice { 0, 320, 352 } }), BoundOperation(&Operation88, { InputSlice { 0, 352, 384 } }), BoundOperation(&Operation88, { InputSlice { 1, 256, 288 } }), BoundOperation(&Operation88, { InputSlice { 1, 288, 320 } }), BoundOperation(&Operation88, { InputSlice { 1, 320, 352 } }), BoundOperation(&Operation88, { InputSlice { 1, 352, 384 } }), BoundOperation(&Operation88, { InputSlice { 0, 384, 416 } }), BoundOperation(&Operation88, { InputSlice { 0, 416, 448 } }), BoundOperation(&Operation88, { InputSlice { 0, 448, 480 } }), BoundOperation(&Operation88, { InputSlice { 0, 480, 512 } }), BoundOperation(&Operation88, { InputSlice { 1, 384, 416 } }), BoundOperation(&Operation88, { InputSlice { 1, 416, 448 } }), BoundOperation(&Operation88, { InputSlice { 1, 448, 480 } }), BoundOperation(&Operation88, { InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm_mask_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation301, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation301, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation301, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation301, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation301, { InputSlice { 1, 4, 5 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation301, { InputSlice { 1, 5, 6 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation301, { InputSlice { 1, 6, 7 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation301, { InputSlice { 1, 7, 8 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_packus_epi32", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation302, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation302, { InputSlice { 0, 4, 5 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation302, { InputSlice { 0, 5, 6 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation302, { InputSlice { 0, 6, 7 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation302, { InputSlice { 0, 7, 8 }, InputSlice { 2, 96, 128 } }) }, 1.0),
 InstBinding("_mm256_mask_packus_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation303, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation303, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation303, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation303, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation303, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation303, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation303, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation303, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation303, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation303, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation303, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation303, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation303, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation303, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation303, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation303, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation303, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 144 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation303, { InputSlice { 1, 17, 18 }, InputSlice { 2, 144, 160 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation303, { InputSlice { 1, 18, 19 }, InputSlice { 2, 160, 176 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation303, { InputSlice { 1, 19, 20 }, InputSlice { 2, 176, 192 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation303, { InputSlice { 1, 20, 21 }, InputSlice { 2, 192, 208 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation303, { InputSlice { 1, 21, 22 }, InputSlice { 2, 208, 224 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation303, { InputSlice { 1, 22, 23 }, InputSlice { 2, 224, 240 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation303, { InputSlice { 1, 23, 24 }, InputSlice { 2, 240, 256 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation303, { InputSlice { 1, 24, 25 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation303, { InputSlice { 1, 25, 26 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation303, { InputSlice { 1, 26, 27 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation303, { InputSlice { 1, 27, 28 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation303, { InputSlice { 1, 28, 29 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation303, { InputSlice { 1, 29, 30 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation303, { InputSlice { 1, 30, 31 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation303, { InputSlice { 1, 31, 32 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 248, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_maskz_packus_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation304, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation304, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation304, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation304, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation304, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation304, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation304, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation304, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation304, { InputSlice { 0, 8, 9 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation304, { InputSlice { 0, 9, 10 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation304, { InputSlice { 0, 10, 11 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation304, { InputSlice { 0, 11, 12 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation304, { InputSlice { 0, 12, 13 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation304, { InputSlice { 0, 13, 14 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation304, { InputSlice { 0, 14, 15 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation304, { InputSlice { 0, 15, 16 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation304, { InputSlice { 0, 16, 17 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation304, { InputSlice { 0, 17, 18 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation304, { InputSlice { 0, 18, 19 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation304, { InputSlice { 0, 19, 20 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation304, { InputSlice { 0, 20, 21 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation304, { InputSlice { 0, 21, 22 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation304, { InputSlice { 0, 22, 23 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation304, { InputSlice { 0, 23, 24 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation304, { InputSlice { 0, 24, 25 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation304, { InputSlice { 0, 25, 26 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation304, { InputSlice { 0, 26, 27 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation304, { InputSlice { 0, 27, 28 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation304, { InputSlice { 0, 28, 29 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation304, { InputSlice { 0, 29, 30 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation304, { InputSlice { 0, 30, 31 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation304, { InputSlice { 0, 31, 32 }, InputSlice { 2, 240, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_packus_epi16", { "avx512bw" }, InstSignature { { 512, 64, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation303, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation303, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation303, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation303, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation303, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation303, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation303, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation303, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation303, { InputSlice { 1, 8, 9 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation303, { InputSlice { 1, 9, 10 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation303, { InputSlice { 1, 10, 11 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation303, { InputSlice { 1, 11, 12 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation303, { InputSlice { 1, 12, 13 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation303, { InputSlice { 1, 13, 14 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation303, { InputSlice { 1, 14, 15 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation303, { InputSlice { 1, 15, 16 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation303, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 144 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation303, { InputSlice { 1, 17, 18 }, InputSlice { 2, 144, 160 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation303, { InputSlice { 1, 18, 19 }, InputSlice { 2, 160, 176 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation303, { InputSlice { 1, 19, 20 }, InputSlice { 2, 176, 192 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation303, { InputSlice { 1, 20, 21 }, InputSlice { 2, 192, 208 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation303, { InputSlice { 1, 21, 22 }, InputSlice { 2, 208, 224 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation303, { InputSlice { 1, 22, 23 }, InputSlice { 2, 224, 240 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation303, { InputSlice { 1, 23, 24 }, InputSlice { 2, 240, 256 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation303, { InputSlice { 1, 24, 25 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation303, { InputSlice { 1, 25, 26 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation303, { InputSlice { 1, 26, 27 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation303, { InputSlice { 1, 27, 28 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation303, { InputSlice { 1, 28, 29 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation303, { InputSlice { 1, 29, 30 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation303, { InputSlice { 1, 30, 31 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation303, { InputSlice { 1, 31, 32 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 248, 256 } }), BoundOperation(&Operation303, { InputSlice { 1, 32, 33 }, InputSlice { 2, 256, 272 }, InputSlice { 0, 256, 264 } }), BoundOperation(&Operation303, { InputSlice { 1, 33, 34 }, InputSlice { 2, 272, 288 }, InputSlice { 0, 264, 272 } }), BoundOperation(&Operation303, { InputSlice { 1, 34, 35 }, InputSlice { 2, 288, 304 }, InputSlice { 0, 272, 280 } }), BoundOperation(&Operation303, { InputSlice { 1, 35, 36 }, InputSlice { 2, 304, 320 }, InputSlice { 0, 280, 288 } }), BoundOperation(&Operation303, { InputSlice { 1, 36, 37 }, InputSlice { 2, 320, 336 }, InputSlice { 0, 288, 296 } }), BoundOperation(&Operation303, { InputSlice { 1, 37, 38 }, InputSlice { 2, 336, 352 }, InputSlice { 0, 296, 304 } }), BoundOperation(&Operation303, { InputSlice { 1, 38, 39 }, InputSlice { 2, 352, 368 }, InputSlice { 0, 304, 312 } }), BoundOperation(&Operation303, { InputSlice { 1, 39, 40 }, InputSlice { 2, 368, 384 }, InputSlice { 0, 312, 320 } }), BoundOperation(&Operation303, { InputSlice { 1, 40, 41 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 320, 328 } }), BoundOperation(&Operation303, { InputSlice { 1, 41, 42 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 328, 336 } }), BoundOperation(&Operation303, { InputSlice { 1, 42, 43 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 336, 344 } }), BoundOperation(&Operation303, { InputSlice { 1, 43, 44 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 344, 352 } }), BoundOperation(&Operation303, { InputSlice { 1, 44, 45 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 352, 360 } }), BoundOperation(&Operation303, { InputSlice { 1, 45, 46 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 360, 368 } }), BoundOperation(&Operation303, { InputSlice { 1, 46, 47 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 368, 376 } }), BoundOperation(&Operation303, { InputSlice { 1, 47, 48 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 376, 384 } }), BoundOperation(&Operation303, { InputSlice { 1, 48, 49 }, InputSlice { 2, 384, 400 }, InputSlice { 0, 384, 392 } }), BoundOperation(&Operation303, { InputSlice { 1, 49, 50 }, InputSlice { 2, 400, 416 }, InputSlice { 0, 392, 400 } }), BoundOperation(&Operation303, { InputSlice { 1, 50, 51 }, InputSlice { 2, 416, 432 }, InputSlice { 0, 400, 408 } }), BoundOperation(&Operation303, { InputSlice { 1, 51, 52 }, InputSlice { 2, 432, 448 }, InputSlice { 0, 408, 416 } }), BoundOperation(&Operation303, { InputSlice { 1, 52, 53 }, InputSlice { 2, 448, 464 }, InputSlice { 0, 416, 424 } }), BoundOperation(&Operation303, { InputSlice { 1, 53, 54 }, InputSlice { 2, 464, 480 }, InputSlice { 0, 424, 432 } }), BoundOperation(&Operation303, { InputSlice { 1, 54, 55 }, InputSlice { 2, 480, 496 }, InputSlice { 0, 432, 440 } }), BoundOperation(&Operation303, { InputSlice { 1, 55, 56 }, InputSlice { 2, 496, 512 }, InputSlice { 0, 440, 448 } }), BoundOperation(&Operation303, { InputSlice { 1, 56, 57 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 448, 456 } }), BoundOperation(&Operation303, { InputSlice { 1, 57, 58 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 456, 464 } }), BoundOperation(&Operation303, { InputSlice { 1, 58, 59 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 464, 472 } }), BoundOperation(&Operation303, { InputSlice { 1, 59, 60 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 472, 480 } }), BoundOperation(&Operation303, { InputSlice { 1, 60, 61 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 480, 488 } }), BoundOperation(&Operation303, { InputSlice { 1, 61, 62 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 488, 496 } }), BoundOperation(&Operation303, { InputSlice { 1, 62, 63 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 496, 504 } }), BoundOperation(&Operation303, { InputSlice { 1, 63, 64 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 504, 512 } }) }, 1.0 /*default*/),
@@ -14183,13 +14183,13 @@ InstBinding("_mm_mask_cmple_epi16_mask", { "avx512vl", "avx512bw" }, InstSignatu
 InstBinding("_mm_mask_cmplt_epi16_mask", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 8 }, false }, { BoundOperation(&Operation344, { InputSlice { 0, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation344, { InputSlice { 0, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation344, { InputSlice { 0, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation344, { InputSlice { 0, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation344, { InputSlice { 0, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation344, { InputSlice { 0, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation344, { InputSlice { 0, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation344, { InputSlice { 0, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 1, 112, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_mask_cmpneq_epi16_mask", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 8 }, false }, { BoundOperation(&Operation340, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation340, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation340, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation340, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation340, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation340, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation340, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation340, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_mask_conflict_epi64", { "avx512vl", "avx512cd" }, InstSignature { { 128, 8, 128 }, { 128 }, false }, { BoundOperation(&Operation345, { InputSlice { 1, 0, 1 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation346, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 2, 0, 64 }, InputSlice { 0, 64, 128 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mask_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation347, { InputSlice { 1, 0, 1 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation347, { InputSlice { 1, 1, 2 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation347, { InputSlice { 1, 2, 3 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation347, { InputSlice { 1, 3, 4 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation347, { InputSlice { 1, 4, 5 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation347, { InputSlice { 1, 5, 6 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation347, { InputSlice { 1, 6, 7 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation347, { InputSlice { 1, 7, 8 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation348, { InputSlice { 0, 0, 1 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation348, { InputSlice { 0, 1, 2 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation348, { InputSlice { 0, 2, 3 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation348, { InputSlice { 0, 3, 4 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation348, { InputSlice { 0, 4, 5 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation348, { InputSlice { 0, 5, 6 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation348, { InputSlice { 0, 6, 7 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation348, { InputSlice { 0, 7, 8 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }) }, 2.0),
-InstBinding("_mm512_madd_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation34, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation34, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation34, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation34, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation34, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 }, InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation34, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 }, InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation34, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 }, InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation34, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 }, InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation34, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 }, InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation34, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 }, InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation34, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 }, InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation34, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 }, InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation34, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 }, InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation34, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 }, InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation34, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 }, InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation34, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 }, InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }) }, 2.0),
-InstBinding("_mm512_mask_madd_epi16", { "avx512bw" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation347, { InputSlice { 1, 0, 1 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation347, { InputSlice { 1, 1, 2 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation347, { InputSlice { 1, 2, 3 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation347, { InputSlice { 1, 3, 4 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation347, { InputSlice { 1, 4, 5 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation347, { InputSlice { 1, 5, 6 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation347, { InputSlice { 1, 6, 7 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation347, { InputSlice { 1, 7, 8 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation347, { InputSlice { 1, 8, 9 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation347, { InputSlice { 1, 9, 10 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation347, { InputSlice { 1, 10, 11 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation347, { InputSlice { 1, 11, 12 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation347, { InputSlice { 1, 12, 13 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation347, { InputSlice { 1, 13, 14 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation347, { InputSlice { 1, 14, 15 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation347, { InputSlice { 1, 15, 16 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_madd_epi16", { "avx512bw" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation348, { InputSlice { 0, 0, 1 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation348, { InputSlice { 0, 1, 2 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation348, { InputSlice { 0, 2, 3 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation348, { InputSlice { 0, 3, 4 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation348, { InputSlice { 0, 4, 5 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation348, { InputSlice { 0, 5, 6 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation348, { InputSlice { 0, 6, 7 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation348, { InputSlice { 0, 7, 8 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation348, { InputSlice { 0, 8, 9 }, InputSlice { 1, 272, 288 }, InputSlice { 2, 272, 288 }, InputSlice { 1, 256, 272 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation348, { InputSlice { 0, 9, 10 }, InputSlice { 1, 304, 320 }, InputSlice { 2, 304, 320 }, InputSlice { 1, 288, 304 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation348, { InputSlice { 0, 10, 11 }, InputSlice { 1, 336, 352 }, InputSlice { 2, 336, 352 }, InputSlice { 1, 320, 336 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation348, { InputSlice { 0, 11, 12 }, InputSlice { 1, 368, 384 }, InputSlice { 2, 368, 384 }, InputSlice { 1, 352, 368 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation348, { InputSlice { 0, 12, 13 }, InputSlice { 1, 400, 416 }, InputSlice { 2, 400, 416 }, InputSlice { 1, 384, 400 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation348, { InputSlice { 0, 13, 14 }, InputSlice { 1, 432, 448 }, InputSlice { 2, 432, 448 }, InputSlice { 1, 416, 432 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation348, { InputSlice { 0, 14, 15 }, InputSlice { 1, 464, 480 }, InputSlice { 2, 464, 480 }, InputSlice { 1, 448, 464 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation348, { InputSlice { 0, 15, 16 }, InputSlice { 1, 496, 512 }, InputSlice { 2, 496, 512 }, InputSlice { 1, 480, 496 }, InputSlice { 2, 480, 496 } }) }, 2.0),
-InstBinding("_mm_mask_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation347, { InputSlice { 1, 0, 1 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation347, { InputSlice { 1, 1, 2 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation347, { InputSlice { 1, 2, 3 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation347, { InputSlice { 1, 3, 4 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation348, { InputSlice { 0, 0, 1 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation348, { InputSlice { 0, 1, 2 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation348, { InputSlice { 0, 2, 3 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation348, { InputSlice { 0, 3, 4 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }) }, 2.0),
+InstBinding("_mm256_mask_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation347, { InputSlice { 1, 0, 1 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation347, { InputSlice { 1, 1, 2 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation347, { InputSlice { 1, 2, 3 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation347, { InputSlice { 1, 3, 4 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation347, { InputSlice { 1, 4, 5 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation347, { InputSlice { 1, 5, 6 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation347, { InputSlice { 1, 6, 7 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation347, { InputSlice { 1, 7, 8 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation348, { InputSlice { 0, 0, 1 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation348, { InputSlice { 0, 1, 2 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation348, { InputSlice { 0, 2, 3 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation348, { InputSlice { 0, 3, 4 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation348, { InputSlice { 0, 4, 5 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation348, { InputSlice { 0, 5, 6 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation348, { InputSlice { 0, 6, 7 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation348, { InputSlice { 0, 7, 8 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }) }, 1.0),
+InstBinding("_mm512_madd_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation34, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation34, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation34, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation34, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation34, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 }, InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation34, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 }, InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation34, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 }, InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation34, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 }, InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation34, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 }, InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation34, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 }, InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation34, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 }, InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation34, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 }, InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation34, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 }, InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation34, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 }, InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation34, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 }, InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation34, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 }, InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }) }, 1.0),
+InstBinding("_mm512_mask_madd_epi16", { "avx512bw" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation347, { InputSlice { 1, 0, 1 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation347, { InputSlice { 1, 1, 2 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation347, { InputSlice { 1, 2, 3 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation347, { InputSlice { 1, 3, 4 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation347, { InputSlice { 1, 4, 5 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation347, { InputSlice { 1, 5, 6 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation347, { InputSlice { 1, 6, 7 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation347, { InputSlice { 1, 7, 8 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation347, { InputSlice { 1, 8, 9 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation347, { InputSlice { 1, 9, 10 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation347, { InputSlice { 1, 10, 11 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation347, { InputSlice { 1, 11, 12 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation347, { InputSlice { 1, 12, 13 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation347, { InputSlice { 1, 13, 14 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation347, { InputSlice { 1, 14, 15 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation347, { InputSlice { 1, 15, 16 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_madd_epi16", { "avx512bw" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation348, { InputSlice { 0, 0, 1 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation348, { InputSlice { 0, 1, 2 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation348, { InputSlice { 0, 2, 3 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation348, { InputSlice { 0, 3, 4 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation348, { InputSlice { 0, 4, 5 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation348, { InputSlice { 0, 5, 6 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation348, { InputSlice { 0, 6, 7 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation348, { InputSlice { 0, 7, 8 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation348, { InputSlice { 0, 8, 9 }, InputSlice { 1, 272, 288 }, InputSlice { 2, 272, 288 }, InputSlice { 1, 256, 272 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation348, { InputSlice { 0, 9, 10 }, InputSlice { 1, 304, 320 }, InputSlice { 2, 304, 320 }, InputSlice { 1, 288, 304 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation348, { InputSlice { 0, 10, 11 }, InputSlice { 1, 336, 352 }, InputSlice { 2, 336, 352 }, InputSlice { 1, 320, 336 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation348, { InputSlice { 0, 11, 12 }, InputSlice { 1, 368, 384 }, InputSlice { 2, 368, 384 }, InputSlice { 1, 352, 368 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation348, { InputSlice { 0, 12, 13 }, InputSlice { 1, 400, 416 }, InputSlice { 2, 400, 416 }, InputSlice { 1, 384, 400 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation348, { InputSlice { 0, 13, 14 }, InputSlice { 1, 432, 448 }, InputSlice { 2, 432, 448 }, InputSlice { 1, 416, 432 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation348, { InputSlice { 0, 14, 15 }, InputSlice { 1, 464, 480 }, InputSlice { 2, 464, 480 }, InputSlice { 1, 448, 464 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation348, { InputSlice { 0, 15, 16 }, InputSlice { 1, 496, 512 }, InputSlice { 2, 496, 512 }, InputSlice { 1, 480, 496 }, InputSlice { 2, 480, 496 } }) }, 1.0),
+InstBinding("_mm_mask_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation347, { InputSlice { 1, 0, 1 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation347, { InputSlice { 1, 1, 2 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation347, { InputSlice { 1, 2, 3 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation347, { InputSlice { 1, 3, 4 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_madd_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation348, { InputSlice { 0, 0, 1 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation348, { InputSlice { 0, 1, 2 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation348, { InputSlice { 0, 2, 3 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation348, { InputSlice { 0, 3, 4 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }) }, 1.0),
 InstBinding("_mm256_mask_max_epi8", { "avx512vl", "avx512bw" }, InstSignature { { 256, 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation349, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 8 }, InputSlice { 3, 0, 8 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation349, { InputSlice { 1, 1, 2 }, InputSlice { 2, 8, 16 }, InputSlice { 3, 8, 16 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation349, { InputSlice { 1, 2, 3 }, InputSlice { 2, 16, 24 }, InputSlice { 3, 16, 24 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation349, { InputSlice { 1, 3, 4 }, InputSlice { 2, 24, 32 }, InputSlice { 3, 24, 32 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation349, { InputSlice { 1, 4, 5 }, InputSlice { 2, 32, 40 }, InputSlice { 3, 32, 40 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation349, { InputSlice { 1, 5, 6 }, InputSlice { 2, 40, 48 }, InputSlice { 3, 40, 48 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation349, { InputSlice { 1, 6, 7 }, InputSlice { 2, 48, 56 }, InputSlice { 3, 48, 56 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation349, { InputSlice { 1, 7, 8 }, InputSlice { 2, 56, 64 }, InputSlice { 3, 56, 64 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation349, { InputSlice { 1, 8, 9 }, InputSlice { 2, 64, 72 }, InputSlice { 3, 64, 72 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation349, { InputSlice { 1, 9, 10 }, InputSlice { 2, 72, 80 }, InputSlice { 3, 72, 80 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation349, { InputSlice { 1, 10, 11 }, InputSlice { 2, 80, 88 }, InputSlice { 3, 80, 88 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation349, { InputSlice { 1, 11, 12 }, InputSlice { 2, 88, 96 }, InputSlice { 3, 88, 96 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation349, { InputSlice { 1, 12, 13 }, InputSlice { 2, 96, 104 }, InputSlice { 3, 96, 104 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation349, { InputSlice { 1, 13, 14 }, InputSlice { 2, 104, 112 }, InputSlice { 3, 104, 112 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation349, { InputSlice { 1, 14, 15 }, InputSlice { 2, 112, 120 }, InputSlice { 3, 112, 120 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation349, { InputSlice { 1, 15, 16 }, InputSlice { 2, 120, 128 }, InputSlice { 3, 120, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation349, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 136 }, InputSlice { 3, 128, 136 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation349, { InputSlice { 1, 17, 18 }, InputSlice { 2, 136, 144 }, InputSlice { 3, 136, 144 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation349, { InputSlice { 1, 18, 19 }, InputSlice { 2, 144, 152 }, InputSlice { 3, 144, 152 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation349, { InputSlice { 1, 19, 20 }, InputSlice { 2, 152, 160 }, InputSlice { 3, 152, 160 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation349, { InputSlice { 1, 20, 21 }, InputSlice { 2, 160, 168 }, InputSlice { 3, 160, 168 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation349, { InputSlice { 1, 21, 22 }, InputSlice { 2, 168, 176 }, InputSlice { 3, 168, 176 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation349, { InputSlice { 1, 22, 23 }, InputSlice { 2, 176, 184 }, InputSlice { 3, 176, 184 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation349, { InputSlice { 1, 23, 24 }, InputSlice { 2, 184, 192 }, InputSlice { 3, 184, 192 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation349, { InputSlice { 1, 24, 25 }, InputSlice { 2, 192, 200 }, InputSlice { 3, 192, 200 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation349, { InputSlice { 1, 25, 26 }, InputSlice { 2, 200, 208 }, InputSlice { 3, 200, 208 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation349, { InputSlice { 1, 26, 27 }, InputSlice { 2, 208, 216 }, InputSlice { 3, 208, 216 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation349, { InputSlice { 1, 27, 28 }, InputSlice { 2, 216, 224 }, InputSlice { 3, 216, 224 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation349, { InputSlice { 1, 28, 29 }, InputSlice { 2, 224, 232 }, InputSlice { 3, 224, 232 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation349, { InputSlice { 1, 29, 30 }, InputSlice { 2, 232, 240 }, InputSlice { 3, 232, 240 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation349, { InputSlice { 1, 30, 31 }, InputSlice { 2, 240, 248 }, InputSlice { 3, 240, 248 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation349, { InputSlice { 1, 31, 32 }, InputSlice { 2, 248, 256 }, InputSlice { 3, 248, 256 }, InputSlice { 0, 248, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_maskz_max_epi8", { "avx512vl", "avx512bw" }, InstSignature { { 32, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation350, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 8 }, InputSlice { 2, 0, 8 } }), BoundOperation(&Operation350, { InputSlice { 0, 1, 2 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 8, 16 } }), BoundOperation(&Operation350, { InputSlice { 0, 2, 3 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 16, 24 } }), BoundOperation(&Operation350, { InputSlice { 0, 3, 4 }, InputSlice { 1, 24, 32 }, InputSlice { 2, 24, 32 } }), BoundOperation(&Operation350, { InputSlice { 0, 4, 5 }, InputSlice { 1, 32, 40 }, InputSlice { 2, 32, 40 } }), BoundOperation(&Operation350, { InputSlice { 0, 5, 6 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 40, 48 } }), BoundOperation(&Operation350, { InputSlice { 0, 6, 7 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 48, 56 } }), BoundOperation(&Operation350, { InputSlice { 0, 7, 8 }, InputSlice { 1, 56, 64 }, InputSlice { 2, 56, 64 } }), BoundOperation(&Operation350, { InputSlice { 0, 8, 9 }, InputSlice { 1, 64, 72 }, InputSlice { 2, 64, 72 } }), BoundOperation(&Operation350, { InputSlice { 0, 9, 10 }, InputSlice { 1, 72, 80 }, InputSlice { 2, 72, 80 } }), BoundOperation(&Operation350, { InputSlice { 0, 10, 11 }, InputSlice { 1, 80, 88 }, InputSlice { 2, 80, 88 } }), BoundOperation(&Operation350, { InputSlice { 0, 11, 12 }, InputSlice { 1, 88, 96 }, InputSlice { 2, 88, 96 } }), BoundOperation(&Operation350, { InputSlice { 0, 12, 13 }, InputSlice { 1, 96, 104 }, InputSlice { 2, 96, 104 } }), BoundOperation(&Operation350, { InputSlice { 0, 13, 14 }, InputSlice { 1, 104, 112 }, InputSlice { 2, 104, 112 } }), BoundOperation(&Operation350, { InputSlice { 0, 14, 15 }, InputSlice { 1, 112, 120 }, InputSlice { 2, 112, 120 } }), BoundOperation(&Operation350, { InputSlice { 0, 15, 16 }, InputSlice { 1, 120, 128 }, InputSlice { 2, 120, 128 } }), BoundOperation(&Operation350, { InputSlice { 0, 16, 17 }, InputSlice { 1, 128, 136 }, InputSlice { 2, 128, 136 } }), BoundOperation(&Operation350, { InputSlice { 0, 17, 18 }, InputSlice { 1, 136, 144 }, InputSlice { 2, 136, 144 } }), BoundOperation(&Operation350, { InputSlice { 0, 18, 19 }, InputSlice { 1, 144, 152 }, InputSlice { 2, 144, 152 } }), BoundOperation(&Operation350, { InputSlice { 0, 19, 20 }, InputSlice { 1, 152, 160 }, InputSlice { 2, 152, 160 } }), BoundOperation(&Operation350, { InputSlice { 0, 20, 21 }, InputSlice { 1, 160, 168 }, InputSlice { 2, 160, 168 } }), BoundOperation(&Operation350, { InputSlice { 0, 21, 22 }, InputSlice { 1, 168, 176 }, InputSlice { 2, 168, 176 } }), BoundOperation(&Operation350, { InputSlice { 0, 22, 23 }, InputSlice { 1, 176, 184 }, InputSlice { 2, 176, 184 } }), BoundOperation(&Operation350, { InputSlice { 0, 23, 24 }, InputSlice { 1, 184, 192 }, InputSlice { 2, 184, 192 } }), BoundOperation(&Operation350, { InputSlice { 0, 24, 25 }, InputSlice { 1, 192, 200 }, InputSlice { 2, 192, 200 } }), BoundOperation(&Operation350, { InputSlice { 0, 25, 26 }, InputSlice { 1, 200, 208 }, InputSlice { 2, 200, 208 } }), BoundOperation(&Operation350, { InputSlice { 0, 26, 27 }, InputSlice { 1, 208, 216 }, InputSlice { 2, 208, 216 } }), BoundOperation(&Operation350, { InputSlice { 0, 27, 28 }, InputSlice { 1, 216, 224 }, InputSlice { 2, 216, 224 } }), BoundOperation(&Operation350, { InputSlice { 0, 28, 29 }, InputSlice { 1, 224, 232 }, InputSlice { 2, 224, 232 } }), BoundOperation(&Operation350, { InputSlice { 0, 29, 30 }, InputSlice { 1, 232, 240 }, InputSlice { 2, 232, 240 } }), BoundOperation(&Operation350, { InputSlice { 0, 30, 31 }, InputSlice { 1, 240, 248 }, InputSlice { 2, 240, 248 } }), BoundOperation(&Operation350, { InputSlice { 0, 31, 32 }, InputSlice { 1, 248, 256 }, InputSlice { 2, 248, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_max_epi8", { "avx512bw" }, InstSignature { { 512, 64, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation349, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 8 }, InputSlice { 3, 0, 8 }, InputSlice { 0, 0, 8 } }), BoundOperation(&Operation349, { InputSlice { 1, 1, 2 }, InputSlice { 2, 8, 16 }, InputSlice { 3, 8, 16 }, InputSlice { 0, 8, 16 } }), BoundOperation(&Operation349, { InputSlice { 1, 2, 3 }, InputSlice { 2, 16, 24 }, InputSlice { 3, 16, 24 }, InputSlice { 0, 16, 24 } }), BoundOperation(&Operation349, { InputSlice { 1, 3, 4 }, InputSlice { 2, 24, 32 }, InputSlice { 3, 24, 32 }, InputSlice { 0, 24, 32 } }), BoundOperation(&Operation349, { InputSlice { 1, 4, 5 }, InputSlice { 2, 32, 40 }, InputSlice { 3, 32, 40 }, InputSlice { 0, 32, 40 } }), BoundOperation(&Operation349, { InputSlice { 1, 5, 6 }, InputSlice { 2, 40, 48 }, InputSlice { 3, 40, 48 }, InputSlice { 0, 40, 48 } }), BoundOperation(&Operation349, { InputSlice { 1, 6, 7 }, InputSlice { 2, 48, 56 }, InputSlice { 3, 48, 56 }, InputSlice { 0, 48, 56 } }), BoundOperation(&Operation349, { InputSlice { 1, 7, 8 }, InputSlice { 2, 56, 64 }, InputSlice { 3, 56, 64 }, InputSlice { 0, 56, 64 } }), BoundOperation(&Operation349, { InputSlice { 1, 8, 9 }, InputSlice { 2, 64, 72 }, InputSlice { 3, 64, 72 }, InputSlice { 0, 64, 72 } }), BoundOperation(&Operation349, { InputSlice { 1, 9, 10 }, InputSlice { 2, 72, 80 }, InputSlice { 3, 72, 80 }, InputSlice { 0, 72, 80 } }), BoundOperation(&Operation349, { InputSlice { 1, 10, 11 }, InputSlice { 2, 80, 88 }, InputSlice { 3, 80, 88 }, InputSlice { 0, 80, 88 } }), BoundOperation(&Operation349, { InputSlice { 1, 11, 12 }, InputSlice { 2, 88, 96 }, InputSlice { 3, 88, 96 }, InputSlice { 0, 88, 96 } }), BoundOperation(&Operation349, { InputSlice { 1, 12, 13 }, InputSlice { 2, 96, 104 }, InputSlice { 3, 96, 104 }, InputSlice { 0, 96, 104 } }), BoundOperation(&Operation349, { InputSlice { 1, 13, 14 }, InputSlice { 2, 104, 112 }, InputSlice { 3, 104, 112 }, InputSlice { 0, 104, 112 } }), BoundOperation(&Operation349, { InputSlice { 1, 14, 15 }, InputSlice { 2, 112, 120 }, InputSlice { 3, 112, 120 }, InputSlice { 0, 112, 120 } }), BoundOperation(&Operation349, { InputSlice { 1, 15, 16 }, InputSlice { 2, 120, 128 }, InputSlice { 3, 120, 128 }, InputSlice { 0, 120, 128 } }), BoundOperation(&Operation349, { InputSlice { 1, 16, 17 }, InputSlice { 2, 128, 136 }, InputSlice { 3, 128, 136 }, InputSlice { 0, 128, 136 } }), BoundOperation(&Operation349, { InputSlice { 1, 17, 18 }, InputSlice { 2, 136, 144 }, InputSlice { 3, 136, 144 }, InputSlice { 0, 136, 144 } }), BoundOperation(&Operation349, { InputSlice { 1, 18, 19 }, InputSlice { 2, 144, 152 }, InputSlice { 3, 144, 152 }, InputSlice { 0, 144, 152 } }), BoundOperation(&Operation349, { InputSlice { 1, 19, 20 }, InputSlice { 2, 152, 160 }, InputSlice { 3, 152, 160 }, InputSlice { 0, 152, 160 } }), BoundOperation(&Operation349, { InputSlice { 1, 20, 21 }, InputSlice { 2, 160, 168 }, InputSlice { 3, 160, 168 }, InputSlice { 0, 160, 168 } }), BoundOperation(&Operation349, { InputSlice { 1, 21, 22 }, InputSlice { 2, 168, 176 }, InputSlice { 3, 168, 176 }, InputSlice { 0, 168, 176 } }), BoundOperation(&Operation349, { InputSlice { 1, 22, 23 }, InputSlice { 2, 176, 184 }, InputSlice { 3, 176, 184 }, InputSlice { 0, 176, 184 } }), BoundOperation(&Operation349, { InputSlice { 1, 23, 24 }, InputSlice { 2, 184, 192 }, InputSlice { 3, 184, 192 }, InputSlice { 0, 184, 192 } }), BoundOperation(&Operation349, { InputSlice { 1, 24, 25 }, InputSlice { 2, 192, 200 }, InputSlice { 3, 192, 200 }, InputSlice { 0, 192, 200 } }), BoundOperation(&Operation349, { InputSlice { 1, 25, 26 }, InputSlice { 2, 200, 208 }, InputSlice { 3, 200, 208 }, InputSlice { 0, 200, 208 } }), BoundOperation(&Operation349, { InputSlice { 1, 26, 27 }, InputSlice { 2, 208, 216 }, InputSlice { 3, 208, 216 }, InputSlice { 0, 208, 216 } }), BoundOperation(&Operation349, { InputSlice { 1, 27, 28 }, InputSlice { 2, 216, 224 }, InputSlice { 3, 216, 224 }, InputSlice { 0, 216, 224 } }), BoundOperation(&Operation349, { InputSlice { 1, 28, 29 }, InputSlice { 2, 224, 232 }, InputSlice { 3, 224, 232 }, InputSlice { 0, 224, 232 } }), BoundOperation(&Operation349, { InputSlice { 1, 29, 30 }, InputSlice { 2, 232, 240 }, InputSlice { 3, 232, 240 }, InputSlice { 0, 232, 240 } }), BoundOperation(&Operation349, { InputSlice { 1, 30, 31 }, InputSlice { 2, 240, 248 }, InputSlice { 3, 240, 248 }, InputSlice { 0, 240, 248 } }), BoundOperation(&Operation349, { InputSlice { 1, 31, 32 }, InputSlice { 2, 248, 256 }, InputSlice { 3, 248, 256 }, InputSlice { 0, 248, 256 } }), BoundOperation(&Operation349, { InputSlice { 1, 32, 33 }, InputSlice { 2, 256, 264 }, InputSlice { 3, 256, 264 }, InputSlice { 0, 256, 264 } }), BoundOperation(&Operation349, { InputSlice { 1, 33, 34 }, InputSlice { 2, 264, 272 }, InputSlice { 3, 264, 272 }, InputSlice { 0, 264, 272 } }), BoundOperation(&Operation349, { InputSlice { 1, 34, 35 }, InputSlice { 2, 272, 280 }, InputSlice { 3, 272, 280 }, InputSlice { 0, 272, 280 } }), BoundOperation(&Operation349, { InputSlice { 1, 35, 36 }, InputSlice { 2, 280, 288 }, InputSlice { 3, 280, 288 }, InputSlice { 0, 280, 288 } }), BoundOperation(&Operation349, { InputSlice { 1, 36, 37 }, InputSlice { 2, 288, 296 }, InputSlice { 3, 288, 296 }, InputSlice { 0, 288, 296 } }), BoundOperation(&Operation349, { InputSlice { 1, 37, 38 }, InputSlice { 2, 296, 304 }, InputSlice { 3, 296, 304 }, InputSlice { 0, 296, 304 } }), BoundOperation(&Operation349, { InputSlice { 1, 38, 39 }, InputSlice { 2, 304, 312 }, InputSlice { 3, 304, 312 }, InputSlice { 0, 304, 312 } }), BoundOperation(&Operation349, { InputSlice { 1, 39, 40 }, InputSlice { 2, 312, 320 }, InputSlice { 3, 312, 320 }, InputSlice { 0, 312, 320 } }), BoundOperation(&Operation349, { InputSlice { 1, 40, 41 }, InputSlice { 2, 320, 328 }, InputSlice { 3, 320, 328 }, InputSlice { 0, 320, 328 } }), BoundOperation(&Operation349, { InputSlice { 1, 41, 42 }, InputSlice { 2, 328, 336 }, InputSlice { 3, 328, 336 }, InputSlice { 0, 328, 336 } }), BoundOperation(&Operation349, { InputSlice { 1, 42, 43 }, InputSlice { 2, 336, 344 }, InputSlice { 3, 336, 344 }, InputSlice { 0, 336, 344 } }), BoundOperation(&Operation349, { InputSlice { 1, 43, 44 }, InputSlice { 2, 344, 352 }, InputSlice { 3, 344, 352 }, InputSlice { 0, 344, 352 } }), BoundOperation(&Operation349, { InputSlice { 1, 44, 45 }, InputSlice { 2, 352, 360 }, InputSlice { 3, 352, 360 }, InputSlice { 0, 352, 360 } }), BoundOperation(&Operation349, { InputSlice { 1, 45, 46 }, InputSlice { 2, 360, 368 }, InputSlice { 3, 360, 368 }, InputSlice { 0, 360, 368 } }), BoundOperation(&Operation349, { InputSlice { 1, 46, 47 }, InputSlice { 2, 368, 376 }, InputSlice { 3, 368, 376 }, InputSlice { 0, 368, 376 } }), BoundOperation(&Operation349, { InputSlice { 1, 47, 48 }, InputSlice { 2, 376, 384 }, InputSlice { 3, 376, 384 }, InputSlice { 0, 376, 384 } }), BoundOperation(&Operation349, { InputSlice { 1, 48, 49 }, InputSlice { 2, 384, 392 }, InputSlice { 3, 384, 392 }, InputSlice { 0, 384, 392 } }), BoundOperation(&Operation349, { InputSlice { 1, 49, 50 }, InputSlice { 2, 392, 400 }, InputSlice { 3, 392, 400 }, InputSlice { 0, 392, 400 } }), BoundOperation(&Operation349, { InputSlice { 1, 50, 51 }, InputSlice { 2, 400, 408 }, InputSlice { 3, 400, 408 }, InputSlice { 0, 400, 408 } }), BoundOperation(&Operation349, { InputSlice { 1, 51, 52 }, InputSlice { 2, 408, 416 }, InputSlice { 3, 408, 416 }, InputSlice { 0, 408, 416 } }), BoundOperation(&Operation349, { InputSlice { 1, 52, 53 }, InputSlice { 2, 416, 424 }, InputSlice { 3, 416, 424 }, InputSlice { 0, 416, 424 } }), BoundOperation(&Operation349, { InputSlice { 1, 53, 54 }, InputSlice { 2, 424, 432 }, InputSlice { 3, 424, 432 }, InputSlice { 0, 424, 432 } }), BoundOperation(&Operation349, { InputSlice { 1, 54, 55 }, InputSlice { 2, 432, 440 }, InputSlice { 3, 432, 440 }, InputSlice { 0, 432, 440 } }), BoundOperation(&Operation349, { InputSlice { 1, 55, 56 }, InputSlice { 2, 440, 448 }, InputSlice { 3, 440, 448 }, InputSlice { 0, 440, 448 } }), BoundOperation(&Operation349, { InputSlice { 1, 56, 57 }, InputSlice { 2, 448, 456 }, InputSlice { 3, 448, 456 }, InputSlice { 0, 448, 456 } }), BoundOperation(&Operation349, { InputSlice { 1, 57, 58 }, InputSlice { 2, 456, 464 }, InputSlice { 3, 456, 464 }, InputSlice { 0, 456, 464 } }), BoundOperation(&Operation349, { InputSlice { 1, 58, 59 }, InputSlice { 2, 464, 472 }, InputSlice { 3, 464, 472 }, InputSlice { 0, 464, 472 } }), BoundOperation(&Operation349, { InputSlice { 1, 59, 60 }, InputSlice { 2, 472, 480 }, InputSlice { 3, 472, 480 }, InputSlice { 0, 472, 480 } }), BoundOperation(&Operation349, { InputSlice { 1, 60, 61 }, InputSlice { 2, 480, 488 }, InputSlice { 3, 480, 488 }, InputSlice { 0, 480, 488 } }), BoundOperation(&Operation349, { InputSlice { 1, 61, 62 }, InputSlice { 2, 488, 496 }, InputSlice { 3, 488, 496 }, InputSlice { 0, 488, 496 } }), BoundOperation(&Operation349, { InputSlice { 1, 62, 63 }, InputSlice { 2, 496, 504 }, InputSlice { 3, 496, 504 }, InputSlice { 0, 496, 504 } }), BoundOperation(&Operation349, { InputSlice { 1, 63, 64 }, InputSlice { 2, 504, 512 }, InputSlice { 3, 504, 512 }, InputSlice { 0, 504, 512 } }) }, 1.0 /*default*/),
@@ -14246,14 +14246,14 @@ InstBinding("_mm512_min_epu8", { "avx512bw" }, InstSignature { { 512, 512 }, { 5
 InstBinding("_mm256_min_epu64", { "avx512vl", "avx512f" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation375, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation375, { InputSlice { 1, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation375, { InputSlice { 1, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation375, { InputSlice { 1, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm_min_epu64", { "avx512vl", "avx512f" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation375, { InputSlice { 1, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation375, { InputSlice { 1, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_min_epu16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation376, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation376, { InputSlice { 1, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation376, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation376, { InputSlice { 1, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation376, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation376, { InputSlice { 1, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation376, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation376, { InputSlice { 1, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation376, { InputSlice { 1, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation376, { InputSlice { 1, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation376, { InputSlice { 1, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation376, { InputSlice { 1, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation376, { InputSlice { 1, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation376, { InputSlice { 1, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation376, { InputSlice { 1, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation376, { InputSlice { 1, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation376, { InputSlice { 1, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation376, { InputSlice { 1, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation376, { InputSlice { 1, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation376, { InputSlice { 1, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation376, { InputSlice { 1, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation376, { InputSlice { 1, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation376, { InputSlice { 1, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation376, { InputSlice { 1, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation376, { InputSlice { 1, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation376, { InputSlice { 1, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation376, { InputSlice { 1, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation376, { InputSlice { 1, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation376, { InputSlice { 1, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation376, { InputSlice { 1, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation376, { InputSlice { 1, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation376, { InputSlice { 1, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mask_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation227, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation227, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation227, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation227, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation228, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation228, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation228, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation228, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }) }, 2.0),
-InstBinding("_mm_mask_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation227, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation227, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation228, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation228, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }) }, 2.0),
-InstBinding("_mm256_mask_mulhrs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation377, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation377, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation377, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation377, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation377, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation377, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation377, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation377, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation377, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation377, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation377, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation377, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation377, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation377, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation377, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation377, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_mulhrs_epi16", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation377, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation377, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation377, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation377, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation377, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation377, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation377, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation377, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation377, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation377, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation377, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation377, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation377, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation377, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation377, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation377, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation377, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation377, { InputSlice { 1, 17, 18 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation377, { InputSlice { 1, 18, 19 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation377, { InputSlice { 1, 19, 20 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation377, { InputSlice { 1, 20, 21 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation377, { InputSlice { 1, 21, 22 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation377, { InputSlice { 1, 22, 23 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation377, { InputSlice { 1, 23, 24 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation377, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation377, { InputSlice { 1, 25, 26 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation377, { InputSlice { 1, 26, 27 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation377, { InputSlice { 1, 27, 28 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation377, { InputSlice { 1, 28, 29 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation377, { InputSlice { 1, 29, 30 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation377, { InputSlice { 1, 30, 31 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation377, { InputSlice { 1, 31, 32 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 2.0),
-InstBinding("_mm512_mulhrs_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation83, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation83, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation83, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation83, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation83, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation83, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation83, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation83, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation83, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation83, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation83, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation83, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation83, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation83, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation83, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation83, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation83, { InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation83, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation83, { InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation83, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation83, { InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation83, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation83, { InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation83, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation83, { InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation83, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation83, { InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation83, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation83, { InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation83, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation83, { InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation83, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 } }) }, 2.0),
-InstBinding("_mm_mask_mulhrs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation377, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation377, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation377, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation377, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation377, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation377, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation377, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation377, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 2.0),
+InstBinding("_mm256_mask_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation227, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation227, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation227, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation227, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation228, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation228, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation228, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation228, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }) }, 1.0),
+InstBinding("_mm_mask_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation227, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation227, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_mul_epi32", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation228, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation228, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }) }, 1.0),
+InstBinding("_mm256_mask_mulhrs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation377, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation377, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation377, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation377, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation377, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation377, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation377, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation377, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation377, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation377, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation377, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation377, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation377, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation377, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation377, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation377, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_mulhrs_epi16", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation377, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation377, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation377, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation377, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation377, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation377, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation377, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation377, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation377, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation377, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation377, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation377, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation377, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation377, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation377, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation377, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation377, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation377, { InputSlice { 1, 17, 18 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation377, { InputSlice { 1, 18, 19 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation377, { InputSlice { 1, 19, 20 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation377, { InputSlice { 1, 20, 21 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation377, { InputSlice { 1, 21, 22 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation377, { InputSlice { 1, 22, 23 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation377, { InputSlice { 1, 23, 24 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation377, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation377, { InputSlice { 1, 25, 26 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation377, { InputSlice { 1, 26, 27 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation377, { InputSlice { 1, 27, 28 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation377, { InputSlice { 1, 28, 29 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation377, { InputSlice { 1, 29, 30 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation377, { InputSlice { 1, 30, 31 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation377, { InputSlice { 1, 31, 32 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 1.0),
+InstBinding("_mm512_mulhrs_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation83, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation83, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation83, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation83, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation83, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation83, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation83, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation83, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation83, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation83, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation83, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation83, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation83, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation83, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation83, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation83, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation83, { InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation83, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation83, { InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation83, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation83, { InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation83, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation83, { InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation83, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation83, { InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation83, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation83, { InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation83, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation83, { InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation83, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation83, { InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation83, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 } }) }, 1.0),
+InstBinding("_mm_mask_mulhrs_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation377, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation377, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation377, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation377, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation377, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation377, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation377, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation377, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0),
 InstBinding("_mm256_mask_mulhi_epu16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation378, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation378, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation378, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation378, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation378, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation378, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation378, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation378, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation378, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation378, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation378, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation378, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation378, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation378, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation378, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation378, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_maskz_mulhi_epu16", { "avx512vl", "avx512bw" }, InstSignature { { 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation379, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation379, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation379, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation379, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation379, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation379, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation379, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation379, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation379, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation379, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation379, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation379, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation379, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation379, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation379, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation379, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm512_mask_mulhi_epu16", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation378, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation378, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation378, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation378, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation378, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation378, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation378, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation378, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation378, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation378, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation378, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation378, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation378, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation378, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation378, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation378, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation378, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation378, { InputSlice { 1, 17, 18 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation378, { InputSlice { 1, 18, 19 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation378, { InputSlice { 1, 19, 20 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation378, { InputSlice { 1, 20, 21 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation378, { InputSlice { 1, 21, 22 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation378, { InputSlice { 1, 22, 23 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation378, { InputSlice { 1, 23, 24 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation378, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation378, { InputSlice { 1, 25, 26 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation378, { InputSlice { 1, 26, 27 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation378, { InputSlice { 1, 27, 28 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation378, { InputSlice { 1, 28, 29 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation378, { InputSlice { 1, 29, 30 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation378, { InputSlice { 1, 30, 31 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation378, { InputSlice { 1, 31, 32 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 1.0 /*default*/),
@@ -14261,13 +14261,13 @@ InstBinding("_mm512_maskz_mulhi_epu16", { "avx512bw" }, InstSignature { { 32, 51
 InstBinding("_mm512_mulhi_epu16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation36, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation36, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation36, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation36, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation36, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation36, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation36, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation36, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation36, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation36, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation36, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation36, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation36, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation36, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation36, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation36, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation36, { InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation36, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation36, { InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation36, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation36, { InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation36, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation36, { InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation36, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation36, { InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation36, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation36, { InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation36, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation36, { InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation36, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation36, { InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation36, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 } }) }, 1.0 /*default*/),
 InstBinding("_mm_mask_mulhi_epu16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation378, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation378, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation378, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation378, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation378, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation378, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation378, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation378, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_maskz_mulhi_epu16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation379, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation379, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation379, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation379, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation379, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation379, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation379, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation379, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mask_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation380, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation380, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation380, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation380, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation380, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation380, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation380, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation380, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation380, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation380, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation380, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation380, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation380, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation380, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation380, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation380, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation381, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation381, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation381, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation381, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation381, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation381, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation381, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation381, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation381, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation381, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation381, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation381, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation381, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation381, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation381, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation381, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_mulhi_epi16", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation380, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation380, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation380, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation380, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation380, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation380, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation380, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation380, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation380, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation380, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation380, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation380, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation380, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation380, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation380, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation380, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation380, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation380, { InputSlice { 1, 17, 18 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation380, { InputSlice { 1, 18, 19 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation380, { InputSlice { 1, 19, 20 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation380, { InputSlice { 1, 20, 21 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation380, { InputSlice { 1, 21, 22 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation380, { InputSlice { 1, 22, 23 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation380, { InputSlice { 1, 23, 24 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation380, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation380, { InputSlice { 1, 25, 26 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation380, { InputSlice { 1, 26, 27 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation380, { InputSlice { 1, 27, 28 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation380, { InputSlice { 1, 28, 29 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation380, { InputSlice { 1, 29, 30 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation380, { InputSlice { 1, 30, 31 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation380, { InputSlice { 1, 31, 32 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_mulhi_epi16", { "avx512bw" }, InstSignature { { 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation381, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation381, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation381, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation381, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation381, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation381, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation381, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation381, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation381, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation381, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation381, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation381, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation381, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation381, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation381, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation381, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }), BoundOperation(&Operation381, { InputSlice { 0, 16, 17 }, InputSlice { 1, 256, 272 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation381, { InputSlice { 0, 17, 18 }, InputSlice { 1, 272, 288 }, InputSlice { 2, 272, 288 } }), BoundOperation(&Operation381, { InputSlice { 0, 18, 19 }, InputSlice { 1, 288, 304 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation381, { InputSlice { 0, 19, 20 }, InputSlice { 1, 304, 320 }, InputSlice { 2, 304, 320 } }), BoundOperation(&Operation381, { InputSlice { 0, 20, 21 }, InputSlice { 1, 320, 336 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation381, { InputSlice { 0, 21, 22 }, InputSlice { 1, 336, 352 }, InputSlice { 2, 336, 352 } }), BoundOperation(&Operation381, { InputSlice { 0, 22, 23 }, InputSlice { 1, 352, 368 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation381, { InputSlice { 0, 23, 24 }, InputSlice { 1, 368, 384 }, InputSlice { 2, 368, 384 } }), BoundOperation(&Operation381, { InputSlice { 0, 24, 25 }, InputSlice { 1, 384, 400 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation381, { InputSlice { 0, 25, 26 }, InputSlice { 1, 400, 416 }, InputSlice { 2, 400, 416 } }), BoundOperation(&Operation381, { InputSlice { 0, 26, 27 }, InputSlice { 1, 416, 432 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation381, { InputSlice { 0, 27, 28 }, InputSlice { 1, 432, 448 }, InputSlice { 2, 432, 448 } }), BoundOperation(&Operation381, { InputSlice { 0, 28, 29 }, InputSlice { 1, 448, 464 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation381, { InputSlice { 0, 29, 30 }, InputSlice { 1, 464, 480 }, InputSlice { 2, 464, 480 } }), BoundOperation(&Operation381, { InputSlice { 0, 30, 31 }, InputSlice { 1, 480, 496 }, InputSlice { 2, 480, 496 } }), BoundOperation(&Operation381, { InputSlice { 0, 31, 32 }, InputSlice { 1, 496, 512 }, InputSlice { 2, 496, 512 } }) }, 2.0),
-InstBinding("_mm512_mulhi_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation35, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation35, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation35, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation35, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation35, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation35, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation35, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation35, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation35, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation35, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation35, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation35, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation35, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation35, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation35, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation35, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation35, { InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation35, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation35, { InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation35, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation35, { InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation35, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation35, { InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation35, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation35, { InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation35, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation35, { InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation35, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation35, { InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation35, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation35, { InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation35, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 } }) }, 2.0),
-InstBinding("_mm_mask_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation380, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation380, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation380, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation380, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation380, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation380, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation380, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation380, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation381, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation381, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation381, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation381, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation381, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation381, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation381, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation381, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }) }, 2.0),
+InstBinding("_mm256_mask_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation380, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation380, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation380, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation380, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation380, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation380, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation380, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation380, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation380, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation380, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation380, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation380, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation380, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation380, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation380, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation380, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation381, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation381, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation381, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation381, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation381, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation381, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation381, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation381, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation381, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation381, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation381, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation381, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation381, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation381, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation381, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation381, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_mulhi_epi16", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation380, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation380, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation380, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation380, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation380, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation380, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation380, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation380, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation380, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation380, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation380, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation380, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation380, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation380, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation380, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation380, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation380, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation380, { InputSlice { 1, 17, 18 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation380, { InputSlice { 1, 18, 19 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation380, { InputSlice { 1, 19, 20 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation380, { InputSlice { 1, 20, 21 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation380, { InputSlice { 1, 21, 22 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation380, { InputSlice { 1, 22, 23 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation380, { InputSlice { 1, 23, 24 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation380, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation380, { InputSlice { 1, 25, 26 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation380, { InputSlice { 1, 26, 27 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation380, { InputSlice { 1, 27, 28 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation380, { InputSlice { 1, 28, 29 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation380, { InputSlice { 1, 29, 30 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation380, { InputSlice { 1, 30, 31 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation380, { InputSlice { 1, 31, 32 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_mulhi_epi16", { "avx512bw" }, InstSignature { { 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation381, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation381, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation381, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation381, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation381, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation381, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation381, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation381, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation381, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation381, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation381, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation381, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation381, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation381, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation381, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation381, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }), BoundOperation(&Operation381, { InputSlice { 0, 16, 17 }, InputSlice { 1, 256, 272 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation381, { InputSlice { 0, 17, 18 }, InputSlice { 1, 272, 288 }, InputSlice { 2, 272, 288 } }), BoundOperation(&Operation381, { InputSlice { 0, 18, 19 }, InputSlice { 1, 288, 304 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation381, { InputSlice { 0, 19, 20 }, InputSlice { 1, 304, 320 }, InputSlice { 2, 304, 320 } }), BoundOperation(&Operation381, { InputSlice { 0, 20, 21 }, InputSlice { 1, 320, 336 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation381, { InputSlice { 0, 21, 22 }, InputSlice { 1, 336, 352 }, InputSlice { 2, 336, 352 } }), BoundOperation(&Operation381, { InputSlice { 0, 22, 23 }, InputSlice { 1, 352, 368 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation381, { InputSlice { 0, 23, 24 }, InputSlice { 1, 368, 384 }, InputSlice { 2, 368, 384 } }), BoundOperation(&Operation381, { InputSlice { 0, 24, 25 }, InputSlice { 1, 384, 400 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation381, { InputSlice { 0, 25, 26 }, InputSlice { 1, 400, 416 }, InputSlice { 2, 400, 416 } }), BoundOperation(&Operation381, { InputSlice { 0, 26, 27 }, InputSlice { 1, 416, 432 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation381, { InputSlice { 0, 27, 28 }, InputSlice { 1, 432, 448 }, InputSlice { 2, 432, 448 } }), BoundOperation(&Operation381, { InputSlice { 0, 28, 29 }, InputSlice { 1, 448, 464 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation381, { InputSlice { 0, 29, 30 }, InputSlice { 1, 464, 480 }, InputSlice { 2, 464, 480 } }), BoundOperation(&Operation381, { InputSlice { 0, 30, 31 }, InputSlice { 1, 480, 496 }, InputSlice { 2, 480, 496 } }), BoundOperation(&Operation381, { InputSlice { 0, 31, 32 }, InputSlice { 1, 496, 512 }, InputSlice { 2, 496, 512 } }) }, 1.0),
+InstBinding("_mm512_mulhi_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation35, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation35, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation35, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation35, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation35, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation35, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation35, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation35, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation35, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation35, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation35, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation35, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation35, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation35, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation35, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation35, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation35, { InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation35, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation35, { InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation35, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation35, { InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation35, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation35, { InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation35, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation35, { InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation35, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation35, { InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation35, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation35, { InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation35, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation35, { InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation35, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 } }) }, 1.0),
+InstBinding("_mm_mask_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation380, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation380, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation380, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation380, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation380, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation380, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation380, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation380, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_mulhi_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation381, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation381, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation381, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation381, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation381, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation381, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation381, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation381, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }) }, 1.0),
 InstBinding("_mm256_mask_mullo_epi32", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation229, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation229, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation229, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation229, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation229, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation229, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation229, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation229, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 4.0),
 InstBinding("_mm256_maskz_mullo_epi32", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation382, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation382, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation382, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation382, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation382, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation382, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation382, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation382, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 4.0),
 InstBinding("_mm512_maskz_mullo_epi32", { "avx512f" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation382, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation382, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation382, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation382, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation382, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation382, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation382, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation382, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation382, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation382, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation382, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation382, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation382, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation382, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation382, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation382, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 4.0),
@@ -14282,17 +14282,17 @@ InstBinding("_mm512_mullo_epi64", { "avx512dq" }, InstSignature { { 512, 512 }, 
 InstBinding("_mm_mask_mullo_epi64", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation383, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation383, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_maskz_mullo_epi64", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation384, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation384, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_mullo_epi64", { "avx512vl", "avx512dq" }, InstSignature { { 128, 128 }, { 128 }, false }, { BoundOperation(&Operation385, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation385, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mask_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation386, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation386, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation386, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation386, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation386, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation386, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation386, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation386, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation386, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation386, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation386, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation386, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation386, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation386, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation386, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation386, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation387, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation387, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation387, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation387, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation387, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation387, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation387, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation387, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation387, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation387, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation387, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation387, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation387, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation387, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation387, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation387, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_mullo_epi16", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation386, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation386, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation386, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation386, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation386, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation386, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation386, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation386, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation386, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation386, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation386, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation386, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation386, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation386, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation386, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation386, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation386, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation386, { InputSlice { 1, 17, 18 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation386, { InputSlice { 1, 18, 19 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation386, { InputSlice { 1, 19, 20 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation386, { InputSlice { 1, 20, 21 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation386, { InputSlice { 1, 21, 22 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation386, { InputSlice { 1, 22, 23 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation386, { InputSlice { 1, 23, 24 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation386, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation386, { InputSlice { 1, 25, 26 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation386, { InputSlice { 1, 26, 27 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation386, { InputSlice { 1, 27, 28 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation386, { InputSlice { 1, 28, 29 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation386, { InputSlice { 1, 29, 30 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation386, { InputSlice { 1, 30, 31 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation386, { InputSlice { 1, 31, 32 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_mullo_epi16", { "avx512bw" }, InstSignature { { 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation387, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation387, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation387, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation387, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation387, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation387, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation387, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation387, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation387, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation387, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation387, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation387, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation387, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation387, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation387, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation387, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }), BoundOperation(&Operation387, { InputSlice { 0, 16, 17 }, InputSlice { 1, 256, 272 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation387, { InputSlice { 0, 17, 18 }, InputSlice { 1, 272, 288 }, InputSlice { 2, 272, 288 } }), BoundOperation(&Operation387, { InputSlice { 0, 18, 19 }, InputSlice { 1, 288, 304 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation387, { InputSlice { 0, 19, 20 }, InputSlice { 1, 304, 320 }, InputSlice { 2, 304, 320 } }), BoundOperation(&Operation387, { InputSlice { 0, 20, 21 }, InputSlice { 1, 320, 336 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation387, { InputSlice { 0, 21, 22 }, InputSlice { 1, 336, 352 }, InputSlice { 2, 336, 352 } }), BoundOperation(&Operation387, { InputSlice { 0, 22, 23 }, InputSlice { 1, 352, 368 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation387, { InputSlice { 0, 23, 24 }, InputSlice { 1, 368, 384 }, InputSlice { 2, 368, 384 } }), BoundOperation(&Operation387, { InputSlice { 0, 24, 25 }, InputSlice { 1, 384, 400 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation387, { InputSlice { 0, 25, 26 }, InputSlice { 1, 400, 416 }, InputSlice { 2, 400, 416 } }), BoundOperation(&Operation387, { InputSlice { 0, 26, 27 }, InputSlice { 1, 416, 432 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation387, { InputSlice { 0, 27, 28 }, InputSlice { 1, 432, 448 }, InputSlice { 2, 432, 448 } }), BoundOperation(&Operation387, { InputSlice { 0, 28, 29 }, InputSlice { 1, 448, 464 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation387, { InputSlice { 0, 29, 30 }, InputSlice { 1, 464, 480 }, InputSlice { 2, 464, 480 } }), BoundOperation(&Operation387, { InputSlice { 0, 30, 31 }, InputSlice { 1, 480, 496 }, InputSlice { 2, 480, 496 } }), BoundOperation(&Operation387, { InputSlice { 0, 31, 32 }, InputSlice { 1, 496, 512 }, InputSlice { 2, 496, 512 } }) }, 2.0),
-InstBinding("_mm512_mullo_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation37, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation37, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation37, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation37, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation37, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation37, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation37, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation37, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation37, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation37, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation37, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation37, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation37, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation37, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation37, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation37, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation37, { InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation37, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation37, { InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation37, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation37, { InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation37, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation37, { InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation37, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation37, { InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation37, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation37, { InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation37, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation37, { InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation37, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation37, { InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation37, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 } }) }, 2.0),
-InstBinding("_mm_mask_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation386, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation386, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation386, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation386, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation386, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation386, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation386, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation386, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation387, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation387, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation387, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation387, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation387, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation387, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation387, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation387, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation230, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation230, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation230, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation230, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation231, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation231, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation231, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation231, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }) }, 2.0),
-InstBinding("_mm_mask_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation230, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation230, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation231, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation231, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }) }, 2.0),
+InstBinding("_mm256_mask_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 256, 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation386, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation386, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation386, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation386, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation386, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation386, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation386, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation386, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation386, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation386, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation386, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation386, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation386, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation386, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation386, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation386, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 16, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation387, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation387, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation387, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation387, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation387, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation387, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation387, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation387, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation387, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation387, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation387, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation387, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation387, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation387, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation387, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation387, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_mullo_epi16", { "avx512bw" }, InstSignature { { 512, 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation386, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation386, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation386, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation386, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation386, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation386, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation386, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation386, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }), BoundOperation(&Operation386, { InputSlice { 1, 8, 9 }, InputSlice { 2, 128, 144 }, InputSlice { 3, 128, 144 }, InputSlice { 0, 128, 144 } }), BoundOperation(&Operation386, { InputSlice { 1, 9, 10 }, InputSlice { 2, 144, 160 }, InputSlice { 3, 144, 160 }, InputSlice { 0, 144, 160 } }), BoundOperation(&Operation386, { InputSlice { 1, 10, 11 }, InputSlice { 2, 160, 176 }, InputSlice { 3, 160, 176 }, InputSlice { 0, 160, 176 } }), BoundOperation(&Operation386, { InputSlice { 1, 11, 12 }, InputSlice { 2, 176, 192 }, InputSlice { 3, 176, 192 }, InputSlice { 0, 176, 192 } }), BoundOperation(&Operation386, { InputSlice { 1, 12, 13 }, InputSlice { 2, 192, 208 }, InputSlice { 3, 192, 208 }, InputSlice { 0, 192, 208 } }), BoundOperation(&Operation386, { InputSlice { 1, 13, 14 }, InputSlice { 2, 208, 224 }, InputSlice { 3, 208, 224 }, InputSlice { 0, 208, 224 } }), BoundOperation(&Operation386, { InputSlice { 1, 14, 15 }, InputSlice { 2, 224, 240 }, InputSlice { 3, 224, 240 }, InputSlice { 0, 224, 240 } }), BoundOperation(&Operation386, { InputSlice { 1, 15, 16 }, InputSlice { 2, 240, 256 }, InputSlice { 3, 240, 256 }, InputSlice { 0, 240, 256 } }), BoundOperation(&Operation386, { InputSlice { 1, 16, 17 }, InputSlice { 2, 256, 272 }, InputSlice { 3, 256, 272 }, InputSlice { 0, 256, 272 } }), BoundOperation(&Operation386, { InputSlice { 1, 17, 18 }, InputSlice { 2, 272, 288 }, InputSlice { 3, 272, 288 }, InputSlice { 0, 272, 288 } }), BoundOperation(&Operation386, { InputSlice { 1, 18, 19 }, InputSlice { 2, 288, 304 }, InputSlice { 3, 288, 304 }, InputSlice { 0, 288, 304 } }), BoundOperation(&Operation386, { InputSlice { 1, 19, 20 }, InputSlice { 2, 304, 320 }, InputSlice { 3, 304, 320 }, InputSlice { 0, 304, 320 } }), BoundOperation(&Operation386, { InputSlice { 1, 20, 21 }, InputSlice { 2, 320, 336 }, InputSlice { 3, 320, 336 }, InputSlice { 0, 320, 336 } }), BoundOperation(&Operation386, { InputSlice { 1, 21, 22 }, InputSlice { 2, 336, 352 }, InputSlice { 3, 336, 352 }, InputSlice { 0, 336, 352 } }), BoundOperation(&Operation386, { InputSlice { 1, 22, 23 }, InputSlice { 2, 352, 368 }, InputSlice { 3, 352, 368 }, InputSlice { 0, 352, 368 } }), BoundOperation(&Operation386, { InputSlice { 1, 23, 24 }, InputSlice { 2, 368, 384 }, InputSlice { 3, 368, 384 }, InputSlice { 0, 368, 384 } }), BoundOperation(&Operation386, { InputSlice { 1, 24, 25 }, InputSlice { 2, 384, 400 }, InputSlice { 3, 384, 400 }, InputSlice { 0, 384, 400 } }), BoundOperation(&Operation386, { InputSlice { 1, 25, 26 }, InputSlice { 2, 400, 416 }, InputSlice { 3, 400, 416 }, InputSlice { 0, 400, 416 } }), BoundOperation(&Operation386, { InputSlice { 1, 26, 27 }, InputSlice { 2, 416, 432 }, InputSlice { 3, 416, 432 }, InputSlice { 0, 416, 432 } }), BoundOperation(&Operation386, { InputSlice { 1, 27, 28 }, InputSlice { 2, 432, 448 }, InputSlice { 3, 432, 448 }, InputSlice { 0, 432, 448 } }), BoundOperation(&Operation386, { InputSlice { 1, 28, 29 }, InputSlice { 2, 448, 464 }, InputSlice { 3, 448, 464 }, InputSlice { 0, 448, 464 } }), BoundOperation(&Operation386, { InputSlice { 1, 29, 30 }, InputSlice { 2, 464, 480 }, InputSlice { 3, 464, 480 }, InputSlice { 0, 464, 480 } }), BoundOperation(&Operation386, { InputSlice { 1, 30, 31 }, InputSlice { 2, 480, 496 }, InputSlice { 3, 480, 496 }, InputSlice { 0, 480, 496 } }), BoundOperation(&Operation386, { InputSlice { 1, 31, 32 }, InputSlice { 2, 496, 512 }, InputSlice { 3, 496, 512 }, InputSlice { 0, 496, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_mullo_epi16", { "avx512bw" }, InstSignature { { 32, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation387, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation387, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation387, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation387, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation387, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation387, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation387, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation387, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }), BoundOperation(&Operation387, { InputSlice { 0, 8, 9 }, InputSlice { 1, 128, 144 }, InputSlice { 2, 128, 144 } }), BoundOperation(&Operation387, { InputSlice { 0, 9, 10 }, InputSlice { 1, 144, 160 }, InputSlice { 2, 144, 160 } }), BoundOperation(&Operation387, { InputSlice { 0, 10, 11 }, InputSlice { 1, 160, 176 }, InputSlice { 2, 160, 176 } }), BoundOperation(&Operation387, { InputSlice { 0, 11, 12 }, InputSlice { 1, 176, 192 }, InputSlice { 2, 176, 192 } }), BoundOperation(&Operation387, { InputSlice { 0, 12, 13 }, InputSlice { 1, 192, 208 }, InputSlice { 2, 192, 208 } }), BoundOperation(&Operation387, { InputSlice { 0, 13, 14 }, InputSlice { 1, 208, 224 }, InputSlice { 2, 208, 224 } }), BoundOperation(&Operation387, { InputSlice { 0, 14, 15 }, InputSlice { 1, 224, 240 }, InputSlice { 2, 224, 240 } }), BoundOperation(&Operation387, { InputSlice { 0, 15, 16 }, InputSlice { 1, 240, 256 }, InputSlice { 2, 240, 256 } }), BoundOperation(&Operation387, { InputSlice { 0, 16, 17 }, InputSlice { 1, 256, 272 }, InputSlice { 2, 256, 272 } }), BoundOperation(&Operation387, { InputSlice { 0, 17, 18 }, InputSlice { 1, 272, 288 }, InputSlice { 2, 272, 288 } }), BoundOperation(&Operation387, { InputSlice { 0, 18, 19 }, InputSlice { 1, 288, 304 }, InputSlice { 2, 288, 304 } }), BoundOperation(&Operation387, { InputSlice { 0, 19, 20 }, InputSlice { 1, 304, 320 }, InputSlice { 2, 304, 320 } }), BoundOperation(&Operation387, { InputSlice { 0, 20, 21 }, InputSlice { 1, 320, 336 }, InputSlice { 2, 320, 336 } }), BoundOperation(&Operation387, { InputSlice { 0, 21, 22 }, InputSlice { 1, 336, 352 }, InputSlice { 2, 336, 352 } }), BoundOperation(&Operation387, { InputSlice { 0, 22, 23 }, InputSlice { 1, 352, 368 }, InputSlice { 2, 352, 368 } }), BoundOperation(&Operation387, { InputSlice { 0, 23, 24 }, InputSlice { 1, 368, 384 }, InputSlice { 2, 368, 384 } }), BoundOperation(&Operation387, { InputSlice { 0, 24, 25 }, InputSlice { 1, 384, 400 }, InputSlice { 2, 384, 400 } }), BoundOperation(&Operation387, { InputSlice { 0, 25, 26 }, InputSlice { 1, 400, 416 }, InputSlice { 2, 400, 416 } }), BoundOperation(&Operation387, { InputSlice { 0, 26, 27 }, InputSlice { 1, 416, 432 }, InputSlice { 2, 416, 432 } }), BoundOperation(&Operation387, { InputSlice { 0, 27, 28 }, InputSlice { 1, 432, 448 }, InputSlice { 2, 432, 448 } }), BoundOperation(&Operation387, { InputSlice { 0, 28, 29 }, InputSlice { 1, 448, 464 }, InputSlice { 2, 448, 464 } }), BoundOperation(&Operation387, { InputSlice { 0, 29, 30 }, InputSlice { 1, 464, 480 }, InputSlice { 2, 464, 480 } }), BoundOperation(&Operation387, { InputSlice { 0, 30, 31 }, InputSlice { 1, 480, 496 }, InputSlice { 2, 480, 496 } }), BoundOperation(&Operation387, { InputSlice { 0, 31, 32 }, InputSlice { 1, 496, 512 }, InputSlice { 2, 496, 512 } }) }, 1.0),
+InstBinding("_mm512_mullo_epi16", { "avx512bw" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation37, { InputSlice { 0, 0, 16 }, InputSlice { 1, 0, 16 } }), BoundOperation(&Operation37, { InputSlice { 0, 16, 32 }, InputSlice { 1, 16, 32 } }), BoundOperation(&Operation37, { InputSlice { 0, 32, 48 }, InputSlice { 1, 32, 48 } }), BoundOperation(&Operation37, { InputSlice { 0, 48, 64 }, InputSlice { 1, 48, 64 } }), BoundOperation(&Operation37, { InputSlice { 0, 64, 80 }, InputSlice { 1, 64, 80 } }), BoundOperation(&Operation37, { InputSlice { 0, 80, 96 }, InputSlice { 1, 80, 96 } }), BoundOperation(&Operation37, { InputSlice { 0, 96, 112 }, InputSlice { 1, 96, 112 } }), BoundOperation(&Operation37, { InputSlice { 0, 112, 128 }, InputSlice { 1, 112, 128 } }), BoundOperation(&Operation37, { InputSlice { 0, 128, 144 }, InputSlice { 1, 128, 144 } }), BoundOperation(&Operation37, { InputSlice { 0, 144, 160 }, InputSlice { 1, 144, 160 } }), BoundOperation(&Operation37, { InputSlice { 0, 160, 176 }, InputSlice { 1, 160, 176 } }), BoundOperation(&Operation37, { InputSlice { 0, 176, 192 }, InputSlice { 1, 176, 192 } }), BoundOperation(&Operation37, { InputSlice { 0, 192, 208 }, InputSlice { 1, 192, 208 } }), BoundOperation(&Operation37, { InputSlice { 0, 208, 224 }, InputSlice { 1, 208, 224 } }), BoundOperation(&Operation37, { InputSlice { 0, 224, 240 }, InputSlice { 1, 224, 240 } }), BoundOperation(&Operation37, { InputSlice { 0, 240, 256 }, InputSlice { 1, 240, 256 } }), BoundOperation(&Operation37, { InputSlice { 0, 256, 272 }, InputSlice { 1, 256, 272 } }), BoundOperation(&Operation37, { InputSlice { 0, 272, 288 }, InputSlice { 1, 272, 288 } }), BoundOperation(&Operation37, { InputSlice { 0, 288, 304 }, InputSlice { 1, 288, 304 } }), BoundOperation(&Operation37, { InputSlice { 0, 304, 320 }, InputSlice { 1, 304, 320 } }), BoundOperation(&Operation37, { InputSlice { 0, 320, 336 }, InputSlice { 1, 320, 336 } }), BoundOperation(&Operation37, { InputSlice { 0, 336, 352 }, InputSlice { 1, 336, 352 } }), BoundOperation(&Operation37, { InputSlice { 0, 352, 368 }, InputSlice { 1, 352, 368 } }), BoundOperation(&Operation37, { InputSlice { 0, 368, 384 }, InputSlice { 1, 368, 384 } }), BoundOperation(&Operation37, { InputSlice { 0, 384, 400 }, InputSlice { 1, 384, 400 } }), BoundOperation(&Operation37, { InputSlice { 0, 400, 416 }, InputSlice { 1, 400, 416 } }), BoundOperation(&Operation37, { InputSlice { 0, 416, 432 }, InputSlice { 1, 416, 432 } }), BoundOperation(&Operation37, { InputSlice { 0, 432, 448 }, InputSlice { 1, 432, 448 } }), BoundOperation(&Operation37, { InputSlice { 0, 448, 464 }, InputSlice { 1, 448, 464 } }), BoundOperation(&Operation37, { InputSlice { 0, 464, 480 }, InputSlice { 1, 464, 480 } }), BoundOperation(&Operation37, { InputSlice { 0, 480, 496 }, InputSlice { 1, 480, 496 } }), BoundOperation(&Operation37, { InputSlice { 0, 496, 512 }, InputSlice { 1, 496, 512 } }) }, 1.0),
+InstBinding("_mm_mask_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation386, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 16 }, InputSlice { 3, 0, 16 }, InputSlice { 0, 0, 16 } }), BoundOperation(&Operation386, { InputSlice { 1, 1, 2 }, InputSlice { 2, 16, 32 }, InputSlice { 3, 16, 32 }, InputSlice { 0, 16, 32 } }), BoundOperation(&Operation386, { InputSlice { 1, 2, 3 }, InputSlice { 2, 32, 48 }, InputSlice { 3, 32, 48 }, InputSlice { 0, 32, 48 } }), BoundOperation(&Operation386, { InputSlice { 1, 3, 4 }, InputSlice { 2, 48, 64 }, InputSlice { 3, 48, 64 }, InputSlice { 0, 48, 64 } }), BoundOperation(&Operation386, { InputSlice { 1, 4, 5 }, InputSlice { 2, 64, 80 }, InputSlice { 3, 64, 80 }, InputSlice { 0, 64, 80 } }), BoundOperation(&Operation386, { InputSlice { 1, 5, 6 }, InputSlice { 2, 80, 96 }, InputSlice { 3, 80, 96 }, InputSlice { 0, 80, 96 } }), BoundOperation(&Operation386, { InputSlice { 1, 6, 7 }, InputSlice { 2, 96, 112 }, InputSlice { 3, 96, 112 }, InputSlice { 0, 96, 112 } }), BoundOperation(&Operation386, { InputSlice { 1, 7, 8 }, InputSlice { 2, 112, 128 }, InputSlice { 3, 112, 128 }, InputSlice { 0, 112, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_mullo_epi16", { "avx512vl", "avx512bw" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation387, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 16 }, InputSlice { 2, 0, 16 } }), BoundOperation(&Operation387, { InputSlice { 0, 1, 2 }, InputSlice { 1, 16, 32 }, InputSlice { 2, 16, 32 } }), BoundOperation(&Operation387, { InputSlice { 0, 2, 3 }, InputSlice { 1, 32, 48 }, InputSlice { 2, 32, 48 } }), BoundOperation(&Operation387, { InputSlice { 0, 3, 4 }, InputSlice { 1, 48, 64 }, InputSlice { 2, 48, 64 } }), BoundOperation(&Operation387, { InputSlice { 0, 4, 5 }, InputSlice { 1, 64, 80 }, InputSlice { 2, 64, 80 } }), BoundOperation(&Operation387, { InputSlice { 0, 5, 6 }, InputSlice { 1, 80, 96 }, InputSlice { 2, 80, 96 } }), BoundOperation(&Operation387, { InputSlice { 0, 6, 7 }, InputSlice { 1, 96, 112 }, InputSlice { 2, 96, 112 } }), BoundOperation(&Operation387, { InputSlice { 0, 7, 8 }, InputSlice { 1, 112, 128 }, InputSlice { 2, 112, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation230, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation230, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation230, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation230, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation231, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation231, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation231, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation231, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }) }, 1.0),
+InstBinding("_mm_mask_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation230, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation230, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_mul_epu32", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation231, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation231, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }) }, 1.0),
 InstBinding("_mm256_mask_or_epi32", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation232, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation232, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation232, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation232, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm256_maskz_or_epi32", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation233, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation233, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation233, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation233, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation233, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation233, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation233, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation233, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm_mask_or_epi32", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation232, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation232, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation232, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation232, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0 /*default*/),
@@ -14435,30 +14435,29 @@ InstBinding("_mm256_mask_xor_epi64", { "avx512vl", "avx512f" }, InstSignature { 
 InstBinding("_mm256_maskz_xor_epi64", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation268, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation268, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0 /*default*/),
 InstBinding("_mm_mask_xor_epi64", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0 /*default*/),
 InstBinding("_mm_maskz_xor_epi64", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0 /*default*/),
-InstBinding("_mm256_mask_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation269, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation269, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation269, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation269, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation270, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation270, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation270, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation270, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm_mask_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation269, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation269, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation270, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation270, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation271, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation271, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation271, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation271, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation271, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation271, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation271, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation271, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation272, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation272, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation272, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation272, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation272, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation272, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation272, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation272, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm_mask_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation271, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation271, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation271, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation271, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation272, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation272, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation272, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation272, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation267, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation267, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation268, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation268, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_xor_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation267, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation267, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation267, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation267, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation267, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation267, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_xor_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation268, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation268, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation268, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation268, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation268, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation268, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 2.0),
-InstBinding("_mm512_xor_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation66, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation66, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation66, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation66, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation66, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation66, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation66, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation66, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 2.0),
-InstBinding("_mm_mask_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 2.0),
-InstBinding("_mm256_mask_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation265, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation265, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation265, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation265, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation265, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation265, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation265, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation265, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 2.0),
-InstBinding("_mm256_maskz_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation266, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation266, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation266, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation266, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation266, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation266, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation266, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation266, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 2.0),
-InstBinding("_mm512_mask_xor_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation265, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation265, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation265, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation265, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation265, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation265, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation265, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation265, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation265, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation265, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation265, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation265, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation265, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation265, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation265, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation265, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_maskz_xor_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation266, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation266, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation266, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation266, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation266, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation266, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation266, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation266, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation266, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation266, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation266, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation266, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation266, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation266, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation266, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation266, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 2.0),
-InstBinding("_mm512_xor_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation7, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation7, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation7, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation7, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation7, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation7, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation7, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation7, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation7, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation7, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation7, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation7, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation7, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation7, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation7, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation7, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 2.0),
-InstBinding("_mm_mask_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation265, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation265, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation265, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation265, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 2.0),
-InstBinding("_mm_maskz_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation266, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation266, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation266, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation266, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 2.0)
+InstBinding("_mm256_mask_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation269, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation269, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation269, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation269, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation270, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation270, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation270, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation270, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm_mask_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation269, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation269, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_sub_pd", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation270, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation270, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation271, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation271, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation271, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation271, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation271, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation271, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation271, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation271, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation272, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation272, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation272, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation272, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation272, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation272, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation272, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation272, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm_mask_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation271, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation271, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation271, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation271, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_sub_ps", { "avx512vl", "avx512f" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation272, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation272, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation272, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation272, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation267, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation267, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation268, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation268, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_xor_pd", { "avx512dq" }, InstSignature { { 512, 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }), BoundOperation(&Operation267, { InputSlice { 1, 2, 3 }, InputSlice { 2, 128, 192 }, InputSlice { 3, 128, 192 }, InputSlice { 0, 128, 192 } }), BoundOperation(&Operation267, { InputSlice { 1, 3, 4 }, InputSlice { 2, 192, 256 }, InputSlice { 3, 192, 256 }, InputSlice { 0, 192, 256 } }), BoundOperation(&Operation267, { InputSlice { 1, 4, 5 }, InputSlice { 2, 256, 320 }, InputSlice { 3, 256, 320 }, InputSlice { 0, 256, 320 } }), BoundOperation(&Operation267, { InputSlice { 1, 5, 6 }, InputSlice { 2, 320, 384 }, InputSlice { 3, 320, 384 }, InputSlice { 0, 320, 384 } }), BoundOperation(&Operation267, { InputSlice { 1, 6, 7 }, InputSlice { 2, 384, 448 }, InputSlice { 3, 384, 448 }, InputSlice { 0, 384, 448 } }), BoundOperation(&Operation267, { InputSlice { 1, 7, 8 }, InputSlice { 2, 448, 512 }, InputSlice { 3, 448, 512 }, InputSlice { 0, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_xor_pd", { "avx512dq" }, InstSignature { { 8, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }), BoundOperation(&Operation268, { InputSlice { 0, 2, 3 }, InputSlice { 1, 128, 192 }, InputSlice { 2, 128, 192 } }), BoundOperation(&Operation268, { InputSlice { 0, 3, 4 }, InputSlice { 1, 192, 256 }, InputSlice { 2, 192, 256 } }), BoundOperation(&Operation268, { InputSlice { 0, 4, 5 }, InputSlice { 1, 256, 320 }, InputSlice { 2, 256, 320 } }), BoundOperation(&Operation268, { InputSlice { 0, 5, 6 }, InputSlice { 1, 320, 384 }, InputSlice { 2, 320, 384 } }), BoundOperation(&Operation268, { InputSlice { 0, 6, 7 }, InputSlice { 1, 384, 448 }, InputSlice { 2, 384, 448 } }), BoundOperation(&Operation268, { InputSlice { 0, 7, 8 }, InputSlice { 1, 448, 512 }, InputSlice { 2, 448, 512 } }) }, 1.0),
+InstBinding("_mm512_xor_pd", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation66, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation66, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation66, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation66, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }), BoundOperation(&Operation66, { InputSlice { 0, 256, 320 }, InputSlice { 1, 256, 320 } }), BoundOperation(&Operation66, { InputSlice { 0, 320, 384 }, InputSlice { 1, 320, 384 } }), BoundOperation(&Operation66, { InputSlice { 0, 384, 448 }, InputSlice { 1, 384, 448 } }), BoundOperation(&Operation66, { InputSlice { 0, 448, 512 }, InputSlice { 1, 448, 512 } }) }, 1.0),
+InstBinding("_mm_mask_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation267, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 64 }, InputSlice { 3, 0, 64 }, InputSlice { 0, 0, 64 } }), BoundOperation(&Operation267, { InputSlice { 1, 1, 2 }, InputSlice { 2, 64, 128 }, InputSlice { 3, 64, 128 }, InputSlice { 0, 64, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_xor_pd", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation268, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 64 }, InputSlice { 2, 0, 64 } }), BoundOperation(&Operation268, { InputSlice { 0, 1, 2 }, InputSlice { 1, 64, 128 }, InputSlice { 2, 64, 128 } }) }, 1.0),
+InstBinding("_mm256_mask_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 256, 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation265, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation265, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation265, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation265, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation265, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation265, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation265, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation265, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }) }, 1.0),
+InstBinding("_mm256_maskz_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 256, 256 }, { 256 }, false }, { BoundOperation(&Operation266, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation266, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation266, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation266, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation266, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation266, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation266, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation266, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }) }, 1.0),
+InstBinding("_mm512_mask_xor_ps", { "avx512dq" }, InstSignature { { 512, 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation265, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation265, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation265, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation265, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }), BoundOperation(&Operation265, { InputSlice { 1, 4, 5 }, InputSlice { 2, 128, 160 }, InputSlice { 3, 128, 160 }, InputSlice { 0, 128, 160 } }), BoundOperation(&Operation265, { InputSlice { 1, 5, 6 }, InputSlice { 2, 160, 192 }, InputSlice { 3, 160, 192 }, InputSlice { 0, 160, 192 } }), BoundOperation(&Operation265, { InputSlice { 1, 6, 7 }, InputSlice { 2, 192, 224 }, InputSlice { 3, 192, 224 }, InputSlice { 0, 192, 224 } }), BoundOperation(&Operation265, { InputSlice { 1, 7, 8 }, InputSlice { 2, 224, 256 }, InputSlice { 3, 224, 256 }, InputSlice { 0, 224, 256 } }), BoundOperation(&Operation265, { InputSlice { 1, 8, 9 }, InputSlice { 2, 256, 288 }, InputSlice { 3, 256, 288 }, InputSlice { 0, 256, 288 } }), BoundOperation(&Operation265, { InputSlice { 1, 9, 10 }, InputSlice { 2, 288, 320 }, InputSlice { 3, 288, 320 }, InputSlice { 0, 288, 320 } }), BoundOperation(&Operation265, { InputSlice { 1, 10, 11 }, InputSlice { 2, 320, 352 }, InputSlice { 3, 320, 352 }, InputSlice { 0, 320, 352 } }), BoundOperation(&Operation265, { InputSlice { 1, 11, 12 }, InputSlice { 2, 352, 384 }, InputSlice { 3, 352, 384 }, InputSlice { 0, 352, 384 } }), BoundOperation(&Operation265, { InputSlice { 1, 12, 13 }, InputSlice { 2, 384, 416 }, InputSlice { 3, 384, 416 }, InputSlice { 0, 384, 416 } }), BoundOperation(&Operation265, { InputSlice { 1, 13, 14 }, InputSlice { 2, 416, 448 }, InputSlice { 3, 416, 448 }, InputSlice { 0, 416, 448 } }), BoundOperation(&Operation265, { InputSlice { 1, 14, 15 }, InputSlice { 2, 448, 480 }, InputSlice { 3, 448, 480 }, InputSlice { 0, 448, 480 } }), BoundOperation(&Operation265, { InputSlice { 1, 15, 16 }, InputSlice { 2, 480, 512 }, InputSlice { 3, 480, 512 }, InputSlice { 0, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_maskz_xor_ps", { "avx512dq" }, InstSignature { { 16, 512, 512 }, { 512 }, false }, { BoundOperation(&Operation266, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation266, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation266, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation266, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }), BoundOperation(&Operation266, { InputSlice { 0, 4, 5 }, InputSlice { 1, 128, 160 }, InputSlice { 2, 128, 160 } }), BoundOperation(&Operation266, { InputSlice { 0, 5, 6 }, InputSlice { 1, 160, 192 }, InputSlice { 2, 160, 192 } }), BoundOperation(&Operation266, { InputSlice { 0, 6, 7 }, InputSlice { 1, 192, 224 }, InputSlice { 2, 192, 224 } }), BoundOperation(&Operation266, { InputSlice { 0, 7, 8 }, InputSlice { 1, 224, 256 }, InputSlice { 2, 224, 256 } }), BoundOperation(&Operation266, { InputSlice { 0, 8, 9 }, InputSlice { 1, 256, 288 }, InputSlice { 2, 256, 288 } }), BoundOperation(&Operation266, { InputSlice { 0, 9, 10 }, InputSlice { 1, 288, 320 }, InputSlice { 2, 288, 320 } }), BoundOperation(&Operation266, { InputSlice { 0, 10, 11 }, InputSlice { 1, 320, 352 }, InputSlice { 2, 320, 352 } }), BoundOperation(&Operation266, { InputSlice { 0, 11, 12 }, InputSlice { 1, 352, 384 }, InputSlice { 2, 352, 384 } }), BoundOperation(&Operation266, { InputSlice { 0, 12, 13 }, InputSlice { 1, 384, 416 }, InputSlice { 2, 384, 416 } }), BoundOperation(&Operation266, { InputSlice { 0, 13, 14 }, InputSlice { 1, 416, 448 }, InputSlice { 2, 416, 448 } }), BoundOperation(&Operation266, { InputSlice { 0, 14, 15 }, InputSlice { 1, 448, 480 }, InputSlice { 2, 448, 480 } }), BoundOperation(&Operation266, { InputSlice { 0, 15, 16 }, InputSlice { 1, 480, 512 }, InputSlice { 2, 480, 512 } }) }, 1.0),
+InstBinding("_mm512_xor_ps", { "avx512dq" }, InstSignature { { 512, 512 }, { 512 }, false }, { BoundOperation(&Operation7, { InputSlice { 0, 0, 32 }, InputSlice { 1, 0, 32 } }), BoundOperation(&Operation7, { InputSlice { 0, 32, 64 }, InputSlice { 1, 32, 64 } }), BoundOperation(&Operation7, { InputSlice { 0, 64, 96 }, InputSlice { 1, 64, 96 } }), BoundOperation(&Operation7, { InputSlice { 0, 96, 128 }, InputSlice { 1, 96, 128 } }), BoundOperation(&Operation7, { InputSlice { 0, 128, 160 }, InputSlice { 1, 128, 160 } }), BoundOperation(&Operation7, { InputSlice { 0, 160, 192 }, InputSlice { 1, 160, 192 } }), BoundOperation(&Operation7, { InputSlice { 0, 192, 224 }, InputSlice { 1, 192, 224 } }), BoundOperation(&Operation7, { InputSlice { 0, 224, 256 }, InputSlice { 1, 224, 256 } }), BoundOperation(&Operation7, { InputSlice { 0, 256, 288 }, InputSlice { 1, 256, 288 } }), BoundOperation(&Operation7, { InputSlice { 0, 288, 320 }, InputSlice { 1, 288, 320 } }), BoundOperation(&Operation7, { InputSlice { 0, 320, 352 }, InputSlice { 1, 320, 352 } }), BoundOperation(&Operation7, { InputSlice { 0, 352, 384 }, InputSlice { 1, 352, 384 } }), BoundOperation(&Operation7, { InputSlice { 0, 384, 416 }, InputSlice { 1, 384, 416 } }), BoundOperation(&Operation7, { InputSlice { 0, 416, 448 }, InputSlice { 1, 416, 448 } }), BoundOperation(&Operation7, { InputSlice { 0, 448, 480 }, InputSlice { 1, 448, 480 } }), BoundOperation(&Operation7, { InputSlice { 0, 480, 512 }, InputSlice { 1, 480, 512 } }) }, 1.0),
+InstBinding("_mm_mask_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 128, 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation265, { InputSlice { 1, 0, 1 }, InputSlice { 2, 0, 32 }, InputSlice { 3, 0, 32 }, InputSlice { 0, 0, 32 } }), BoundOperation(&Operation265, { InputSlice { 1, 1, 2 }, InputSlice { 2, 32, 64 }, InputSlice { 3, 32, 64 }, InputSlice { 0, 32, 64 } }), BoundOperation(&Operation265, { InputSlice { 1, 2, 3 }, InputSlice { 2, 64, 96 }, InputSlice { 3, 64, 96 }, InputSlice { 0, 64, 96 } }), BoundOperation(&Operation265, { InputSlice { 1, 3, 4 }, InputSlice { 2, 96, 128 }, InputSlice { 3, 96, 128 }, InputSlice { 0, 96, 128 } }) }, 1.0),
+InstBinding("_mm_maskz_xor_ps", { "avx512vl", "avx512dq" }, InstSignature { { 8, 128, 128 }, { 128 }, false }, { BoundOperation(&Operation266, { InputSlice { 0, 0, 1 }, InputSlice { 1, 0, 32 }, InputSlice { 2, 0, 32 } }), BoundOperation(&Operation266, { InputSlice { 0, 1, 2 }, InputSlice { 1, 32, 64 }, InputSlice { 2, 32, 64 } }), BoundOperation(&Operation266, { InputSlice { 0, 2, 3 }, InputSlice { 1, 64, 96 }, InputSlice { 2, 64, 96 } }), BoundOperation(&Operation266, { InputSlice { 0, 3, 4 }, InputSlice { 1, 96, 128 }, InputSlice { 2, 96, 128 } }) }, 1.0)
 };
-  
-#endif
-
+#else
 std::vector<InstBinding> Insts;
+#endif

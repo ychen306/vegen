@@ -16,6 +16,7 @@ set(LIB_PACKING_SRC
   GraphUtil.cpp
   ModelUtil.cpp
   Serialize.cpp
+  MatchManager.cpp
   Preprocessing.cpp
   SupervisionGenerator.cpp
   LocalDependenceAnalysis.cpp)

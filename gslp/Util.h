@@ -21,4 +21,13 @@ using ConsecutiveAccessDAG =
 // Sample an integer between 0 and N.
 static inline unsigned rand_int(int N) { return std::rand() % N; }
 
+// Remove elements indexed by `ToRemove`, which is sorted in increasing order.
+template <typename T>
+void remove(std::vector<T> &X, llvm::ArrayRef<unsigned> ToRemove) {
+  for (unsigned i : llvm::make_range(ToRemove.rbegin(), ToRemove.rend())) {
+    std::swap(X[i], X.back());
+    X.pop_back();
+  }
+}
+
 #endif // UTIL_H
