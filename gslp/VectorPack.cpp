@@ -359,3 +359,19 @@ bool isConstantPack(const OperandPack &OpndPack) {
       return false;
   return true;
 }
+
+std::vector<Instruction *> VectorPack::getReplacedInsts() const {
+  std::vector<Instruction *> Replaced;
+  if (Kind != General) {
+    for (auto *V : getOrderedValues())
+      Replaced.push_back(cast<Instruction>(V));
+  } else {
+    for (auto *M : Matches) {
+      SmallPtrSet<Instruction *, 4> Insts;
+      getIntermediateInsts(*M, Insts);
+      for (auto *I : Insts)
+        Replaced.push_back(I);
+    }
+  }
+  return Replaced;
+}

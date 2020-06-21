@@ -202,9 +202,14 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
     if (UnresolvedScalars.test(InstId))
       Cost +=
           TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
-
-    freezeOneInst(I);
   }
+
+  auto ReplacedInsts = VP->getReplacedInsts();
+  std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
+            [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
+  for (auto *I : ReplacedInsts)
+    freezeOneInst(I);
+
   advanceBBIt();
 
   SmallVector<unsigned, 2> ResolvedPackIds;
@@ -418,6 +423,7 @@ static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
         Extensible = false;
         break;
       }
+      assert(Frt.isFree(I));
       unsigned InstId = VPCtx->getScalarId(I);
       if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended)) {
         Extensible = false;
@@ -501,7 +507,8 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     //  Transitions.emplace_back(VP, Next, Cost);
     //}
 
-    static std::vector<unsigned> VL{2, 4, 8};
+    //static std::vector<unsigned> VL{2, 4, 8};
+    static std::vector<unsigned> VL{4};
     // Make a pack that contain the next free inst
     for (unsigned i : VL) {
       if (i > MaxNumLanes)
@@ -519,6 +526,8 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     }
     for (auto *Inst : getPacker()->getInsts()) {
       if (Inst->getLaneOps().size() > MaxNumLanes)
+        continue;
+      if (Inst->getLaneOps().size() != 4)
         continue;
       auto NewPP = std::make_unique<PartialPack>(Inst, BB, Pkr);
       if (isPartialPackFeasible(*NewPP, Frt)) {
@@ -712,24 +721,37 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
     }
   }
 
+  //errs() << "<<<<<< unresolved packs:\n";
+  //for (auto *OP : FrtScratch.getUnresolvedPacks()) {
+  //  if (OP->size() != 4)
+  //    continue;
+  //  for (auto *V : *OP) 
+  //    errs() << " " << *V;
+  //  errs() << '\n';
+  //}
+
   for (;;) {
     std::vector<const VectorPack *> Extensions = findExtensionPacks(FrtScratch);
 
     if (!Extensions.empty()) {
       auto *VP = Extensions[rand_int(Extensions.size())];
       // auto *VP = Extensions[0];
+      //errs() << "Extending with: " << *VP << '\n';
       Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
       for (auto *V : FrtScratch.usableInsts()) {
         auto *I = cast<Instruction>(V);
+        //errs() << "Scalarizing " << *I << '\n';
         Cost += FrtScratch.advanceInplace(I, TTI);
         break;
       }
     }
+    //errs() << "\tnew cost: "<< Cost <<'\n';
     if (FrtScratch.getUnresolvedPacks().empty() &&
         FrtScratch.numUnresolvedScalars() == 0)
       break;
   }
+  //errs() << ">>>>>>>\n\n";
   return Cost;
 }
 
@@ -785,7 +807,8 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
         Loads.push_back(CurLoad);
       }
       if (Consecutive) {
-        Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+        Extensions.push_back(
+            VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
         continue;
       }
     }
@@ -817,9 +840,9 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
 
   // Take the extension pack with the lowest local cost
   std::sort(Extensions.begin(), Extensions.end(),
-      [](const VectorPack *A, const VectorPack *B) {
-        return A->getCost() < B->getCost();
-      });
+            [](const VectorPack *A, const VectorPack *B) {
+              return A->getCost() < B->getCost();
+            });
   return Extensions[0];
 }
 
@@ -835,9 +858,7 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
     auto *ExtVP = findExtensionPack(Frt);
     if (!ExtVP)
       break;
-    //errs() << "!!! extending with: " << *ExtVP << '\n';
     Cost += Frt.advanceInplace(ExtVP, TTI);
-    //errs() << "\tcost: " << Cost << '\n';
   }
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
@@ -848,6 +869,7 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
     }
   }
 
+  //errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
   return Cost;
 }
 
@@ -904,12 +926,11 @@ std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt, StoreInst *SI,
   Elements.set(VPCtx->getScalarId(SI));
   Depended |= LDA.getDepended(SI);
 
-
   Enumerate(Stores, Elements, Depended);
   return Seeds;
 }
 
-VectorPack * getSeedStorePack(const Frontier &Frt, StoreInst *SI, unsigned VL) {
+VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI, unsigned VL) {
   auto Seeds = getSeedStorePacks(Frt, SI, VL);
   if (Seeds.empty())
     return nullptr;
@@ -951,7 +972,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   auto *TTI = Pkr->getTTI();
 
-  //if (first) {
+  // if (first) {
   //  errs() << "!!! got first\n";
   //  auto *SeedVP = getSeedStorePack(Frt, first, 4);
   //  if (SeedVP) {
@@ -983,13 +1004,17 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
+    //errs() << "!!! Adding : " << *ExtVP << '\n';
+    //errs() << "\t updated cost: " << Cost << '\n';
     Packs.tryAdd(ExtVP);
   }
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
     for (auto *V : Frt.usableInsts()) {
       auto *I = cast<Instruction>(V);
+      //errs() << "!!! scalarizing: " << *I << '\n';
       Cost += Frt.advanceInplace(I, TTI);
+      //errs() << "\t updated cost: " << Cost << '\n';
       break;
     }
   }
