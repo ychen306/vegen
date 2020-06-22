@@ -37,13 +37,13 @@ with open('InstWrappers.c', 'w') as outf:
 
     [y] = ys
     spec = specs[inst]
-    has_imm8 = any(x.is_constant for x in xs)
+    has_imm = any(x.is_constant for x in xs)
 
-    if not has_imm8:
+    if not has_imm:
       emit_wrapper(inst, xs, spec, 0, outf)
     else:
-      for imm8 in range(256):
-        emit_wrapper(inst, xs, spec, imm8, outf)
+      for imm in range(1<<specs[inst].imm_width):
+        emit_wrapper(inst, xs, spec, imm, outf)
 
 with open('inst_wrappers.flags', 'w') as outf:
   cpuids = set()
