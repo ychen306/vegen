@@ -400,6 +400,59 @@ static bool isPartialPackFeasible(const PartialPack &PP, const Frontier *Frt) {
   return false;
 }
 
+// Assuming all elements of `OP` are loads, try to find an extending load pack.
+static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
+                                         Packer *Pkr) {
+  //errs() << "Finding vector load to extend: {\n";
+  //for (auto *V : OP)
+  //  errs() << "\t" << *V << '\n';
+  //errs() << "}\n\n";
+  auto *VPCtx = Pkr->getContext(BB);
+  auto &LoadDAG = Pkr->getLoadDAG(BB);
+  auto &LDA = Pkr->getLDA(BB);
+
+  // The set of loads producing elements of `OP`
+  SmallPtrSet<Instruction *, 8> LoadSet;
+  for (auto *V : OP)
+    LoadSet.insert(cast<Instruction>(V));
+
+  // The loads might jumbled.
+  // In other words, any one of the lanes could be the leading load
+  for (auto *V : OP) {
+    auto *LeadLI = cast<LoadInst>(V);
+    BitVector Elements(VPCtx->getNumValues());
+    BitVector Depended(VPCtx->getNumValues());
+    Elements.set(VPCtx->getScalarId(LeadLI));
+    Depended |= LDA.getDepended(LeadLI);
+    std::vector<LoadInst *> Loads { LeadLI };
+
+    while (Loads.size() < OP.size()) {
+      auto It = LoadDAG.find(Loads.back());
+      if (It == LoadDAG.end())
+        break;
+      LoadInst *NextLI = nullptr;
+      // Only use the next load in the load set
+      for (auto *Next : It->second) {
+        if (LoadSet.count(Next)) {
+          NextLI = cast<LoadInst>(Next);
+          break;
+        }
+      }
+      if (!NextLI)
+        break;
+      if (!checkIndependence(LDA, *VPCtx, NextLI, Elements, Depended))
+        break;
+      Loads.push_back(NextLI);
+      Elements.set(VPCtx->getScalarId(NextLI));
+      Depended |= LDA.getDepended(NextLI);
+    }
+    if (Loads.size() == OP.size())
+      return VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI());
+  }
+  //errs() << "Failed!\n";
+  return nullptr;
+}
+
 static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
   auto *Pkr = Frt.getPacker();
   auto *BB = Frt.getBasicBlock();
@@ -439,24 +492,11 @@ static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
       continue;
 
     if (AllLoads) {
-      // Simply pack all of the loads if they are consecutive.
-      bool Consecutive = true;
-      std::vector<LoadInst *> Loads{cast<LoadInst>((*OP)[0])};
-      for (unsigned i = 1; i < NumLanes; i++) {
-        auto *CurLoad = cast<LoadInst>((*OP)[i]);
-        auto *PrevLoad = cast<LoadInst>((*OP)[i - 1]);
-        auto It = LoadDAG.find(PrevLoad);
-        if (It == LoadDAG.end() || !It->second.count(CurLoad)) {
-          Consecutive = false;
-          break;
-        }
-        Loads.push_back(CurLoad);
-      }
-      if (Consecutive)
-        Extensions.push_back(
-            VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+      if (auto *LoadVP = findExtendingLoadPack(*OP, BB, Pkr))
+        Extensions.push_back(LoadVP);
       continue;
     }
+
     for (auto *Inst : Pkr->getInsts()) {
       ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
       if (LaneOps.size() != NumLanes)
@@ -507,8 +547,7 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     //  Transitions.emplace_back(VP, Next, Cost);
     //}
 
-    //static std::vector<unsigned> VL{2, 4, 8};
-    static std::vector<unsigned> VL{4};
+    static std::vector<unsigned> VL{2, 4, 8};
     // Make a pack that contain the next free inst
     for (unsigned i : VL) {
       if (i > MaxNumLanes)
@@ -526,8 +565,6 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     }
     for (auto *Inst : getPacker()->getInsts()) {
       if (Inst->getLaneOps().size() > MaxNumLanes)
-        continue;
-      if (Inst->getLaneOps().size() != 4)
         continue;
       auto NewPP = std::make_unique<PartialPack>(Inst, BB, Pkr);
       if (isPartialPackFeasible(*NewPP, Frt)) {
@@ -721,11 +758,11 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
     }
   }
 
-  //errs() << "<<<<<< unresolved packs:\n";
-  //for (auto *OP : FrtScratch.getUnresolvedPacks()) {
+  // errs() << "<<<<<< unresolved packs:\n";
+  // for (auto *OP : FrtScratch.getUnresolvedPacks()) {
   //  if (OP->size() != 4)
   //    continue;
-  //  for (auto *V : *OP) 
+  //  for (auto *V : *OP)
   //    errs() << " " << *V;
   //  errs() << '\n';
   //}
@@ -751,7 +788,7 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
         FrtScratch.numUnresolvedScalars() == 0)
       break;
   }
-  //errs() << ">>>>>>>\n\n";
+  // errs() << ">>>>>>>\n\n";
   return Cost;
 }
 
@@ -793,24 +830,9 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
       continue;
 
     if (AllLoads) {
-      // Simply pack all of the loads if they are consecutive.
-      bool Consecutive = true;
-      std::vector<LoadInst *> Loads{cast<LoadInst>((*OP)[0])};
-      for (unsigned i = 1; i < NumLanes; i++) {
-        auto *CurLoad = cast<LoadInst>((*OP)[i]);
-        auto *PrevLoad = cast<LoadInst>((*OP)[i - 1]);
-        auto It = LoadDAG.find(PrevLoad);
-        if (It == LoadDAG.end() || !It->second.count(CurLoad)) {
-          Consecutive = false;
-          break;
-        }
-        Loads.push_back(CurLoad);
-      }
-      if (Consecutive) {
-        Extensions.push_back(
-            VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
-        continue;
-      }
+      if (auto *LoadVP = findExtendingLoadPack(*OP, BB, Pkr))
+        Extensions.push_back(LoadVP);
+      continue;
     }
     for (auto *Inst : Pkr->getInsts()) {
       ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
@@ -869,7 +891,7 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
     }
   }
 
-  //errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
+  // errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
   return Cost;
 }
 
@@ -957,13 +979,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   };
 
   std::vector<StoreInst *> Stores;
-  StoreInst *first = nullptr;
-  for (auto &StoreAndNext : StoreDAG) {
+  for (auto &StoreAndNext : StoreDAG)
     Stores.push_back(cast<StoreInst>(StoreAndNext.first));
-    auto *SI = cast<StoreInst>(StoreAndNext.first);
-    if (SI->getValueOperand()->getName() == "sub1430")
-      first = SI;
-  }
 
   // Sort stores by store chain length
   std::sort(Stores.begin(), Stores.end(), [&](StoreInst *A, StoreInst *B) {
@@ -971,17 +988,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   });
 
   auto *TTI = Pkr->getTTI();
-
-  // if (first) {
-  //  errs() << "!!! got first\n";
-  //  auto *SeedVP = getSeedStorePack(Frt, first, 4);
-  //  if (SeedVP) {
-  //    errs() << "Seed pack for first: " << *SeedVP << '\n';
-  //    float Est = estimateCost(Frt, SeedVP);
-  //    errs() << "Est cost of packing first: " << Est << '\n';
-  //  }
-  //  abort();
-  //}
 
   std::vector<unsigned> VL{8, 4, 2};
   float Cost = 0;
@@ -1004,17 +1010,17 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
-    //errs() << "!!! Adding : " << *ExtVP << '\n';
-    //errs() << "\t updated cost: " << Cost << '\n';
+    // errs() << "!!! Adding : " << *ExtVP << '\n';
+    // errs() << "\t updated cost: " << Cost << '\n';
     Packs.tryAdd(ExtVP);
   }
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
     for (auto *V : Frt.usableInsts()) {
       auto *I = cast<Instruction>(V);
-      //errs() << "!!! scalarizing: " << *I << '\n';
+      // errs() << "!!! scalarizing: " << *I << '\n';
       Cost += Frt.advanceInplace(I, TTI);
-      //errs() << "\t updated cost: " << Cost << '\n';
+      // errs() << "\t updated cost: " << Cost << '\n';
       break;
     }
   }
