@@ -19,7 +19,7 @@ num_interpreted = 0
 
 skipped = False
 skip_to = '_mm512_popcnt_epi16'
-skip_to = None
+skip_to = '_mm_cvtepu8_epi16'
 
 outf = open(out_fname, 'w')
 
@@ -58,7 +58,7 @@ for intrin in data_root.iter('intrinsic'):
       'mant' in intrin.attrib['name'] or
       'ord' in intrin.attrib['name'] or
       '4dpwss' in intrin.attrib['name'] or
-      'cvt' in intrin.attrib['name'] or
+      #'cvt' in intrin.attrib['name'] or
       intrin.attrib['name'].startswith('_bit') or
       intrin.attrib['name'] in ('_rdpmc', '_rdtsc') or
       'lzcnt' in intrin.attrib['name'] or
