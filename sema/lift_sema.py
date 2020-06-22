@@ -826,10 +826,10 @@ if __name__ == '__main__':
         log_shuf.write(inst+'\n')
         lifted_shuf[inst] = liveins, outs, dag
     except Exception as e:
-      if not isinstance(e, AssertionError):
-        print('Error processing', inst)
-        traceback.print_exc()
-        exit()
+      #if not isinstance(e, AssertionError):
+      #  print('Error processing', inst)
+      #  traceback.print_exc()
+      #  exit()
       print(inst)
       #print('ERROR PROCESSING:', inst)
       #traceback.print_exc()
