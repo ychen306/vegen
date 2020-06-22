@@ -216,10 +216,33 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
       T = &Transitions[It - Prob.begin()];
     }
 
-    if (T->VP)
+
+    auto Node = Root;
+    errs() << "====================================="
+           << "\n\t t transition cost: " << T->transitionCost()
+           << "\n\t num transitions: " << Transitions.size()
+           << "\n\t scalar cost: " << Transitions.begin()->avgCost()
+           << "\n\t t avg cost: " << T->avgCost()
+           << "\n\t t->next avg cost: " << T->Next->avgCost()
+           << "\n\t t->next min cost: " << T->Next->minCost()
+           << "\n\t t->next terminal? " << T->Next->isTerminal()
+           << "\n\t t visit count : " << T->visitCount()
+           << "\n\t node visit count: " << Node->visitCount()
+           << "\n\t min cost : " << Node->minCost()
+           << "\n\t max cost : " << Node->maxCost()
+           << "\n\t avg cost : " << Node->avgCost()
+           << "\n\t num unresolved packs : "
+           << Node->getFrontier()->getUnresolvedPacks().size()
+           << "\n\t num unresolved scalars : "
+           << Node->getFrontier()->numUnresolvedScalars() << '\n';
+
+    if (T->VP) {
+      errs() << "[MCTS] ADDING: " << *T->VP << '\n';
       Packs.tryAdd(T->VP);
+    }
     Root = T->Next;
     TotalCost += T->transitionCost();
+      errs() << "[MCTS} New cost: " << TotalCost << '\n';
 
   }
   // The MCTS queries the policy (if there's one) asynchronously,
@@ -261,7 +284,14 @@ bool GSLP::runOnFunction(llvm::Function &F) {
                              PolicyBatchSize, NumPolicyThreads);
 
   errs() << "Built policy\n";
-  Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
+  //Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
+  std::vector<InstBinding *> SupportedIntrinsics;
+  for (auto &Inst : Insts) {
+    if (isSupported(&Inst, F))
+      SupportedIntrinsics.push_back(&Inst);
+  }
+  errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size() << '\n';
+  Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
     errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';

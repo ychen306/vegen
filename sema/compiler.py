@@ -143,6 +143,7 @@ def binary_op(op, signed=True, trunc=False, get_bitwidth=lambda a, b:max(a.size(
     c = select_op(op, a_ty.is_signed or b_ty.is_signed)(a, b)
     if trunc:
       c = c & mask
+    print(c.size(), op)
     return c
   return impl
 
@@ -450,7 +451,7 @@ def compile_stmt(stmt, env, pred=True):
 def compile_expr(expr, env, pred=True, deref=False):
   if deref and type(expr) == Lookup:
     # normalize `x.dword` to `x.dword[1]`
-    expr = BitSlice(expr, hi=Number(0), Lo=Number(0))
+    expr = BitSlice(expr, hi=Number(0), lo=Number(0))
 
   expr_ty = type(expr)
   slice_or_val, ty = compilers[expr_ty](expr, env, pred)

@@ -12,48 +12,21 @@ class MatchManager {
   // record matches for each operation
   llvm::DenseMap<const Operation *, std::vector<Operation::Match>> OpMatches;
 
-  void match(llvm::Value *V) {
-    for (auto &KV : OpMatches) {
-      const Operation *Op = KV.first;
-      Op->match(V, KV.second);
-    }
-  }
+  void match(llvm::Value *V);
 
   static bool sortByOutput(const Operation::Match &A,
-                           const Operation::Match &B) {
-    return A.Output < B.Output;
-  }
+                           const Operation::Match &B);
 
 public:
-  MatchManager(llvm::ArrayRef<InstBinding *> Insts, llvm::BasicBlock &BB) {
-    for (auto &Inst : Insts)
-      for (auto &LaneOp : Inst->getLaneOps())
-        OpMatches.FindAndConstruct(LaneOp.getOperation());
-    for (auto &I : BB)
-      match(&I);
+  MatchManager(llvm::ArrayRef<InstBinding *> Insts, llvm::BasicBlock &BB);
 
-    for (auto &KV : OpMatches) {
-      auto &Matches = KV.second;
-      std::sort(Matches.begin(), Matches.end(), sortByOutput);
-    }
-  }
+  llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const;
 
-  llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const {
-    auto It = OpMatches.find(Op);
-    assert(It != OpMatches.end());
-    return It->second;
-  }
-
-  llvm::ArrayRef<Operation::Match> getMatchesForOutput(const Operation *Op,
-                                                       llvm::Value *Output) const {
-    auto Matches = getMatches(Op);
-    Operation::Match DummyMatch{false, {}, Output};
-    auto LowerIt = std::lower_bound(Matches.begin(), Matches.end(), DummyMatch,
-                                    sortByOutput);
-    auto UpperIt = std::upper_bound(Matches.begin(), Matches.end(), DummyMatch,
-                                    sortByOutput);
-    return Matches.slice(LowerIt - Matches.begin(), UpperIt - LowerIt);
-  }
+  llvm::ArrayRef<Operation::Match>
+  getMatchesForOutput(const Operation *Op, llvm::Value *Output) const;
 };
+
+void getIntermediateInsts(const Operation::Match &,
+                          llvm::SmallPtrSetImpl<llvm::Instruction *> &);
 
 #endif // end MATCH_MANAGER_H

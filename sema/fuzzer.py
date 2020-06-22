@@ -534,7 +534,7 @@ dst[MAX:256] := 0
 FOR j := 0 to 3
 	tmp1.dword := SignExtend32(a.word[2*j]) * SignExtend32(b.word[2*j])
 	tmp2.dword := SignExtend32(a.word[2*j+1]) * SignExtend32(b.word[2*j+1])
-	dst.dword[j] := Saturate32(src.dword[j] + tmp1 + tmp2)
+	dst.dword[j] := Saturate32(src.dword[j] + tmp1.dword + tmp2.dword)
 ENDFOR
 dst[MAX:128] := 0
 	</operation>
@@ -544,5 +544,5 @@ dst[MAX:128] := 0
   '''
   intrin_node = ET.fromstring(sema)
   spec = get_spec_from_xml(intrin_node)
-  ok = fuzz_intrinsic(spec, num_tests=1000)
+  ok = fuzz_intrinsic(spec, num_tests=100)
   print(ok)

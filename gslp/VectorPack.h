@@ -141,6 +141,9 @@ public:
     return OrderedValues;
   }
 
+  // Get the instructions that would be replaced if we emitted this pack.
+  std::vector<llvm::Instruction *> getReplacedInsts() const;
+
   unsigned numElements() const { return Elements.count(); }
 
   const llvm::BitVector &getDepended() const { return Depended; }
