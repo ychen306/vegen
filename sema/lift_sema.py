@@ -771,8 +771,8 @@ if __name__ == '__main__':
   import functools
   import pickle
 
-  debug = None
   debug = '_mm256_sad_epu8'
+  debug = None
   if debug:
     translator = Translator()
     y = semas[debug][1][0]
@@ -780,8 +780,6 @@ if __name__ == '__main__':
     y_reduced = reduce_bitwidth(y)
     z3.prove(y_reduced == y)
     y = y_reduced
-    print(y)
-    exit()
     outs, dag = translator.translate_formula(y)
     print('typechecked:', typecheck(dag))
     print(outs)

@@ -134,9 +134,20 @@ def select_op(op, signed):
   }
   return unsigned_ops.get(op, op)
 
+def round_bitwidth(bw):
+  if bw < 8:
+    return 8
+  if bw < 16:
+    return 16
+  if bw < 32:
+    return 32
+  if bw < 64:
+    return 64
+  return bw
+
 def binary_op(op, signed=True, trunc=False, get_bitwidth=lambda a, b:max(a.size(), b.size())):
   def impl(a, b, a_ty, b_ty, signed_override=signed):
-    bitwidth = get_bitwidth(a, b)
+    bitwidth = round_bitwidth(get_bitwidth(a, b))
     mask = (1 << get_max_arg_width(a,b))-1
     a = fix_bitwidth(a, bitwidth, a_ty.is_signed)
     b = fix_bitwidth(b, bitwidth, b_ty.is_signed)

@@ -520,22 +520,26 @@ dst[MAX:256] := 0
 </intrinsic>
 '''
   sema = '''
-<intrinsic tech="SSE4.1" vexEq="TRUE" name="_mm_cvtepu8_epi16">
+<intrinsic tech="AVX-512" name="_mm256_dpwssds_epi32">
 	<type>Integer</type>
-	<CPUID>SSE4.1</CPUID>
-	<category>Convert</category>
-	<return type="__m128i" varname="dst" etype="UI16"/>
-	<parameter type="__m128i" varname="a" etype="UI8"/>
-	<description>Zero extend packed unsigned 8-bit integers in "a" to packed 16-bit integers, and store the results in "dst".</description>
+	<CPUID>AVX512_VNNI</CPUID>
+	<CPUID>AVX512VL</CPUID>
+	<category>Arithmetic</category>
+	<return type="__m256i" varname="dst" etype="SI32"/>
+	<parameter type="__m256i" varname="src" etype="SI32"/>
+	<parameter type="__m256i" varname="a" etype="SI16"/>
+	<parameter type="__m256i" varname="b" etype="SI16"/>
+	<description>Multiply groups of 2 adjacent pairs of signed 16-bit integers in "a" with corresponding 16-bit integers in "b", producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in "src" using signed saturation, and store the packed 32-bit results in "dst".</description>
 	<operation>
 FOR j := 0 to 7
-	i := j*8
-	l := j*16
-	dst[l+15:l] := ZeroExtend16(a[i+7:i])
+	tmp1.dword := SignExtend32(a.word[2*j]) * SignExtend32(b.word[2*j])
+	tmp2.dword := SignExtend32(a.word[2*j+1]) * SignExtend32(b.word[2*j+1])
+	dst.dword[j] := Saturate32(src.dword[j] + tmp1 + tmp2)
 ENDFOR
+dst[MAX:256] := 0
 	</operation>
-	<instruction name="PMOVZXBW" form="xmm, xmm" xed="PMOVZXBW_XMMdq_XMMq"/>
-	<header>smmintrin.h</header>
+	<instruction name="VPDPWSSDS" form="ymm, ymm, ymm" xed="VPDPWSSDS_YMMi32_MASKmskw_YMMi16_YMMu32_AVX512"/>
+	<header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
