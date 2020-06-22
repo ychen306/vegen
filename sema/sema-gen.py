@@ -19,7 +19,7 @@ num_interpreted = 0
 
 skipped = False
 skip_to = '_mm512_popcnt_epi16'
-skip_to = '_mm_cvtepu8_epi16'
+skip_to = None
 
 outf = open(out_fname, 'w')
 
