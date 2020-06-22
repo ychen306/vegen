@@ -520,45 +520,25 @@ dst[MAX:256] := 0
 </intrinsic>
 '''
   sema = '''
-<intrinsic tech="AVX-512" name="_mm256_dbsad_epu8">
+<intrinsic tech="SSE4.1" vexEq="TRUE" name="_mm_cvtepu8_epi16">
 	<type>Integer</type>
-	<CPUID>AVX512VL</CPUID>
-	<CPUID>AVX512BW</CPUID>
-	<category>Miscellaneous</category>
-	<return type="__m256i" varname="dst" etype="UI16"/>
-	<parameter type="__m256i" varname="a" etype="UI8"/>
-	<parameter type="__m256i" varname="b" etype="UI8"/>
-	<parameter type="int" varname="imm8" etype="IMM" immwidth="8"/>
-	<description>Compute the sum of absolute differences (SADs) of quadruplets of unsigned 8-bit integers in "a" compared to those in "b", and store the 16-bit results in "dst".
-	Four SADs are performed on four 8-bit quadruplets for each 64-bit lane. The first two SADs use the lower 8-bit quadruplet of the lane from "a", and the last two SADs use the uppper 8-bit quadruplet of the lane from "a". Quadruplets from "b" are selected from within 128-bit lanes according to the control in "imm8", and each SAD in each 64-bit lane uses the selected quadruplet at 8-bit offsets.</description>
+	<CPUID>SSE4.1</CPUID>
+	<category>Convert</category>
+	<return type="__m128i" varname="dst" etype="UI16"/>
+	<parameter type="__m128i" varname="a" etype="UI8"/>
+	<description>Zero extend packed unsigned 8-bit integers in "a" to packed 16-bit integers, and store the results in "dst".</description>
 	<operation>
-FOR i := 0 to 1
-	tmp.m128[i].dword[0] := b.m128[i].dword[ imm8[1:0] ]
-	tmp.m128[i].dword[1] := b.m128[i].dword[ imm8[3:2] ]
-	tmp.m128[i].dword[2] := b.m128[i].dword[ imm8[5:4] ]
-	tmp.m128[i].dword[3] := b.m128[i].dword[ imm8[7:6] ]
+FOR j := 0 to 7
+	i := j*8
+	l := j*16
+	dst[l+15:l] := ZeroExtend16(a[i+7:i])
 ENDFOR
-FOR j := 0 to 3
-	i := j*64
-	dst[i+15:i] := ABS(a[i+7:i] - tmp[i+7:i]) + ABS(a[i+15:i+8] - tmp[i+15:i+8]) +\
-	               ABS(a[i+23:i+16] - tmp[i+23:i+16]) + ABS(a[i+31:i+24] - tmp[i+31:i+24])
-	
-	dst[i+31:i+16] := ABS(a[i+7:i] - tmp[i+15:i+8]) + ABS(a[i+15:i+8] - tmp[i+23:i+16]) +\
-	                  ABS(a[i+23:i+16] - tmp[i+31:i+24]) + ABS(a[i+31:i+24] - tmp[i+39:i+32])
-	
-	dst[i+47:i+32] := ABS(a[i+39:i+32] - tmp[i+23:i+16]) + ABS(a[i+47:i+40] - tmp[i+31:i+24]) +\
-	                  ABS(a[i+55:i+48] - tmp[i+39:i+32]) + ABS(a[i+63:i+56] - tmp[i+47:i+40])
-	
-	dst[i+63:i+48] := ABS(a[i+39:i+32] - tmp[i+31:i+24]) + ABS(a[i+47:i+40] - tmp[i+39:i+32]) +\
-	                  ABS(a[i+55:i+48] - tmp[i+47:i+40]) + ABS(a[i+63:i+56] - tmp[i+55:i+48])
-ENDFOR
-dst[MAX:256] := 0
 	</operation>
-	<instruction name="VDBPSADBW" form="ymm, ymm, ymm, imm8" xed="VDBPSADBW_YMMu16_MASKmskw_YMMu8_YMMu8_IMM8_AVX512"/>
-	<header>immintrin.h</header>
+	<instruction name="PMOVZXBW" form="xmm, xmm" xed="PMOVZXBW_XMMdq_XMMq"/>
+	<header>smmintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
   spec = get_spec_from_xml(intrin_node)
-  ok = fuzz_intrinsic(spec, num_tests=10)
+  ok = fuzz_intrinsic(spec, num_tests=100)
   print(ok)
