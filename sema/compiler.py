@@ -177,8 +177,8 @@ def binary_op(op, signed=True, trunc=False, get_bitwidth=get_max_arg_width):
     return c, useful_bits
   return impl
 
-def get_max_shift_width(a, b):
-  return max(a.size(), b.size(), max_vl)
+def get_max_shift_width(a_ty, b_ty):
+  return max(a_ty.bitwidth, b_ty.bitwidth, max_vl)
 
 # mapping <op, is_float?> -> impl
 binary_op_impls = {
@@ -647,6 +647,8 @@ def builtin_zero_extend(args, env):
 def builtin_zero_extend_to(bw):
   def impl(args, env):
     [(val, ty)] = args
+    if ty.bitwidth > bw:
+      return val, ty
     return z3.ZeroExt(bw-val.size(), val), ty
   return impl
 

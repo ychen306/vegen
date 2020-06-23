@@ -543,31 +543,27 @@ dst[MAX:256] := 0
 </intrinsic>
   '''
   sema = '''
-  <intrinsic tech="AVX-512" name="_mm256_maskz_dpwssds_epi32" rettype="__m256i">
-        <type>Integer</type>
-        <CPUID>AVX512_VNNI</CPUID>
-        <CPUID>AVX512VL</CPUID>
-        <category>Arithmetic</category>
-        <return type="__m256i" varname="dst" etype="SI32"/>
-        <parameter type="__mmask8" varname="k" etype="MASK"/>
-        <parameter type="__m256i" varname="src" etype="SI32"/>
-        <parameter type="__m256i" varname="a" etype="SI16"/>
-        <parameter type="__m256i" varname="b" etype="SI16"/>
-        <description>Multiply groups of 2 adjacent pairs of signed 16-bit integers in "a" with corresponding 16-bit integers in "b", producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in "src" using signed saturation, and store the packed 32-bit results in "dst" using zeromask "k" (elements are zeroed out when the corresponding mask bit is not set).</description>
-        <operation>
+<intrinsic tech="AVX2" name="_mm256_sll_epi32">
+	<type>Integer</type>
+	<CPUID>AVX2</CPUID>
+	<category>Shift</category>
+	<return type="__m256i" varname="dst" etype="UI32"/>
+	<parameter type="__m256i" varname="a" etype="UI32"/>
+	<parameter type="__m128i" varname="count" etype="UI32"/>
+	<description>Shift packed 32-bit integers in "a" left by "count" while shifting in zeros, and store the results in "dst".</description>
+	<operation>
 FOR j := 0 to 7
-        IF k[j]
-                tmp1.dword := SignExtend32(a.word[2*j]) * SignExtend32(b.word[2*j])
-                tmp2.dword := SignExtend32(a.word[2*j+1]) * SignExtend32(b.word[2*j+1])
-                dst.dword[j] := Saturate32(src.dword[j] + tmp1 + tmp2)
-        ELSE
-                dst.dword[j] := 0
-        FI
+	i := j*32
+	IF count[63:0] &gt; 31
+		dst[i+31:i] := 0
+	ELSE
+		dst[i+31:i] := ZeroExtend32(a[i+31:i] &lt;&lt; count[63:0])
+	FI
 ENDFOR
 dst[MAX:256] := 0
-        </operation>
-        <instruction name="VPDPWSSDS" form="ymm {z}, ymm, ymm" xed="VPDPWSSDS_YMMi32_MASKmskw_YMMi16_YMMu32_AVX512"/>
-        <header>immintrin.h</header>
+	</operation>
+	<instruction name="VPSLLD" form="ymm, ymm, xmm" xed="VPSLLD_YMMqq_YMMqq_XMMq"/>
+	<header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
