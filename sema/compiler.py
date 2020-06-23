@@ -32,6 +32,9 @@ class Environment:
     self.func_defs = func_defs
     # mapping expr -> signess
     self.reconfigured_binary_exprs = {}
+    # track range of defined bits for implicitly defined variables
+    # mapping <implicit var> -> <highest defined bit>
+    self.defined_range = {}
 
   def configure_binary_expr_signedness(self, configs):
     self.reconfigured_binary_exprs = dict(configs)
@@ -48,9 +51,22 @@ class Environment:
   def get_func(self, func):
     return self.func_defs[func]
 
-  def define(self, name, type, value=None):
+  def define(self, name, type, value=None, implicit=False):
     assert name not in self.vars
     self.vars[name] = type, value
+    if implicit:
+      self.defined_range[name] = 0 
+
+  def is_implicitly_defined(self, name):
+    return name in self.defined_range
+
+  def update_defined_range(self, name, hi):
+    if name in self.defined_range:
+      self.defined_range[name] = max(self.defined_range[name], hi)
+
+  def get_highest_defined_bit(self, name):
+    assert name in self.defined_range
+    return self.defined_range[name]
 
   def undef(self, name):
     del self.vars[name]
@@ -60,6 +76,9 @@ class Environment:
 
   def get_type(self, name):
     ty, _ = self.vars[name]
+    if self.is_implicitly_defined(name):
+      hi = self.get_highest_defined_bit(name)
+      ty = ty._replace(bitwidth=hi, useful_bits=hi)
     return ty
 
   def set_type(self, name, ty):
@@ -242,10 +261,11 @@ class SymbolicSlice:
     '''
     if env.get_value(self.var) is None:
       lo_idx = z3.simplify(self.lo_idx)
-      assert is_constant(lo_idx) and lo_idx.as_long() == 0
+      assert z3.is_bv_value(lo_idx) and lo_idx.as_long() == 0
       env.set_value(self.var, rhs)
       self.hi_idx = rhs.size() - 1
       ty = env.get_type(self.var)
+      env.update_defined_range(self.var, self.hi_idx)
       env.set_type(self.var, ty._replace(bitwidth=rhs.size()))
       return
       
@@ -282,7 +302,8 @@ class SymbolicSlice:
 
       assert new_val.size() == old_val.size()
       env.set_value(self.var, new_val)
-      return 
+      env.update_defined_range(self.var, hi)
+      return
 
     update_bitwidth = self.hi_idx - self.lo_idx + 1
     # TODO: remove this if
@@ -298,12 +319,19 @@ class SymbolicSlice:
 
     new_val = z3.If(pred, (old_val & ~(mask << self.lo_idx)) | rhs, old_val)
 
+    env.update_defined_range(self.var, old_val.size()-1)
     env.set_value(self.var, new_val)
 
+  def get_hi_idx(self, env):
+    hi_idx = z3.simplify(self.hi_idx)
+    if z3.is_bv_value(hi_idx) and env.is_implicitly_defined(self.var):
+      hi_idx = z3.BitVecVal(
+          min(hi_idx.as_long(), env.get_highest_defined_bit(self.var)),
+          hi_idx.size())
+    return hi_idx
+
   def get_value(self, env):
-    bitwidth = self.hi_idx - self.lo_idx + 1
-    total_bitwidth = env.get_type(self.var).bitwidth
-    val = slice_bit_vec(env.get_value(self.var), self.lo_idx, self.hi_idx)
+    val = slice_bit_vec(env.get_value(self.var), self.lo_idx, self.get_hi_idx(env))
     return val
 
 counter = 0
@@ -375,7 +403,7 @@ def compile_update(update, env, pred):
 
   # TODO: refactor this shit out
   if type(update.lhs) == Var and not env.has(update.lhs.name):
-    env.define(update.lhs.name, type=rhs_type, value=None)
+    env.define(update.lhs.name, type=rhs_type, value=None, implicit=True)
     assert env.has(update.lhs.name)
 
   lhs, _ = compile_expr(update.lhs, env, pred)
@@ -431,7 +459,6 @@ def compile_binary_expr(expr, env, pred):
   impl = binary_op_impls[impl_sig]
 
   result, useful_bits = impl(a, b, a_type, b_type)
-  print(expr, result.size())
 
   if a_type is not None:
     ty = a_type
@@ -449,9 +476,9 @@ def compile_var(var, env, pred=True):
   '''
   if var.name == 'undefined':
     return None, None
-  type = env.get_type(var.name)
-  slice = SymbolicSlice(var.name, conc_val(0, IntegerType(32)), conc_val(type.bitwidth-1, IntegerType(32)))
-  return slice, type
+  ty = env.get_type(var.name)
+  slice = SymbolicSlice(var.name, conc_val(0, IntegerType(32)), conc_val(ty.bitwidth-1, IntegerType(32)))
+  return slice, ty
 
 def compile_stmt(stmt, env, pred=True):
   '''
@@ -541,7 +568,8 @@ def compile_bit_slice(bit_slice, env, pred):
   # assume only integers can be implicitly declared
   if (type(bit_slice.bv) == Var and
       not env.has(bit_slice.bv.name)):
-    env.define(bit_slice.bv.name, type=IntegerType(max_vl), value=conc_val(0, IntegerType(max_vl)))
+    env.define(bit_slice.bv.name, type=IntegerType(max_vl),
+        value=conc_val(0, IntegerType(max_vl)), implicit=True)
   slice_src, ty = compile_expr(bit_slice.bv, env, pred)
 
   # resize bitvectors implicitly defined
@@ -983,7 +1011,8 @@ def compile_lookup(lookup, env, pred):
       not env.has(lookup.obj.name)):
     env.define(lookup.obj.name,
         type=IntegerType(max_vl),
-        value=new_sym_val(IntegerType(max_vl)))
+        value=new_sym_val(IntegerType(max_vl)),
+        implicit=True)
   strides = {
       'bit': 1,
       'byte': 8,
