@@ -1,11 +1,12 @@
 from collections import namedtuple
 
 # is is_pointer then this is a pointer to the type
-ConcreteType = namedtuple('ConcreteType', ['bitwidth', 'is_float', 'is_double', 'is_pointer', 'is_signed'])
+ConcreteType = namedtuple('ConcreteType', ['bitwidth', 'is_float', 'is_double', 'is_pointer', 'is_signed', 'useful_bits'])
 
-IntegerType = lambda bw, is_signed=False: ConcreteType(bw, False, False, False, is_signed)
-FloatType = lambda bw: ConcreteType(bw, True, False, False, False)
-DoubleType = lambda bw: ConcreteType(bw, False, True, False, False)
+IntegerType = (lambda bw, is_signed=False, useful_bits=None:
+    ConcreteType(bw, False, False, False, is_signed, useful_bits or bw))
+FloatType = lambda bw: ConcreteType(bw, True, False, False, False, bw)
+DoubleType = lambda bw: ConcreteType(bw, False, True, False, False, bw)
 
 max_vl = 512
 

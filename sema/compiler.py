@@ -115,10 +115,10 @@ def slice_bit_vec(bv, lo, hi):
   lo = fix_bitwidth(lo, bv.size())
   return z3.LShR(bv, lo) & mask
 
-get_total_arg_width = lambda a, b: a.size() + b.size()
-get_max_arg_width = lambda a, b: max(a.size(), b.size())
-get_add_width = lambda a, b: get_max_arg_width(a, b) + 1
-get_left_width = lambda a, _: a.size()
+get_total_arg_width = lambda a_ty, b_ty: a_ty.useful_bits + b_ty.useful_bits
+get_max_arg_width = lambda a_ty, b_ty: max(a_ty.useful_bits, b_ty.useful_bits)
+get_add_width = lambda a_ty, b_ty: get_max_arg_width(a_ty, b_ty) + 1
+get_left_width = lambda a_ty, _: a_ty.useful_bits
 
 def select_op(op, signed):
   if signed:
@@ -134,16 +134,26 @@ def select_op(op, signed):
   }
   return unsigned_ops.get(op, op)
 
-def binary_op(op, signed=True, trunc=False, get_bitwidth=lambda a, b:max(a.size(), b.size())):
+def round_bitwidth(bw):
+  if bw <= 8:
+    return 8
+  if bw <= 16:
+    return 16
+  if bw <= 32:
+    return 32
+  if bw <= 64:
+    return 64
+  return bw
+
+def binary_op(op, signed=True, trunc=False, get_bitwidth=get_max_arg_width):
   def impl(a, b, a_ty, b_ty, signed_override=signed):
-    bitwidth = get_bitwidth(a, b)
-    mask = (1 << get_max_arg_width(a,b))-1
+    bitwidth = get_bitwidth(a_ty, b_ty)
+    mask = (1 << get_max_arg_width(a_ty, b_ty))-1
     a = fix_bitwidth(a, bitwidth, a_ty.is_signed)
     b = fix_bitwidth(b, bitwidth, b_ty.is_signed)
     c = select_op(op, a_ty.is_signed or b_ty.is_signed)(a, b)
     if trunc:
       c = c & mask
-    print(c.size(), op)
     return c
   return impl
 
@@ -420,6 +430,7 @@ def compile_binary_expr(expr, env, pred):
   impl = binary_op_impls[impl_sig]
 
   result = impl(a, b, a_type, b_type)
+  print(expr, result.size())
 
   if a_type is not None:
     ty = a_type
@@ -429,7 +440,7 @@ def compile_binary_expr(expr, env, pred):
   if z3.is_bool(result):
     result = bool2bv(result)
   is_signed = (a_type and a_type.is_signed) or (b_type and b_type.is_signed)
-  return result, ty._replace(bitwidth=result.size(), is_signed=is_signed)
+  return result, ty._replace(bitwidth=result.size(), is_signed=is_signed, useful_bits=result.size())
 
 def compile_var(var, env, pred=True):
   '''
@@ -548,9 +559,20 @@ def compile_bit_slice(bit_slice, env, pred):
   # in case the bits we are slicing from
   #   is a result of a computation, not a variable
   if type(slice_src) != SymbolicSlice:
-    return slice_bit_vec(slice_src, lo, hi), ty
+    sliced = slice_bit_vec(slice_src, lo, hi)
+    bw = sliced.size()
+  else:
+    sliced = slice_src.slice(lo, hi)
+    bw = z3.simplify(sliced.hi_idx - sliced.lo_idx + 1)
+    if z3.is_bv_value(bw):
+      bw = bw.as_long()
+    else:
+      bw = None
 
-  return slice_src.slice(lo, hi), ty
+  if bw is not None:
+    new_ty = ty._replace(bitwidth=bw, useful_bits=bw)
+
+  return sliced, new_ty
 
 def get_signed_max(bitwidth):
   return (1<<(bitwidth-1))-1

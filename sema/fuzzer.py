@@ -459,26 +459,6 @@ dst[MAX:256] := 0
 </intrinsic>
   '''
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_maddubs_epi16">
-	<type>Integer</type>
-	<CPUID>AVX2</CPUID>
-	<category>Arithmetic</category>
-	<return type="__m256i" varname="dst" etype="SI16"/>
-	<parameter type="__m256i" varname="a" etype="UI8"/>
-	<parameter type="__m256i" varname="b" etype="SI8"/>
-	<description>Vertically multiply each unsigned 8-bit integer from "a" with the corresponding signed 8-bit integer from "b", producing intermediate signed 16-bit integers. Horizontally add adjacent pairs of intermediate signed 16-bit integers, and pack the saturated results in "dst".</description>
-	<operation>
-FOR j := 0 to 15
-	i := j*16
-	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
-ENDFOR
-dst[MAX:256] := 0
-	</operation>
-	<instruction name="VPMADDUBSW" form="ymm, ymm, ymm" xed="VPMADDUBSW_YMMqq_YMMqq_YMMqq"/>
-	<header>immintrin.h</header>
-</intrinsic>
-'''
-  sema = '''
 <intrinsic tech="AVX" name="_mm256_dp_ps">
 	<type>Floating Point</type>
 	<CPUID>AVX</CPUID>
@@ -542,6 +522,26 @@ dst[MAX:128] := 0
 	<header>immintrin.h</header>
 </intrinsic>
   '''
+  sema = '''
+<intrinsic tech="AVX2" name="_mm256_maddubs_epi16">
+	<type>Integer</type>
+	<CPUID>AVX2</CPUID>
+	<category>Arithmetic</category>
+	<return type="__m256i" varname="dst" etype="SI16"/>
+	<parameter type="__m256i" varname="a" etype="UI8"/>
+	<parameter type="__m256i" varname="b" etype="SI8"/>
+	<description>Vertically multiply each unsigned 8-bit integer from "a" with the corresponding signed 8-bit integer from "b", producing intermediate signed 16-bit integers. Horizontally add adjacent pairs of intermediate signed 16-bit integers, and pack the saturated results in "dst".</description>
+	<operation>
+FOR j := 0 to 15
+	i := j*16
+	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
+ENDFOR
+dst[MAX:256] := 0
+	</operation>
+	<instruction name="VPMADDUBSW" form="ymm, ymm, ymm" xed="VPMADDUBSW_YMMqq_YMMqq_YMMqq"/>
+	<header>immintrin.h</header>
+</intrinsic>
+'''
   intrin_node = ET.fromstring(sema)
   spec = get_spec_from_xml(intrin_node)
   ok = fuzz_intrinsic(spec, num_tests=100)
