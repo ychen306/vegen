@@ -460,7 +460,6 @@ def compile_binary_expr(expr, env, pred):
   impl = binary_op_impls[impl_sig]
 
   result, useful_bits = impl(a, b, a_type, b_type)
-  print(expr, result.size())
 
   if a_type is not None:
     ty = a_type
