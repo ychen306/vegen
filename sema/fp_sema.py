@@ -68,7 +68,7 @@ def binary_float_op(op):
     if not precise:
       func_name = 'fp_%s_%d' % (op, bitwidth)
       func = get_uninterpreted_func(func_name, (ty, ty, ty))
-      return func(a, b)
+      return func(a, b), bitwidth
     else:
       c = {
           'add': operator.add,
