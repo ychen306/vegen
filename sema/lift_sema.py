@@ -217,10 +217,11 @@ def elim_dead_branches(f):
   cache = {}
   def memoize(elim):
     def wrapped(f):
-      if f in cache:
-        return cache[f]
+      key = z3_utils.askey(f)
+      if key in cache:
+        return cache[key]
       new_f = elim(f)
-      cache[f] = new_f
+      cache[key] = new_f
       return new_f
     return wrapped
 
@@ -272,10 +273,11 @@ def reduce_bitwidth(f):
 
   def memoize(reducer):
     def wrapped(f):
-      if f in reduced:
-        return reduced[f]
+      key = z3_utils.askey(f)
+      if key in reduced:
+        return reduced[key]
       f_reduced = reducer(f)
-      reduced[f] = f_reduced
+      reduced[key] = f_reduced
       return f_reduced
     return wrapped
 
