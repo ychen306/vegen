@@ -78,7 +78,7 @@ class Environment:
     ty, _ = self.vars[name]
     if self.is_implicitly_defined(name):
       hi = self.get_highest_defined_bit(name)
-      ty = ty._replace(bitwidth=hi, useful_bits=hi)
+      ty = ty._replace(bitwidth=hi+1, useful_bits=hi+1)
     return ty
 
   def set_type(self, name, ty):
@@ -305,6 +305,7 @@ class SymbolicSlice:
       env.update_defined_range(self.var, hi)
       return
 
+
     update_bitwidth = self.hi_idx - self.lo_idx + 1
     # TODO: remove this if
     # increase bitwidth for symbolic bitvector in case of overflow
@@ -459,6 +460,7 @@ def compile_binary_expr(expr, env, pred):
   impl = binary_op_impls[impl_sig]
 
   result, useful_bits = impl(a, b, a_type, b_type)
+  print(expr, result.size())
 
   if a_type is not None:
     ty = a_type

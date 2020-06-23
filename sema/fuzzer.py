@@ -431,34 +431,6 @@ if __name__ == '__main__':
   from intrinsic_types import IntegerType
 
   sema = '''
-  <intrinsic tech="AVX-512" name="_mm256_maskz_dpwssds_epi32" rettype="__m256i">
-        <type>Integer</type>
-        <CPUID>AVX512_VNNI</CPUID>
-        <CPUID>AVX512VL</CPUID>
-        <category>Arithmetic</category>
-        <return type="__m256i" varname="dst" etype="SI32"/>
-        <parameter type="__mmask8" varname="k" etype="MASK"/>
-        <parameter type="__m256i" varname="src" etype="SI32"/>
-        <parameter type="__m256i" varname="a" etype="SI16"/>
-        <parameter type="__m256i" varname="b" etype="SI16"/>
-        <description>Multiply groups of 2 adjacent pairs of signed 16-bit integers in "a" with corresponding 16-bit integers in "b", producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in "src" using signed saturation, and store the packed 32-bit results in "dst" using zeromask "k" (elements are zeroed out when the corresponding mask bit is not set).</description>
-        <operation>
-FOR j := 0 to 7
-        IF k[j]
-                tmp1.dword := SignExtend32(a.word[2*j]) * SignExtend32(b.word[2*j])
-                tmp2.dword := SignExtend32(a.word[2*j+1]) * SignExtend32(b.word[2*j+1])
-                dst.dword[j] := Saturate32(src.dword[j] + tmp1 + tmp2)
-        ELSE
-                dst.dword[j] := 0
-        FI
-ENDFOR
-dst[MAX:256] := 0
-        </operation>
-        <instruction name="VPDPWSSDS" form="ymm {z}, ymm, ymm" xed="VPDPWSSDS_YMMi32_MASKmskw_YMMi16_YMMu32_AVX512"/>
-        <header>immintrin.h</header>
-</intrinsic>
-  '''
-  sema = '''
 <intrinsic tech="AVX2" name="_mm256_maddubs_epi16">
 	<type>Integer</type>
 	<CPUID>AVX2</CPUID>
@@ -520,29 +492,6 @@ dst[MAX:256] := 0
 </intrinsic>
 '''
   sema = '''
-<intrinsic tech="AVX-512" name="_mm_dpwssds_epi32">
-	<type>Integer</type>
-	<CPUID>AVX512_VNNI</CPUID>
-	<CPUID>AVX512VL</CPUID>
-	<category>Arithmetic</category>
-	<return type="__m128i" varname="dst" etype="SI32"/>
-	<parameter type="__m128i" varname="src" etype="SI32"/>
-	<parameter type="__m128i" varname="a" etype="SI16"/>
-	<parameter type="__m128i" varname="b" etype="SI16"/>
-	<description>Multiply groups of 2 adjacent pairs of signed 16-bit integers in "a" with corresponding 16-bit integers in "b", producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in "src" using signed saturation, and store the packed 32-bit results in "dst".</description>
-	<operation>
-FOR j := 0 to 3
-	tmp1.dword := SignExtend32(a.word[2*j]) * SignExtend32(b.word[2*j])
-	tmp2.dword := SignExtend32(a.word[2*j+1]) * SignExtend32(b.word[2*j+1])
-	dst.dword[j] := Saturate32(src.dword[j] + tmp1 + tmp2)
-ENDFOR
-dst[MAX:128] := 0
-	</operation>
-	<instruction name="VPDPWSSDS" form="xmm, xmm, xmm" xed="VPDPWSSDS_XMMi32_MASKmskw_XMMi16_XMMu32_AVX512"/>
-	<header>immintrin.h</header>
-</intrinsic>
-  '''
-  sema = '''
 <intrinsic tech="SSSE3" vexEq="TRUE" name="_mm_maddubs_epi16">
 	<type>Integer</type>
 	<CPUID>SSSE3</CPUID>
@@ -560,6 +509,65 @@ dst[MAX:256] := 0
 	</operation>
 	<instruction name="PMADDUBSW" form="xmm, xmm" xed="PMADDUBSW_XMMdq_XMMdq"/>
 	<header>tmmintrin.h</header>
+</intrinsic>
+  '''
+  sema = '''
+<intrinsic tech="AVX2" name="_mm256_shuffle_epi8">
+	<type>Integer</type>
+	<CPUID>AVX2</CPUID>
+	<category>Swizzle</category>
+	<return type="__m256i" varname="dst" etype="UI8"/>
+	<parameter type="__m256i" varname="a" etype="UI8"/>
+	<parameter type="__m256i" varname="b" etype="UI8"/>
+	<description>Shuffle 8-bit integers in "a" within 128-bit lanes according to shuffle control mask in the corresponding 8-bit element of "b", and store the results in "dst".</description>
+	<operation>
+FOR j := 0 to 15
+	i := j*8
+	IF b[i+7] == 1
+		dst[i+7:i] := 0
+	ELSE
+		index[3:0] := b[i+3:i]
+		dst[i+7:i] := a[index*8+7:index*8]
+	FI
+	IF b[128+i+7] == 1
+		dst[128+i+7:128+i] := 0
+	ELSE
+		index[3:0] := b[128+i+3:128+i]
+		dst[128+i+7:128+i] := a[128+index*8+7:128+index*8]
+	FI
+ENDFOR
+dst[MAX:256] := 0
+	</operation>
+	<instruction name="VPSHUFB" form="ymm, ymm, ymm" xed="VPSHUFB_YMMqq_YMMqq_YMMqq"/>
+	<header>immintrin.h</header>
+</intrinsic>
+  '''
+  sema = '''
+  <intrinsic tech="AVX-512" name="_mm256_maskz_dpwssds_epi32" rettype="__m256i">
+        <type>Integer</type>
+        <CPUID>AVX512_VNNI</CPUID>
+        <CPUID>AVX512VL</CPUID>
+        <category>Arithmetic</category>
+        <return type="__m256i" varname="dst" etype="SI32"/>
+        <parameter type="__mmask8" varname="k" etype="MASK"/>
+        <parameter type="__m256i" varname="src" etype="SI32"/>
+        <parameter type="__m256i" varname="a" etype="SI16"/>
+        <parameter type="__m256i" varname="b" etype="SI16"/>
+        <description>Multiply groups of 2 adjacent pairs of signed 16-bit integers in "a" with corresponding 16-bit integers in "b", producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in "src" using signed saturation, and store the packed 32-bit results in "dst" using zeromask "k" (elements are zeroed out when the corresponding mask bit is not set).</description>
+        <operation>
+FOR j := 0 to 7
+        IF k[j]
+                tmp1.dword := SignExtend32(a.word[2*j]) * SignExtend32(b.word[2*j])
+                tmp2.dword := SignExtend32(a.word[2*j+1]) * SignExtend32(b.word[2*j+1])
+                dst.dword[j] := Saturate32(src.dword[j] + tmp1 + tmp2)
+        ELSE
+                dst.dword[j] := 0
+        FI
+ENDFOR
+dst[MAX:256] := 0
+        </operation>
+        <instruction name="VPDPWSSDS" form="ymm {z}, ymm, ymm" xed="VPDPWSSDS_YMMi32_MASKmskw_YMMi16_YMMu32_AVX512"/>
+        <header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
