@@ -655,6 +655,8 @@ def builtin_zero_extend_to(bw):
 def builtin_sign_extend_to(bw):
   def impl(args, env):
     [(val, ty)] = args
+    if ty.bitwidth > bw:
+      return val, ty
     return z3.SignExt(bw-val.size(), val), ty
   return impl
 
