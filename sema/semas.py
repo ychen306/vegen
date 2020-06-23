@@ -22,9 +22,9 @@ with open('intrinsics.all.sema') as sema_f:
     #  continue
 
     #############
-    if intrin_name.strip() != '_mm_dpwssds_epi32':
-        continue
-    print(intrin_name)
+    #if intrin_name.strip() != '_mm_dpwssds_epi32':
+    #    continue
+    #print(intrin_name)
     #############
 
     #if 'mask' not in intrin_name:

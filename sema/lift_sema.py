@@ -570,7 +570,6 @@ class Translator:
     return new_id
 
   def translate_constant(self, c):
-    print(c, c.size())
     return Constant(value=c.as_long(), bitwidth=quantize_bitwidth(c.size()))
 
   def translate_formula(self, f):
@@ -608,7 +607,6 @@ class Translator:
     return outs, self.ir
 
   def translate(self, f):
-    print('!!!', f)
     if f in self.translated:
       return self.translated[f]
     f = recover_sub(f)
@@ -773,8 +771,8 @@ if __name__ == '__main__':
   import functools
   import pickle
 
-  debug = None
   debug = '_mm_dpwssds_epi32'
+  debug = None
   if debug:
     translator = Translator()
     y = semas[debug][1][0]
