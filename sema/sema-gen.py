@@ -123,7 +123,7 @@ for intrin in data_root.iter('intrinsic'):
     #  continue
     intrins.append(intrin)
 
-pool = Pool(12)
+pool = Pool(128)
 num_intrins = 0
 for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
   num_intrins+=1
