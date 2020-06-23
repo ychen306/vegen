@@ -283,7 +283,7 @@ def reduce_bitwidth(f):
 
   @memoize
   def reduce_bitwidth_rec(f):
-    key = z3.utils.askey(f)
+    key = z3_utils.askey(f)
     if key in reduced:
       return reduced[key]
 
