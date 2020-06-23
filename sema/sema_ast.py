@@ -24,13 +24,14 @@ Lookup = namedtuple('Lookup', ['obj', 'key'])
 FuncDef = namedtuple('FuncDef', ['name', 'params', 'body'])
 Break = namedtuple('Break', [])
 
-Parameter = namedtuple('Parameter', ['name', 'type', 'is_signed'])
+Parameter = namedtuple('Parameter', ['name', 'type', 'is_signed', 'is_imm'])
 Spec = namedtuple('Spec', [
   'intrin', 'inst', 'params',
   'spec', 'rettype', 'binary_exprs',
 
   'inst_form',
   'cpuids',
+  'imm_width', # None of this instruction doesn't have imm8
 
   # configuration of binary exprs
   'configs',

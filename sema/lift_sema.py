@@ -774,11 +774,7 @@ if __name__ == '__main__':
   import pickle
 
   debug = None
-<<<<<<< HEAD
   debug = '_mm_dpwssds_epi32'
-=======
-  debug = '_mm256_sad_epu8'
->>>>>>> sign-of-life
   if debug:
     translator = Translator()
     y = semas[debug][1][0]
@@ -786,8 +782,6 @@ if __name__ == '__main__':
     y_reduced = reduce_bitwidth(y)
     z3.prove(y_reduced == y)
     y = y_reduced
-    print(y)
-    exit()
     outs, dag = translator.translate_formula(y)
     print('typechecked:', typecheck(dag))
     print(outs)
@@ -834,10 +828,10 @@ if __name__ == '__main__':
         log_shuf.write(inst+'\n')
         lifted_shuf[inst] = liveins, outs, dag
     except Exception as e:
-      if not isinstance(e, AssertionError):
-        print('Error processing', inst)
-        traceback.print_exc()
-        exit()
+      #if not isinstance(e, AssertionError):
+      #  print('Error processing', inst)
+      #  traceback.print_exc()
+      #  exit()
       print(inst)
       #print('ERROR PROCESSING:', inst)
       #traceback.print_exc()

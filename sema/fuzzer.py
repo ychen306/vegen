@@ -556,6 +556,7 @@ FOR j := 0 to 7
 	i := j*16
 	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
 ENDFOR
+dst[MAX:256] := 0
 	</operation>
 	<instruction name="PMADDUBSW" form="xmm, xmm" xed="PMADDUBSW_XMMdq_XMMdq"/>
 	<header>tmmintrin.h</header>
