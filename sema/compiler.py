@@ -147,14 +147,15 @@ def round_bitwidth(bw):
 
 def binary_op(op, signed=True, trunc=False, get_bitwidth=get_max_arg_width):
   def impl(a, b, a_ty, b_ty, signed_override=signed):
-    bitwidth = get_bitwidth(a_ty, b_ty)
-    mask = (1 << get_max_arg_width(a_ty, b_ty))-1
+    useful_bits = get_bitwidth(a_ty, b_ty)
+    bitwidth = round_bitwidth(useful_bits)
+    mask = (1 << round_bitwidth(get_max_arg_width(a_ty, b_ty)))-1
     a = fix_bitwidth(a, bitwidth, a_ty.is_signed)
     b = fix_bitwidth(b, bitwidth, b_ty.is_signed)
     c = select_op(op, a_ty.is_signed or b_ty.is_signed)(a, b)
     if trunc:
       c = c & mask
-    return c
+    return c, useful_bits
   return impl
 
 def get_max_shift_width(a, b):
@@ -429,7 +430,7 @@ def compile_binary_expr(expr, env, pred):
   impl_sig = expr.op, is_float(a_type)
   impl = binary_op_impls[impl_sig]
 
-  result = impl(a, b, a_type, b_type)
+  result, useful_bits = impl(a, b, a_type, b_type)
   print(expr, result.size())
 
   if a_type is not None:
@@ -440,7 +441,7 @@ def compile_binary_expr(expr, env, pred):
   if z3.is_bool(result):
     result = bool2bv(result)
   is_signed = (a_type and a_type.is_signed) or (b_type and b_type.is_signed)
-  return result, ty._replace(bitwidth=result.size(), is_signed=is_signed, useful_bits=result.size())
+  return result, ty._replace(bitwidth=result.size(), is_signed=is_signed, useful_bits=useful_bits)
 
 def compile_var(var, env, pred=True):
   '''

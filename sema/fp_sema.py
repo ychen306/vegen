@@ -75,7 +75,7 @@ def binary_float_op(op):
           'sub': operator.sub,
           'mul': operator.mul,
           'div': operator.truediv, }[op](bv2fp(a), bv2fp(b))
-      return z3.fpToIEEEBV(c)
+      return z3.fpToIEEEBV(c), bitwidth
   return impl
 
 def binary_float_cmp(op):
@@ -101,7 +101,7 @@ def binary_float_cmp(op):
           'ne': operator.ne,
           }[op](bv2fp(a), bv2fp(b))
 
-    return bool2bv(result)
+    return bool2bv(result), 1
   return impl
 
 def unary_float_op(op):
