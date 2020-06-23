@@ -283,8 +283,9 @@ def reduce_bitwidth(f):
 
   @memoize
   def reduce_bitwidth_rec(f):
-    if f in reduced:
-      return reduced[f]
+    key = z3.utils.askey(f)
+    if key in reduced:
+      return reduced[key]
 
     op = z3_utils.get_z3_app(f)
     # attempt to recursively reduce the bitwidth of sub computation
