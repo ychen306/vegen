@@ -41,6 +41,7 @@ def get_spec_from_xml(node):
   output = node.find('return')
   assert(output is not None)
   rettype = output.attrib['type']
+  xed = inst.attrib.get('xed')
   return Spec(
       intrin=intrin,
       inst=inst.attrib.get('name'),
@@ -51,6 +52,7 @@ def get_spec_from_xml(node):
       configs={}, # by default nothing is configured
       inst_form=inst_form,
       imm_width=imm_width,
+      xed=xed,
       binary_exprs=binary_exprs)
 
 

@@ -14,26 +14,20 @@ def parse_perf_file(fname, uarch):
   costs = {}
   with open(fname) as f:
     perf = json.load(f)
-    for _, insts in perf.items():
-      for inst, data in insts.items():
-        # data looks something like this [
-        #      {"Broadwell":{l:"1",t:"1",}},
-        #      {"Haswell":{l:"1",t:"1",}},
-        #      {"Ivy Bridge":{l:"1",t:"1",}},
-        #  ]
-        for entry in next(iter(data.values())):
-          if uarch not in entry:
-            continue
-          # throughput
-          tp = entry[uarch]['t']
-          if tp[0] == '~':
-            tp = tp[1:]
-          if '-' in tp:
-            # Throughput is a range in this case (e.g., '16-27').
-            # Just be pessimistic and pick the max.
-            lo, hi = tp.split('-')
-            tp = hi
-          costs[inst.lower()] = float(tp) / 0.5
+    for inst, data in perf.items():
+      # data looks something like this [
+      #      {"Broadwell":{l:"1",t:"1",}},
+      #      {"Haswell":{l:"1",t:"1",}},
+      #      {"Ivy Bridge":{l:"1",t:"1",}},
+      #  ]
+      for entry in data:
+        if uarch not in entry:
+          continue
+        # throughput
+        tp = entry[uarch]['t']
+        if tp == '':
+          continue
+        costs[inst.lower()] = float(tp) / 0.5
   return costs
 
 class VarGenerator:
@@ -339,7 +333,7 @@ if __name__ == '__main__':
 
   inst2cost = parse_perf_file(perf_f, uarch)
   intrin2cost = {
-      inst: inst2cost.get(spec.inst, '1.0 /*default*/')
+      inst: inst2cost.get(spec.xed, '1.0 /*default*/')
       for inst, spec in specs.items() }
 
   debug = None
