@@ -1,6 +1,6 @@
 import z3
 from z3_utils import *
-from compiler import compile
+from compiler import compile, set_expansion_policy, get_expansion_policy
 from fp_sema import set_precision, get_precision
 import operator
 import json
@@ -10,6 +10,7 @@ def dump_spec(spec, precision=True):
   # FIXME: modify this to mark which input must be compile time constant
   orig_precision = get_precision()
   set_precision(precision)
+  orig_expansion_policy = get_expansion_policy()
   param_vals, outs = compile(spec)
   s = z3.Solver()
   for out in outs:
@@ -19,6 +20,7 @@ def dump_spec(spec, precision=True):
   dumped['inputs'] = [(p.decl().name(), p.size()) for p in param_vals]
   dumped['dummy_bench'] = dummy_bench
   set_precision(orig_precision)
+  set_expansion_policy(orig_expansion_policy)
   return json.dumps(dumped)
 
 def load_spec(dumped):

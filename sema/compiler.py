@@ -7,6 +7,7 @@ from intrinsic_types import (
 from sema_ast import *
 from fp_sema import *
 import z3
+from z3_utils import get_uninterpreted_func
 import math
 
 '''
@@ -18,11 +19,13 @@ max_unroll_factor = max_vl * 2
 def unreachable():
   assert False
 
-minimize_bitwidth = False
-def set_bitwidth_minimization(v):
-  global minimize_bitwidth
-  minimize_bitwidth = v
+expand_builtins = True
+def get_expansion_policy():
+  return expand_builtins
 
+def set_expansion_policy(expand):
+  global expand_builtins
+  expand_builtins = expand
 
 class Environment:
   def __init__(self, func_defs=None):
@@ -616,21 +619,33 @@ def get_unsigned_max(bitwidth):
 def get_unsigned_min(bitwidth):
   return 0
 
-def gen_saturation_func(bitwidth, in_signed, out_signed):
+def gen_saturation_func(bitwidth, out_signed):
   hi = get_signed_max(bitwidth) if out_signed else get_unsigned_max(bitwidth)
   lo = get_signed_min(bitwidth) if out_signed else get_unsigned_min(bitwidth)
   def saturate(args, env):
     [(val, ty)] = args
-    lt = operator.lt if ty.is_signed else z3.ULT
-    gt = operator.gt if ty.is_signed else z3.UGT
-    new_val = z3.If(
-        lt(val, lo),
-        lo,
-        z3.If(
-          gt(val, hi),
-          hi,
-          val))
-    return fix_bitwidth(new_val, bitwidth), IntegerType(bitwidth, is_signed=out_signed)
+    out_ty = IntegerType(bitwidth, is_signed=out_signed)
+    if expand_builtins:
+      lt = operator.lt if ty.is_signed else z3.ULT
+      gt = operator.gt if ty.is_signed else z3.UGT
+      new_val = z3.If(
+          lt(val, lo),
+          lo,
+          z3.If(
+            gt(val, hi),
+            hi,
+            val))
+      return fix_bitwidth(new_val, bitwidth), out_ty
+
+    in_ty_str = ('s%d' if ty.is_signed else 'u%d') % val.size()
+    out_ty_str = ('s%d' if out_signed else 'u%d') % bitwidth
+    in_ty_z3 = z3.BitVecSort(val.size())
+    out_ty_z3 = z3.BitVecSort(bitwidth)
+    builtin_name = 'Saturate_%s_to_%s' % (in_ty_str, out_ty_str)
+    builtin_saturate = get_uninterpreted_func(
+        builtin_name, [in_ty_z3, out_ty_z3])
+    return builtin_saturate(val), out_ty
+
   return saturate
 
 def builtin_concat(args, _):
@@ -643,6 +658,44 @@ def builtin_concat(args, _):
 def builtin_zero_extend(args, env):
   [(val, ty)] = args
   return z3.ZeroExt(max_vl, val), ty
+
+def builtin_max(args, env):
+  (a, a_ty), (b, b_ty) = args
+
+  signed = a_ty.is_signed or b_ty.is_signed
+  a, b = match_bitwidth(a, b, signed)
+  bw = a.type()
+  ty = ty._replace(bitwidth=bw, useful_bits=bw)
+
+  if expand_builtins:
+    gt = select_op(operator.gt, signed)
+    return z3.If(gt(a, b), a, b), ty
+
+  # use uninterpreted function
+  builtin_name = ('smax_%d' % bw) if signed else ('umax_%d' % bw)
+  arg_ty = z3.BitVecSort(bw)
+  func_ty = [arg_ty, arg_ty, arg_ty]
+  result = get_uninterpreted_func(builtin_name, func_ty)
+  return result(a, b), ty
+
+def builtin_min(args, env):
+  (a, a_ty), (b, b_ty) = args
+
+  signed = a_ty.is_signed or b_ty.is_signed
+  a, b = match_bitwidth(a, b, signed)
+  bw = a.type()
+  ty = ty._replace(bitwidth=bw, useful_bits=bw)
+
+  if expand_builtins:
+    gt = select_op(operator.lt, signed)
+    return z3.If(lt(a, b), a, b), ty
+
+  # use uninterpreted function
+  builtin_name = ('smin_%d' % bw) if signed else ('umin_%d' % bw)
+  arg_ty = z3.BitVecSort(bw)
+  func_ty = [arg_ty, arg_ty, arg_ty]
+  result = get_uninterpreted_func(builtin_name, func_ty)
+  return result(a, b), ty
 
 def builtin_zero_extend_to(bw):
   def impl(args, env):
@@ -666,13 +719,17 @@ def builtin_sign_extend(args, env):
 
 def builtin_abs(args, env):
   [(val, ty)] = args
-  if not is_float(ty):
-    return z3.If(val < 0, -val, val), ty
-  zero = conc_val(0, ty._replace(bitwidth=val.size()))
-  lt_0 = binary_float_cmp('lt')(val, zero)
-  neg = unary_float_op('neg')(val)
-  return z3.If(lt_0 != 0, neg, val), ty
 
+  if expand_builtins:
+    if not is_float(ty):
+      return z3.If(val < 0, -val, val), ty
+    zero = conc_val(0, ty._replace(bitwidth=val.size()))
+    lt_0 = binary_float_cmp('lt')(val, zero)
+    neg = unary_float_op('neg')(val)
+    return z3.If(lt_0 != 0, neg, val), ty
+
+  arg_ty = z3.BitVecSort(val.size())
+  return get_uninterpreted_func('abs', [arg_ty, arg_ty])(val), ty
 
 def builtin_binary_func(op):
   def impl(args, _):
@@ -704,55 +761,29 @@ def builtin_select(args, _):
   return selected, a_ty._replace(bitwidth=32)
 
 builtins = {
-    'Saturate32': gen_saturation_func(32, True, True),
-    'Saturate16': gen_saturation_func(16, True, True),
-    'Saturate8': gen_saturation_func(8, True, True),
+    'Saturate32': gen_saturation_func(32, True),
+    'Saturate16': gen_saturation_func(16, True),
+    'Saturate8': gen_saturation_func(8, True),
 
-    'SaturateU32': gen_saturation_func(32, True, False),
-    'SaturateU16': gen_saturation_func(16, True, False),
-    'SaturateU8': gen_saturation_func(8, True, False),
+    'SaturateU32': gen_saturation_func(32, False),
+    'SaturateU16': gen_saturation_func(16, False),
+    'SaturateU8': gen_saturation_func(8, False),
 
-    'Saturate_Int16_To_Int8': gen_saturation_func(8, True, True),
-    'Saturate_Int16_To_UnsignedInt8': gen_saturation_func(8, True, False),
-    'Saturate_Int32_To_Int16': gen_saturation_func(16, True, True),
-    'Saturate_Int32_To_Int8': gen_saturation_func(8, True, True),
-    'Saturate_Int32_To_UnsignedInt16': gen_saturation_func(16, True, False),
-    'Saturate_Int64_To_Int16': gen_saturation_func(16, True, True),
-    'Saturate_Int64_To_Int32': gen_saturation_func(32, True, True),
-    'Saturate_Int64_To_Int8': gen_saturation_func(8, True, True),
-    'Saturate_To_Int16': gen_saturation_func(16, True, True),
-    'Saturate_To_Int8': gen_saturation_func(8, True, True),
-    'Saturate_To_UnsignedInt16': gen_saturation_func(16, False, False),
-    'Saturate_To_UnsignedInt8': gen_saturation_func(8, False, False),
-    'Saturate_UnsignedInt16_To_Int8': gen_saturation_func(8, False, True),
-    'Saturate_UnsignedInt32_To_Int16': gen_saturation_func(16, False, True),
-    'Saturate_UnsignedInt32_To_Int8': gen_saturation_func(8, False, True),
-    'Saturate_UnsignedInt64_To_Int16': gen_saturation_func(16, False, True),
-    'Saturate_UnsignedInt64_To_Int32': gen_saturation_func(32, False, True),
-    'Saturate_UnsignedInt64_To_Int8': gen_saturation_func(8, False, True),
-    'SIGNED_DWORD_SATURATE': gen_saturation_func(32, True, True),
-    'Truncate_Int32_To_Int8': gen_saturation_func(8, True, True),
-    'Truncate_Int64_To_Int8': gen_saturation_func(8, True, True),
-    'Truncate_Int32_To_Int16': gen_saturation_func(16, True, True),
-    'Truncate_Int64_To_Int32': gen_saturation_func(32, True, True),
-    'Truncate_Int64_To_Int16': gen_saturation_func(32, True, True),
-    'Truncate_Int16_To_Int8': gen_saturation_func(8, True, True),
 
-    'ZeroExtend': builtin_zero_extend,
-    'ZeroExtend_To_512': builtin_zero_extend,
-    'ZeroExtend64': builtin_zero_extend_to(64),
-    'ZeroExtend32': builtin_zero_extend_to(32),
     'ZeroExtend16': builtin_zero_extend_to(16),
+    'ZeroExtend32': builtin_zero_extend_to(32),
+    'ZeroExtend64': builtin_zero_extend_to(64),
 
     'SignExtend16': builtin_sign_extend_to(16),
     'SignExtend32': builtin_sign_extend_to(32),
     'SignExtend64': builtin_sign_extend_to(64),
 
-    'SignExtend': builtin_sign_extend,
-
     'APPROXIMATE': lambda args, _: args[0], # noop
 
     'ABS': builtin_abs,
+    'MIN': builtin_min,
+    'MAX': builtin_max,
+
     'concat': builtin_concat,
     'PopCount': builtin_popcount,
     'POPCNT': builtin_popcount,

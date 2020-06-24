@@ -1,19 +1,10 @@
 import z3
+from z3_utils import get_uninterpreted_func
 import operator
 
 # TODO: rename this file to z3_utils
 def bool2bv(b):
   return z3.If(b, z3.BitVecVal(1,1), z3.BitVecVal(0,1))
-
-uninterpreted_funcs = {}
-
-def get_uninterpreted_func(func_name, param_types):
-  if func_name in uninterpreted_funcs:
-    return uninterpreted_funcs[func_name]
-
-  func = z3.Function(func_name, *param_types)
-  uninterpreted_funcs[func_name] = func
-  return func
 
 BV32 = z3.BitVecSort(32)
 BV64 = z3.BitVecSort(64)

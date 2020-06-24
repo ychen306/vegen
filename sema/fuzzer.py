@@ -431,26 +431,6 @@ if __name__ == '__main__':
   from intrinsic_types import IntegerType
 
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_maddubs_epi16">
-	<type>Integer</type>
-	<CPUID>AVX2</CPUID>
-	<category>Arithmetic</category>
-	<return type="__m256i" varname="dst" etype="SI16"/>
-	<parameter type="__m256i" varname="a" etype="UI8"/>
-	<parameter type="__m256i" varname="b" etype="SI8"/>
-	<description>Vertically multiply each unsigned 8-bit integer from "a" with the corresponding signed 8-bit integer from "b", producing intermediate signed 16-bit integers. Horizontally add adjacent pairs of intermediate signed 16-bit integers, and pack the saturated results in "dst".</description>
-	<operation>
-FOR j := 0 to 15
-	i := j*16
-	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
-ENDFOR
-dst[MAX:256] := 0
-	</operation>
-	<instruction name="VPMADDUBSW" form="ymm, ymm, ymm" xed="VPMADDUBSW_YMMqq_YMMqq_YMMqq"/>
-	<header>immintrin.h</header>
-</intrinsic>
-'''
-  sema = '''
 <intrinsic tech="AVX" name="_mm256_dp_ps">
 	<type>Floating Point</type>
 	<CPUID>AVX</CPUID>
@@ -543,29 +523,52 @@ dst[MAX:256] := 0
 </intrinsic>
   '''
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_sll_epi32">
+<intrinsic tech="AVX-512" name="_mm256_mask_max_epi8">
 	<type>Integer</type>
-	<CPUID>AVX2</CPUID>
-	<category>Shift</category>
-	<return type="__m256i" varname="dst" etype="UI32"/>
-	<parameter type="__m256i" varname="a" etype="UI32"/>
-	<parameter type="__m128i" varname="count" etype="UI32"/>
-	<description>Shift packed 32-bit integers in "a" left by "count" while shifting in zeros, and store the results in "dst".</description>
+	<CPUID>AVX512VL</CPUID>
+	<CPUID>AVX512BW</CPUID>
+	<category>Arithmetic</category>
+	<return type="__m256i" varname="dst" etype="UI8"/>
+	<parameter type="__m256i" varname="src" etype="UI8"/>
+	<parameter type="__mmask32" varname="k" etype="MASK"/>
+	<parameter type="__m256i" varname="a" etype="SI8"/>
+	<parameter type="__m256i" varname="b" etype="SI8"/>
+	<description>Compare packed signed 8-bit integers in "a" and "b", and store packed maximum values in "dst" using writemask "k" (elements are copied from "src" when the corresponding mask bit is not set).</description>
 	<operation>
-FOR j := 0 to 7
-	i := j*32
-	IF count[63:0] &gt; 31
-		dst[i+31:i] := 0
+FOR j := 0 to 31
+	i := j*8
+	IF k[j]
+		dst[i+7:i] := MAX(a[i+7:i], b[i+7:i])
 	ELSE
-		dst[i+31:i] := ZeroExtend32(a[i+31:i] &lt;&lt; count[63:0])
+		dst[i+7:i] := src[i+7:i]
 	FI
 ENDFOR
 dst[MAX:256] := 0
 	</operation>
-	<instruction name="VPSLLD" form="ymm, ymm, xmm" xed="VPSLLD_YMMqq_YMMqq_XMMq"/>
+	<instruction name="VPMAXSB" form="ymm {k}, ymm, ymm" xed="VPMAXSB_YMMi8_MASKmskw_YMMi8_YMMi8_AVX512"/>
 	<header>immintrin.h</header>
 </intrinsic>
   '''
+  sema = '''
+<intrinsic tech="AVX2" name="_mm256_maddubs_epi16">
+	<type>Integer</type>
+	<CPUID>AVX2</CPUID>
+	<category>Arithmetic</category>
+	<return type="__m256i" varname="dst" etype="SI16"/>
+	<parameter type="__m256i" varname="a" etype="UI8"/>
+	<parameter type="__m256i" varname="b" etype="SI8"/>
+	<description>Vertically multiply each unsigned 8-bit integer from "a" with the corresponding signed 8-bit integer from "b", producing intermediate signed 16-bit integers. Horizontally add adjacent pairs of intermediate signed 16-bit integers, and pack the saturated results in "dst".</description>
+	<operation>
+FOR j := 0 to 15
+	i := j*16
+	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
+ENDFOR
+dst[MAX:256] := 0
+	</operation>
+	<instruction name="VPMADDUBSW" form="ymm, ymm, ymm" xed="VPMADDUBSW_YMMqq_YMMqq_YMMqq"/>
+	<header>immintrin.h</header>
+</intrinsic>
+'''
   intrin_node = ET.fromstring(sema)
   spec = get_spec_from_xml(intrin_node)
   ok = fuzz_intrinsic(spec, num_tests=100)

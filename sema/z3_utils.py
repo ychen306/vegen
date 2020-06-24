@@ -137,3 +137,13 @@ def get_used_bit_range(f, x):
     # the parameters of z3.Extract is inclusive
     # make it exclusive
     return lo, hi+1
+
+uninterpreted_funcs = {}
+def get_uninterpreted_func(func_name, param_types):
+  if func_name in uninterpreted_funcs:
+    return uninterpreted_funcs[func_name]
+
+  func = z3.Function(func_name, *param_types)
+  uninterpreted_funcs[func_name] = func
+  return func
+
