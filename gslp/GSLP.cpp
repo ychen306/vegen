@@ -287,11 +287,13 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   //Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   std::vector<InstBinding *> SupportedIntrinsics;
   for (auto &Inst : Insts) {
-    if (isSupported(&Inst, F))
+    if (isSupported(&Inst, F)) {
       SupportedIntrinsics.push_back(&Inst);
+    }
   }
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size() << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
+  //Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
     errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';
