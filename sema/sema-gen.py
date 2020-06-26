@@ -31,6 +31,9 @@ def get_verified_spec(intrin):
     return False, False, spec
   return ok, compiled, spec
 
+from collections import defaultdict
+categories = defaultdict(int)
+
 intrins = []
 for intrin in data_root.iter('intrinsic'):
   cpuid = intrin.find('CPUID')
@@ -38,6 +41,7 @@ for intrin in data_root.iter('intrinsic'):
   inst = intrin.find('instruction')
   inst_form = None
   if inst is None:
+    categories['NO-INST'] += 1
     continue
   inst_form = inst.attrib['name'], inst.attrib.get('form')
   cpuid_text = 'Unknown'
@@ -46,6 +50,7 @@ for intrin in data_root.iter('intrinsic'):
         'AVX512_4FMAPS', 'AVX512_BF16',
         'INVPCID', 'RTM', 'XSAVE', 
         'FSGSBASE', 'RDRAND', 'RDSEED'):
+      categories[cpuid.text] += 1
       continue
     cpuid_text = cpuid.text
 
@@ -62,14 +67,19 @@ for intrin in data_root.iter('intrinsic'):
       intrin.attrib['name'].startswith('_bit') or
       intrin.attrib['name'] in ('_rdpmc', '_rdtsc') or
       'lzcnt' in intrin.attrib['name'] or
-      'popcnt' in intrin.attrib['name'] or
-      'mask' in intrin.attrib['name']):
+      'popcnt' in intrin.attrib['name']
+      ):
+    if 'mask' in intrin.attrib['name']:
+      categories['mask'] += 1
+    else:
+      categories['zero/fp-manip'] += 1
     continue
   cat = intrin.find('category')
   if cat is not None and cat.text in (
       'Elementary Math Functions', 
       'General Support', 
       'Load', 'Store', 'Special Math Functions'):
+    categories[cat.text] += 1
     continue
   if skip_to is not None and not skipped:
     if intrin.attrib['name'] != skip_to:
@@ -95,33 +105,43 @@ for intrin in data_root.iter('intrinsic'):
       'carry_out' in sema.text or
       'SignBit' in sema.text or
       'SSP' in sema.text):
+    categories['MISC'] += 1
     continue
   if 'str' in intrin.attrib['name']:
     if inst is not None:
       skipped_insts.add(inst_form)
     num_skipped += 1
+    categories['STR'] += 1
     continue
 
   if 'fixup' in intrin.attrib['name']:
     if inst is not None:
       skipped_insts.add(inst_form)
+    categories['fp-manip'] += 1
     num_skipped += 1
     continue
   if 'round' in intrin.attrib['name']:
     if inst is not None:
       skipped_insts.add(inst_form)
+    categories['fp-manip'] += 1
     num_skipped += 1
     continue
   if 'prefetch' in intrin.attrib['name']:
     if inst is not None:
       skipped_insts.add(inst_form)
     num_skipped += 1
+    categories['PREFETCH'] += 1
     continue
 
   if inst is not None and sema is not None:
     #if 'ELSE IF' in sema.text:
     #  continue
     intrins.append(intrin)
+
+from pprint import pprint
+pprint(categories)
+print('Total filtered:', sum(categories.values()))
+exit()
 
 pool = Pool(128)
 num_intrins = 0
