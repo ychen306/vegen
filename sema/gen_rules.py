@@ -27,7 +27,7 @@ def parse_perf_file(fname, uarch):
         tp = entry[uarch]['t']
         if tp == '':
           continue
-        costs[inst.lower()] = float(tp) / 0.5
+        costs[inst] = float(tp) / 0.5
   return costs
 
 class VarGenerator:

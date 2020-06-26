@@ -141,7 +141,6 @@ for intrin in data_root.iter('intrinsic'):
 from pprint import pprint
 pprint(categories)
 print('Total filtered:', sum(categories.values()))
-exit()
 
 pool = Pool(128)
 num_intrins = 0
