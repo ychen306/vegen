@@ -610,6 +610,15 @@ class Translator:
     return outs, self.ir
 
   def translate(self, f):
+    # detect `~(a | b)` and turn them into `~a & ~b`
+    try:
+      [x] = match_with(f, z3.Z3_OP_BNOT, 1)
+      [a, b] = match_with(x, z3.Z3_OP_BOR, 2)
+      # don't simplify the whole expression
+      f = z3.simplify(~a) & z3.simplify(~b)
+    except MatchFailure:
+      pass
+
     if f in self.translated:
       return self.translated[f]
     f = recover_sub(f)
@@ -775,6 +784,8 @@ if __name__ == '__main__':
   import pickle
 
   debug = '_mm_dpwssds_epi32'
+  debug = '_mm256_andnot_pd'
+  debug = '_mm256_and_pd'
   debug = None
   if debug:
     translator = Translator()
