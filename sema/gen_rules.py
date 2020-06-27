@@ -145,6 +145,7 @@ class BoundOperation:
     self.liveins = liveins
     self.bound_liveins = bound_liveins
     self.livein2vars = livein2vars
+    self.bitwidth = root_bitwidth
 
   def __hash__(self):
     return hash(self.matching_code)
@@ -278,6 +279,8 @@ def emit_sig(sig):
   has_imm8 = 'true' if any(x.is_constant for x in xs) else 'false'
   return f'InstSignature {{ {{ {input_sizes} }}, {{ {output_sizes} }}, {has_imm8} }}' 
 
+op_sigs = set()
+
 def codegen(bundles, inst_features, costs):
   '''
   bundles : mapping inst -> bundles
@@ -303,6 +306,8 @@ def codegen(bundles, inst_features, costs):
         op_name = operation_names[op]
 
       bound_liveins = [emit_slice(liveins, bundle.dag[x]) for x in op.get_bound_liveins()]
+      op_sig = tuple[ bundle.dag[x].hi - bundle.dag[x].lo for x in op.get_bound_liveins() ], op.bitwidth
+      op_sigs.add(sig)
       bound_ops.append(
           f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
     sig = emit_sig(bundle.sig)
@@ -385,6 +390,8 @@ using namespace llvm;
 using namespace PatternMatch;
     ''')
     f.write(codegen(bundles, inst_features, intrin2cost))
+
+  print(op_sigs)
 
   exit()
 
