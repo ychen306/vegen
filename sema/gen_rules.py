@@ -307,7 +307,7 @@ def codegen(bundles, inst_features, costs):
 
       bound_liveins = [emit_slice(liveins, bundle.dag[x]) for x in op.get_bound_liveins()]
       op_sig = tuple(bundle.dag[x].hi - bundle.dag[x].lo for x in op.get_bound_liveins()), op.bitwidth
-      op_sigs.add(sig)
+      op_sigs.add(op_sig)
       bound_ops.append(
           f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
     sig = emit_sig(bundle.sig)
