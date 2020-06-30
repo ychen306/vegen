@@ -554,7 +554,8 @@ def compile(spec):
     else:
       retval = env.get_value('k')
     out_size = intrinsic_types[spec.rettype].bitwidth
-    dst = z3.simplify(fix_bitwidth(retval, out_size), bv_ite2id=True, elim_and=False, elim_ite=False, ite_extra_rules=True)
+    dst = z3.simplify(fix_bitwidth(retval, out_size),
+        bv_ite2id=True, elim_and=False, elim_ite=False, ite_extra_rules=True)
     outputs = [dst] + outputs
   return param_vals, outputs
 
@@ -629,11 +630,11 @@ def gen_saturation_func(bitwidth, out_signed):
       lt = operator.lt if ty.is_signed else z3.ULT
       gt = operator.gt if ty.is_signed else z3.UGT
       new_val = z3.If(
-          lt(val, lo),
-          lo,
+          gt(val, hi-1),
+          hi,
           z3.If(
-            gt(val, hi),
-            hi,
+            lt(val, lo+1),
+            lo,
             val))
       return fix_bitwidth(new_val, bitwidth), out_ty
 
@@ -1085,23 +1086,26 @@ if __name__ == '__main__':
 
   import xml.etree.ElementTree as ET
   sema = '''
-<intrinsic tech="AVX" name="_mm256_div_ps">
-	<type>Floating Point</type>
-	<CPUID>AVX</CPUID>
-	<category>Arithmetic</category>
-	<return type="__m256" varname="dst" etype="FP32"/>
-	<parameter type="__m256" varname="a" etype="FP32"/>
-	<parameter type="__m256" varname="b" etype="FP32"/>
-	<description>Divide packed single-precision (32-bit) floating-point elements in "a" by packed elements in "b", and store the results in "dst".</description>
+<intrinsic tech="SSE2" vexEq="TRUE" name="_mm_packs_epi32">
+	<type>Integer</type>
+	<CPUID>SSE2</CPUID>
+	<category>Miscellaneous</category>
+	<return type="__m128i" varname="dst" etype="SI16"/>
+	<parameter type="__m128i" varname="a" etype="SI32"/>
+	<parameter type="__m128i" varname="b" etype="SI32"/>
+	<description>Convert packed signed 32-bit integers from "a" and "b" to packed 16-bit integers using signed saturation, and store the results in "dst".</description>
 	<operation>
-FOR j := 0 to 7
-	i := 32*j
-	dst[i+31:i] := a[i+31:i] / b[i+31:i]
-ENDFOR
-dst[MAX:256] := 0
+dst[15:0] := Saturate16(a[31:0])
+dst[31:16] := Saturate16(a[63:32])
+dst[47:32] := Saturate16(a[95:64])
+dst[63:48] := Saturate16(a[127:96])
+dst[79:64] := Saturate16(b[31:0])
+dst[95:80] := Saturate16(b[63:32])
+dst[111:96] := Saturate16(b[95:64])
+dst[127:112] := Saturate16(b[127:96])
 	</operation>
-	<instruction name="VDIVPS" form="ymm, ymm, ymm" xed="VDIVPS_YMMqq_YMMqq_YMMqq"/>
-	<header>immintrin.h</header>
+	<instruction name="PACKSSDW" form="xmm, xmm" xed="PACKSSDW_XMMdq_XMMdq"/>
+	<header>emmintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)

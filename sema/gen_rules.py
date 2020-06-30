@@ -5,6 +5,7 @@ from manual_parser import get_spec_from_xml
 from sig import get_inst_sigs
 import io
 import json
+from canonicalize import canonicalize
 
 def get_const_pattern(const):
   #return f'm_SpecificInt(APInt({const.bitwidth}, {const.value}ull))'
@@ -47,8 +48,16 @@ class BoundOperation:
 
   '''
   def __init__(self, root, dag):
+    try:
+      dag, root = canonicalize(dag, root)
+    except:
+      dag, root = dag, root
+
     var_generator = VarGenerator()
 
+    #dag = extract_sub_dag(dag, root)
+
+    # FIXME : make liveins a list of nodes instead of node ids
     liveins = []
     bound_liveins = []
     vars_to_declare = []
@@ -105,7 +114,7 @@ class BoundOperation:
         x = var_generator.new_var()
         # first time seeing a live-in
         if len(livein2vars[node_id]) == 0:
-          liveins.append(node_id)
+          liveins.append(node)
           bound_liveins.append(x)
         vars_to_declare.append(x)
         livein2vars[node_id].append(x)
@@ -305,8 +314,8 @@ def codegen(bundles, inst_features, costs):
       else:
         op_name = operation_names[op]
 
-      bound_liveins = [emit_slice(liveins, bundle.dag[x]) for x in op.get_bound_liveins()]
-      op_sig = tuple(bundle.dag[x].hi - bundle.dag[x].lo for x in op.get_bound_liveins()), op.bitwidth
+      bound_liveins = [emit_slice(liveins, x) for x in op.get_bound_liveins()]
+      op_sig = tuple(x.hi - x.lo for x in op.get_bound_liveins()), op.bitwidth
       op_sigs.add(op_sig)
       bound_ops.append(
           f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
@@ -341,10 +350,13 @@ if __name__ == '__main__':
       inst: inst2cost.get(spec.xed, '1.0 /*default*/')
       for inst, spec in specs.items() }
 
+  debug = '_mm_packs_epi32'
   debug = None
 
   if debug:
     _, outs, dag = lifted[debug]
+    bo = BoundOperation(outs[0], dag)
+    print(bo.get_matching_code())
     rb = RuleBundle(sigs[debug], semas[debug], outs, dag)
     print(rb.all_lanes_simple())
     print(rb.has_nop())

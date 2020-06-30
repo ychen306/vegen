@@ -598,8 +598,9 @@ class Translator:
               for i in range(0, x.size(), size))
         elems = partitioned_elems
 
+      print(elems[0])
+      exit()
       # output is a concat, probably vector code
-      print('!!!!', elems[0])
       outs = [self.translate(x) for x in elems]
     # translate the slices
     slice2ir = self.extraction_history.translate_slices(self)
@@ -787,7 +788,7 @@ if __name__ == '__main__':
   debug = '_mm_dpwssds_epi32'
   debug = '_mm256_andnot_pd'
   debug = None
-  debug = '_mm256_adds_epu8'
+  debug = '_mm_packs_epi32'
   if debug:
     translator = Translator()
     y = semas[debug][1][0]
