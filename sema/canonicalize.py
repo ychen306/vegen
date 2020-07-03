@@ -53,7 +53,7 @@ inst_constructors = {
 
 # mapping *some* llvm opcodes back to opcode of our ir
 llvm_opcodes = {
-    'trunc': 'trunc',
+    'trunc': 'Trunc',
     'sext': 'SExt',
     'zext': 'ZExt',
 
