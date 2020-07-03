@@ -7,7 +7,7 @@ from intrinsic_types import (
 from sema_ast import *
 from fp_sema import *
 import z3
-from z3_utils import get_uninterpreted_func
+import z3_utils
 import math
 
 '''
@@ -19,16 +19,9 @@ max_unroll_factor = max_vl * 2
 def unreachable():
   assert False
 
-expand_builtins = True
-def get_expansion_policy():
-  return expand_builtins
-
-def set_expansion_policy(expand):
-  global expand_builtins
-  expand_builtins = expand
-
 class Environment:
-  def __init__(self, func_defs=None):
+  def __init__(self, expand_builtins, func_defs=None):
+    self.expand_builtins = expand_builtins
     self.vars = {}
     if func_defs is None:
       func_defs = {}
@@ -505,9 +498,9 @@ def compile_expr(expr, env, pred=True, deref=False):
 def is_mask(ty):
   return ty.startswith('__mmask')
 
-def compile(spec):
+def compile(spec, expand_builtins=True):
   # bring the arguments into scope
-  env = Environment()
+  env = Environment(expand_builtins)
   env.configure_binary_expr_signedness(spec.configs)
 
   out_params = []
@@ -608,42 +601,23 @@ def compile_bit_slice(bit_slice, env, pred):
 
   return sliced, new_ty
 
-def get_signed_max(bitwidth):
-  return (1<<(bitwidth-1))-1
-
-def get_signed_min(bitwidth):
-  return -get_signed_max(bitwidth)-1
-
-def get_unsigned_max(bitwidth):
-  return (1<<bitwidth)-1
-
-def get_unsigned_min(bitwidth):
-  return 0
-
 def gen_saturation_func(bitwidth, out_signed):
-  hi = get_signed_max(bitwidth) if out_signed else get_unsigned_max(bitwidth)
-  lo = get_signed_min(bitwidth) if out_signed else get_unsigned_min(bitwidth)
   def saturate(args, env):
     [(val, ty)] = args
+    val = fix_bitwidth(val, bitwidth * 2)
     out_ty = IntegerType(bitwidth, is_signed=out_signed)
-    if expand_builtins:
-      lt = operator.lt if ty.is_signed else z3.ULT
-      gt = operator.gt if ty.is_signed else z3.UGT
-      new_val = z3.If(
-          gt(val, hi-1),
-          hi,
-          z3.If(
-            lt(val, lo+1),
-            lo,
-            val))
-      return fix_bitwidth(new_val, bitwidth), out_ty
+    if env.expand_builtins:
+      saturated = z3_utils.saturate(val,
+          val.size(), ty.is_signed,
+          bitwidth, out_signed)
+      return fix_bitwidth(saturated, bitwidth), out_ty
 
     in_ty_str = ('s%d' if ty.is_signed else 'u%d') % val.size()
     out_ty_str = ('s%d' if out_signed else 'u%d') % bitwidth
     in_ty_z3 = z3.BitVecSort(val.size())
     out_ty_z3 = z3.BitVecSort(bitwidth)
     builtin_name = 'Saturate_%s_to_%s' % (in_ty_str, out_ty_str)
-    builtin_saturate = get_uninterpreted_func(
+    builtin_saturate = z3_utils.get_uninterpreted_func(
         builtin_name, [in_ty_z3, out_ty_z3])
     return builtin_saturate(val), out_ty
 
@@ -668,16 +642,16 @@ def builtin_max(args, env):
   bw = a.type()
   ty = ty._replace(bitwidth=bw, useful_bits=bw)
 
-  if expand_builtins:
-    gt = select_op(operator.gt, signed)
-    return z3.If(gt(a, b), a, b), ty
+  #if expand_builtins:
+  gt = select_op(operator.gt, signed)
+  return z3.If(gt(a, b), a, b), ty
 
-  # use uninterpreted function
-  builtin_name = ('smax_%d' % bw) if signed else ('umax_%d' % bw)
-  arg_ty = z3.BitVecSort(bw)
-  func_ty = [arg_ty, arg_ty, arg_ty]
-  result = get_uninterpreted_func(builtin_name, func_ty)
-  return result(a, b), ty
+  ## use uninterpreted function
+  #builtin_name = ('smax_%d' % bw) if signed else ('umax_%d' % bw)
+  #arg_ty = z3.BitVecSort(bw)
+  #func_ty = [arg_ty, arg_ty, arg_ty]
+  #result = z3_utils.get_uninterpreted_func(builtin_name, func_ty)
+  #return result(a, b), ty
 
 def builtin_min(args, env):
   (a, a_ty), (b, b_ty) = args
@@ -687,16 +661,16 @@ def builtin_min(args, env):
   bw = a.type()
   ty = ty._replace(bitwidth=bw, useful_bits=bw)
 
-  if expand_builtins:
-    gt = select_op(operator.lt, signed)
-    return z3.If(lt(a, b), a, b), ty
+  #if expand_builtins:
+  gt = select_op(operator.lt, signed)
+  return z3.If(lt(a, b), a, b), ty
 
-  # use uninterpreted function
-  builtin_name = ('smin_%d' % bw) if signed else ('umin_%d' % bw)
-  arg_ty = z3.BitVecSort(bw)
-  func_ty = [arg_ty, arg_ty, arg_ty]
-  result = get_uninterpreted_func(builtin_name, func_ty)
-  return result(a, b), ty
+  ## use uninterpreted function
+  #builtin_name = ('smin_%d' % bw) if signed else ('umin_%d' % bw)
+  #arg_ty = z3.BitVecSort(bw)
+  #func_ty = [arg_ty, arg_ty, arg_ty]
+  #result = z3_utils.get_uninterpreted_func(builtin_name, func_ty)
+  #return result(a, b), ty
 
 def builtin_zero_extend_to(bw):
   def impl(args, env):
@@ -721,16 +695,16 @@ def builtin_sign_extend(args, env):
 def builtin_abs(args, env):
   [(val, ty)] = args
 
-  if expand_builtins:
-    if not is_float(ty):
-      return z3.If(val < 0, -val, val), ty
-    zero = conc_val(0, ty._replace(bitwidth=val.size()))
-    lt_0 = binary_float_cmp('lt')(val, zero)
-    neg = unary_float_op('neg')(val)
-    return z3.If(lt_0 != 0, neg, val), ty
+  #if expand_builtins:
+  if not is_float(ty):
+    return z3.If(val < 0, -val, val), ty
+  zero = conc_val(0, ty._replace(bitwidth=val.size()))
+  lt_0 = binary_float_cmp('lt')(val, zero)
+  neg = unary_float_op('neg')(val)
+  return z3.If(lt_0 != 0, neg, val), ty
 
-  arg_ty = z3.BitVecSort(val.size())
-  return get_uninterpreted_func('abs', [arg_ty, arg_ty])(val), ty
+  #arg_ty = z3.BitVecSort(val.size())
+  #return z3_utils.get_uninterpreted_func('abs', [arg_ty, arg_ty])(val), ty
 
 def builtin_binary_func(op):
   def impl(args, _):
@@ -816,7 +790,7 @@ def gen_int2fp(in_signed, in_bitwidth, out_bitwidth):
         'i' if in_signed else 'u',
         in_bitwidth,
         out_bitwidth)
-    func = get_uninterpreted_func(func_name, param_types)
+    func = z3_utils.get_uninterpreted_func(func_name, param_types)
     x = fix_bitwidth(x, in_bitwidth)
     return func(x), FloatType(out_bitwidth)
 
@@ -845,7 +819,7 @@ def gen_fp2int(out_signed, in_bitwidth, out_bitwidth):
     else:
       fp_ty = z3.Float64()
     param_types = fp_ty, out_ty
-    func = get_uninterpreted_func(func_name, param_types)
+    func = z3_utils.get_uninterpreted_func(func_name, param_types)
     return func(x), IntegerType(out_bitwidth)
 
   return precise_impl if precise else uninterpreted_impl
@@ -937,7 +911,7 @@ def compile_call(call, env, pred):
     assert bitwidth in (32, 64)
     ty = z3.BitVecSort(bitwidth)
     func_name = 'fp_%s_%d' % (call.func.lower(), bitwidth)
-    func = get_uninterpreted_func(func_name, (ty, ty))
+    func = z3_utils.get_uninterpreted_func(func_name, (ty, ty))
     return func(a), a_ty
 
   # assume there is no indirect calls

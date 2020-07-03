@@ -598,8 +598,6 @@ class Translator:
               for i in range(0, x.size(), size))
         elems = partitioned_elems
 
-      print(elems[0])
-      exit()
       # output is a concat, probably vector code
       outs = [self.translate(x) for x in elems]
     # translate the slices
@@ -751,12 +749,33 @@ class Translator:
         op='ZExt', 
         bitwidth=concat_size, args=[b_translated])
 
+  def translate_saturation(self, f):
+    sat_name = f.decl().name()
+    [x] = f.children()
+
+    _, in_name, _, out_name = sat_name.split('_')
+
+    in_signed = in_name.startswith('s')
+    in_bw = int(in_name[1:])
+
+    out_signed = out_name.startswith('s')
+    out_bw = int(out_name[1:])
+
+    saturated = z3_utils.saturate(x, in_bw, in_signed, out_bw, out_signed)
+    node_id = self.translate(z3.Extract(f.size()-1, 0, saturated))
+    return self.ir[node_id]
+
   def translate_uninterpreted(self, f):
     args = f.children()
     if len(args) == 0:
       # live-in
       return self.extraction_history.record(z3.Extract(f.size()-1, 0, f))
+
     func = f.decl().name()
+
+    if func.startswith('Saturate'):
+      return self.translate_saturation(f)
+
     assert func.startswith('fp_')
     _, op, _ = func.split('_')
     assert z3.is_bool(f) or f.size() in [32, 64]
@@ -787,8 +806,8 @@ if __name__ == '__main__':
 
   debug = '_mm_dpwssds_epi32'
   debug = '_mm256_andnot_pd'
-  debug = None
   debug = '_mm_packs_epi32'
+  debug = None
   if debug:
     translator = Translator()
     y = semas[debug][1][0]

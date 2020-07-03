@@ -147,3 +147,27 @@ def get_uninterpreted_func(func_name, param_types):
   uninterpreted_funcs[func_name] = func
   return func
 
+def get_signed_max(bitwidth):
+  return (1<<(bitwidth-1))-1
+
+def get_signed_min(bitwidth):
+  return -get_signed_max(bitwidth)-1
+
+def get_unsigned_max(bitwidth):
+  return (1<<bitwidth)-1
+
+def get_unsigned_min(bitwidth):
+  return 0
+
+def saturate(x, in_bw, in_signed, out_bw, out_signed):
+  hi = get_signed_max(out_bw) if out_signed else get_unsigned_max(out_bw)
+  lo = get_signed_min(out_bw) if out_signed else get_unsigned_min(out_bw)
+  lt = operator.lt if in_signed else z3.ULT
+  gt = operator.gt if in_signed else z3.UGT
+  return z3.If(
+      gt(x, hi),
+      hi,
+      z3.If(
+        lt(x, lo+1),
+        lo,
+        x))
