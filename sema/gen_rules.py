@@ -8,8 +8,7 @@ import json
 from canonicalize import canonicalize
 
 def get_const_pattern(const):
-  #return f'm_SpecificInt(APInt({const.bitwidth}, {const.value}ull))'
-  return f'm_SpecificInt({const.value}ull)'
+  return f'm_SpecificInt(APInt({const.bitwidth}, "{const.value}", 10))'
 
 def parse_perf_file(fname, uarch):
   costs = {}
