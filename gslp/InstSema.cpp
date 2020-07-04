@@ -119,7 +119,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_And(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(32, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
@@ -274,16 +274,16 @@ class : public Operation {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_LShr(
         m_c_Add(
           m_c_Add(
             m_ZExt(
               m_Value(tmp0)),
-            m_SpecificInt(1ull)),
+            m_SpecificInt(APInt(32, "1", 10))),
           m_ZExt(
             m_Value(tmp1))),
-        m_SpecificInt(1ull)))) &&
+        m_SpecificInt(APInt(32, "1", 10))))) &&
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -545,16 +545,16 @@ class : public Operation {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_LShr(
         m_c_Add(
           m_c_Add(
             m_ZExt(
               m_Value(tmp0)),
-            m_SpecificInt(1ull)),
+            m_SpecificInt(APInt(16, "1", 10))),
           m_ZExt(
             m_Value(tmp1))),
-        m_SpecificInt(1ull)))) &&
+        m_SpecificInt(APInt(16, "1", 10))))) &&
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
@@ -688,7 +688,7 @@ class : public Operation {
     CmpInst::Predicate tmp0;
     Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_c_Add(
@@ -696,13 +696,13 @@ PatternMatch::match(V, m_trunc(
               m_Value(tmp1)),
             m_ZExt(
               m_Value(tmp2))),
-          m_SpecificInt(65535ull)),
+          m_SpecificInt(APInt(32, "65535", 10))),
         m_c_Add(
           m_ZExt(
             m_Value(tmp3)),
           m_ZExt(
             m_Value(tmp4))),
-        m_SpecificInt(65535ull)))) &&
+        m_SpecificInt(APInt(32, "65535", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp1, 16) &&
 tmp1 == tmp3 &&
@@ -760,7 +760,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_And(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(32, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
@@ -839,7 +839,7 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp6;
     Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
@@ -849,14 +849,14 @@ PatternMatch::match(V, m_trunc(
                   m_Value(tmp2)),
                 m_SExt(
                   m_Value(tmp3))),
-              m_SpecificInt(-32768ull)),
+              m_SpecificInt(APInt(32, "-32768", 10))),
             m_c_Add(
               m_SExt(
                 m_Value(tmp4)),
               m_SExt(
                 m_Value(tmp5))),
-            m_SpecificInt(-32768ull)),
-          m_SpecificInt(32767ull)),
+            m_SpecificInt(APInt(32, "-32768", 10))),
+          m_SpecificInt(APInt(32, "32767", 10))),
         m_Select(
           m_Cmp(tmp6, 
             m_c_Add(
@@ -864,14 +864,14 @@ PatternMatch::match(V, m_trunc(
                 m_Value(tmp7)),
               m_SExt(
                 m_Value(tmp8))),
-            m_SpecificInt(-32768ull)),
+            m_SpecificInt(APInt(32, "-32768", 10))),
           m_c_Add(
             m_SExt(
               m_Value(tmp9)),
             m_SExt(
               m_Value(tmp10))),
-          m_SpecificInt(-32768ull)),
-        m_SpecificInt(32767ull)))) &&
+          m_SpecificInt(APInt(32, "-32768", 10))),
+        m_SpecificInt(APInt(32, "32767", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp6 == CmpInst::Predicate::ICMP_SGT &&
@@ -911,8 +911,8 @@ PatternMatch::match(V, m_Select(
             m_Value(tmp1)),
           m_SExt(
             m_Value(tmp2))),
-        m_SpecificInt(32767ull)),
-      m_SpecificInt(32767ull),
+        m_SpecificInt(APInt(32, "32767", 10))),
+      m_SpecificInt(APInt(16, "32767", 10)),
       m_Select(
         m_Cmp(tmp3, 
           m_Sub(
@@ -920,8 +920,8 @@ PatternMatch::match(V, m_Select(
               m_Value(tmp4)),
             m_SExt(
               m_Value(tmp5))),
-          m_SpecificInt(-32767ull)),
-        m_SpecificInt(-32768ull),
+          m_SpecificInt(APInt(32, "-32767", 10))),
+        m_SpecificInt(APInt(16, "-32768", 10)),
         m_Sub(
           m_Value(tmp6),
           m_Value(tmp7))))) &&
@@ -954,7 +954,7 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp6;
     Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10;
     bool Matched = hasBitWidth(V, 8) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
@@ -964,14 +964,14 @@ PatternMatch::match(V, m_trunc(
                   m_Value(tmp2)),
                 m_SExt(
                   m_Value(tmp3))),
-              m_SpecificInt(-128ull)),
+              m_SpecificInt(APInt(16, "-128", 10))),
             m_c_Add(
               m_SExt(
                 m_Value(tmp4)),
               m_SExt(
                 m_Value(tmp5))),
-            m_SpecificInt(-128ull)),
-          m_SpecificInt(127ull)),
+            m_SpecificInt(APInt(16, "-128", 10))),
+          m_SpecificInt(APInt(16, "127", 10))),
         m_Select(
           m_Cmp(tmp6, 
             m_c_Add(
@@ -979,14 +979,14 @@ PatternMatch::match(V, m_trunc(
                 m_Value(tmp7)),
               m_SExt(
                 m_Value(tmp8))),
-            m_SpecificInt(-128ull)),
+            m_SpecificInt(APInt(16, "-128", 10))),
           m_c_Add(
             m_SExt(
               m_Value(tmp9)),
             m_SExt(
               m_Value(tmp10))),
-          m_SpecificInt(-128ull)),
-        m_SpecificInt(127ull)))) &&
+          m_SpecificInt(APInt(16, "-128", 10))),
+        m_SpecificInt(APInt(16, "127", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp6 == CmpInst::Predicate::ICMP_SGT &&
@@ -1019,7 +1019,7 @@ class : public Operation {
     CmpInst::Predicate tmp0;
     Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_c_Add(
@@ -1027,13 +1027,13 @@ PatternMatch::match(V, m_trunc(
               m_Value(tmp1)),
             m_ZExt(
               m_Value(tmp2))),
-          m_SpecificInt(255ull)),
+          m_SpecificInt(APInt(16, "255", 10))),
         m_c_Add(
           m_ZExt(
             m_Value(tmp3)),
           m_ZExt(
             m_Value(tmp4))),
-        m_SpecificInt(255ull)))) &&
+        m_SpecificInt(APInt(16, "255", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp1, 8) &&
 tmp1 == tmp3 &&
@@ -1118,17 +1118,17 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_c_FAdd(
           m_Select(m_Value(tmp1), m_c_FMul(
               m_Value(tmp2),
-              m_Value(tmp3)), m_SpecificInt(0ull)),
+              m_Value(tmp3)), m_SpecificInt(APInt(32, "0", 10))),
           m_Select(m_Value(tmp4), m_c_FMul(
               m_Value(tmp5),
-              m_Value(tmp6)), m_SpecificInt(0ull))),
+              m_Value(tmp6)), m_SpecificInt(APInt(32, "0", 10)))),
         m_c_FAdd(
           m_Select(m_Value(tmp7), m_c_FMul(
               m_Value(tmp8),
-              m_Value(tmp9)), m_SpecificInt(0ull)),
+              m_Value(tmp9)), m_SpecificInt(APInt(32, "0", 10))),
           m_Select(m_Value(tmp10), m_c_FMul(
               m_Value(tmp11),
-              m_Value(tmp12)), m_SpecificInt(0ull)))), m_SpecificInt(0ull))) &&
+              m_Value(tmp12)), m_SpecificInt(APInt(32, "0", 10))))), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -1227,14 +1227,14 @@ class : public Operation {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_LShr(
         m_c_Mul(
           m_SExt(
             m_Value(tmp0)),
           m_SExt(
             m_Value(tmp1))),
-        m_SpecificInt(16ull)))) &&
+        m_SpecificInt(APInt(32, "16", 10))))) &&
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -1312,23 +1312,23 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp4;
     Value *tmp2; Value *tmp3; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 8) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
             m_Cmp(tmp1, 
               m_Value(tmp2),
-              m_SpecificInt(-128ull)),
+              m_SpecificInt(APInt(16, "-128", 10))),
             m_Value(tmp3),
-            m_SpecificInt(-128ull)),
-          m_SpecificInt(127ull)),
+            m_SpecificInt(APInt(16, "-128", 10))),
+          m_SpecificInt(APInt(16, "127", 10))),
         m_Select(
           m_Cmp(tmp4, 
             m_Value(tmp5),
-            m_SpecificInt(-128ull)),
+            m_SpecificInt(APInt(16, "-128", 10))),
           m_Value(tmp6),
-          m_SpecificInt(-128ull)),
-        m_SpecificInt(127ull)))) &&
+          m_SpecificInt(APInt(16, "-128", 10))),
+        m_SpecificInt(APInt(16, "127", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SGT &&
@@ -1357,23 +1357,23 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp4;
     Value *tmp2; Value *tmp3; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
             m_Cmp(tmp1, 
               m_Value(tmp2),
-              m_SpecificInt(-32768ull)),
+              m_SpecificInt(APInt(32, "-32768", 10))),
             m_Value(tmp3),
-            m_SpecificInt(-32768ull)),
-          m_SpecificInt(32767ull)),
+            m_SpecificInt(APInt(32, "-32768", 10))),
+          m_SpecificInt(APInt(32, "32767", 10))),
         m_Select(
           m_Cmp(tmp4, 
             m_Value(tmp5),
-            m_SpecificInt(-32768ull)),
+            m_SpecificInt(APInt(32, "-32768", 10))),
           m_Value(tmp6),
-          m_SpecificInt(-32768ull)),
-        m_SpecificInt(32767ull)))) &&
+          m_SpecificInt(APInt(32, "-32768", 10))),
+        m_SpecificInt(APInt(32, "32767", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SGT &&
@@ -1428,23 +1428,23 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp4;
     Value *tmp2; Value *tmp3; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 8) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
             m_Cmp(tmp1, 
               m_Value(tmp2),
-              m_SpecificInt(0ull)),
+              m_SpecificInt(APInt(16, "0", 10))),
             m_Value(tmp3),
-            m_SpecificInt(0ull)),
-          m_SpecificInt(255ull)),
+            m_SpecificInt(APInt(16, "0", 10))),
+          m_SpecificInt(APInt(16, "255", 10))),
         m_Select(
           m_Cmp(tmp4, 
             m_Value(tmp5),
-            m_SpecificInt(0ull)),
+            m_SpecificInt(APInt(16, "0", 10))),
           m_Value(tmp6),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(255ull)))) &&
+          m_SpecificInt(APInt(16, "0", 10))),
+        m_SpecificInt(APInt(16, "255", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SGT &&
@@ -1473,7 +1473,7 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp10;
     Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
@@ -1491,7 +1491,7 @@ PatternMatch::match(V, m_trunc(
                       m_Value(tmp4)),
                     m_ZExt(
                       m_Value(tmp5))))),
-              m_SpecificInt(-32768ull)),
+              m_SpecificInt(APInt(32, "-32768", 10))),
             m_c_Add(
               m_SExt(
                 m_c_Mul(
@@ -1505,8 +1505,8 @@ PatternMatch::match(V, m_trunc(
                     m_Value(tmp8)),
                   m_ZExt(
                     m_Value(tmp9))))),
-            m_SpecificInt(-32768ull)),
-          m_SpecificInt(32767ull)),
+            m_SpecificInt(APInt(32, "-32768", 10))),
+          m_SpecificInt(APInt(32, "32767", 10))),
         m_Select(
           m_Cmp(tmp10, 
             m_c_Add(
@@ -1522,7 +1522,7 @@ PatternMatch::match(V, m_trunc(
                     m_Value(tmp13)),
                   m_ZExt(
                     m_Value(tmp14))))),
-            m_SpecificInt(-32768ull)),
+            m_SpecificInt(APInt(32, "-32768", 10))),
           m_c_Add(
             m_SExt(
               m_c_Mul(
@@ -1536,8 +1536,8 @@ PatternMatch::match(V, m_trunc(
                   m_Value(tmp17)),
                 m_ZExt(
                   m_Value(tmp18))))),
-          m_SpecificInt(-32768ull)),
-        m_SpecificInt(32767ull)))) &&
+          m_SpecificInt(APInt(32, "-32768", 10))),
+        m_SpecificInt(APInt(32, "32767", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp10 == CmpInst::Predicate::ICMP_SGT &&
@@ -1581,8 +1581,8 @@ class : public Operation {
 PatternMatch::match(V, m_Select(
       m_Cmp(tmp0, 
         m_Value(tmp1),
-        m_SpecificInt(63ull)),
-      m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "63", 10))),
+      m_SpecificInt(APInt(32, "0", 10)),
       m_LShr(
         m_Value(tmp2),
         m_Value(tmp3)))) &&
@@ -1611,7 +1611,7 @@ class : public Operation {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_LShr(
         m_c_Add(
           m_LShr(
@@ -1620,9 +1620,9 @@ PatternMatch::match(V, m_trunc(
                 m_Value(tmp0)),
               m_SExt(
                 m_Value(tmp1))),
-            m_SpecificInt(14ull)),
-          m_SpecificInt(1ull)),
-        m_SpecificInt(1ull)))) &&
+            m_SpecificInt(APInt(32, "14", 10))),
+          m_SpecificInt(APInt(32, "1", 10))),
+        m_SpecificInt(APInt(32, "1", 10))))) &&
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -1646,23 +1646,23 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp4;
     Value *tmp2; Value *tmp3; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
             m_Cmp(tmp1, 
               m_Value(tmp2),
-              m_SpecificInt(0ull)),
+              m_SpecificInt(APInt(32, "0", 10))),
             m_Value(tmp3),
-            m_SpecificInt(0ull)),
-          m_SpecificInt(65535ull)),
+            m_SpecificInt(APInt(32, "0", 10))),
+          m_SpecificInt(APInt(32, "65535", 10))),
         m_Select(
           m_Cmp(tmp4, 
             m_Value(tmp5),
-            m_SpecificInt(0ull)),
+            m_SpecificInt(APInt(32, "0", 10))),
           m_Value(tmp6),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(65535ull)))) &&
+          m_SpecificInt(APInt(32, "0", 10))),
+        m_SpecificInt(APInt(32, "65535", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SGT &&
@@ -1696,9 +1696,9 @@ PatternMatch::match(V, m_AShr(
       m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
-          m_SpecificInt(31ull)),
+          m_SpecificInt(APInt(32, "31", 10))),
         m_Value(tmp3),
-        m_SpecificInt(31ull)))) &&
+        m_SpecificInt(APInt(32, "31", 10))))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp2, 32) &&
@@ -1727,8 +1727,8 @@ class : public Operation {
 PatternMatch::match(V, m_Select(
       m_Cmp(tmp0, 
         m_Value(tmp1),
-        m_SpecificInt(31ull)),
-      m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "31", 10))),
+      m_SpecificInt(APInt(32, "0", 10)),
       m_LShr(
         m_Value(tmp2),
         m_Value(tmp3)))) &&
@@ -1757,14 +1757,14 @@ class : public Operation {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_LShr(
         m_c_Mul(
           m_ZExt(
             m_Value(tmp0)),
           m_ZExt(
             m_Value(tmp1))),
-        m_SpecificInt(16ull)))) &&
+        m_SpecificInt(APInt(32, "16", 10))))) &&
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -1818,18 +1818,18 @@ PatternMatch::match(V, m_Select(
       m_c_Xor(
         m_Cmp(tmp0, 
           m_Value(tmp1),
-          m_SpecificInt(0ull)),
+          m_SpecificInt(APInt(32, "0", 10))),
         m_Cmp(tmp2, 
           m_Value(tmp3),
-          m_SpecificInt(-1ull))),
+          m_SpecificInt(APInt(32, "-1", 10)))),
       m_Value(tmp4),
       m_Select(
         m_Cmp(tmp5, 
           m_Value(tmp6),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10))),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_Sub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_Value(tmp7))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 tmp2 == CmpInst::Predicate::ICMP_SGT &&
@@ -1864,18 +1864,18 @@ PatternMatch::match(V, m_Select(
       m_c_Xor(
         m_Cmp(tmp0, 
           m_Value(tmp1),
-          m_SpecificInt(0ull)),
+          m_SpecificInt(APInt(16, "0", 10))),
         m_Cmp(tmp2, 
           m_Value(tmp3),
-          m_SpecificInt(-1ull))),
+          m_SpecificInt(APInt(16, "-1", 10)))),
       m_Value(tmp4),
       m_Select(
         m_Cmp(tmp5, 
           m_Value(tmp6),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(0ull),
+          m_SpecificInt(APInt(16, "0", 10))),
+        m_SpecificInt(APInt(16, "0", 10)),
         m_Sub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(16, "0", 10)),
           m_Value(tmp7))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 tmp2 == CmpInst::Predicate::ICMP_SGT &&
@@ -1934,12 +1934,12 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(16, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(65535ull),
-          m_Value(tmp4))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(16, "65535", 10)),
+          m_Value(tmp4))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -1973,8 +1973,8 @@ PatternMatch::match(V, m_Select(
             m_Value(tmp1)),
           m_SExt(
             m_Value(tmp2))),
-        m_SpecificInt(127ull)),
-      m_SpecificInt(127ull),
+        m_SpecificInt(APInt(16, "127", 10))),
+      m_SpecificInt(APInt(8, "127", 10)),
       m_Select(
         m_Cmp(tmp3, 
           m_Sub(
@@ -1982,8 +1982,8 @@ PatternMatch::match(V, m_Select(
               m_Value(tmp4)),
             m_SExt(
               m_Value(tmp5))),
-          m_SpecificInt(-127ull)),
-        m_SpecificInt(-128ull),
+          m_SpecificInt(APInt(16, "-127", 10))),
+        m_SpecificInt(APInt(8, "-128", 10)),
         m_Sub(
           m_Value(tmp6),
           m_Value(tmp7))))) &&
@@ -2018,12 +2018,12 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 8) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(8, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(255ull),
-          m_Value(tmp4))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(8, "255", 10)),
+          m_Value(tmp4))), m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -2053,9 +2053,9 @@ class : public Operation {
 PatternMatch::match(V, m_Select(
       m_Cmp(tmp0, 
         m_Value(tmp1),
-        m_SpecificInt(0ull)),
+        m_SpecificInt(APInt(16, "0", 10))),
       m_Sub(
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(16, "0", 10)),
         m_Value(tmp2)),
       m_Value(tmp3))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
@@ -2085,11 +2085,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(16, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(65535ull),
+          m_SpecificInt(APInt(16, "65535", 10)),
           m_Value(tmp4))), m_Value(tmp5))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
@@ -2122,18 +2122,18 @@ PatternMatch::match(V, m_Select(
       m_c_Xor(
         m_Cmp(tmp0, 
           m_Value(tmp1),
-          m_SpecificInt(0ull)),
+          m_SpecificInt(APInt(8, "0", 10))),
         m_Cmp(tmp2, 
           m_Value(tmp3),
-          m_SpecificInt(-1ull))),
+          m_SpecificInt(APInt(8, "-1", 10)))),
       m_Value(tmp4),
       m_Select(
         m_Cmp(tmp5, 
           m_Value(tmp6),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(0ull),
+          m_SpecificInt(APInt(8, "0", 10))),
+        m_SpecificInt(APInt(8, "0", 10)),
         m_Sub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(8, "0", 10)),
           m_Value(tmp7))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 tmp2 == CmpInst::Predicate::ICMP_SGT &&
@@ -2166,11 +2166,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 8) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(8, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(255ull),
+          m_SpecificInt(APInt(8, "255", 10)),
           m_Value(tmp4))), m_Value(tmp5))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
@@ -2202,9 +2202,9 @@ class : public Operation {
 PatternMatch::match(V, m_Select(
       m_Cmp(tmp0, 
         m_Value(tmp1),
-        m_SpecificInt(0ull)),
+        m_SpecificInt(APInt(8, "0", 10))),
       m_Sub(
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(8, "0", 10)),
         m_Value(tmp2)),
       m_Value(tmp3))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
@@ -2236,13 +2236,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
@@ -2276,14 +2276,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -2315,14 +2315,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(127ull)),
-          m_SpecificInt(127ull),
+            m_SpecificInt(APInt(16, "127", 10))),
+          m_SpecificInt(APInt(16, "127", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(65409ull)),
-            m_SpecificInt(65408ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(16, "65409", 10))),
+            m_SpecificInt(APInt(16, "65408", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -2354,13 +2354,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(127ull)),
-          m_SpecificInt(127ull),
+            m_SpecificInt(APInt(16, "127", 10))),
+          m_SpecificInt(APInt(16, "127", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(65409ull)),
-            m_SpecificInt(65408ull),
+              m_SpecificInt(APInt(16, "65409", 10))),
+            m_SpecificInt(APInt(16, "65408", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
@@ -2394,14 +2394,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(65535ull)),
-          m_SpecificInt(65535ull),
+            m_SpecificInt(APInt(32, "65535", 10))),
+          m_SpecificInt(APInt(32, "65535", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(32, "1", 10))),
+            m_SpecificInt(APInt(32, "0", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -2433,13 +2433,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(65535ull)),
-          m_SpecificInt(65535ull),
+            m_SpecificInt(APInt(32, "65535", 10))),
+          m_SpecificInt(APInt(32, "65535", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(32, "1", 10))),
+            m_SpecificInt(APInt(32, "0", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
@@ -2473,14 +2473,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(255ull)),
-          m_SpecificInt(255ull),
+            m_SpecificInt(APInt(16, "255", 10))),
+          m_SpecificInt(APInt(16, "255", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(16, "1", 10))),
+            m_SpecificInt(APInt(16, "0", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -2516,8 +2516,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -2525,13 +2525,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
             m_c_Add(
               m_SExt(
                 m_Value(tmp7)),
               m_SExt(
-                m_Value(tmp8)))))), m_SpecificInt(0ull))) &&
+                m_Value(tmp8)))))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -2570,8 +2570,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(127ull)),
-          m_SpecificInt(127ull),
+            m_SpecificInt(APInt(16, "127", 10))),
+          m_SpecificInt(APInt(16, "127", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -2579,13 +2579,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(65409ull)),
-            m_SpecificInt(65408ull),
+              m_SpecificInt(APInt(16, "65409", 10))),
+            m_SpecificInt(APInt(16, "65408", 10)),
             m_c_Add(
               m_SExt(
                 m_Value(tmp7)),
               m_SExt(
-                m_Value(tmp8)))))), m_SpecificInt(0ull))) &&
+                m_Value(tmp8)))))), m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -2618,7 +2618,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 8) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Add(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(8, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -2679,8 +2679,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(127ull)),
-          m_SpecificInt(127ull),
+            m_SpecificInt(APInt(16, "127", 10))),
+          m_SpecificInt(APInt(16, "127", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -2688,8 +2688,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(65409ull)),
-            m_SpecificInt(65408ull),
+              m_SpecificInt(APInt(16, "65409", 10))),
+            m_SpecificInt(APInt(16, "65408", 10)),
             m_c_Add(
               m_SExt(
                 m_Value(tmp7)),
@@ -2734,8 +2734,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -2743,8 +2743,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
             m_c_Add(
               m_SExt(
                 m_Value(tmp7)),
@@ -2789,8 +2789,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_ZExt(
                 m_Value(tmp3))),
-            m_SpecificInt(255ull)),
-          m_SpecificInt(255ull),
+            m_SpecificInt(APInt(16, "255", 10))),
+          m_SpecificInt(APInt(16, "255", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -2798,13 +2798,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_ZExt(
                   m_Value(tmp6))),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(16, "1", 10))),
+            m_SpecificInt(APInt(16, "0", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp7)),
               m_ZExt(
-                m_Value(tmp8)))))), m_SpecificInt(0ull))) &&
+                m_Value(tmp8)))))), m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp4 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 1) &&
@@ -2839,13 +2839,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(255ull)),
-          m_SpecificInt(255ull),
+            m_SpecificInt(APInt(16, "255", 10))),
+          m_SpecificInt(APInt(16, "255", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(16, "1", 10))),
+            m_SpecificInt(APInt(16, "0", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
@@ -2883,8 +2883,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_ZExt(
                 m_Value(tmp3))),
-            m_SpecificInt(65535ull)),
-          m_SpecificInt(65535ull),
+            m_SpecificInt(APInt(32, "65535", 10))),
+          m_SpecificInt(APInt(32, "65535", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -2892,8 +2892,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_ZExt(
                   m_Value(tmp6))),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(32, "1", 10))),
+            m_SpecificInt(APInt(32, "0", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp7)),
@@ -2938,8 +2938,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_ZExt(
                 m_Value(tmp3))),
-            m_SpecificInt(255ull)),
-          m_SpecificInt(255ull),
+            m_SpecificInt(APInt(16, "255", 10))),
+          m_SpecificInt(APInt(16, "255", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -2947,8 +2947,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_ZExt(
                   m_Value(tmp6))),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(16, "1", 10))),
+            m_SpecificInt(APInt(16, "0", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp7)),
@@ -2993,8 +2993,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_ZExt(
                 m_Value(tmp3))),
-            m_SpecificInt(65535ull)),
-          m_SpecificInt(65535ull),
+            m_SpecificInt(APInt(32, "65535", 10))),
+          m_SpecificInt(APInt(32, "65535", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_c_Add(
@@ -3002,13 +3002,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_ZExt(
                   m_Value(tmp6))),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(32, "1", 10))),
+            m_SpecificInt(APInt(32, "0", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp7)),
               m_ZExt(
-                m_Value(tmp8)))))), m_SpecificInt(0ull))) &&
+                m_Value(tmp8)))))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp4 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 1) &&
@@ -3041,7 +3041,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Add(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -3097,13 +3097,13 @@ class : public Operation {
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_LShr(
           m_c_Add(
-            m_SpecificInt(1ull),
+            m_SpecificInt(APInt(16, "1", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp1)),
               m_ZExt(
                 m_Value(tmp2)))),
-          m_SpecificInt(1ull))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(16, "1", 10)))), m_SpecificInt(APInt(8, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -3131,13 +3131,13 @@ class : public Operation {
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_LShr(
           m_c_Add(
-            m_SpecificInt(1ull),
+            m_SpecificInt(APInt(32, "1", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp1)),
               m_ZExt(
                 m_Value(tmp2)))),
-          m_SpecificInt(1ull))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(32, "1", 10)))), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -3165,13 +3165,13 @@ class : public Operation {
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_LShr(
           m_c_Add(
-            m_SpecificInt(1ull),
+            m_SpecificInt(APInt(32, "1", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp1)),
               m_ZExt(
                 m_Value(tmp2)))),
-          m_SpecificInt(1ull))), m_Value(tmp3))) &&
+          m_SpecificInt(APInt(32, "1", 10)))), m_Value(tmp3))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
@@ -3200,13 +3200,13 @@ class : public Operation {
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_LShr(
           m_c_Add(
-            m_SpecificInt(1ull),
+            m_SpecificInt(APInt(16, "1", 10)),
             m_c_Add(
               m_ZExt(
                 m_Value(tmp1)),
               m_ZExt(
                 m_Value(tmp2)))),
-          m_SpecificInt(1ull))), m_Value(tmp3))) &&
+          m_SpecificInt(APInt(16, "1", 10)))), m_Value(tmp3))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8) &&
@@ -3344,8 +3344,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -3375,8 +3375,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -3406,8 +3406,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -3437,8 +3437,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -3522,8 +3522,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -3553,8 +3553,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -3692,8 +3692,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -3723,8 +3723,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -3754,8 +3754,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -3785,8 +3785,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -3870,8 +3870,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -3901,8 +3901,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -3944,8 +3944,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                     m_Value(tmp4)),
                   m_SExt(
                     m_Value(tmp5))))),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp6, 
               m_c_Add(
@@ -3961,8 +3961,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                       m_Value(tmp9)),
                     m_SExt(
                       m_Value(tmp10))))),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
             m_c_Add(
               m_SExt(
                 m_c_Mul(
@@ -3975,7 +3975,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_ZExt(
                     m_Value(tmp13)),
                   m_SExt(
-                    m_Value(tmp14)))))))), m_SpecificInt(0ull))) &&
+                    m_Value(tmp14)))))))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp6 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -4022,7 +4022,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Add(
           m_SExt(
             m_Value(tmp3)),
           m_SExt(
-            m_Value(tmp4)))), m_SpecificInt(0ull))) &&
+            m_Value(tmp4)))), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
@@ -4065,8 +4065,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                     m_Value(tmp4)),
                   m_SExt(
                     m_Value(tmp5))))),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp6, 
               m_c_Add(
@@ -4082,8 +4082,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                       m_Value(tmp9)),
                     m_SExt(
                       m_Value(tmp10))))),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
             m_c_Add(
               m_SExt(
                 m_c_Mul(
@@ -4173,7 +4173,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_SExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
@@ -4197,13 +4197,13 @@ class : public Operation {
     CmpInst::Predicate tmp0;
     Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 8) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Value(tmp1),
-          m_SpecificInt(255ull)),
+          m_SpecificInt(APInt(16, "255", 10))),
         m_Value(tmp2),
-        m_SpecificInt(255ull)))) &&
+        m_SpecificInt(APInt(16, "255", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp1, 16) &&
 tmp1 == tmp2;
@@ -4232,13 +4232,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(255ull)),
-          m_SpecificInt(255ull),
+            m_SpecificInt(APInt(16, "255", 10))),
+          m_SpecificInt(APInt(16, "255", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(16, "1", 10))),
+            m_SpecificInt(APInt(16, "0", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp3 == CmpInst::Predicate::ICMP_ULT &&
@@ -4298,14 +4298,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(255ull)),
-          m_SpecificInt(255ull),
+            m_SpecificInt(APInt(16, "255", 10))),
+          m_SpecificInt(APInt(16, "255", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(16, "1", 10))),
+            m_SpecificInt(APInt(16, "0", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp3 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 1) &&
@@ -4334,7 +4334,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_ZExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
@@ -4387,15 +4387,15 @@ class : public Operation {
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_LShr(
           m_c_Add(
-            m_SpecificInt(1ull),
+            m_SpecificInt(APInt(32, "1", 10)),
             m_AShr(
               m_c_Mul(
                 m_SExt(
                   m_Value(tmp1)),
                 m_SExt(
                   m_Value(tmp2))),
-              m_SpecificInt(14ull))),
-          m_SpecificInt(1ull))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(32, "14", 10)))),
+          m_SpecificInt(APInt(32, "1", 10)))), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -4427,7 +4427,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
               m_Value(tmp1)),
             m_ZExt(
               m_Value(tmp2))),
-          m_SpecificInt(16ull))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(32, "16", 10)))), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -4455,15 +4455,15 @@ class : public Operation {
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_LShr(
           m_c_Add(
-            m_SpecificInt(1ull),
+            m_SpecificInt(APInt(32, "1", 10)),
             m_AShr(
               m_c_Mul(
                 m_SExt(
                   m_Value(tmp1)),
                 m_SExt(
                   m_Value(tmp2))),
-              m_SpecificInt(14ull))),
-          m_SpecificInt(1ull))), m_Value(tmp3))) &&
+              m_SpecificInt(APInt(32, "14", 10)))),
+          m_SpecificInt(APInt(32, "1", 10)))), m_Value(tmp3))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
@@ -4491,7 +4491,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Mul(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -4523,7 +4523,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
               m_Value(tmp1)),
             m_SExt(
               m_Value(tmp2))),
-          m_SpecificInt(16ull))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(32, "16", 10)))), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -4583,7 +4583,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
               m_Value(tmp1)),
             m_SExt(
               m_Value(tmp2))),
-          m_SpecificInt(16ull))), m_Value(tmp3))) &&
+          m_SpecificInt(APInt(32, "16", 10)))), m_Value(tmp3))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
@@ -4616,7 +4616,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
               m_Value(tmp1)),
             m_ZExt(
               m_Value(tmp2))),
-          m_SpecificInt(16ull))), m_Value(tmp3))) &&
+          m_SpecificInt(APInt(32, "16", 10)))), m_Value(tmp3))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16) &&
@@ -4647,9 +4647,9 @@ PatternMatch::match(V, m_AShr(
       m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
-          m_SpecificInt(15ull)),
+          m_SpecificInt(APInt(16, "15", 10))),
         m_Value(tmp3),
-        m_SpecificInt(15ull)))) &&
+        m_SpecificInt(APInt(16, "15", 10))))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp2, 16) &&
@@ -4683,11 +4683,11 @@ PatternMatch::match(V, m_Select(
           m_c_And(
             m_Cmp(tmp2, 
               m_Value(tmp3),
-              m_SpecificInt(15ull)),
+              m_SpecificInt(APInt(16, "15", 10))),
             m_Value(tmp4)),
-          m_SpecificInt(15ull),
+          m_SpecificInt(APInt(16, "15", 10)),
           m_Value(tmp5))),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp2 == CmpInst::Predicate::ICMP_UGT &&
 hasBitWidth(tmp0, 1) &&
 tmp0 == tmp4 &&
@@ -4718,8 +4718,8 @@ class : public Operation {
 PatternMatch::match(V, m_Select(
       m_Cmp(tmp0, 
         m_Value(tmp1),
-        m_SpecificInt(15ull)),
-      m_SpecificInt(0ull),
+        m_SpecificInt(APInt(16, "15", 10))),
+      m_SpecificInt(APInt(16, "0", 10)),
       m_LShr(
         m_Value(tmp2),
         m_Value(tmp3)))) &&
@@ -4756,9 +4756,9 @@ PatternMatch::match(V, m_Select(
           m_c_And(
             m_Cmp(tmp2, 
               m_Value(tmp3),
-              m_SpecificInt(15ull)),
+              m_SpecificInt(APInt(16, "15", 10))),
             m_Value(tmp4)),
-          m_SpecificInt(15ull),
+          m_SpecificInt(APInt(16, "15", 10)),
           m_Value(tmp5))),
       m_Value(tmp6))) &&
 tmp2 == CmpInst::Predicate::ICMP_UGT &&
@@ -4795,13 +4795,13 @@ PatternMatch::match(V, m_Select(
         m_c_And(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(15ull)),
+            m_SpecificInt(APInt(16, "15", 10))),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(16, "0", 10)),
         m_LShr(
           m_Value(tmp4),
           m_Value(tmp5))),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 hasBitWidth(tmp0, 1) &&
 tmp0 == tmp3 &&
@@ -4835,9 +4835,9 @@ PatternMatch::match(V, m_Select(
         m_c_And(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(15ull)),
+            m_SpecificInt(APInt(16, "15", 10))),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(16, "0", 10)),
         m_LShr(
           m_Value(tmp4),
           m_Value(tmp5))),
@@ -4872,7 +4872,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 8) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Sub(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(8, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -4905,8 +4905,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_Sub(
@@ -4914,13 +4914,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
             m_Sub(
               m_SExt(
                 m_Value(tmp7)),
               m_SExt(
-                m_Value(tmp8)))))), m_SpecificInt(0ull))) &&
+                m_Value(tmp8)))))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -4987,8 +4987,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(127ull)),
-          m_SpecificInt(127ull),
+            m_SpecificInt(APInt(16, "127", 10))),
+          m_SpecificInt(APInt(16, "127", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_Sub(
@@ -4996,13 +4996,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(65409ull)),
-            m_SpecificInt(65408ull),
+              m_SpecificInt(APInt(16, "65409", 10))),
+            m_SpecificInt(APInt(16, "65408", 10)),
             m_Sub(
               m_SExt(
                 m_Value(tmp7)),
               m_SExt(
-                m_Value(tmp8)))))), m_SpecificInt(0ull))) &&
+                m_Value(tmp8)))))), m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -5041,8 +5041,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(127ull)),
-          m_SpecificInt(127ull),
+            m_SpecificInt(APInt(16, "127", 10))),
+          m_SpecificInt(APInt(16, "127", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_Sub(
@@ -5050,8 +5050,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(65409ull)),
-            m_SpecificInt(65408ull),
+              m_SpecificInt(APInt(16, "65409", 10))),
+            m_SpecificInt(APInt(16, "65408", 10)),
             m_Sub(
               m_SExt(
                 m_Value(tmp7)),
@@ -5096,8 +5096,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                 m_Value(tmp2)),
               m_SExt(
                 m_Value(tmp3))),
-            m_SpecificInt(32767ull)),
-          m_SpecificInt(32767ull),
+            m_SpecificInt(APInt(32, "32767", 10))),
+          m_SpecificInt(APInt(32, "32767", 10)),
           m_Select(
             m_Cmp(tmp4, 
               m_Sub(
@@ -5105,8 +5105,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
                   m_Value(tmp5)),
                 m_SExt(
                   m_Value(tmp6))),
-              m_SpecificInt(4294934529ull)),
-            m_SpecificInt(4294934528ull),
+              m_SpecificInt(APInt(32, "4294934529", 10))),
+            m_SpecificInt(APInt(32, "4294934528", 10)),
             m_Sub(
               m_SExt(
                 m_Value(tmp7)),
@@ -5145,7 +5145,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Sub(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(16, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -5202,7 +5202,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_NE &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -5231,7 +5231,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_NE &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -5261,9 +5261,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(8, "0", 10))),
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -5294,9 +5294,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(16, "0", 10))),
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -5326,7 +5326,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -5355,7 +5355,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(8, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -5385,9 +5385,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(16, "0", 10))),
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 16) &&
@@ -5418,9 +5418,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(8, "0", 10))),
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 8) &&
@@ -5448,7 +5448,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0),
-      m_SpecificInt(-1ull))) &&
+      m_SpecificInt(APInt(32, "-1", 10)))) &&
 hasBitWidth(tmp0, 64);
     if (Matched)
       Matches.push_back({
@@ -5473,7 +5473,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0),
-      m_SpecificInt(-1ull))) &&
+      m_SpecificInt(APInt(32, "-1", 10)))) &&
 hasBitWidth(tmp0, 32);
     if (Matched)
       Matches.push_back({
@@ -5499,7 +5499,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_Xor(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(32, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp1, 64);
@@ -5527,7 +5527,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_Xor(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(32, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 32) &&
 hasBitWidth(tmp1, 32);
@@ -5557,7 +5557,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(-1ull)))) &&
+        m_SpecificInt(APInt(32, "-1", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -5587,7 +5587,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(-1ull)))) &&
+        m_SpecificInt(APInt(32, "-1", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -5617,9 +5617,9 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_c_Xor(
             m_Value(tmp1),
-            m_SpecificInt(-1ull)),
+            m_SpecificInt(APInt(32, "-1", 10))),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(32, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -5649,7 +5649,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(32, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -5679,7 +5679,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(32, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -5709,7 +5709,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(32, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -5739,7 +5739,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(32, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -5769,9 +5769,9 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_c_Xor(
             m_Value(tmp1),
-            m_SpecificInt(-1ull)),
+            m_SpecificInt(APInt(32, "-1", 10))),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(32, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -5796,7 +5796,7 @@ class : public Operation {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
-PatternMatch::match(V, m_Select(m_Value(tmp0), m_SpecificInt(0ull), m_Value(tmp1))) &&
+PatternMatch::match(V, m_Select(m_Value(tmp0), m_SpecificInt(APInt(64, "0", 10)), m_Value(tmp1))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64);
     if (Matched)
@@ -5825,8 +5825,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_ZExt(
           m_Cmp(tmp1, 
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(1ull),
-          m_SpecificInt(0ull))), m_Value(tmp4))) &&
+          m_SpecificInt(APInt(1, "1", 10)),
+          m_SpecificInt(APInt(1, "0", 10)))), m_Value(tmp4))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -5855,7 +5855,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_And(
         m_c_Xor(
-          m_SpecificInt(18446744073709551615ull),
+          m_SpecificInt(APInt(64, "18446744073709551615", 10)),
           m_Value(tmp1)),
         m_Value(tmp2)), m_Value(tmp3))) &&
 hasBitWidth(tmp0, 1) &&
@@ -5885,9 +5885,9 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_And(
         m_c_Xor(
-          m_SpecificInt(18446744073709551615ull),
+          m_SpecificInt(APInt(64, "18446744073709551615", 10)),
           m_Value(tmp1)),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -5914,9 +5914,9 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_And(
         m_c_Xor(
-          m_SpecificInt(4294967295ull),
+          m_SpecificInt(APInt(32, "4294967295", 10)),
           m_Value(tmp1)),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -5943,7 +5943,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_And(
         m_c_Xor(
-          m_SpecificInt(4294967295ull),
+          m_SpecificInt(APInt(32, "4294967295", 10)),
           m_Value(tmp1)),
         m_Value(tmp2)), m_Value(tmp3))) &&
 hasBitWidth(tmp0, 1) &&
@@ -5973,7 +5973,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_And(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -6028,7 +6028,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_And(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -6083,7 +6083,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Or(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -6192,7 +6192,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Or(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -6219,7 +6219,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Mul(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -6272,7 +6272,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 8) &&
 PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0),
-      m_SpecificInt(-1ull))) &&
+      m_SpecificInt(APInt(8, "-1", 10)))) &&
 hasBitWidth(tmp0, 8);
     if (Matched)
       Matches.push_back({
@@ -6300,7 +6300,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(8, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -6328,7 +6328,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_And(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(8, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
@@ -6384,7 +6384,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(16, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -6466,7 +6466,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_Xor(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(8, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 8) &&
 hasBitWidth(tmp1, 8);
@@ -6496,7 +6496,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(-1ull)))) &&
+        m_SpecificInt(APInt(8, "-1", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -6526,7 +6526,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(8, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -6556,9 +6556,9 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_c_Xor(
             m_Value(tmp1),
-            m_SpecificInt(-1ull)),
+            m_SpecificInt(APInt(16, "-1", 10))),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(16, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -6588,9 +6588,9 @@ PatternMatch::match(V, m_ZExt(
         m_c_And(
           m_c_Xor(
             m_Value(tmp1),
-            m_SpecificInt(-1ull)),
+            m_SpecificInt(APInt(8, "-1", 10))),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(8, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 8) &&
 hasBitWidth(tmp2, 8);
@@ -6645,7 +6645,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Xor(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -6672,7 +6672,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Xor(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -6727,7 +6727,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -6754,7 +6754,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -6837,7 +6837,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FDiv(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -6864,7 +6864,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FDiv(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -6952,7 +6952,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_c_FMul(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
@@ -7137,7 +7137,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_c_FMul(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
@@ -7167,7 +7167,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_c_FMul(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
@@ -7228,7 +7228,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_c_FMul(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
@@ -7287,7 +7287,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7320,7 +7320,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7353,11 +7353,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
@@ -7385,7 +7385,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7418,7 +7418,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7451,7 +7451,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7484,11 +7484,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64) &&
@@ -7516,11 +7516,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
@@ -7548,7 +7548,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FAdd(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7581,7 +7581,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7614,11 +7614,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
-        m_Value(tmp3)), m_SpecificInt(0ull))) &&
+        m_Value(tmp3)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32) &&
@@ -7646,7 +7646,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_FSub(
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_c_FMul(
             m_Value(tmp1),
             m_Value(tmp2))),
@@ -7680,9 +7680,9 @@ class : public Operation {
 PatternMatch::match(V, m_Select(
       m_Cmp(tmp0, 
         m_Value(tmp1),
-        m_SpecificInt(0ull)),
+        m_SpecificInt(APInt(32, "0", 10))),
       m_Sub(
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_Value(tmp2)),
       m_Value(tmp3))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
@@ -7712,12 +7712,12 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(4294967295ull),
-          m_Value(tmp4))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(32, "4294967295", 10)),
+          m_Value(tmp4))), m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -7746,11 +7746,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(32, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(4294967295ull),
+          m_SpecificInt(APInt(32, "4294967295", 10)),
           m_Value(tmp4))), m_Value(tmp5))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
@@ -7781,7 +7781,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FMul(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -7808,12 +7808,12 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(18446744073709551615ull),
-          m_Value(tmp4))), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(64, "18446744073709551615", 10)),
+          m_Value(tmp4))), m_SpecificInt(APInt(64, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -7842,11 +7842,11 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
-          m_SpecificInt(0ull),
+          m_SpecificInt(APInt(64, "0", 10)),
           m_Value(tmp2)),
         m_Value(tmp3),
         m_c_Mul(
-          m_SpecificInt(18446744073709551615ull),
+          m_SpecificInt(APInt(64, "18446744073709551615", 10)),
           m_Value(tmp4))), m_Value(tmp5))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
@@ -7877,7 +7877,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_FMul(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -8016,7 +8016,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Add(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -8043,7 +8043,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Add(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -8180,8 +8180,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -8211,8 +8211,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -8242,8 +8242,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -8273,8 +8273,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -8358,8 +8358,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -8389,8 +8389,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -8416,23 +8416,23 @@ class : public Operation {
     CmpInst::Predicate tmp0; CmpInst::Predicate tmp1; CmpInst::Predicate tmp4;
     Value *tmp2; Value *tmp3; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 32) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Select(
             m_Cmp(tmp1, 
               m_Value(tmp2),
-              m_SpecificInt(-2147483648ull)),
+              m_SpecificInt(APInt(32, "-2147483648", 10))),
             m_Value(tmp3),
-            m_SpecificInt(-2147483648ull)),
-          m_SpecificInt(2147483647ull)),
+            m_SpecificInt(APInt(32, "-2147483648", 10))),
+          m_SpecificInt(APInt(32, "2147483647", 10))),
         m_Select(
           m_Cmp(tmp4, 
             m_Value(tmp5),
-            m_SpecificInt(-2147483648ull)),
+            m_SpecificInt(APInt(32, "-2147483648", 10))),
           m_Value(tmp6),
-          m_SpecificInt(-2147483648ull)),
-        m_SpecificInt(2147483647ull)))) &&
+          m_SpecificInt(APInt(32, "-2147483648", 10))),
+        m_SpecificInt(APInt(32, "2147483647", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_SLT &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp4 == CmpInst::Predicate::ICMP_SGT &&
@@ -8465,14 +8465,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(2147483647ull)),
-          m_SpecificInt(2147483647ull),
+            m_SpecificInt(APInt(64, "2147483647", 10))),
+          m_SpecificInt(APInt(64, "2147483647", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(18446744071562067969ull)),
-            m_SpecificInt(18446744071562067968ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(64, "18446744071562067969", 10))),
+            m_SpecificInt(APInt(64, "18446744071562067968", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
 hasBitWidth(tmp0, 1) &&
@@ -8504,13 +8504,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(2147483647ull)),
-          m_SpecificInt(2147483647ull),
+            m_SpecificInt(APInt(64, "2147483647", 10))),
+          m_SpecificInt(APInt(64, "2147483647", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(18446744071562067969ull)),
-            m_SpecificInt(18446744071562067968ull),
+              m_SpecificInt(APInt(64, "18446744071562067969", 10))),
+            m_SpecificInt(APInt(64, "18446744071562067968", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_SGT &&
 tmp3 == CmpInst::Predicate::ICMP_SLT &&
@@ -8541,7 +8541,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_SExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
@@ -8566,7 +8566,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_SExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
@@ -8617,7 +8617,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_SExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
@@ -8694,7 +8694,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_SExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -8719,7 +8719,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_SExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -8795,13 +8795,13 @@ class : public Operation {
     CmpInst::Predicate tmp0;
     Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Value(tmp1),
-          m_SpecificInt(65535ull)),
+          m_SpecificInt(APInt(32, "65535", 10))),
         m_Value(tmp2),
-        m_SpecificInt(65535ull)))) &&
+        m_SpecificInt(APInt(32, "65535", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp1, 32) &&
 tmp1 == tmp2;
@@ -8830,14 +8830,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(65535ull)),
-          m_SpecificInt(65535ull),
+            m_SpecificInt(APInt(32, "65535", 10))),
+          m_SpecificInt(APInt(32, "65535", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(32, "1", 10))),
+            m_SpecificInt(APInt(32, "0", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(16, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp3 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 1) &&
@@ -8869,13 +8869,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(65535ull)),
-          m_SpecificInt(65535ull),
+            m_SpecificInt(APInt(32, "65535", 10))),
+          m_SpecificInt(APInt(32, "65535", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(32, "1", 10))),
+            m_SpecificInt(APInt(32, "0", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp3 == CmpInst::Predicate::ICMP_ULT &&
@@ -8905,13 +8905,13 @@ class : public Operation {
     CmpInst::Predicate tmp0;
     Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
-PatternMatch::match(V, m_trunc(
+PatternMatch::match(V, m_Trunc(
       m_Select(
         m_Cmp(tmp0, 
           m_Value(tmp1),
-          m_SpecificInt(4294967295ull)),
+          m_SpecificInt(APInt(32, "4294967295", 10))),
         m_Value(tmp2),
-        m_SpecificInt(4294967295ull)))) &&
+        m_SpecificInt(APInt(32, "4294967295", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp1, 64) &&
 tmp1 == tmp2;
@@ -8940,14 +8940,14 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(4294967295ull)),
-          m_SpecificInt(4294967295ull),
+            m_SpecificInt(APInt(64, "4294967295", 10))),
+          m_SpecificInt(APInt(64, "4294967295", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
-            m_Value(tmp5)))), m_SpecificInt(0ull))) &&
+              m_SpecificInt(APInt(64, "1", 10))),
+            m_SpecificInt(APInt(64, "0", 10)),
+            m_Value(tmp5)))), m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp3 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 1) &&
@@ -8979,13 +8979,13 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Trunc(
         m_Select(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(4294967295ull)),
-          m_SpecificInt(4294967295ull),
+            m_SpecificInt(APInt(64, "4294967295", 10))),
+          m_SpecificInt(APInt(64, "4294967295", 10)),
           m_Select(
             m_Cmp(tmp3, 
               m_Value(tmp4),
-              m_SpecificInt(1ull)),
-            m_SpecificInt(0ull),
+              m_SpecificInt(APInt(64, "1", 10))),
+            m_SpecificInt(APInt(64, "0", 10)),
             m_Value(tmp5)))), m_Value(tmp6))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 tmp3 == CmpInst::Predicate::ICMP_ULT &&
@@ -9016,7 +9016,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_ZExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
@@ -9041,7 +9041,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_ZExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 8);
     if (Matched)
@@ -9066,7 +9066,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_ZExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32);
     if (Matched)
@@ -9117,7 +9117,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_ZExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -9194,7 +9194,7 @@ class : public Operation {
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_ZExt(
-        m_Value(tmp1)), m_SpecificInt(0ull))) &&
+        m_Value(tmp1)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 16);
     if (Matched)
@@ -9272,7 +9272,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Mul(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -9301,7 +9301,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Mul(
         m_ZExt(
           m_Value(tmp1)),
         m_ZExt(
-          m_Value(tmp2))), m_SpecificInt(0ull))) &&
+          m_Value(tmp2))), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -9330,7 +9330,7 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_c_Mul(
         m_SExt(
           m_Value(tmp1)),
         m_SExt(
-          m_Value(tmp2))), m_SpecificInt(0ull))) &&
+          m_Value(tmp2))), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -9448,9 +9448,9 @@ PatternMatch::match(V, m_AShr(
       m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
-          m_SpecificInt(63ull)),
+          m_SpecificInt(APInt(32, "63", 10))),
         m_Value(tmp3),
-        m_SpecificInt(63ull)))) &&
+        m_SpecificInt(APInt(32, "63", 10))))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULT &&
 hasBitWidth(tmp0, 64) &&
 hasBitWidth(tmp2, 64) &&
@@ -9484,11 +9484,11 @@ PatternMatch::match(V, m_Select(
           m_c_And(
             m_Cmp(tmp2, 
               m_Value(tmp3),
-              m_SpecificInt(31ull)),
+              m_SpecificInt(APInt(32, "31", 10))),
             m_Value(tmp4)),
-          m_SpecificInt(31ull),
+          m_SpecificInt(APInt(32, "31", 10)),
           m_Value(tmp5))),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp2 == CmpInst::Predicate::ICMP_UGT &&
 hasBitWidth(tmp0, 1) &&
 tmp0 == tmp4 &&
@@ -9524,11 +9524,11 @@ PatternMatch::match(V, m_Select(
           m_c_And(
             m_Cmp(tmp2, 
               m_Value(tmp3),
-              m_SpecificInt(63ull)),
+              m_SpecificInt(APInt(32, "63", 10))),
             m_Value(tmp4)),
-          m_SpecificInt(63ull),
+          m_SpecificInt(APInt(32, "63", 10)),
           m_Value(tmp5))),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp2 == CmpInst::Predicate::ICMP_UGT &&
 hasBitWidth(tmp0, 1) &&
 tmp0 == tmp4 &&
@@ -9564,9 +9564,9 @@ PatternMatch::match(V, m_Select(
           m_c_And(
             m_Cmp(tmp2, 
               m_Value(tmp3),
-              m_SpecificInt(31ull)),
+              m_SpecificInt(APInt(32, "31", 10))),
             m_Value(tmp4)),
-          m_SpecificInt(31ull),
+          m_SpecificInt(APInt(32, "31", 10)),
           m_Value(tmp5))),
       m_Value(tmp6))) &&
 tmp2 == CmpInst::Predicate::ICMP_UGT &&
@@ -9605,9 +9605,9 @@ PatternMatch::match(V, m_Select(
           m_c_And(
             m_Cmp(tmp2, 
               m_Value(tmp3),
-              m_SpecificInt(63ull)),
+              m_SpecificInt(APInt(32, "63", 10))),
             m_Value(tmp4)),
-          m_SpecificInt(63ull),
+          m_SpecificInt(APInt(32, "63", 10)),
           m_Value(tmp5))),
       m_Value(tmp6))) &&
 tmp2 == CmpInst::Predicate::ICMP_UGT &&
@@ -9644,13 +9644,13 @@ PatternMatch::match(V, m_Select(
         m_c_And(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(31ull)),
+            m_SpecificInt(APInt(32, "31", 10))),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_LShr(
           m_Value(tmp4),
           m_Value(tmp5))),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 hasBitWidth(tmp0, 1) &&
 tmp0 == tmp3 &&
@@ -9684,13 +9684,13 @@ PatternMatch::match(V, m_Select(
         m_c_And(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(63ull)),
+            m_SpecificInt(APInt(32, "63", 10))),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_LShr(
           m_Value(tmp4),
           m_Value(tmp5))),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_UGT &&
 hasBitWidth(tmp0, 1) &&
 tmp0 == tmp3 &&
@@ -9724,9 +9724,9 @@ PatternMatch::match(V, m_Select(
         m_c_And(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(31ull)),
+            m_SpecificInt(APInt(32, "31", 10))),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_LShr(
           m_Value(tmp4),
           m_Value(tmp5))),
@@ -9765,9 +9765,9 @@ PatternMatch::match(V, m_Select(
         m_c_And(
           m_Cmp(tmp1, 
             m_Value(tmp2),
-            m_SpecificInt(63ull)),
+            m_SpecificInt(APInt(32, "63", 10))),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_LShr(
           m_Value(tmp4),
           m_Value(tmp5))),
@@ -9802,7 +9802,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Sub(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -9857,7 +9857,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_Sub(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -9915,9 +9915,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(32, "0", 10))),
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -9947,7 +9947,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_NE &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -9976,7 +9976,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -10006,9 +10006,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(32, "0", 10))),
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -10036,7 +10036,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_c_Xor(
       m_Value(tmp0),
-      m_SpecificInt(-1ull))) &&
+      m_SpecificInt(APInt(16, "-1", 10)))) &&
 hasBitWidth(tmp0, 16);
     if (Matched)
       Matches.push_back({
@@ -10061,7 +10061,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(64, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -10169,7 +10169,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_Xor(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(16, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
@@ -10197,7 +10197,7 @@ class : public Operation {
 PatternMatch::match(V, m_c_And(
       m_c_Xor(
         m_Value(tmp0),
-        m_SpecificInt(-1ull)),
+        m_SpecificInt(APInt(16, "-1", 10))),
       m_Value(tmp1))) &&
 hasBitWidth(tmp0, 16) &&
 hasBitWidth(tmp1, 16);
@@ -10253,7 +10253,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(0ull)))) &&
+        m_SpecificInt(APInt(16, "0", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -10308,7 +10308,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_Select(m_Value(tmp0), m_FSub(
         m_Value(tmp1),
-        m_Value(tmp2)), m_SpecificInt(0ull))) &&
+        m_Value(tmp2)), m_SpecificInt(APInt(32, "0", 10)))) &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp1, 32) &&
 hasBitWidth(tmp2, 32);
@@ -10338,7 +10338,7 @@ PatternMatch::match(V, m_ZExt(
         m_c_Or(
           m_Value(tmp1),
           m_Value(tmp2)),
-        m_SpecificInt(-1ull)))) &&
+        m_SpecificInt(APInt(16, "-1", 10))))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 16) &&
 hasBitWidth(tmp2, 16);
@@ -10591,8 +10591,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -10622,8 +10622,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -10653,8 +10653,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_SLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -10684,8 +10684,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -10769,8 +10769,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -10800,8 +10800,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_ULE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -10831,7 +10831,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -10860,7 +10860,7 @@ PatternMatch::match(V, m_Cmp(tmp0,
       m_c_And(
         m_Value(tmp1),
         m_Value(tmp2)),
-      m_SpecificInt(0ull))) &&
+      m_SpecificInt(APInt(32, "0", 10)))) &&
 tmp0 == CmpInst::Predicate::ICMP_NE &&
 hasBitWidth(tmp1, 64) &&
 hasBitWidth(tmp2, 64);
@@ -10890,9 +10890,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(64, "0", 10))),
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -10923,9 +10923,9 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
           m_c_And(
             m_Value(tmp2),
             m_Value(tmp3)),
-          m_SpecificInt(0ull)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+          m_SpecificInt(APInt(64, "0", 10))),
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::ICMP_EQ &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -11009,8 +11009,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -11040,8 +11040,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -11071,8 +11071,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -11102,8 +11102,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -11160,8 +11160,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 64) &&
@@ -11218,8 +11218,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_ONE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -11249,8 +11249,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -11280,8 +11280,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(1ull),
-        m_SpecificInt(0ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "1", 10)),
+        m_SpecificInt(APInt(1, "0", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -11311,8 +11311,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLE &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -11342,8 +11342,8 @@ PatternMatch::match(V, m_Select(m_Value(tmp0), m_Select(
         m_Cmp(tmp1, 
           m_Value(tmp2),
           m_Value(tmp3)),
-        m_SpecificInt(0ull),
-        m_SpecificInt(1ull)), m_SpecificInt(0ull))) &&
+        m_SpecificInt(APInt(1, "0", 10)),
+        m_SpecificInt(APInt(1, "1", 10))), m_SpecificInt(APInt(1, "0", 10)))) &&
 tmp1 == CmpInst::Predicate::FCMP_OLT &&
 hasBitWidth(tmp0, 1) &&
 hasBitWidth(tmp2, 32) &&
@@ -11371,7 +11371,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_FSub(
       m_FSub(
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(64, "0", 10)),
         m_c_FMul(
           m_Value(tmp0),
           m_Value(tmp1))),
@@ -11402,7 +11402,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 64) &&
 PatternMatch::match(V, m_c_FAdd(
       m_FSub(
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(64, "0", 10)),
         m_c_FMul(
           m_Value(tmp0),
           m_Value(tmp1))),
@@ -11433,7 +11433,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_c_FAdd(
       m_FSub(
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_c_FMul(
           m_Value(tmp0),
           m_Value(tmp1))),
@@ -11464,7 +11464,7 @@ class : public Operation {
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_FSub(
       m_FSub(
-        m_SpecificInt(0ull),
+        m_SpecificInt(APInt(32, "0", 10)),
         m_c_FMul(
           m_Value(tmp0),
           m_Value(tmp1))),
