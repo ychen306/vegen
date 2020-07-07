@@ -179,7 +179,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 2;
+  return 8;
 }
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
@@ -516,7 +516,7 @@ static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
       if (Lanes.size() == NumLanes) {
         Extensions.push_back(
             VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
-        break;
+        //break;
       }
     }
   }
@@ -540,8 +540,8 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     }
 
     //// Also consider the extension packs
-    // std::vector<const VectorPack *> Extensions = findExtensionPacks(*Frt);
-    // for (auto *VP : Extensions) {
+    //std::vector<const VectorPack *> Extensions = findExtensionPacks(*Frt);
+    //for (auto *VP : Extensions) {
     //  float Cost;
     //  auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
     //  Transitions.emplace_back(VP, Next, Cost);
