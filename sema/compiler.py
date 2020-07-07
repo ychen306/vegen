@@ -639,8 +639,8 @@ def builtin_max(args, env):
 
   signed = a_ty.is_signed or b_ty.is_signed
   a, b = match_bitwidth(a, b, signed)
-  bw = a.type()
-  ty = ty._replace(bitwidth=bw, useful_bits=bw)
+  bw = a.size()
+  ty = a_ty._replace(bitwidth=bw, useful_bits=bw)
 
   #if expand_builtins:
   gt = select_op(operator.gt, signed)
@@ -658,11 +658,11 @@ def builtin_min(args, env):
 
   signed = a_ty.is_signed or b_ty.is_signed
   a, b = match_bitwidth(a, b, signed)
-  bw = a.type()
-  ty = ty._replace(bitwidth=bw, useful_bits=bw)
+  bw = a.size()
+  ty = a_ty._replace(bitwidth=bw, useful_bits=bw)
 
   #if expand_builtins:
-  gt = select_op(operator.lt, signed)
+  lt = select_op(operator.lt, signed)
   return z3.If(lt(a, b), a, b), ty
 
   ## use uninterpreted function

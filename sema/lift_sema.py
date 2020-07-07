@@ -807,6 +807,7 @@ if __name__ == '__main__':
   debug = '_mm_dpwssds_epi32'
   debug = '_mm256_andnot_pd'
   debug = '_mm_packs_epi32'
+  debug = '_mm256_min_epu16'
   debug = None
   if debug:
     translator = Translator()

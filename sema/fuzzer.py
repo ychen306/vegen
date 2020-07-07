@@ -550,22 +550,42 @@ dst[MAX:256] := 0
 </intrinsic>
   '''
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_maddubs_epi16">
+<intrinsic tech="AVX2" name="_mm256_min_epu16">
 	<type>Integer</type>
 	<CPUID>AVX2</CPUID>
-	<category>Arithmetic</category>
-	<return type="__m256i" varname="dst" etype="SI16"/>
-	<parameter type="__m256i" varname="a" etype="UI8"/>
-	<parameter type="__m256i" varname="b" etype="SI8"/>
-	<description>Vertically multiply each unsigned 8-bit integer from "a" with the corresponding signed 8-bit integer from "b", producing intermediate signed 16-bit integers. Horizontally add adjacent pairs of intermediate signed 16-bit integers, and pack the saturated results in "dst".</description>
+	<category>Special Math Functions</category>
+	<return type="__m256i" varname="dst" etype="UI16"/>
+	<parameter type="__m256i" varname="a" etype="UI16"/>
+	<parameter type="__m256i" varname="b" etype="UI16"/>
+	<description>Compare packed unsigned 16-bit integers in "a" and "b", and store packed minimum values in "dst".</description>
 	<operation>
 FOR j := 0 to 15
 	i := j*16
-	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
+	dst[i+15:i] := MIN(a[i+15:i], b[i+15:i])
 ENDFOR
 dst[MAX:256] := 0
 	</operation>
-	<instruction name="VPMADDUBSW" form="ymm, ymm, ymm" xed="VPMADDUBSW_YMMqq_YMMqq_YMMqq"/>
+	<instruction name="VPMINUW" form="ymm, ymm, ymm" xed="VPMINUW_YMMqq_YMMqq_YMMqq"/>
+	<header>immintrin.h</header>
+</intrinsic>
+'''
+  sema = '''
+<intrinsic tech="AVX2" name="_mm256_max_epu8">
+	<type>Integer</type>
+	<CPUID>AVX2</CPUID>
+	<category>Special Math Functions</category>
+	<return type="__m256i" varname="dst" etype="UI8"/>
+	<parameter type="__m256i" varname="a" etype="UI8"/>
+	<parameter type="__m256i" varname="b" etype="UI8"/>
+	<description>Compare packed unsigned 8-bit integers in "a" and "b", and store packed maximum values in "dst".</description>
+	<operation>
+FOR j := 0 to 31
+	i := j*8
+	dst[i+7:i] := MAX(a[i+7:i], b[i+7:i])
+ENDFOR
+dst[MAX:256] := 0
+	</operation>
+	<instruction name="VPMAXUB" form="ymm, ymm, ymm" xed="VPMAXUB_YMMqq_YMMqq_YMMqq"/>
 	<header>immintrin.h</header>
 </intrinsic>
 '''

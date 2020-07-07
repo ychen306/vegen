@@ -273,6 +273,7 @@ if __name__ == '__main__':
   debug = '_mm256_and_pd'
   debug = '_mm_adds_epi16'
   debug = '_mm_packs_epi32'
+  debug = '_mm256_min_epu16'
   with open('alu.lifted', 'rb') as f:
     lifted = pickle.load(f)
   _, outs, dag = lifted[debug]
