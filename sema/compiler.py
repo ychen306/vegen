@@ -548,7 +548,8 @@ def compile(spec, expand_builtins=True):
       retval = env.get_value('k')
     out_size = intrinsic_types[spec.rettype].bitwidth
     dst = z3.simplify(fix_bitwidth(retval, out_size),
-        bv_ite2id=True, elim_and=False, elim_ite=False, ite_extra_rules=True)
+        bv_ite2id=True, elim_and=False, elim_ite=False, ite_extra_rules=True,
+        elim_sign_ext=False)
     outputs = [dst] + outputs
   return param_vals, outputs
 
@@ -1060,26 +1061,23 @@ if __name__ == '__main__':
 
   import xml.etree.ElementTree as ET
   sema = '''
-<intrinsic tech="SSE2" vexEq="TRUE" name="_mm_packs_epi32">
+<intrinsic tech="AVX2" name="_mm256_cvtepi16_epi32">
 	<type>Integer</type>
-	<CPUID>SSE2</CPUID>
-	<category>Miscellaneous</category>
-	<return type="__m128i" varname="dst" etype="SI16"/>
-	<parameter type="__m128i" varname="a" etype="SI32"/>
-	<parameter type="__m128i" varname="b" etype="SI32"/>
-	<description>Convert packed signed 32-bit integers from "a" and "b" to packed 16-bit integers using signed saturation, and store the results in "dst".</description>
+	<CPUID>AVX2</CPUID>
+	<category>Convert</category>
+	<return type="__m256i" varname="dst" etype="SI32"/>
+	<parameter type="__m128i" varname="a" etype="SI16"/>
+	<description>Sign extend packed 16-bit integers in "a" to packed 32-bit integers, and store the results in "dst".</description>
 	<operation>
-dst[15:0] := Saturate16(a[31:0])
-dst[31:16] := Saturate16(a[63:32])
-dst[47:32] := Saturate16(a[95:64])
-dst[63:48] := Saturate16(a[127:96])
-dst[79:64] := Saturate16(b[31:0])
-dst[95:80] := Saturate16(b[63:32])
-dst[111:96] := Saturate16(b[95:64])
-dst[127:112] := Saturate16(b[127:96])
+FOR j:= 0 to 7
+	i := 32*j
+	k := 16*j
+	dst[i+31:i] := SignExtend32(a[k+15:k])
+ENDFOR
+dst[MAX:256] := 0
 	</operation>
-	<instruction name="PACKSSDW" form="xmm, xmm" xed="PACKSSDW_XMMdq_XMMdq"/>
-	<header>emmintrin.h</header>
+	<instruction name="VPMOVSXWD" form="ymm, xmm" xed="VPMOVSXWD_YMMqq_XMMdq"/>
+	<header>immintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
