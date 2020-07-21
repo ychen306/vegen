@@ -2,6 +2,15 @@ from sema_ast import Parameter, Spec
 from parser import parse
 import xml.etree.ElementTree as ET
 
+std_funcs = '''
+DEFINE MIN(a, b) {
+    return a < b ? a : b
+}
+DEFINE MAX(a, b) {
+    return a > b ? a : b
+}
+'''
+
 def parse_cpuid(cpuid):
   cpuid = cpuid.text.lower().replace('_', '')
   if '/' in cpuid:
@@ -28,7 +37,7 @@ def get_spec_from_xml(node):
   assert(inst is not None)
   operation = node.find('operation')
   assert(operation is not None)
-  spec, binary_exprs = parse(operation.text)
+  spec, binary_exprs = parse(std_funcs + operation.text)
   output = node.find('return')
   assert(output is not None)
   rettype = output.attrib['type']

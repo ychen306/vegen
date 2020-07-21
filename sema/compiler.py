@@ -635,44 +635,6 @@ def builtin_zero_extend(args, env):
   [(val, ty)] = args
   return z3.ZeroExt(max_vl, val), ty
 
-def builtin_max(args, env):
-  (a, a_ty), (b, b_ty) = args
-
-  signed = a_ty.is_signed or b_ty.is_signed
-  a, b = match_bitwidth(a, b, signed)
-  bw = a.size()
-  ty = a_ty._replace(bitwidth=bw, useful_bits=bw)
-
-  #if expand_builtins:
-  gt = select_op(operator.gt, signed)
-  return z3.If(gt(a, b), a, b), ty
-
-  ## use uninterpreted function
-  #builtin_name = ('smax_%d' % bw) if signed else ('umax_%d' % bw)
-  #arg_ty = z3.BitVecSort(bw)
-  #func_ty = [arg_ty, arg_ty, arg_ty]
-  #result = z3_utils.get_uninterpreted_func(builtin_name, func_ty)
-  #return result(a, b), ty
-
-def builtin_min(args, env):
-  (a, a_ty), (b, b_ty) = args
-
-  signed = a_ty.is_signed or b_ty.is_signed
-  a, b = match_bitwidth(a, b, signed)
-  bw = a.size()
-  ty = a_ty._replace(bitwidth=bw, useful_bits=bw)
-
-  #if expand_builtins:
-  lt = select_op(operator.lt, signed)
-  return z3.If(lt(a, b), a, b), ty
-
-  ## use uninterpreted function
-  #builtin_name = ('smin_%d' % bw) if signed else ('umin_%d' % bw)
-  #arg_ty = z3.BitVecSort(bw)
-  #func_ty = [arg_ty, arg_ty, arg_ty]
-  #result = z3_utils.get_uninterpreted_func(builtin_name, func_ty)
-  #return result(a, b), ty
-
 def builtin_zero_extend_to(bw):
   def impl(args, env):
     [(val, ty)] = args
@@ -757,8 +719,6 @@ builtins = {
     'APPROXIMATE': lambda args, _: args[0], # noop
 
     'ABS': builtin_abs,
-    'MIN': builtin_min,
-    'MAX': builtin_max,
 
     'concat': builtin_concat,
     'PopCount': builtin_popcount,
@@ -1061,22 +1021,22 @@ if __name__ == '__main__':
 
   import xml.etree.ElementTree as ET
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_cvtepi16_epi32">
-	<type>Integer</type>
-	<CPUID>AVX2</CPUID>
-	<category>Convert</category>
-	<return type="__m256i" varname="dst" etype="SI32"/>
-	<parameter type="__m128i" varname="a" etype="SI16"/>
-	<description>Sign extend packed 16-bit integers in "a" to packed 32-bit integers, and store the results in "dst".</description>
+<intrinsic tech="AVX" name="_mm256_min_ps">
+	<type>Floating Point</type>
+	<CPUID>AVX</CPUID>
+	<category>Special Math Functions</category>
+	<return type="__m256" varname="dst" etype="FP32"/>
+	<parameter type="__m256" varname="a" etype="FP32"/>
+	<parameter type="__m256" varname="b" etype="FP32"/>
+	<description>Compare packed single-precision (32-bit) floating-point elements in "a" and "b", and store packed minimum values in "dst".</description>
 	<operation>
-FOR j:= 0 to 7
-	i := 32*j
-	k := 16*j
-	dst[i+31:i] := SignExtend32(a[k+15:k])
+FOR j := 0 to 7
+	i := j*32
+	dst[i+31:i] := MIN(a[i+31:i], b[i+31:i])
 ENDFOR
 dst[MAX:256] := 0
 	</operation>
-	<instruction name="VPMOVSXWD" form="ymm, xmm" xed="VPMOVSXWD_YMMqq_XMMdq"/>
+	<instruction name="VMINPS" form="ymm, ymm, ymm" xed="VMINPS_YMMqq_YMMqq_YMMqq"/>
 	<header>immintrin.h</header>
 </intrinsic>
   '''

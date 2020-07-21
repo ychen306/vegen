@@ -808,10 +808,11 @@ if __name__ == '__main__':
   debug = '_mm256_andnot_pd'
   debug = '_mm_packs_epi32'
   debug = '_mm256_min_epu16'
-  debug = None
+  debug = '_mm256_min_ps'
   if debug:
     translator = Translator()
     y = semas[debug][1][0]
+    print('!!1', y)
     y = elim_dead_branches(y)
     y_reduced = reduce_bitwidth(y)
     z3.prove(y_reduced == y)

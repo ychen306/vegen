@@ -570,14 +570,14 @@ dst[MAX:256] := 0
 </intrinsic>
 '''
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_min_epu32">
-	<type>Integer</type>
-	<CPUID>AVX2</CPUID>
+<intrinsic tech="AVX" name="_mm256_min_ps">
+	<type>Floating Point</type>
+	<CPUID>AVX</CPUID>
 	<category>Special Math Functions</category>
-	<return type="__m256i" varname="dst" etype="UI32"/>
-	<parameter type="__m256i" varname="a" etype="UI32"/>
-	<parameter type="__m256i" varname="b" etype="UI32"/>
-	<description>Compare packed unsigned 32-bit integers in "a" and "b", and store packed minimum values in "dst".</description>
+	<return type="__m256" varname="dst" etype="FP32"/>
+	<parameter type="__m256" varname="a" etype="FP32"/>
+	<parameter type="__m256" varname="b" etype="FP32"/>
+	<description>Compare packed single-precision (32-bit) floating-point elements in "a" and "b", and store packed minimum values in "dst".</description>
 	<operation>
 FOR j := 0 to 7
 	i := j*32
@@ -585,7 +585,7 @@ FOR j := 0 to 7
 ENDFOR
 dst[MAX:256] := 0
 	</operation>
-	<instruction name="VPMINUD" form="ymm, ymm, ymm" xed="VPMINUD_YMMqq_YMMqq_YMMqq"/>
+	<instruction name="VMINPS" form="ymm, ymm, ymm" xed="VMINPS_YMMqq_YMMqq_YMMqq"/>
 	<header>immintrin.h</header>
 </intrinsic>
 '''
