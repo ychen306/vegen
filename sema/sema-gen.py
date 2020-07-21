@@ -79,7 +79,7 @@ for intrin in data_root.iter('intrinsic'):
   if cat is not None and cat.text in (
       'Elementary Math Functions', 
       'General Support', 
-      'Load', 'Store', 'Special Math Functions'):
+      'Load', 'Store'):
     categories[cat.text] += 1
     continue
   if skip_to is not None and not skipped:

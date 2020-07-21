@@ -570,22 +570,22 @@ dst[MAX:256] := 0
 </intrinsic>
 '''
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_max_epu8">
+<intrinsic tech="AVX2" name="_mm256_min_epu32">
 	<type>Integer</type>
 	<CPUID>AVX2</CPUID>
 	<category>Special Math Functions</category>
-	<return type="__m256i" varname="dst" etype="UI8"/>
-	<parameter type="__m256i" varname="a" etype="UI8"/>
-	<parameter type="__m256i" varname="b" etype="UI8"/>
-	<description>Compare packed unsigned 8-bit integers in "a" and "b", and store packed maximum values in "dst".</description>
+	<return type="__m256i" varname="dst" etype="UI32"/>
+	<parameter type="__m256i" varname="a" etype="UI32"/>
+	<parameter type="__m256i" varname="b" etype="UI32"/>
+	<description>Compare packed unsigned 32-bit integers in "a" and "b", and store packed minimum values in "dst".</description>
 	<operation>
-FOR j := 0 to 31
-	i := j*8
-	dst[i+7:i] := MAX(a[i+7:i], b[i+7:i])
+FOR j := 0 to 7
+	i := j*32
+	dst[i+31:i] := MIN(a[i+31:i], b[i+31:i])
 ENDFOR
 dst[MAX:256] := 0
 	</operation>
-	<instruction name="VPMAXUB" form="ymm, ymm, ymm" xed="VPMAXUB_YMMqq_YMMqq_YMMqq"/>
+	<instruction name="VPMINUD" form="ymm, ymm, ymm" xed="VPMINUD_YMMqq_YMMqq_YMMqq"/>
 	<header>immintrin.h</header>
 </intrinsic>
 '''
