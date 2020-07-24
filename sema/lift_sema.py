@@ -16,13 +16,22 @@ def trunc(x, size):
 
 bitwidth_table = [1, 8, 16, 32, 64]
 
+reduction_ops = {
+    'Add': operator.add,
+    'Mul': operator.mul,
+    'And': operator.and_,
+    'Or' : operator.or_,
+    'Xor': operator.xor,
+    }
+
+
 def get_size(x):
   try:
     return x.bitwidth
   except:
     return x.size()
 
-def quantize_bitwidth(bw):
+def round_bitwidth(bw):
   idx = bisect.bisect_left(bitwidth_table, bw)
   assert idx < len(bitwidth_table), "bitwidth too large for scalar operation"
   return bitwidth_table[idx]
@@ -89,7 +98,7 @@ def match_mux(f):
       z3.is_app_of(ctrl, z3.Z3_OP_EXTRACT) and is_simple_extraction(ctrl)):
     return None
 
-  mux = {} 
+  mux = {}
   s = z3.Solver()
   while True:
     key = get_ctrl_key(f, ctrl)
@@ -98,7 +107,7 @@ def match_mux(f):
         # this is a dead branch => we have exhaustively matched everything!
         break
 
-      # try to prove that this is a implicit branch 
+      # try to prove that this is a implicit branch
       # (i.e., when we get here the key has to be a certain value)
       implicit_key = z3.BitVec('implicit_key', ctrl.size())
       solver_stat = s.check(ctrl == implicit_key)
@@ -135,7 +144,7 @@ def match_with(f, op, num_args):
 
 def assert_const(f, const):
   if z3.is_bv_value(f) and f.as_long() == const:
-    return 
+    return
   raise MatchFailure
 
 def assert_pred(pred):
@@ -146,7 +155,7 @@ def match_insert(f):
   '''
   z3 canonicalizes vector insertion (`src[i] = x`) into the following form:
     keep | update
-  where 
+  where
     keep = ~(~<src> | <mask of x_size> << <offset>)
     update = x << <offset>
   where
@@ -312,7 +321,7 @@ def reduce_bitwidth(f):
       # FIXME: also handle signed operation
       # give up
       return z3.simplify(f.decl()(*new_args))
-    
+
     if is_unsigned:
       required_bits = max(required_bits, max(x.size() for x in pre_zext_args))
       zext_args = [
@@ -365,7 +374,7 @@ alu_op_constructor = {
     z3.Z3_OP_BSHL : operator.lshift,
 
     z3.Z3_OP_BSDIV : lambda a, b: a/b,
-    
+
     z3.Z3_OP_BSMOD : operator.mod,
     z3.Z3_OP_BASHR : operator.rshift,
     z3.Z3_OP_BSUB : operator.sub,
@@ -405,7 +414,7 @@ op_table = {
     z3.Z3_OP_BMUL : 'Mul',
     z3.Z3_OP_BUDIV : 'UDiv',
     z3.Z3_OP_BSDIV : 'SDiv',
-    z3.Z3_OP_BUREM : 'URem', 
+    z3.Z3_OP_BUREM : 'URem',
     #z3.Z3_OP_BSREM
     z3.Z3_OP_BSMOD : 'SRem',
     z3.Z3_OP_BSHL : 'Shl',
@@ -494,7 +503,7 @@ class ExtractionHistory:
               # truncation
               translated[s] = trunc(
                   translator.translate(root_slice.to_z3()),
-                  s.size())
+                  round_bitwidth(s.size()))
             else: # lo > 0
               # shift right + truncation
               #shift = Instruction(
@@ -503,7 +512,7 @@ class ExtractionHistory:
               #    args=[root_slice])
               #translated[s] = trunc(shift, s.size())
               shift = translator.translate(z3.LShR(root_slice.to_z3(), lo))
-              translated[s] = trunc(shift, s.size())
+              translated[s] = trunc(shift, round_bitwidth(s.size()))
             break
     return translated
 
@@ -551,7 +560,7 @@ class Translator:
   def __init__(self):
     self.extraction_history = ExtractionHistory()
     self.z3op_translators = {
-        z3.Z3_OP_TRUE: self.translate_true, 
+        z3.Z3_OP_TRUE: self.translate_true,
         z3.Z3_OP_FALSE: self.translate_false,
         z3.Z3_OP_NOT: self.translate_bool_not,
         z3.Z3_OP_BNOT: self.translate_not,
@@ -573,33 +582,46 @@ class Translator:
     return new_id
 
   def translate_constant(self, c):
-    return Constant(value=c.as_long(), bitwidth=quantize_bitwidth(c.size()))
+    return Constant(value=c.as_long(), bitwidth=round_bitwidth(c.size()))
 
-  def translate_formula(self, f):
+  def translate_formula(self, f, elem_size):
     '''
     entry point
     '''
     if not z3.is_app_of(f, z3.Z3_OP_CONCAT):
       outs = [self.translate(f)]
     else:
-      elems = f.children()
-      sizes = [x.size() for x in elems]
-      if len(set(sizes)) != 1:
-        # if the sizes are not uniform,
-        # partition them so that they are uniform
-        size = functools.reduce(math.gcd, sizes)
-        partitioned_elems = []
-        for x in elems:
-          if x.size() == size:
-            partitioned_elems.append(x)
-            continue
-          partitioned_elems.extend(
-              z3.simplify(z3.Extract(i+size-1, i, x))
-              for i in range(0, x.size(), size))
-        elems = partitioned_elems
+      assert(f.size() % elem_size == 0)
+      num_elems = f.size() // elem_size
+      elems = []
+      partial_elem = []
+      partial_size = 0
+      offset = 0
+      x_offset = 0
+      for x in reversed(f.children()):
+        while offset < x_offset + x.size():
+          begin = offset - x_offset
+          end = min(begin + elem_size - partial_size, x.size())
+          chunk_size = end - begin
+          partial_size += chunk_size
+          offset += chunk_size
+          partial_elem.append(z3.Extract(end-1, begin, x))
 
-      # output is a concat, probably vector code
+          if partial_size == elem_size:
+            if len(partial_elem) == 1:
+              elems.append(z3.simplify(partial_elem[0]))
+            else:
+              elems.append(z3.simplify(z3.Concat(partial_elem[::-1])))
+            partial_elem = []
+            partial_size = 0
+
+        x_offset += x.size()
+
+      elems.reverse()
+      assert z3.Solver().check(z3.Concat(elems) != f) == z3.unsat
+
       outs = [self.translate(x) for x in elems]
+
     # translate the slices
     slice2ir = self.extraction_history.translate_slices(self)
     for node_id, node in self.ir.items():
@@ -625,7 +647,6 @@ class Translator:
     node_id = self.new_id()
     z3op = z3_utils.get_z3_app(f)
 
-
     # try to match this to a mux
     insert = match_insert(f)
     # try to match this to a vector insertion
@@ -642,7 +663,7 @@ class Translator:
       bitwidth = mux[keys[0]].size()
       assert all(v.size() == bitwidth for v in mux.values())
       node = Mux(
-          self.translate(ctrl), 
+          self.translate(ctrl),
           keys=keys, values=values,
           bitwidth=bitwidth)
     elif z3op in self.z3op_translators:
@@ -651,9 +672,12 @@ class Translator:
     else:
       op = op_table[z3op]
       assert z3.is_bv(f) or z3.is_bool(f)
+      # expand flattened reduction operator
+      if op in reduction_ops:
+        f = functools.reduce(reduction_ops[op], f.children())
       bitwidth = f.size() if z3.is_bv(f) else 1
       node = Instruction(
-          op=op, bitwidth=quantize_bitwidth(bitwidth), 
+          op=op, bitwidth=round_bitwidth(bitwidth),
           args=[self.translate(arg) for arg in f.children()])
 
     self.translated[f] = node_id
@@ -662,7 +686,7 @@ class Translator:
 
   def translate_true(*_):
     return Constant(z3.BitVecVal(1, 1))
-  
+
   def translate_false(*_):
     return Constant(z3.BitVecVal(0, 1))
 
@@ -674,19 +698,19 @@ class Translator:
         args=[
           self.translate(z3.BitVecVal(1,1)),
           self.translate(x)])
-  
+
   def translate_not(self, f):
     [x] = f.children()
     # not x == xor -1, x
     node_id = self.translate((-1) ^ x)
     return self.ir[node_id]
-  
+
   def translate_neg(self, f):
     [x] = f.children()
     # not x == sub 0, x
     node_id = self.translate(0-x)
     return self.ir[node_id]
-  
+
   def translate_extract(self, ext):
     if is_simple_extraction(ext):
       s = self.extraction_history.record(ext)
@@ -695,7 +719,7 @@ class Translator:
     s = match_dynamic_slice(ext)
     if s is not None:
       base, idx, stride = s
-      assert (z3.is_app_of(idx, z3.Z3_OP_UNINTERPRETED) and 
+      assert (z3.is_app_of(idx, z3.Z3_OP_UNINTERPRETED) and
           len(idx.children()) == 0) or (
           z3.is_app_of(idx, z3.Z3_OP_EXTRACT) and is_simple_extraction(idx))
       return DynamicSlice(base, idx=self.translate(idx), stride=stride)
@@ -706,8 +730,15 @@ class Translator:
 
     _, lo = ext.params()
     if lo > 0:
-      return trunc(self.translate(z3.LShR(x, lo)), ext.size())
-    return trunc(self.translate(x), ext.size())
+      translated = self.translate(z3.LShR(x, lo))
+    else:
+      translated = self.translate(x)
+    translated_size = get_size(self.ir[translated])
+    bw = round_bitwidth(ext.size())
+    assert translated_size >= bw
+    if translated_size == bw:
+      return self.ir[translated]
+    return trunc(translated, bw)
 
   def try_translate_sext(self, concat):
     '''
@@ -720,8 +751,8 @@ class Translator:
     is_sext = s.check(concat != sext) == z3.unsat
     if is_sext:
       return Instruction(
-          op='SExt', 
-          bitwidth=quantize_bitwidth(concat.size()),
+          op='SExt',
+          bitwidth=round_bitwidth(concat.size()),
           args=[self.translate(x)])
     return None
 
@@ -742,11 +773,11 @@ class Translator:
     b_translated = self.translate(b)
     # there's a chance that we already upgraded the bitwidth of b
     # during translation (e.g. b.size = 17 and we normalize to 32)
-    concat_size = quantize_bitwidth(concat.size())
+    concat_size = round_bitwidth(concat.size())
     if self.ir[b_translated].bitwidth == concat_size:
       return self.ir[b_translated]
     return Instruction(
-        op='ZExt', 
+        op='ZExt',
         bitwidth=concat_size, args=[b_translated])
 
   def translate_saturation(self, f):
@@ -795,8 +826,12 @@ class Translator:
 def is_alu_op(dag):
   return any(isinstance(v, Instruction) for v in dag.values())
 
+def get_elem_size(spec):
+  return int(spec.elem_type[2:])
+
 if __name__ == '__main__':
   from semas import semas
+  from manual_parser import parse_specs
   from pprint import pprint
   from tqdm import tqdm
   import traceback
@@ -804,10 +839,14 @@ if __name__ == '__main__':
   import functools
   import pickle
 
+  specs = parse_specs('data-latest.xml')
+
   debug = '_mm_dpwssds_epi32'
   debug = '_mm256_andnot_pd'
   debug = '_mm_packs_epi32'
   debug = '_mm256_min_epu16'
+  debug = '_mm_sad_epu8'
+  debug = '_mm256_mulhi_epi16'
   debug = None
   if debug:
     translator = Translator()
@@ -816,7 +855,7 @@ if __name__ == '__main__':
     y_reduced = reduce_bitwidth(y)
     z3.prove(y_reduced == y)
     y = y_reduced
-    outs, dag = translator.translate_formula(y)
+    outs, dag = translator.translate_formula(y, get_elem_size(specs[debug]))
     print('typechecked:', typecheck(dag))
     print(outs)
     pprint(dag)
@@ -848,7 +887,7 @@ if __name__ == '__main__':
 
     # compute stat. for average number of variables
     try:
-      outs, dag = translator.translate_formula(y)
+      outs, dag = translator.translate_formula(y, get_elem_size(specs[inst]))
       assert typecheck(dag)
       num_translated += 1
       sizes = {get_size(dag[y]) for y in outs}

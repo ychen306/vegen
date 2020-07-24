@@ -5,10 +5,27 @@ from manual_parser import get_spec_from_xml
 from sig import get_inst_sigs
 import io
 import json
+import functools
 from canonicalize import canonicalize
+
+
+SelectOnCmp = namedtuple('SelectOnCmp', ['op', 'a', 'b', 'true_val', 'false_val'])
 
 def get_const_pattern(const):
   return f'm_SpecificInt(APInt({const.bitwidth}, "{const.value}", 10))'
+
+def match_select_on_cmp(node_id, dag):
+  select = dag[node_id]
+  if not isinstance(select, Instruction) or select.op != 'Select':
+    return None
+
+  cond, true_val, false_val = select.args
+  cond = dag[cond]
+  if not isinstance(cond, Instruction) or cond.op not in cmp_ops:
+    return None
+
+  a, b = cond.args
+  return SelectOnCmp(cond.op, a, b, true_val, false_val)
 
 def parse_perf_file(fname, uarch):
   costs = {}
@@ -67,23 +84,54 @@ class BoundOperation:
     # What we want to do here is to check that these predicates are what we want
     preds = []
 
+    def build_cmp_ctor(op):
+      pred = var_generator.new_var()
+
+      if op in icmp_ops:
+        ctor = f'CmpInst::Predicate::ICMP_{op.upper()}'
+      else:
+        assert op in fcmp_ops
+        ctor = f'CmpInst::Predicate::FCMP_{op.upper()[1:]}'
+
+      preds.append((pred, ctor))
+      return f'm_Cmp({pred}, '
+
     def build_pattern(node_id, depth=1, max_depth=16):
       assert depth < max_depth
       node = dag[node_id]
       node_ty = type(node)
+      indent_unit = '  '
+      indent = '  ' * (depth+2)
+
       if node_ty == Instruction:
-        if node.op in icmp_ops:
-          pred = var_generator.new_var()
-          preds.append(
-              (pred,
-              f'CmpInst::Predicate::ICMP_{node.op.upper()}'))
-          pattern_ctor = f'm_Cmp({pred}, '
-        elif node.op in fcmp_ops:
-          pred = var_generator.new_var()
-          preds.append(
-              (pred,
-              f'CmpInst::Predicate::FCMP_{node.op.upper()[1:]}'))
-          pattern_ctor = f'm_Cmp({pred}, '
+        soc = match_select_on_cmp(node_id, dag)
+        if soc is not None:
+          # soc ::= (a op b) ? true_val : false_val
+          true_pat = build_pattern(soc.true_val, depth+2)
+          false_pat = build_pattern(soc.false_val, depth+2)
+          a = build_pattern(soc.a, depth+1)
+          b = build_pattern(soc.b, depth+1)
+
+          orig_cmp = (
+              build_cmp_ctor(soc.op) + '\n' + 
+              indent_unit * 2 + indent + a + ',\n'+
+              indent_unit * 2 + indent + b + ')')
+          inverted_cmp = (
+              build_cmp_ctor(inverted_cmp_ops[soc.op]) + '\n' + 
+              indent_unit * 2 + indent + a + ',\n'+
+              indent_unit * 2 + indent + b + ')')
+          orig_sel = ('m_Select(\n' +
+              indent_unit + indent + orig_cmp + ',\n' +
+              indent_unit + indent + true_pat + ',\n' +
+              indent_unit + indent + false_pat + ')')
+          inverted_sel = ('m_Select(\n' +
+              indent_unit + indent + inverted_cmp + ',\n' +
+              indent_unit + indent + false_pat + ',\n' +
+              indent_unit + indent + true_pat + ')')
+          return f'm_CombineOr(\n{indent}{orig_sel},\n{indent}{inverted_sel})'
+
+        if node.op in cmp_ops:
+          pattern_ctor = build_cmp_ctor(node.op)
         elif node.op in commutative_binary_ops:
           pattern_ctor = f'm_c_{node.op}('
         else:
@@ -93,7 +141,6 @@ class BoundOperation:
             "flattend mul/xor/add/or/and not supported yet";
 
         sub_patterns = [build_pattern(arg, depth+1) for arg in node.args]
-        indent = '  ' * (depth+2)
         ctor_args = ',\n'.join(indent+p for p in sub_patterns)
         # pattern_ctor already has open parenthesis
         return f'{pattern_ctor}\n{ctor_args})'
@@ -184,7 +231,7 @@ class RuleCollection:
   represents either a single BoundOperation or a collection of mux'd BoundRules
   '''
   def __init__(self, rules, mux_keys=None, mux_control=None):
-    self.rules = rules 
+    self.rules = rules
     self.mux_keys = mux_keys
 
   @staticmethod
@@ -285,7 +332,7 @@ def emit_sig(sig):
   input_sizes = ', '.join(str(x.bitwidth) for x in xs)
   output_sizes = ', '.join(str(y_size) for y_size in ys)
   has_imm8 = 'true' if any(x.is_constant for x in xs) else 'false'
-  return f'InstSignature {{ {{ {input_sizes} }}, {{ {output_sizes} }}, {has_imm8} }}' 
+  return f'InstSignature {{ {{ {input_sizes} }}, {{ {output_sizes} }}, {has_imm8} }}'
 
 op_sigs = set()
 
@@ -322,11 +369,11 @@ def codegen(bundles, inst_features, costs):
     cost = costs[inst]
     inst_defs[inst] = f'InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }}, {cost})'
 
-  op_decls = '\n'.join(op_decl for op_decl in operation_defs.values()) 
-  inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values()) 
+  op_decls = '\n'.join(op_decl for op_decl in operation_defs.values())
+  inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values())
   return f'''
 {op_decls}
-std::vector<InstBinding> Insts {{ 
+std::vector<InstBinding> Insts {{
   {inst_bindings}
 }};
   '''
@@ -336,7 +383,7 @@ if __name__ == '__main__':
   import pickle
   from semas import semas
   from pprint import pprint
-  
+
   specs = parse_specs('data-latest.xml')
   sigs = get_inst_sigs(semas, specs)
 
@@ -350,10 +397,13 @@ if __name__ == '__main__':
       for inst, spec in specs.items() }
 
   debug = '_mm_packs_epi32'
+  debug = '_mm_sad_epu8'
   debug = None
 
   if debug:
     _, outs, dag = lifted[debug]
+    print(outs)
+    pprint(dag)
     bo = BoundOperation(outs[0], dag)
     print(bo.get_matching_code())
     rb = RuleBundle(sigs[debug], semas[debug], outs, dag)
@@ -379,10 +429,10 @@ if __name__ == '__main__':
       if not rb.all_lanes_simple():
         print(inst, 'yucky lanes')
         continue
-      if rb.has_nop():
-        print(inst, 'has noop lane')
-        continue
-      bundles[inst] = rb 
+      #if rb.has_nop():
+      #  print(inst, 'has noop lane')
+      #  continue
+      bundles[inst] = rb
     except AssertionError as e:
       print(inst, 'assertion error')
       pass

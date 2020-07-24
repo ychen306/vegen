@@ -127,4 +127,24 @@ icmp_ops = {
 fcmp_ops = {
         'Foeq', 'Fone', 'Fogt', 'Foge', 'Folt', 'Fole',
         }
+
+inverted_cmp_ops = {
+    'Eq': 'Ne',
+    'Ne': 'Eq',
+    'Ugt': 'Ult',
+    'Uge': 'Ule',
+    'Ult': 'Ugt', 
+    'Ule': 'Uge',
+    'Sgt': 'Slt',
+    'Sge': 'Sle',
+    'Slt': 'Sgt',
+    'Sle': 'Sge',
+    'Foeq': 'Fone',
+    'Fone': 'Foeq',
+    'Fogt': 'Folt',
+    'Foge': 'Fole',
+    'Folt': 'Fogt',
+    'Fole': 'Foge'
+    }
+
 cmp_ops = icmp_ops.union(fcmp_ops)

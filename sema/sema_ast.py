@@ -33,6 +33,7 @@ Spec = namedtuple('Spec', [
   'cpuids',
   'imm_width', # None of this instruction doesn't have imm8
   'xed',
+  'elem_type',
 
   # configuration of binary exprs
   'configs',

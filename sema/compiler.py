@@ -756,10 +756,6 @@ builtins = {
 
     'APPROXIMATE': lambda args, _: args[0], # noop
 
-    'ABS': builtin_abs,
-    'MIN': builtin_min,
-    'MAX': builtin_max,
-
     'concat': builtin_concat,
     'PopCount': builtin_popcount,
     'POPCNT': builtin_popcount,
@@ -1061,23 +1057,29 @@ if __name__ == '__main__':
 
   import xml.etree.ElementTree as ET
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_cvtepi16_epi32">
+<intrinsic tech="SSE2" vexEq="TRUE" name="_mm_sad_epu8">
 	<type>Integer</type>
-	<CPUID>AVX2</CPUID>
-	<category>Convert</category>
-	<return type="__m256i" varname="dst" etype="SI32"/>
-	<parameter type="__m128i" varname="a" etype="SI16"/>
-	<description>Sign extend packed 16-bit integers in "a" to packed 32-bit integers, and store the results in "dst".</description>
+	<CPUID>SSE2</CPUID>
+	<category>Arithmetic</category>
+	<category>Miscellaneous</category>
+	<return type="__m128i" varname="dst" etype="UI16"/>
+	<parameter type="__m128i" varname="a" etype="UI8"/>
+	<parameter type="__m128i" varname="b" etype="UI8"/>
+	<description>Compute the absolute differences of packed unsigned 8-bit integers in "a" and "b", then horizontally sum each consecutive 8 differences to produce two unsigned 16-bit integers, and pack these unsigned 16-bit integers in the low 16 bits of 64-bit elements in "dst".</description>
 	<operation>
-FOR j:= 0 to 7
-	i := 32*j
-	k := 16*j
-	dst[i+31:i] := SignExtend32(a[k+15:k])
+FOR j := 0 to 15
+	i := j*8
+	tmp[i+7:i] := ABS(a[i+7:i] - b[i+7:i])
 ENDFOR
-dst[MAX:256] := 0
+FOR j := 0 to 1
+	i := j*64
+	dst[i+15:i] := tmp[i+7:i] + tmp[i+15:i+8] + tmp[i+23:i+16] + tmp[i+31:i+24] + \
+	               tmp[i+39:i+32] + tmp[i+47:i+40] + tmp[i+55:i+48] + tmp[i+63:i+56]
+	dst[i+63:i+16] := 0
+ENDFOR
 	</operation>
-	<instruction name="VPMOVSXWD" form="ymm, xmm" xed="VPMOVSXWD_YMMqq_XMMdq"/>
-	<header>immintrin.h</header>
+	<instruction name="PSADBW" form="xmm, xmm" xed="PSADBW_XMMdq_XMMdq"/>
+	<header>emmintrin.h</header>
 </intrinsic>
   '''
   intrin_node = ET.fromstring(sema)
