@@ -548,8 +548,9 @@ def compile(spec, expand_builtins=True):
       retval = env.get_value('k')
     out_size = intrinsic_types[spec.rettype].bitwidth
     dst = z3.simplify(fix_bitwidth(retval, out_size),
-        bv_ite2id=True, elim_and=False, elim_ite=False, ite_extra_rules=True,
-        elim_sign_ext=False)
+        bv_ite2id=False, elim_and=False, elim_ite=False, ite_extra_rules=True,
+        elim_sign_ext=False
+        )
     outputs = [dst] + outputs
   return param_vals, outputs
 
@@ -696,16 +697,24 @@ def builtin_sign_extend(args, env):
 def builtin_abs(args, env):
   [(val, ty)] = args
 
-  #if expand_builtins:
-  if not is_float(ty):
-    return z3.If(val < 0, -val, val), ty
-  zero = conc_val(0, ty._replace(bitwidth=val.size()))
-  lt_0 = binary_float_cmp('lt')(val, zero)
-  neg = unary_float_op('neg')(val)
-  return z3.If(lt_0 != 0, neg, val), ty
+  if env.expand_builtins:
+    if not is_float(ty):
+      return z3.If(val > 0, val, -val), ty
+    zero = conc_val(0, ty._replace(bitwidth=val.size()))
+    lt_0 = binary_float_cmp('lt')(val, zero)
+    neg = unary_float_op('neg')(val)
+    return z3.If(lt_0 != 0, neg, val), ty
 
-  #arg_ty = z3.BitVecSort(val.size())
-  #return z3_utils.get_uninterpreted_func('abs', [arg_ty, arg_ty])(val), ty
+  # emit uninterpreted funcs instead
+  bitwidth = val.size()
+  if is_float(ty):
+    builtin_name = 'Abs_f%d' % bitwidth
+  else:
+    builtin_name = 'Abs_i%d' % bitwidth
+
+  builtin = get_uninterpreted_func(builtin_name, 
+      (z3.BitVecSort(bitwidth), z3.BitVecSort(bitwidth)))
+  return builtin(val), ty
 
 def builtin_binary_func(op):
   def impl(args, _):
@@ -755,6 +764,8 @@ builtins = {
     'SignExtend64': builtin_sign_extend_to(64),
 
     'APPROXIMATE': lambda args, _: args[0], # noop
+
+    'ABS': builtin_abs,
 
     'concat': builtin_concat,
     'PopCount': builtin_popcount,

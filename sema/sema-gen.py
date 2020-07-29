@@ -31,6 +31,9 @@ def get_verified_spec(intrin):
   except:
     return False, False, spec
 
+debug = '_mm_sad_epu8'
+debug = None
+
 from collections import defaultdict
 categories = defaultdict(int)
 
@@ -42,6 +45,9 @@ for intrin in data_root.iter('intrinsic'):
   inst_form = None
   if inst is None:
     categories['NO-INST'] += 1
+    continue
+
+  if debug and intrin.attrib['name'] != debug:
     continue
 
   inst_form = inst.attrib['name'], inst.attrib.get('form')
@@ -143,7 +149,7 @@ from pprint import pprint
 pprint(categories)
 print('Total filtered:', sum(categories.values()))
 
-pool = Pool(128)
+pool = Pool(1 if debug else 128)
 num_intrins = 0
 for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
   num_intrins+=1

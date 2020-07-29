@@ -82,6 +82,8 @@ void Frontier::advanceBBIt() {
 
 bool Frontier::resolved(const OperandPack &OP) const {
   for (Value *V : OP) {
+    if (!V)
+      continue;
     auto *I = dyn_cast<Instruction>(V);
     if (!I || I->getParent() != BB)
       continue;
@@ -145,6 +147,8 @@ bool Frontier::resolveOperandPack(const VectorPack &VP, const OperandPack &OP) {
   bool Produced = false;
   for (unsigned LaneId = 0; LaneId < OP.size(); LaneId++) {
     auto *V = OP[LaneId];
+    if (!V)
+      continue;
     auto *I = dyn_cast<Instruction>(V);
     if (!I || I->getParent() != BB)
       continue;
@@ -195,7 +199,9 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   // Tick off instructions taking part in `VP` and pay the scalar extract cost.
   ArrayRef<Value *> OutputLanes = VP->getOrderedValues();
   for (unsigned LaneId = 0; LaneId < OutputLanes.size(); LaneId++) {
-    auto *I = cast<Instruction>(OutputLanes[LaneId]);
+    auto *I = dyn_cast<Instruction>(OutputLanes[LaneId]);
+    if (!I)
+      continue;
     unsigned InstId = VPCtx->getScalarId(I);
 
     // Pay the extract cost
@@ -229,6 +235,8 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
     auto *OperandTy = getVectorType(*OpndPack);
     for (unsigned LaneId = 0; LaneId < OpndPack->size(); LaneId++) {
       auto *V = (*OpndPack)[LaneId];
+      if (!V)
+        continue;
       if (isa<Constant>(V))
         continue;
       auto *I = dyn_cast<Instruction>(V);
@@ -322,7 +330,9 @@ PartialPack::getUsableInsts(const Frontier *Frt) const {
     // Find all matched operation at a given lane that's also independent
     const Operation *Op = Producer->getLaneOps()[LaneId].getOperation();
     for (auto &M : MM.getMatches(Op)) {
-      auto *I = cast<Instruction>(M.Output);
+      auto *I = dyn_cast<Instruction>(M.Output);
+      if (!I)
+        continue;
       if (IsUsable(I))
         UsableInsts.push_back(I);
     }
@@ -413,12 +423,18 @@ static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
 
   // The set of loads producing elements of `OP`
   SmallPtrSet<Instruction *, 8> LoadSet;
-  for (auto *V : OP)
-    LoadSet.insert(cast<Instruction>(V));
+  for (auto *V : OP) {
+    if (!V)
+      continue;
+    if (auto *I = dyn_cast<Instruction>(V))
+      LoadSet.insert(I);
+  }
 
   // The loads might jumbled.
   // In other words, any one of the lanes could be the leading load
   for (auto *V : OP) {
+    if (!V)
+      continue;
     auto *LeadLI = cast<LoadInst>(V);
     BitVector Elements(VPCtx->getNumValues());
     BitVector Depended(VPCtx->getNumValues());
@@ -471,8 +487,14 @@ static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
     bool AllLoads = true;
     for (unsigned i = 0; i < NumLanes; i++) {
       auto *V = (*OP)[i];
+      // TODO: deal with nop lane
+      if (!V) {
+        continue;
+      }
       auto *I = dyn_cast<Instruction>(V);
-      if (!I || I->getParent() != BB || !Frt.isUsable(I)) {
+      if (!I)
+        continue;
+      if (I && (I->getParent() != BB || !Frt.isUsable(I))) {
         Extensible = false;
         break;
       }
@@ -504,9 +526,9 @@ static std::vector<const VectorPack *> findExtensionPacks(const Frontier &Frt) {
 
       std::vector<const Operation::Match *> Lanes;
       for (unsigned i = 0; i < NumLanes; i++) {
-        auto *I = cast<Instruction>((*OP)[i]);
+        auto *V = (*OP)[i];
         ArrayRef<Operation::Match> Matches =
-            MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
+            MM.getMatchesForOutput(LaneOps[i].getOperation(), V);
         if (Matches.empty())
           break;
         // FIXME: consider multiple matches for the same operation
@@ -533,7 +555,9 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     // We are not working w/ any partial pack, start partial packs!
     auto *BB = Frt->getBasicBlock();
     for (auto *V : Frt->usableInsts()) {
-      auto *I = cast<Instruction>(V);
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        continue;
       float Cost;
       auto *Next = Factory->getNode(Frt->advance(I, Cost, TTI));
       Transitions.emplace_back(I, Next, Cost);
@@ -547,7 +571,7 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     //  Transitions.emplace_back(VP, Next, Cost);
     //}
 
-    static std::vector<unsigned> VL{2, 4, 8};
+    static std::vector<unsigned> VL{2, 4, 8, 16, 32};
     // Make a pack that contain the next free inst
     for (unsigned i : VL) {
       if (i > MaxNumLanes)
@@ -777,7 +801,9 @@ float RolloutEvaluator::evaluate(unsigned MaxNumLanes, unsigned EnumCap,
       Cost += FrtScratch.advanceInplace(VP, TTI);
     } else {
       for (auto *V : FrtScratch.usableInsts()) {
-        auto *I = cast<Instruction>(V);
+        auto *I = dyn_cast<Instruction>(V);
+        if (!I)
+          continue;
         //errs() << "Scalarizing " << *I << '\n';
         Cost += FrtScratch.advanceInplace(I, TTI);
         break;
@@ -810,7 +836,14 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
     bool AllLoads = true;
     for (unsigned i = 0; i < NumLanes; i++) {
       auto *V = (*OP)[i];
+      // TODO: support nop lane
+      if (!V) {
+        Extensible = false;
+        break;
+      }
       auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        continue;
       if (!I || I->getParent() != BB || !Frt.isUsable(I)) {
         Extensible = false;
         break;
@@ -841,9 +874,9 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
 
       std::vector<const Operation::Match *> Lanes;
       for (unsigned i = 0; i < NumLanes; i++) {
-        auto *I = cast<Instruction>((*OP)[i]);
         ArrayRef<Operation::Match> Matches =
-            MM.getMatchesForOutput(LaneOps[i].getOperation(), I);
+            MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
+        errs() << "NUM MATCHES: " << Matches.size() << '\n';
         if (Matches.empty())
           break;
         // FIXME: consider multiple matches for the same operation
@@ -876,8 +909,11 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
   auto *TTI = Pkr->getTTI();
 
   float Cost = Frt.advanceInplace(VP, TTI);
+  errs() << "checking seed pack: " << *VP << '\n';
   for (;;) {
     auto *ExtVP = findExtensionPack(Frt);
+    if (ExtVP)
+      errs() << "!!! Extending with: "<< *ExtVP << '\n';
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
@@ -885,9 +921,10 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
     for (auto *V : Frt.usableInsts()) {
-      auto *I = cast<Instruction>(V);
-      Cost += Frt.advanceInplace(I, TTI);
-      break;
+      if (auto *I = dyn_cast<Instruction>(V)) {
+        Cost += Frt.advanceInplace(I, TTI);
+        break;
+      }
     }
   }
 
@@ -989,7 +1026,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   auto *TTI = Pkr->getTTI();
 
-  std::vector<unsigned> VL{8, 4, 2};
+  std::vector<unsigned> VL{32, 16, 8, 4, 2};
   float Cost = 0;
   float BestEst = 0;
   for (unsigned i : VL) {
@@ -1017,11 +1054,12 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
     for (auto *V : Frt.usableInsts()) {
-      auto *I = cast<Instruction>(V);
-      // errs() << "!!! scalarizing: " << *I << '\n';
-      Cost += Frt.advanceInplace(I, TTI);
-      // errs() << "\t updated cost: " << Cost << '\n';
-      break;
+      if (auto *I = dyn_cast<Instruction>(V)) {
+        // errs() << "!!! scalarizing: " << *I << '\n';
+        Cost += Frt.advanceInplace(I, TTI);
+        // errs() << "\t updated cost: " << Cost << '\n';
+        break;
+      }
     }
   }
 

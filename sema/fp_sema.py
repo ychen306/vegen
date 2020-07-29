@@ -18,15 +18,21 @@ def set_precision(_precise):
 def get_precision():
   return precise
 
-def fp_literal(val, bitwidth):
+def fp_literal(val, bitwidth, use_uninterpreted=False):
   if bitwidth == 32:
     ty = z3.Float32()
   else:
     assert bitwidth == 64
     ty = z3.Float64()
+
   fp = z3.FPVal(val, ty)
   bv = z3.fpToIEEEBV(fp)
   assert(bv.size() == bitwidth)
+
+  if not precise or use_uninterpreted:
+    # mark that this is a fp literal to make lifting easier
+    return get_uninterpreted_func('fp_literal_%d' % bitwidth, (bv.sort(), bv.sort()))(bv)
+
   return bv
 
 def bv2fp(x):
@@ -41,7 +47,7 @@ def bv2fp(x):
     ty = z3.Float64()
   return z3.fpBVToFP(x, ty)
 
-def binary_float_op(op):
+def binary_float_op(op, use_uninterpreted=False):
   def impl(a, b, *_):
     if z3.is_bv(a):
       bitwidth = a.size()
@@ -56,7 +62,7 @@ def binary_float_op(op):
       ty = BV32
     else:
       ty = BV64
-    if not precise:
+    if not precise and not use_uninterpreted:
       func_name = 'fp_%s_%d' % (op, bitwidth)
       func = get_uninterpreted_func(func_name, (ty, ty, ty))
       return func(a, b), bitwidth
@@ -69,7 +75,7 @@ def binary_float_op(op):
       return z3.fpToIEEEBV(c), bitwidth
   return impl
 
-def binary_float_cmp(op):
+def binary_float_cmp(op, use_uninterpreted=False):
   def impl(a, b, *_):
     assert a.size() == b.size()
     bitwidth = a.size()
@@ -78,7 +84,7 @@ def binary_float_cmp(op):
       ty = BV32
     else:
       ty = BV64
-    if not precise:
+    if not precise and not use_uninterpreted:
       func_name = 'fp_%s_%d' % (op, bitwidth)
       func = get_uninterpreted_func(func_name, (ty, ty, z3.BoolSort()))
       result = func(a,b)

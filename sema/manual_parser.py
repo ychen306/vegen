@@ -9,9 +9,6 @@ DEFINE MIN(a, b) {
 DEFINE MAX(a, b) {
   return a > b ? a : b
 }
-DEFINE ABS(x) {
-  return x >= 0 ? x : -x
-}
 '''
 
 def parse_cpuid(cpuid):

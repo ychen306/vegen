@@ -9,6 +9,7 @@ import bisect
 import functools
 import operator
 import math
+import fp_sema
 from ir import *
 
 def trunc(x, size):
@@ -425,15 +426,16 @@ op_table = {
 
     z3.Z3_OP_DISTINCT : 'Ne',
 
-    z3.Z3_OP_BSDIV_I:  'SDiv',
-    z3.Z3_OP_BUDIV_I:  'UDiv',
+    z3.Z3_OP_BSDIV_I: 'SDiv',
+    z3.Z3_OP_BUDIV_I: 'UDiv',
     #z3.Z3_OP_BSREM_I
-    z3.Z3_OP_BUREM_I:  'URem',
-    z3.Z3_OP_BSMOD_I:  'SRem',
+    z3.Z3_OP_BUREM_I: 'URem',
+    z3.Z3_OP_BSMOD_I: 'SRem',
     }
 
 # translation table from uninterp. func to our ir (basically LLVM)
 float_ops = {
+    'neg': 'FNeg',
     'add': 'FAdd',
     'sub': 'FSub',
     'mul': 'FMul',
@@ -796,6 +798,24 @@ class Translator:
     node_id = self.translate(z3.Extract(f.size()-1, 0, saturated))
     return self.ir[node_id]
 
+  def translate_abs(self, f):
+    name = f.decl().name()
+    [x] = f.children()
+
+    _, typename = name.split('_')
+    is_int = typename.startswith('i')
+    bitwidth = f.size()
+
+    if is_int:
+      y = z3.If(x < 0, -x , x)
+    else:
+      flt, _ = fp_sema.binary_float_cmp('lt', use_uninterpreted=True)
+      fneg, _ = fp_sema.binary_float_op('neg', use_uninterpreted=True)
+      y = z3.If(flt(x, fp_sema.fp_literal(0.0, bitwidth)), fneg(x), x)
+
+    node_id = self.translate(y)
+    return self.ir[node_id]
+
   def translate_uninterpreted(self, f):
     args = f.children()
     if len(args) == 0:
@@ -807,18 +827,20 @@ class Translator:
     if func.startswith('Saturate'):
       return self.translate_saturation(f)
 
+    if func.startswith('Abs'):
+      return self.translate_abs(f)
+
     assert func.startswith('fp_')
     _, op, _ = func.split('_')
+
+    if op == 'literal':
+      assert z3.is_bv_val(arg)
+      # jesus
+      literal_val = float(eval(str(z3.simplify(z3.fpBVToFP(arg)))))
+      return FPConstant(literal_val, arg.size())
+
     assert z3.is_bool(f) or f.size() in [32, 64]
     bitwidth = 1 if z3.is_bool(f) else f.size()
-    if op == 'neg':
-      # implement `neg x` as `fsub 0, x`
-      [x] = f.children()
-      zero = z3.BitVecVal(0, x.size())
-      return Instruction(
-          op='FSub', bitwidth=bitwidth,
-          args=[self.translate(zero), self.translate(x)])
-
     return Instruction(
         op=float_ops[op], bitwidth=bitwidth,
         args=[self.translate(arg) for arg in f.children()])
@@ -845,8 +867,9 @@ if __name__ == '__main__':
   debug = '_mm256_andnot_pd'
   debug = '_mm_packs_epi32'
   debug = '_mm256_min_epu16'
-  debug = '_mm_sad_epu8'
   debug = '_mm256_mulhi_epi16'
+  debug = '_mm_sad_epu8'
+  debug = '_mm256_cvtepu8_epi64'
   debug = None
   if debug:
     translator = Translator()

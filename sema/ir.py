@@ -3,6 +3,7 @@ import z3
 
 Instruction = namedtuple('Instruction', ['op', 'bitwidth', 'args'])
 Constant = namedtuple('Constant', ['value', 'bitwidth'])
+FPConstant = namedtuple('FPConstant', ['value', 'bitwidth'])
 
 class DynamicSlice:
   def __init__(self, base, idx, stride):

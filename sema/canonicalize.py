@@ -2,6 +2,17 @@ from ir import *
 from llvmlite import ir as llir
 import llvmlite.binding as llvm
 from functools import partial
+import subprocess
+
+def opt(module):
+  '''
+  take an llvm ir file (in string) and run instcombine on it
+  '''
+  opt = subprocess.Popen(
+      ['clang', '-xir', '-c', '-O3', '-fno-slp-vectorize', 
+        '-', '-o', '-', '-S', '-emit-llvm'],
+      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+  return opt.communicate(bytes(module, encoding='utf8'))[0].decode('utf8'), opt.returncode == 0
 
 def get_ordered_liveins(dag, root):
   '''
@@ -119,12 +130,12 @@ def get_inst_ctor(builder, inst):
       'Slt': partial(builder.icmp_signed, '<'), 
       'Sle': partial(builder.icmp_signed, '<='),
 
-      'Foeq': partial(builder.icmp_unsigned, '=='),
-      'Fone': partial(builder.icmp_unsigned, '!='),
-      'Fogt': partial(builder.icmp_unsigned, '>'),
-      'Foge': partial(builder.icmp_unsigned, '>='),
-      'Folt': partial(builder.icmp_unsigned, '<'), 
-      'Fole': partial(builder.icmp_unsigned, '<='),
+      'Foeq': partial(builder.fcmp_ordered, '=='),
+      'Fone': partial(builder.fcmp_ordered, '!='),
+      'Fogt': partial(builder.fcmp_ordered, '>'),
+      'Foge': partial(builder.fcmp_ordered, '>='),
+      'Folt': partial(builder.fcmp_ordered, '<'), 
+      'Fole': partial(builder.fcmp_ordered, '<='),
       }
   if op not in cmp_ctors:
     raise BuildError('Unsupported op %s' % op)
@@ -149,7 +160,7 @@ def parse_llvm_bitwidth(ty):
       'i8' : 8,
       'i16': 16,
       'i32': 32,
-      'i64': 32,
+      'i64': 64,
       'float': 32,
       'double': 64,
       }
@@ -179,6 +190,9 @@ def canonicalize(dag, root):
   build an llir module containing a single function that 
   implements `dag` with a single basic block
   '''
+  if not isinstance(dag[root], Instruction):
+    return dag, root
+
   live_ins = get_ordered_liveins(dag, root)
 
   arg_types = [llir.IntType(x.bitwidth) for x in live_ins]
@@ -186,6 +200,7 @@ def canonicalize(dag, root):
   func_ty = llir.FunctionType(ret_ty, arg_types)
 
   module = llir.Module()
+  module.triple = 'x86_64-unknown-linux-gnu'
   func = llir.Function(module, func_ty, name="wrapper")
   bb = func.append_basic_block(name="entry")
   builder = llir.IRBuilder(bb)
@@ -227,13 +242,10 @@ def canonicalize(dag, root):
 
   builder.ret(emit(root))
 
-  pmb = llvm.create_pass_manager_builder()
-  pmb.opt_level = 3
-  pm = llvm.create_module_pass_manager()
-  pmb.populate(pm)
-
-  llmod = llvm.parse_assembly(str(module))
-  pm.run(llmod)
+  optimized, ok = opt(str(module))
+  if not ok:
+    return dag, root
+  llmod = llvm.parse_assembly(optimized)
 
   # Mapping llvm value back to our ir
   ll2ir = {}
@@ -273,12 +285,14 @@ if __name__ == '__main__':
   debug = '_mm256_and_pd'
   debug = '_mm_adds_epi16'
   debug = '_mm_packs_epi32'
-  debug = '_mm256_min_epu16'
+  debug = '_mm256_min_ps'
+  debug = '_mm256_cvtepu8_epi64'
+  debug = '_mm_sad_epu8'
   with open('alu.lifted', 'rb') as f:
     lifted = pickle.load(f)
   _, outs, dag = lifted[debug]
   pprint(dag)
   print('===========================')
-  new_dag, new_root = canonicalize(dag, outs[0])
+  new_dag, new_root = canonicalize(dag, outs[-1])
   pprint(new_dag)
   print(new_root)

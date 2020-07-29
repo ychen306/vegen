@@ -467,7 +467,8 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
     } else {
       assert(VP);
       for (auto *V : VP->getOrderedValues())
-        ReorderedInsts.push_back(cast<Instruction>(V));
+        if (auto *I = dyn_cast<Instruction>(V))
+          ReorderedInsts.push_back(I);
     }
   };
 
@@ -526,8 +527,13 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         OperandId++;
       }
 
-      Instruction *PackLeader =
-          cast<Instruction>(*VP->getOrderedValues().begin());
+      Instruction *PackLeader = nullptr;
+      for (auto *V : VP->elementValues())
+        if (auto *I = dyn_cast<Instruction>(V)) {
+          PackLeader = I;
+          break;
+        }
+      assert(PackLeader);
       Builder.SetInsertPoint(PackLeader);
 
       // Now we can emit the vector instruction
@@ -547,7 +553,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       // Mark the packed values as dead so we can delete them later
       for (auto *V : VP->elementValues()) {
-        DeadInsts.push_back(cast<Instruction>(V));
+        if (auto *I = dyn_cast<Instruction>(V))
+          DeadInsts.push_back(I);
       }
 
       // Update the value index

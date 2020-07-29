@@ -56,6 +56,13 @@ class VarGenerator:
     self.counter += 1
     return v
 
+def select_cmp_pred(op):
+  if op in icmp_ops:
+    return f'CmpInst::Predicate::ICMP_{op.upper()}'
+
+  assert op in fcmp_ops
+  return f'CmpInst::Predicate::FCMP_{op.upper()[1:]}'
+
 class BoundOperation:
   '''
   a rule is:
@@ -71,37 +78,18 @@ class BoundOperation:
 
     var_generator = VarGenerator()
 
-    #dag = extract_sub_dag(dag, root)
-
     # FIXME : make liveins a list of nodes instead of node ids
     liveins = []
     bound_liveins = []
     vars_to_declare = []
     livein2vars = defaultdict(list)
 
-    # LLVM's pattern matcher doesn't support matching particular prediates
-    # and instead "returns" the predicate of a comparison.
-    # What we want to do here is to check that these predicates are what we want
-    preds = []
-
-    def build_cmp_ctor(op):
-      pred = var_generator.new_var()
-
-      if op in icmp_ops:
-        ctor = f'CmpInst::Predicate::ICMP_{op.upper()}'
-      else:
-        assert op in fcmp_ops
-        ctor = f'CmpInst::Predicate::FCMP_{op.upper()[1:]}'
-
-      preds.append((pred, ctor))
-      return f'm_Cmp({pred}, '
-
-    def build_pattern(node_id, depth=1, max_depth=16):
+    def build_pattern(node_id, depth=1, max_depth=100):
       assert depth < max_depth
       node = dag[node_id]
       node_ty = type(node)
       indent_unit = '  '
-      indent = '  ' * (depth+2)
+      indent = indent_unit * (depth+2)
 
       if node_ty == Instruction:
         soc = match_select_on_cmp(node_id, dag)
@@ -113,11 +101,11 @@ class BoundOperation:
           b = build_pattern(soc.b, depth+1)
 
           orig_cmp = (
-              build_cmp_ctor(soc.op) + '\n' + 
+              'm_CmpWithPred('+ select_cmp_pred(soc.op) + ',\n' + 
               indent_unit * 2 + indent + a + ',\n'+
               indent_unit * 2 + indent + b + ')')
           inverted_cmp = (
-              build_cmp_ctor(inverted_cmp_ops[soc.op]) + '\n' + 
+              'm_CmpWithPred('+ select_cmp_pred(inverted_cmp_ops[soc.op]) + ',\n' + 
               indent_unit * 2 + indent + a + ',\n'+
               indent_unit * 2 + indent + b + ')')
           orig_sel = ('m_Select(\n' +
@@ -131,7 +119,7 @@ class BoundOperation:
           return f'm_CombineOr(\n{indent}{orig_sel},\n{indent}{inverted_sel})'
 
         if node.op in cmp_ops:
-          pattern_ctor = build_cmp_ctor(node.op)
+          pattern_ctor = 'm_CmpWithPred(' + select_cmp_pred(node.op) + ', '
         elif node.op in commutative_binary_ops:
           pattern_ctor = f'm_c_{node.op}('
         else:
@@ -166,14 +154,12 @@ class BoundOperation:
         livein2vars[node_id].append(x)
         return f'm_Value({x})'
 
-    self.is_nop = type(dag[root]) not in (Instruction, Mux)
+    self.is_nop = type(dag[root]) not in (Instruction, Mux, Constant)
     pattern = build_pattern(root)
     root_bitwidth = dag[root].bitwidth
     conds = [
         f'hasBitWidth(V, {root_bitwidth})',
         f'PatternMatch::match(V, {pattern})']
-    for pred_var, pred_val in preds:
-      conds.append(f'{pred_var} == {pred_val}')
     for livein, xs in livein2vars.items():
       # assert that the liveins have the right size
       conds.append(f'hasBitWidth({xs[0]}, {dag[livein].bitwidth})')
@@ -181,10 +167,8 @@ class BoundOperation:
       conds.extend(f'{xs[0]} == {x}' for x in xs[1:])
 
     matching_cond = ' &&\n'.join(conds)
-    pred_decls = ' '.join(f'CmpInst::Predicate {p};' for p, _ in preds)
     var_decls = ' '.join(f'Value *{x};' for x in vars_to_declare)
     self.matching_code = f'''
-    {pred_decls}
     {var_decls}
     bool Matched = {matching_cond};
     if (Matched)
@@ -310,7 +294,7 @@ class RuleBundleIndex:
 def declare_operation(op_name, bound_operation):
   return f'''
 class : public Operation {{
-  __attribute__((optnone)) bool match(
+  bool match(
     Value *V, std::vector<Match> &Matches) const override {{
     { bound_operation.get_matching_code() }
   }}
@@ -397,6 +381,7 @@ if __name__ == '__main__':
       for inst, spec in specs.items() }
 
   debug = '_mm_packs_epi32'
+  debug ='_mm256_cvtepu8_epi64'
   debug = '_mm_sad_epu8'
   debug = None
 
@@ -404,7 +389,7 @@ if __name__ == '__main__':
     _, outs, dag = lifted[debug]
     print(outs)
     pprint(dag)
-    bo = BoundOperation(outs[0], dag)
+    bo = BoundOperation(outs[-1], dag)
     print(bo.get_matching_code())
     rb = RuleBundle(sigs[debug], semas[debug], outs, dag)
     print(rb.all_lanes_simple())
@@ -414,6 +399,8 @@ if __name__ == '__main__':
 
   bundles = {}
   for inst, (_, out_ids, dag) in iter(lifted.items()):
+    if inst == '_pext_u32':
+      continue
     # Skip instructions with multiple outputs
     if len(sigs[inst][1]) != 1:
       print(inst, 'multiple output')
@@ -425,13 +412,14 @@ if __name__ == '__main__':
       print(inst, 'bad inst form')
       continue
     try:
+      print('Emitting pattern for', inst)
       rb = RuleBundle(sigs[inst], semas[inst], out_ids, dag)
       if not rb.all_lanes_simple():
         print(inst, 'yucky lanes')
         continue
-      #if rb.has_nop():
-      #  print(inst, 'has noop lane')
-      #  continue
+      if rb.has_nop():
+        print(inst, 'has noop lane')
+        continue
       bundles[inst] = rb
     except AssertionError as e:
       print(inst, 'assertion error')
@@ -446,6 +434,7 @@ if __name__ == '__main__':
   with open('InstSema.cpp', 'w') as f:
     f.write('''
 #include "InstSema.h"
+#include "MatchingUtil.h"
 
 using namespace llvm;
 using namespace PatternMatch;

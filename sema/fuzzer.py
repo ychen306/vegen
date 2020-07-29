@@ -570,22 +570,28 @@ dst[MAX:256] := 0
 </intrinsic>
 '''
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_min_epu32">
+<intrinsic tech="AVX2" name="_mm256_sad_epu8">
 	<type>Integer</type>
 	<CPUID>AVX2</CPUID>
-	<category>Special Math Functions</category>
-	<return type="__m256i" varname="dst" etype="UI32"/>
-	<parameter type="__m256i" varname="a" etype="UI32"/>
-	<parameter type="__m256i" varname="b" etype="UI32"/>
-	<description>Compare packed unsigned 32-bit integers in "a" and "b", and store packed minimum values in "dst".</description>
+	<category>Arithmetic</category>
+	<return type="__m256i" varname="dst" etype="UI16"/>
+	<parameter type="__m256i" varname="a" etype="UI8"/>
+	<parameter type="__m256i" varname="b" etype="UI8"/>
+	<description>Compute the absolute differences of packed unsigned 8-bit integers in "a" and "b", then horizontally sum each consecutive 8 differences to produce four unsigned 16-bit integers, and pack these unsigned 16-bit integers in the low 16 bits of 64-bit elements in "dst".</description>
 	<operation>
-FOR j := 0 to 7
-	i := j*32
-	dst[i+31:i] := MIN(a[i+31:i], b[i+31:i])
+FOR j := 0 to 31
+	i := j*8
+	tmp[i+7:i] := ABS(a[i+7:i] - b[i+7:i])
+ENDFOR
+FOR j := 0 to 3
+	i := j*64
+	dst[i+15:i] := tmp[i+7:i] + tmp[i+15:i+8] + tmp[i+23:i+16] + tmp[i+31:i+24] + \
+	               tmp[i+39:i+32] + tmp[i+47:i+40] + tmp[i+55:i+48] + tmp[i+63:i+56]
+	dst[i+63:i+16] := 0
 ENDFOR
 dst[MAX:256] := 0
 	</operation>
-	<instruction name="VPMINUD" form="ymm, ymm, ymm" xed="VPMINUD_YMMqq_YMMqq_YMMqq"/>
+	<instruction name="VPSADBW" form="ymm, ymm, ymm" xed="VPSADBW_YMMqq_YMMqq_YMMqq"/>
 	<header>immintrin.h</header>
 </intrinsic>
 '''
