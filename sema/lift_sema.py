@@ -874,6 +874,7 @@ if __name__ == '__main__':
   if debug:
     translator = Translator()
     y = semas[debug][1][0]
+    print('!!1', y)
     y = elim_dead_branches(y)
     y_reduced = reduce_bitwidth(y)
     z3.prove(y_reduced == y)

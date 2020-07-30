@@ -636,44 +636,6 @@ def builtin_zero_extend(args, env):
   [(val, ty)] = args
   return z3.ZeroExt(max_vl, val), ty
 
-def builtin_max(args, env):
-  (a, a_ty), (b, b_ty) = args
-
-  signed = a_ty.is_signed or b_ty.is_signed
-  a, b = match_bitwidth(a, b, signed)
-  bw = a.size()
-  ty = a_ty._replace(bitwidth=bw, useful_bits=bw)
-
-  #if expand_builtins:
-  gt = select_op(operator.gt, signed)
-  return z3.If(gt(a, b), a, b), ty
-
-  ## use uninterpreted function
-  #builtin_name = ('smax_%d' % bw) if signed else ('umax_%d' % bw)
-  #arg_ty = z3.BitVecSort(bw)
-  #func_ty = [arg_ty, arg_ty, arg_ty]
-  #result = z3_utils.get_uninterpreted_func(builtin_name, func_ty)
-  #return result(a, b), ty
-
-def builtin_min(args, env):
-  (a, a_ty), (b, b_ty) = args
-
-  signed = a_ty.is_signed or b_ty.is_signed
-  a, b = match_bitwidth(a, b, signed)
-  bw = a.size()
-  ty = a_ty._replace(bitwidth=bw, useful_bits=bw)
-
-  #if expand_builtins:
-  lt = select_op(operator.lt, signed)
-  return z3.If(lt(a, b), a, b), ty
-
-  ## use uninterpreted function
-  #builtin_name = ('smin_%d' % bw) if signed else ('umin_%d' % bw)
-  #arg_ty = z3.BitVecSort(bw)
-  #func_ty = [arg_ty, arg_ty, arg_ty]
-  #result = z3_utils.get_uninterpreted_func(builtin_name, func_ty)
-  #return result(a, b), ty
-
 def builtin_zero_extend_to(bw):
   def impl(args, env):
     [(val, ty)] = args
