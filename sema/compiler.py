@@ -856,8 +856,20 @@ unary_real_arith = {
 def is_number(expr):
   return type(expr) == Number
 
+def is_right_shift(expr):
+  return isinstance(expr, BinaryExpr) and expr.op == '>>'
+
 def compile_call(call, env, pred):
   assert type(call.func) == str
+
+  # detect this pattern:
+  # SignExtend(a >> b) and change it into builtin_ashr(a, b).
+  if call.func.startswith('SignExtend') and len(call.args) == 1 and is_right_shift(call.args[0]):
+    a, a_ty = compile_expr(call.args[0].a, env, pred, deref=True)
+    b, b_ty = compile_expr(call.args[0].b, env, pred, deref=True)
+    bw = max(a.size(), b.size())
+    shift = fix_bitwidth(a, bw, signed=True) >> fix_bitwidth(b, bw)
+    return shift, a_ty
 
   # compute all the arguments
   args = [compile_expr(arg, env, pred, deref=True) for arg in call.args]
