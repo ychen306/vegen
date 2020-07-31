@@ -1,8 +1,3 @@
-#include "Policy.h"
-//       ^^^^
-//       this needs to be included first because torch pollutes global namespace
-//       with "using namespace ..."
-#include "IRVec.h"
 #include "InstSema.h"
 #include "LocalDependenceAnalysis.h"
 #include "MatchManager.h"
@@ -10,6 +5,7 @@
 #include "Solver.h"
 #include "Util.h"
 #include "VectorPack.h"
+#include "IRVec.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/BitVector.h"
@@ -48,12 +44,9 @@ using namespace PatternMatch;
 static cl::opt<std::string>
     InstWrappersPath("inst-wrappers", cl::desc("Path to InstWrappers.bc"),
                      cl::Required);
+
 static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                                     cl::init(false));
-
-static cl::opt<std::string>
-    ModelPath("model", cl::desc("Specify a file path for the trained model"),
-              cl::value_desc("output model path"));
 
 static cl::opt<bool> UseBottomUp("use-bottom-up",
                              cl::desc("Use the bottom up heuristics"),
@@ -63,14 +56,7 @@ static cl::opt<bool> UseMCTS("use-mcts",
                              cl::desc("Use tree search during optimization"),
                              cl::init(false));
 
-static cl::opt<bool> NoPolicy("no-policy", cl::desc("Don't use the policy net"),
-                              cl::init(false));
-
 ///////// MCTS configs ///////////
-static cl::opt<unsigned> EmbSize("emb-size",
-                                 cl::desc("Specify size of the embedding"),
-                                 cl::value_desc("model embedding sizes"),
-                                 cl::init(64));
 
 static cl::opt<float> ParamC("c",
                              cl::desc("Specify the exploration factor (C)"),
@@ -78,7 +64,7 @@ static cl::opt<float> ParamC("c",
 
 static cl::opt<float>
     ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
-           cl::value_desc("W"), cl::init(100));
+                   cl::value_desc("W"), cl::init(100));
 
 static cl::opt<unsigned>
     NumSimulations("simulations", cl::value_desc("Number of MCTS simulations"),
@@ -93,27 +79,6 @@ static cl::opt<unsigned> EnumCap(
 static cl::opt<unsigned> ExpandThreshold("expand-after",
                                          cl::value_desc("Expandsion threshold"),
                                          cl::init(9));
-
-////// Policy eval configs. /////////
-static cl::opt<unsigned> NumPolicyThreads(
-    "policy-threads",
-    cl::value_desc("Number of threads used for policy evaluation"),
-    cl::init(4));
-
-static cl::opt<unsigned>
-    PolicyBatchSize("policy-batch-size",
-                    cl::value_desc("Batch size for policy evaluation"),
-                    cl::init(8));
-
-static cl::opt<unsigned>
-    NumGNNLayers("num-gnn-layers",
-                 cl::value_desc("Iterations of message passing"), cl::init(8));
-
-static cl::opt<unsigned> MaxInflightPolicyRequests(
-    "max-inflights",
-    cl::value_desc("Maximum number of policy network evaluation requests"),
-    cl::init(32));
-/////////////////////////////////////
 
 static cl::opt<unsigned> MaxNumLanes(
     "max-num-lanes",
@@ -269,24 +234,6 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
   auto *DL = &F.getParent()->getDataLayout();
 
-  torch::Device Device(torch::kCPU);
-  if (torch::cuda::is_available())
-    Device = torch::Device(torch::kCUDA);
-
-  PackingModel Model(EmbSize, VecBindingTable.getBindings(), MaxNumLanes,
-                     NumGNNLayers);
-  if (ModelPath.getNumOccurrences()) {
-    torch::load(Model, ModelPath, Device);
-    errs() << "Model loaded\n";
-  }
-
-  Model->to(Device);
-  Model->eval();
-  NeuralPackingPolicy Policy(Model, Device, MaxInflightPolicyRequests,
-                             PolicyBatchSize, NumPolicyThreads);
-
-  errs() << "Built policy\n";
-  //Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   std::vector<InstBinding *> SupportedIntrinsics;
   for (auto &Inst : Insts) {
     if (isSupported(&Inst, F)) {
@@ -295,11 +242,10 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   }
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size() << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
-  //Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
     errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';
-    vectorizeBasicBlock(BB, Packs, Pkr, NoPolicy ? nullptr : &Policy);
+    vectorizeBasicBlock(BB, Packs, Pkr, nullptr);
   }
 
   IntrinsicBuilder Builder(*InstWrappers);

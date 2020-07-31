@@ -1,24 +1,13 @@
-add_subdirectory(Proto)
-
-include(FindProtobuf)
-find_package(Protobuf REQUIRED)
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # The main "lib packing"
 set(LIB_PACKING_SRC
   InstSema.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
-  IRModel.cpp Packer.cpp
+  Packer.cpp
   Solver.cpp
   IRVec.cpp
-  Policy.cpp
-  GraphUtil.cpp
-  ModelUtil.cpp
-  Serialize.cpp
   MatchManager.cpp
-  Preprocessing.cpp
-  SupervisionGenerator.cpp
   LocalDependenceAnalysis.cpp)
 
 if(APPLE)
@@ -29,23 +18,10 @@ endif(APPLE)
 
 add_library(GSLP MODULE GSLP.cpp)
 
-add_executable(generate-data generate-data.cpp)
-add_executable(train train.cpp)
-
-find_package(Torch REQUIRED)
-
-set_source_files_properties(IRModel.cpp train.cpp GSLP.cpp PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
-
-
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis codegen x86desc x86info x86codegen)
 
 target_link_libraries(Packing ${TORCH_LIBRARIES})
-target_link_libraries(GSLP Packing Serialize ${TORCH_LIBRARIES})
-target_link_libraries(generate-data Packing Serialize 
-  ${TORCH_LIBRARIES} ${LLVM_LIBRARIES} ${PROTOBUF_LIBRARY})
-# FIXME: `train` doesn't require a lot of these dependence.
-target_link_libraries(train Packing Serialize 
-  ${TORCH_LIBRARIES} ${LLVM_LIBRARIES} ${PROTOBUF_LIBRARY})
+target_link_libraries(GSLP Packing)
 
 SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)
 
