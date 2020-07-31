@@ -926,6 +926,7 @@ if __name__ == '__main__':
     y = semas[debug][1][0]
     print('!!1', y)
     y = elim_dead_branches(y)
+    y = elim_redundant_branches(y)
     y_reduced = reduce_bitwidth(y)
     z3.prove(y_reduced == y)
     y = y_reduced
@@ -956,6 +957,7 @@ if __name__ == '__main__':
     liveins = [x.decl().name() for x in xs]
     y = ys[0]
     y = elim_dead_branches(y)
+    y = elim_redundant_branches(y)
     y_reduced = reduce_bitwidth(y)
     y = y_reduced
 
