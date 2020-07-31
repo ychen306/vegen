@@ -829,6 +829,11 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
 
   std::vector<VectorPack *> Extensions;
   for (auto *OP : Frt.getUnresolvedPacks()) {
+    errs() << "Looking for a pack to extend:{\n";
+    for (auto *V : *OP)
+      errs() << *V << '\n';
+    errs() << "}\n";
+
     unsigned NumLanes = OP->size();
     BitVector Elements(VPCtx->getNumValues());
     BitVector Depended(VPCtx->getNumValues());
@@ -876,7 +881,6 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
       for (unsigned i = 0; i < NumLanes; i++) {
         ArrayRef<Operation::Match> Matches =
             MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
-        errs() << "NUM MATCHES: " << Matches.size() << '\n';
         if (Matches.empty())
           break;
         // FIXME: consider multiple matches for the same operation
@@ -909,11 +913,10 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
   auto *TTI = Pkr->getTTI();
 
   float Cost = Frt.advanceInplace(VP, TTI);
-  errs() << "checking seed pack: " << *VP << '\n';
   for (;;) {
     auto *ExtVP = findExtensionPack(Frt);
-    if (ExtVP)
-      errs() << "!!! Extending with: "<< *ExtVP << '\n';
+    //if (ExtVP)
+    //  errs() << "!!! Extending with: "<< *ExtVP << '\n';
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);

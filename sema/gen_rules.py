@@ -92,33 +92,14 @@ class BoundOperation:
       indent = indent_unit * (depth+2)
 
       if node_ty == Instruction:
+        args = node.args
+
         soc = match_select_on_cmp(node_id, dag)
         if soc is not None:
           # soc ::= (a op b) ? true_val : false_val
-          true_pat = build_pattern(soc.true_val, depth+2)
-          false_pat = build_pattern(soc.false_val, depth+2)
-          a = build_pattern(soc.a, depth+1)
-          b = build_pattern(soc.b, depth+1)
-
-          orig_cmp = (
-              'm_CmpWithPred('+ select_cmp_pred(soc.op) + ',\n' + 
-              indent_unit * 2 + indent + a + ',\n'+
-              indent_unit * 2 + indent + b + ')')
-          inverted_cmp = (
-              'm_CmpWithPred('+ select_cmp_pred(inverted_cmp_ops[soc.op]) + ',\n' + 
-              indent_unit * 2 + indent + a + ',\n'+
-              indent_unit * 2 + indent + b + ')')
-          orig_sel = ('m_Select(\n' +
-              indent_unit + indent + orig_cmp + ',\n' +
-              indent_unit + indent + true_pat + ',\n' +
-              indent_unit + indent + false_pat + ')')
-          inverted_sel = ('m_Select(\n' +
-              indent_unit + indent + inverted_cmp + ',\n' +
-              indent_unit + indent + false_pat + ',\n' +
-              indent_unit + indent + true_pat + ')')
-          return f'm_CombineOr(\n{indent}{orig_sel},\n{indent}{inverted_sel})'
-
-        if node.op in cmp_ops:
+          args = soc.a, soc.b, soc.true_val, soc.false_val
+          pattern_ctor = f'm_SelectOnCmp({select_cmp_pred(soc.op)},'
+        elif node.op in cmp_ops:
           pattern_ctor = 'm_CmpWithPred(' + select_cmp_pred(node.op) + ', '
         elif node.op in commutative_binary_ops:
           pattern_ctor = f'm_c_{node.op}('
@@ -128,7 +109,7 @@ class BoundOperation:
         assert node.op not in binary_ops or len(node.args) <= 2,\
             "flattend mul/xor/add/or/and not supported yet";
 
-        sub_patterns = [build_pattern(arg, depth+1) for arg in node.args]
+        sub_patterns = [build_pattern(arg, depth+1) for arg in args]
         ctor_args = ',\n'.join(indent+p for p in sub_patterns)
         # pattern_ctor already has open parenthesis
         return f'{pattern_ctor}\n{ctor_args})'
@@ -383,6 +364,7 @@ if __name__ == '__main__':
   debug = '_mm_packs_epi32'
   debug ='_mm256_cvtepu8_epi64'
   debug = '_mm_sad_epu8'
+  debug = '_mm256_subs_epi16'
   debug = None
 
   if debug:

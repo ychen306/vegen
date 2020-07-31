@@ -268,6 +268,56 @@ def elim_dead_branches(f):
       return z3.simplify(z3.substitute(f, *zip(args, new_args)))
 
   return elim(f)
+  
+
+def elim_redundant_branches(f):
+  '''
+  remove redundant branches
+  '''
+  s = z3.Solver()
+
+  cache = {}
+  def memoize(elim):
+    def wrapped(f):
+      key = z3_utils.askey(f)
+      if key in cache:
+        return cache[key]
+      new_f = elim(f)
+      cache[key] = new_f
+      return new_f
+    return wrapped
+
+  @memoize
+  def elim(f):
+    if z3.is_app_of(f, z3.Z3_OP_ITE):
+      cond, a, b = [elim(x) for x in f.children()]
+
+      # guess we can put a in both side
+      s.push()
+      s.add(z3.Not(cond))
+      use_a = s.check(a != b) == z3.unsat
+      s.pop()
+
+      if use_a:
+        return a
+
+      # guess we can put b in both side
+      s.push()
+      s.add(cond)
+      use_b = s.check(a != b) == z3.unsat
+      s.pop()
+
+      if use_b:
+        return b
+
+      # a and b are different...
+      return z3.simplify(z3.If(cond, a, b))
+    else:
+      args = f.children()
+      new_args = [elim(arg) for arg in args]
+      return z3.simplify(z3.substitute(f, *zip(args, new_args)))
+
+  return elim(f)
 
 def reduce_bitwidth(f):
   '''

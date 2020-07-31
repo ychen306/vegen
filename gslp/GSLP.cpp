@@ -260,6 +260,7 @@ char GSLP::ID = 0;
 bool GSLP::runOnFunction(llvm::Function &F) {
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
+
   errs() << F << '\n';
 
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
@@ -288,8 +289,6 @@ bool GSLP::runOnFunction(llvm::Function &F) {
   //Packer Pkr(VecBindingTable.getBindings(), F, AA, DL, SE, TTI, BFI);
   std::vector<InstBinding *> SupportedIntrinsics;
   for (auto &Inst : Insts) {
-    if (Inst.getName() != "_mm256_sad_epu8")
-      continue;
     if (isSupported(&Inst, F)) {
       SupportedIntrinsics.push_back(&Inst);
     }
