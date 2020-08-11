@@ -222,11 +222,94 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
 
 char GSLP::ID = 0;
 
-bool GSLP::runOnFunction(llvm::Function &F) {
+static SmallVector<Value *, 4> collectReductionElements(Instruction *I,
+    std::vector<Instruction *> &Intermediates) {
+  SmallVector<Value *, 4> Elems;
+
+  std::vector<Value *> Worklist {I};
+  DenseSet<Value *> Seen;
+
+  while (!Worklist.empty()) {
+    auto *V = Worklist.back();
+    Worklist.pop_back();
+
+    // if not an Add then found a leave
+    Value *A, *B;
+    if (!match(V, m_OneUse(m_Add(m_Value(A), m_Value(B))))) {
+      Elems.push_back(V);
+      continue;
+    }
+
+    // Abort if we try to detect a dag...
+    // Only try to match for trees
+    bool Inserted = Seen.insert(V).second;
+    if (!Inserted)
+      return {};
+
+    if (V != I)
+      Intermediates.push_back(cast<Instruction>(V));
+
+    Worklist.push_back(A);
+    Worklist.push_back(B);
+  }
+  return Elems;
+}
+
+// FIXME: propagate NSW and NUW
+static Value *buildBalancedTree(IRBuilderBase &IRB, ArrayRef<Value *> Leaves) {
+  if (Leaves.size() == 1)
+    return Leaves[0];
+  unsigned N = Leaves.size();
+  auto *A = buildBalancedTree(IRB, Leaves.drop_back(N/2/*num drop*/));
+  auto *B = buildBalancedTree(IRB, Leaves.slice(N-N/2/*num drop*/, N/2/*num keep*/));
+  return IRB.CreateAdd(A, B);
+}
+
+static void balanceReductionTree(Function &F) {
+  DenseSet<Instruction *> Ignore;
+  for (auto &BB : F) {
+    // Can't directly iterate over the BB that we are modifying
+    std::vector<Instruction *> Worklist;
+    for (auto &I : BB)
+      Worklist.push_back(&I);
+
+    while (!Worklist.empty()) {
+      auto *I = Worklist.back();
+      Worklist.pop_back();
+      bool Inserted = Ignore.insert(I).second;
+      if (!Inserted)
+        continue;
+
+      if (!match(I, m_Add(m_Value(), m_Value())))
+        continue;
+
+      std::vector<Instruction *> Intermediates;
+      auto Elems = collectReductionElements(I, Intermediates);
+      if (Elems.size() > 2) {
+        IRBuilder<> IRB(I);
+        auto *NewRoot = buildBalancedTree(IRB, Elems);
+        I->replaceAllUsesWith(NewRoot);
+        I->eraseFromParent();
+
+        for (auto *I2 : Intermediates) {
+          Ignore.insert(I2);
+          I2->eraseFromParent();
+        }
+
+        //errs() << "MATCHED AND BALANCED REDUCTION : (\n";
+        //for (auto *V : Elems)
+        //  errs() << *V << '\n';
+        //errs() << ")\n";
+      }
+    }
+  }
+}
+
+bool GSLP::runOnFunction(Function &F) {
+  balanceReductionTree(F);
+  errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
-
-  errs() << F << '\n';
 
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
