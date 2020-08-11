@@ -246,7 +246,8 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
   for (auto &VP : AllPacks) {
     unsigned i = 0;
     for (auto *V : VP->getOrderedValues())
-      ValueIndex[V] = {VP, i++};
+      if (V)
+        ValueIndex[V] = {VP, i++};
   }
 
   const int GatherCost = 4;
@@ -466,9 +467,11 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
       ReorderedInsts.push_back(I);
     } else {
       assert(VP);
-      for (auto *V : VP->getOrderedValues())
-        if (auto *I = dyn_cast<Instruction>(V))
-          ReorderedInsts.push_back(I);
+      for (auto *V : VP->getOrderedValues()) {
+        if (V)
+          if (auto *I = dyn_cast<Instruction>(V))
+            ReorderedInsts.push_back(I);
+      }
     }
   };
 
@@ -545,9 +548,12 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         unsigned LaneId = 0;
         if (isa<PHINode>(VecInst))
           Builder.SetInsertPoint(BB->getFirstNonPHI());
-        for (auto *V : VP->getOrderedValues()) {
-          auto *Extract = Builder.CreateExtractElement(VecInst, LaneId++);
-          V->replaceAllUsesWith(Extract);
+        auto OutputLanes = VP->getOrderedValues();
+        for (unsigned i = 0, e = OutputLanes.size(); i != e; i++) {
+          if (auto *V = OutputLanes[i]) {
+            auto *Extract = Builder.CreateExtractElement(VecInst, i);
+            V->replaceAllUsesWith(Extract);
+          }
         }
       }
 
@@ -559,9 +565,11 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       // Update the value index
       // to track where the originally scalar values are produced
-      unsigned i = 0;
-      for (auto *V : VP->getOrderedValues())
-        ValueIndex[V] = {VP, i++};
+      auto OutputLanes = VP->getOrderedValues();
+      for (unsigned i = 0, e = OutputLanes.size(); i != e; i++) {
+        if (auto *V = OutputLanes[i])
+          ValueIndex[V] = {VP, i};
+      }
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
     }

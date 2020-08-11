@@ -199,6 +199,8 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   // Tick off instructions taking part in `VP` and pay the scalar extract cost.
   ArrayRef<Value *> OutputLanes = VP->getOrderedValues();
   for (unsigned LaneId = 0; LaneId < OutputLanes.size(); LaneId++) {
+    if (!OutputLanes[LaneId])
+      continue;
     auto *I = dyn_cast<Instruction>(OutputLanes[LaneId]);
     if (!I)
       continue;
@@ -413,10 +415,11 @@ static bool isPartialPackFeasible(const PartialPack &PP, const Frontier *Frt) {
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
 static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
                                          Packer *Pkr) {
-  //errs() << "Finding vector load to extend: {\n";
-  //for (auto *V : OP)
-  //  errs() << "\t" << *V << '\n';
-  //errs() << "}\n\n";
+  errs() << "Finding vector load to extend: {\n";
+  for (auto *V : OP)
+    if (V)
+      errs() << "\t" << *V << '\n';
+  errs() << "}\n\n";
   auto *VPCtx = Pkr->getContext(BB);
   auto &LoadDAG = Pkr->getLoadDAG(BB);
   auto &LDA = Pkr->getLDA(BB);
@@ -442,10 +445,13 @@ static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
     Depended |= LDA.getDepended(LeadLI);
     std::vector<LoadInst *> Loads { LeadLI };
 
-    while (Loads.size() < OP.size()) {
-      auto It = LoadDAG.find(Loads.back());
+    LoadInst *CurLoad = LeadLI;
+    while (Elements.count() < LoadSet.size()) {
+      auto It = LoadDAG.find(CurLoad);
+      // End of the chain
       if (It == LoadDAG.end())
         break;
+
       LoadInst *NextLI = nullptr;
       // Only use the next load in the load set
       for (auto *Next : It->second) {
@@ -454,15 +460,20 @@ static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
           break;
         }
       }
-      if (!NextLI)
-        break;
+      if (!NextLI) {
+        // load a don't care to fill the gap
+        Loads.push_back(nullptr);
+        CurLoad = cast<LoadInst>(*It->second.begin());
+        continue;
+      }
       if (!checkIndependence(LDA, *VPCtx, NextLI, Elements, Depended))
         break;
       Loads.push_back(NextLI);
       Elements.set(VPCtx->getScalarId(NextLI));
       Depended |= LDA.getDepended(NextLI);
+      CurLoad = NextLI;
     }
-    if (Loads.size() == OP.size())
+    if (Elements.count() == LoadSet.size())
       return VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI());
   }
   //errs() << "Failed!\n";
@@ -932,12 +943,12 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
     BitVector Depended(VPCtx->getNumValues());
     bool Extensible = true;
     bool AllLoads = true;
+    bool HasUndef = false;
     for (unsigned i = 0; i < NumLanes; i++) {
       auto *V = (*OP)[i];
-      // TODO: support nop lane
       if (!V) {
-        Extensible = false;
-        break;
+        HasUndef = true;
+        continue;
       }
       auto *I = dyn_cast<Instruction>(V);
       if (!I) {
@@ -963,10 +974,15 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
       continue;
 
     if (AllLoads) {
-      if (auto *LoadVP = findExtendingLoadPack(*OP, BB, Pkr))
+      auto *LoadVP = findExtendingLoadPack(*OP, BB, Pkr);
+      if (LoadVP)
         Extensions.push_back(LoadVP);
       continue;
     }
+
+    if (HasUndef)
+      continue;
+
     for (auto *Inst : Pkr->getInsts()) {
       ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
       if (LaneOps.size() != NumLanes)
@@ -1080,6 +1096,8 @@ class DPSolver {
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
 
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
+      errs () << " COST OF EXTENDING WITH " <<
+        *ExtVP << ": " << LocalCost << '\n';
 
       if (Sol.Cost > TotalCost) {
         Sol.Cost = TotalCost;
@@ -1224,7 +1242,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         auto Sol = Solver.solve(Frt.advance(SeedVP, LocalCost, TTI));
         float Est = LocalCost + Sol.Cost;
 
-        //errs() << "Estimated cost of " << *SeedVP << Est << '\n';
+        errs() << "Estimated cost of " << *SeedVP << Est << '\n';
         if (Est < BestEst) {
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
@@ -1238,8 +1256,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
-    // errs() << "!!! Adding : " << *ExtVP << '\n';
-    // errs() << "\t updated cost: " << Cost << '\n';
+    errs() << "!!! Adding : " << *ExtVP << '\n';
+    errs() << "\t updated cost: " << Cost << '\n';
     Packs.tryAdd(ExtVP);
   }
 

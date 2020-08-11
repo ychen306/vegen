@@ -331,7 +331,10 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
     ProducerName = Producer->getName();
   OS << "PACK<" << ProducerName << ">: (\n";
   for (auto *V : VP.getOrderedValues())
-    OS << *V << '\n';
+    if (V)
+      OS << *V << '\n';
+    else
+      OS << "undef\n";
   OS << ")\n";
   return OS;
 }
@@ -364,7 +367,8 @@ std::vector<Instruction *> VectorPack::getReplacedInsts() const {
   std::vector<Instruction *> Replaced;
   if (Kind != General) {
     for (auto *V : getOrderedValues())
-      Replaced.push_back(cast<Instruction>(V));
+      if (V)
+        Replaced.push_back(cast<Instruction>(V));
   } else {
     for (auto *M : Matches) {
       SmallPtrSet<Instruction *, 4> Insts;
