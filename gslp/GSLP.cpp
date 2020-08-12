@@ -306,7 +306,7 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  balanceReductionTree(F);
+  //balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
