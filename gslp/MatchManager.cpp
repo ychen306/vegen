@@ -47,6 +47,34 @@ bool MatchManager::sortByOutput(const Operation::Match &A,
 }
 
 void MatchManager::match(llvm::Value *V) {
+  using namespace PatternMatch;
+  bool Matched = PatternMatch::match(V, m_c_Add(
+      m_c_Add(
+        m_c_Add(
+          m_c_Add(
+            m_c_Mul(
+              m_SExt(
+                m_Value()),
+              m_ZExt(
+                m_Value())),
+            m_Value()),
+          m_c_Mul(
+            m_SExt(
+              m_Value()),
+            m_ZExt(
+              m_Value()))),
+        m_c_Mul(
+          m_SExt(
+            m_Value()),
+          m_ZExt(
+            m_Value()))),
+      m_c_Mul(
+        m_SExt(
+          m_Value()),
+        m_ZExt(
+          m_Value()))));
+  if (Matched)
+  errs() << "!!!  matched : " << *V << '\n';
   for (auto &KV : OpMatches) {
     const Operation *Op = KV.first;
     Op->match(V, KV.second);
@@ -65,12 +93,15 @@ MatchManager::MatchManager(llvm::ArrayRef<InstBinding *> Insts,
   for (auto &KV : OpMatches) {
     auto &Matches = KV.second;
 
+#if 0
     // Filter out matches with intermediates that have external uses
     std::vector<unsigned> ToRemove;
     for (unsigned i = 0; i < Matches.size(); i++)
       if (hasExternalUses(Matches[i]))
         ToRemove.push_back(i);
     remove(Matches, ToRemove);
+    errs() << " REMOVING " << ToRemove.size() << '\n';
+#endif
 
     std::sort(Matches.begin(), Matches.end(), sortByOutput);
   }

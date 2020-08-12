@@ -473,8 +473,12 @@ static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
       Depended |= LDA.getDepended(NextLI);
       CurLoad = NextLI;
     }
-    if (Elements.count() == LoadSet.size())
+    if (Elements.count() == LoadSet.size()) {
+      // Pad
+      while (Loads.size() < OP.size())
+        Loads.push_back(nullptr);
       return VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI());
+    }
   }
   //errs() << "Failed!\n";
   return nullptr;
@@ -844,7 +848,7 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
   for (auto *OP : Frt.getUnresolvedPacks()) {
     //errs() << "Looking for a pack to extend:{\n";
     //for (auto *V : *OP)
-    //  errs() << *V << '\n';
+    //  if (V) errs() << *V << '\n';
     //errs() << "}\n";
 
     unsigned NumLanes = OP->size();
@@ -878,6 +882,9 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
       Elements.set(InstId);
       Depended |= LDA.getDepended(I);
     }
+
+    errs() << "Extensible? " << Extensible 
+      << ", AllLoads? " << AllLoads << '\n';
 
     if (!Extensible)
       continue;
@@ -1034,7 +1041,7 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
     }
   }
 
-  errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
+  //errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
   return Cost;
 }
 
@@ -1237,10 +1244,13 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
-        //float Est = estimateCost(Frt, SeedVP);
+#if 0
+        float Est = estimateCost(Frt, SeedVP);
+#else
         float LocalCost;
         auto Sol = Solver.solve(Frt.advance(SeedVP, LocalCost, TTI));
         float Est = LocalCost + Sol.Cost;
+#endif
 
         errs() << "Estimated cost of " << *SeedVP << Est << '\n';
         if (Est < BestEst) {
@@ -1252,7 +1262,12 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
   for (;;) {
+#if 0
+    auto *ExtVP = findExtensionPack(Frt);
+#else
     auto *ExtVP = Solver.solve(Frt).VP;
+#endif
+
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);

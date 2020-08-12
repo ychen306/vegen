@@ -286,14 +286,14 @@ static void balanceReductionTree(Function &F) {
       std::vector<Instruction *> Intermediates;
       auto Elems = collectReductionElements(I, Intermediates);
       if (Elems.size() > 2) {
-        //if (Elems.size() == 4) {
-        //  auto t = Elems;
-        //  t[0] = Elems[0];
-        //  t[1] = Elems[2];
-        //  t[2] = Elems[1];
-        //  t[3] = Elems[3];
-        //  Elems = t;
-        //}
+        if (Elems.size() == 4) {
+          auto t = Elems;
+          t[0] = Elems[0];
+          t[1] = Elems[2];
+          t[2] = Elems[1];
+          t[3] = Elems[3];
+          Elems = t;
+        }
         IRBuilder<> IRB(I);
         auto *NewRoot = buildBalancedTree(IRB, Elems);
         I->replaceAllUsesWith(NewRoot);
@@ -314,7 +314,7 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  balanceReductionTree(F);
+  //balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;

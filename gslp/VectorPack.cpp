@@ -133,7 +133,9 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
     Alignment = MaybeAlign(DL.getABITypeAlignment(ScalarLoadTy));
   VecLoad->setAlignment(Alignment);
 
-  std::vector<Value *> Values(Loads.begin(), Loads.end());
+  std::vector<Value *> Values;
+  for (auto *LI : Loads)
+    if (LI) Values.push_back(LI);
   return propagateMetadata(VecLoad, Values);
 }
 
