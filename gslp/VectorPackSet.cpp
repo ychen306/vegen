@@ -156,7 +156,8 @@ bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
 
   SmallPtrSet<Value *, 8> NewValues;
   for (auto *V : VP.elementValues())
-    NewValues.insert(V);
+    if (V)
+      NewValues.insert(V);
 
   // Do a DFS on the dependence graph starting from VP.
   // We want to see if we can get back to any of VP's values

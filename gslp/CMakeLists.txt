@@ -20,7 +20,7 @@ add_library(GSLP MODULE GSLP.cpp)
 
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis codegen x86desc x86info x86codegen)
 
-target_link_libraries(Packing ${TORCH_LIBRARIES})
+#target_link_libraries(Packing ${LLVM_LIBRARIES})
 target_link_libraries(GSLP Packing)
 
 SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)

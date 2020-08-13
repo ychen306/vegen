@@ -314,7 +314,7 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  balanceReductionTree(F);
+  //balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
@@ -342,6 +342,8 @@ bool GSLP::runOnFunction(Function &F) {
   IntrinsicBuilder Builder(*InstWrappers);
   errs() << "Generating vector code\n";
   Packs.codegen(Builder, Pkr);
+
+  errs() << F << '\n';
 
   assert(!verifyFunction(F, &errs()));
   return true;

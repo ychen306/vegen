@@ -475,7 +475,7 @@ static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
     }
     if (Elements.count() == LoadSet.size()) {
       // Pad
-      while (Loads.size() < OP.size())
+      while (Loads.size() < PowerOf2Ceil(OP.size()))
         Loads.push_back(nullptr);
       return VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI());
     }
@@ -883,8 +883,8 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
       Depended |= LDA.getDepended(I);
     }
 
-    errs() << "Extensible? " << Extensible 
-      << ", AllLoads? " << AllLoads << '\n';
+    //errs() << "Extensible? " << Extensible 
+    //  << ", AllLoads? " << AllLoads << '\n';
 
     if (!Extensible)
       continue;
@@ -1025,8 +1025,8 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
   float Cost = Frt.advanceInplace(VP, TTI);
   for (;;) {
     auto *ExtVP = findExtensionPack(Frt);
-    if (ExtVP)
-      errs() << "!!! Extending with: "<< *ExtVP << '\n';
+    //if (ExtVP)
+    //  errs() << "!!! Extending with: "<< *ExtVP << '\n';
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
@@ -1047,7 +1047,7 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
 
 static float estimateAllScalarCost(const Frontier &Frt, TargetTransformInfo *TTI) {
   auto *BB = Frt.getBasicBlock();
-  float Cost;
+  float Cost = 0;
   // Pay insertion cost
   for (auto *OP : Frt.getUnresolvedPacks()) {
     auto *VecTy = getVectorType(*OP);
@@ -1103,8 +1103,11 @@ class DPSolver {
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
 
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
-      //errs () << " COST OF EXTENDING WITH " <<
-      //  *ExtVP << ": " << LocalCost << '\n';
+      //errs () << " EXTENDING WITH " << *ExtVP
+      //  << ", transition cost : " << LocalCost
+      //  << ", local cost : " << ExtVP->getCost()
+      //  << ", num elems: " << ExtVP->getOrderedValues().size()
+      //  << '\n';
 
       if (Sol.Cost > TotalCost) {
         Sol.Cost = TotalCost;
@@ -1244,7 +1247,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
-#if 1
+#if 0
         float Est = estimateCost(Frt, SeedVP);
 #else
         float LocalCost;
@@ -1262,7 +1265,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
   for (;;) {
-#if 1
+#if 0
     auto *ExtVP = findExtensionPack(Frt);
 #else
     auto *ExtVP = Solver.solve(Frt).VP;
@@ -1273,7 +1276,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     Cost += Frt.advanceInplace(ExtVP, TTI);
     //errs() << "!!! Adding : " << *ExtVP << '\n';
     //errs() << "\t updated cost: " << Cost << '\n';
-    Packs.tryAdd(ExtVP);
+    bool Added = Packs.tryAdd(ExtVP);
+    errs() << "Insert pack into packset success? " << Added << '\n';
   }
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
