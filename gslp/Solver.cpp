@@ -415,11 +415,11 @@ static bool isPartialPackFeasible(const PartialPack &PP, const Frontier *Frt) {
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
 static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
                                          Packer *Pkr) {
-  errs() << "Finding vector load to extend: {\n";
-  for (auto *V : OP)
-    if (V)
-      errs() << "\t" << *V << '\n';
-  errs() << "}\n\n";
+  //errs() << "Finding vector load to extend: {\n";
+  //for (auto *V : OP)
+  //  if (V)
+  //    errs() << "\t" << *V << '\n';
+  //errs() << "}\n\n";
   auto *VPCtx = Pkr->getContext(BB);
   auto &LoadDAG = Pkr->getLoadDAG(BB);
   auto &LDA = Pkr->getLDA(BB);
@@ -1103,8 +1103,8 @@ class DPSolver {
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
 
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
-      errs () << " COST OF EXTENDING WITH " <<
-        *ExtVP << ": " << LocalCost << '\n';
+      //errs () << " COST OF EXTENDING WITH " <<
+      //  *ExtVP << ": " << LocalCost << '\n';
 
       if (Sol.Cost > TotalCost) {
         Sol.Cost = TotalCost;
@@ -1236,7 +1236,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   DPSolver Solver(TTI);
 
-  std::vector<unsigned> VL{32, 16, 8, 4, 2};
+  std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
   float Cost = 0;
   float BestEst = 0;
 
@@ -1244,7 +1244,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
-#if 0
+#if 1
         float Est = estimateCost(Frt, SeedVP);
 #else
         float LocalCost;
@@ -1252,7 +1252,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         float Est = LocalCost + Sol.Cost;
 #endif
 
-        errs() << "Estimated cost of " << *SeedVP << Est << '\n';
+        //errs() << "Estimated cost of " << *SeedVP << Est << '\n';
         if (Est < BestEst) {
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
@@ -1262,7 +1262,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
   for (;;) {
-#if 0
+#if 1
     auto *ExtVP = findExtensionPack(Frt);
 #else
     auto *ExtVP = Solver.solve(Frt).VP;
@@ -1271,8 +1271,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
-    errs() << "!!! Adding : " << *ExtVP << '\n';
-    errs() << "\t updated cost: " << Cost << '\n';
+    //errs() << "!!! Adding : " << *ExtVP << '\n';
+    //errs() << "\t updated cost: " << Cost << '\n';
     Packs.tryAdd(ExtVP);
   }
 
