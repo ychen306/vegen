@@ -103,17 +103,17 @@ struct FrontierHashInfo {
 
     if (Frt == getEmptyKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(0),
-                          ArrayRef<uint64_t>(), //ArrayRef<uint64_t>(),
+                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
                           ArrayRef<const OperandPack *>());
     } else if (Frt == getTombstoneKey()) {
       return hash_combine(reinterpret_cast<BasicBlock *>(1),
-                          ArrayRef<uint64_t>(), //ArrayRef<uint64_t>(),
+                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
                           ArrayRef<const OperandPack *>());
     }
 
     return hash_combine(reinterpret_cast<BasicBlock *>(2),
                         Frt->UnresolvedScalars.getData(),
-                        //Frt->FreeInsts.getData(),
+                        Frt->FreeInsts.getData(),
                         ArrayRef<const OperandPack *>(Frt->UnresolvedPacks));
   }
 

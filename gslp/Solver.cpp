@@ -1027,7 +1027,7 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
 
 static float estimateAllScalarCost(const Frontier &Frt, TargetTransformInfo *TTI) {
   auto *BB = Frt.getBasicBlock();
-  float Cost;
+  float Cost = 0;
   // Pay insertion cost
   for (auto *OP : Frt.getUnresolvedPacks()) {
     auto *VecTy = getVectorType(*OP);
@@ -1038,6 +1038,10 @@ static float estimateAllScalarCost(const Frontier &Frt, TargetTransformInfo *TTI
       auto *I = dyn_cast<Instruction>(V);
       if (!I || I->getParent() != BB || !Frt.isFree(I))
         continue;
+      if (i == 0 && is_splat(*OP)) {
+        Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
+        break;
+      }
       Cost +=
         2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
@@ -1222,7 +1226,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
-#if 1
+#if 0
         float Est = estimateCost(Frt, SeedVP);
 #else
         float LocalCost;
@@ -1230,17 +1234,27 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         float Est = LocalCost + Sol.Cost;
 #endif
 
-        //errs() << "Estimated cost of " << *SeedVP << Est << '\n';
+        errs() << "Estimated cost of " << *SeedVP << Est << '\n';
         if (Est < BestEst) {
+          //Cost += Frt.advanceInplace(SeedVP, TTI);
+          //Packs.tryAdd(SeedVP);
+          //BestEst = Est;
+          
+          //////////////
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
-          BestEst = Est;
+          while (auto *ExtVP = Solver.solve(Frt).VP) {
+            Cost += Frt.advanceInplace(ExtVP, TTI);
+            Packs.tryAdd(ExtVP);
+          }
+          BestEst = estimateAllScalarCost(Frt, TTI);
+          /////////////
         }
       }
     }
   }
   for (;;) {
-#if 1
+#if 0
     auto *ExtVP = findExtensionPack(Frt);
 #else
     auto *ExtVP = Solver.solve(Frt).VP;
