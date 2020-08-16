@@ -19,6 +19,32 @@ class ScalarEvolution;
 class TargetTransformInfo;
 } // namespace llvm
 
+
+// Auxiliary class to assign linear numbers to loads/stores
+// accessing the same object (but at different offsets).
+class AccessLayoutInfo {
+public:
+  struct AddressInfo {
+    llvm::Instruction *Leader;
+    unsigned Id; // Leader's id should be 0.
+  };
+private:
+  llvm::DenseMap<llvm::Instruction *, AddressInfo> Info;
+  llvm::DenseMap<llvm::Instruction *, unsigned> MemberCounts;
+public:
+  AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG);
+  // Get num followers + 1
+  unsigned getNumMembers(llvm::Instruction *I) const {
+    return MemberCounts.lookup(I);
+  }
+
+  const AddressInfo &get(llvm::Instruction *I) const {
+    auto It = Info.find(I);
+    assert(It != Info.end());
+    return It->second;
+  }
+};
+
 class Packer {
   llvm::Function *F;
 
@@ -31,6 +57,11 @@ class Packer {
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
       StoreDAGs;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<VectorPackContext>> VPCtxs;
+
+  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<AccessLayoutInfo>>
+      LoadInfo;
+  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<AccessLayoutInfo>>
+      StoreInfo;
 
   std::vector<InstBinding *> SupportedInsts;
 
@@ -57,6 +88,12 @@ public:
   }
   ConsecutiveAccessDAG &getStoreDAG(llvm::BasicBlock *BB) {
     return *StoreDAGs[BB];
+  }
+  AccessLayoutInfo &getLoadInfo(llvm::BasicBlock *BB) {
+    return *LoadInfo[BB];
+  }
+  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) {
+    return *LoadInfo[BB];
   }
   LocalDependenceAnalysis &getLDA(llvm::BasicBlock *BB) { return *LDAs[BB]; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }

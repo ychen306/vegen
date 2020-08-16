@@ -5,9 +5,7 @@ using namespace llvm;
 
 namespace {
 
-bool isScalarType(llvm::Type *Ty) {
-  return Ty->getScalarType() == Ty;
-}
+bool isScalarType(llvm::Type *Ty) { return Ty->getScalarType() == Ty; }
 
 // Do a quadratic search to build the access dags
 template <typename MemAccessTy>
@@ -57,10 +55,46 @@ Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
     buildAccessDAG<LoadInst>(*LoadDAG, Loads, DL, SE);
     buildAccessDAG<StoreInst>(*StoreDAG, Stores, DL, SE);
 
+    LoadInfo[&BB] = std::make_unique<AccessLayoutInfo>(*LoadDAG);
+    StoreInfo[&BB] = std::make_unique<AccessLayoutInfo>(*StoreDAG);
+
     MMs[&BB] = std::move(MM);
     LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, &BB, VPCtx.get());
     VPCtxs[&BB] = std::move(VPCtx);
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);
+  }
+}
+
+AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
+  // First pass to find leaders
+  DenseSet<Instruction *> Followers;
+  for (auto &AccessAndNext : AccessDAG) {
+    Instruction *I = AccessAndNext.first;
+    for (auto *Next : AccessAndNext.second)
+      Followers.insert(Next);
+  }
+
+  for (auto &AccessAndNext : AccessDAG) {
+    Instruction *Leader = AccessAndNext.first;
+    if (Followers.count(Leader))
+      continue;
+    Info[Leader] = { Leader, 0 };
+    unsigned Offset = 0;
+    auto *Followers = &AccessAndNext.second;
+    for (;;) {
+      for (auto *Follower : *Followers) {
+        Info[Follower] = { Leader, Offset + 1 }; 
+      }
+      if (Followers->empty())
+        break;
+      Instruction *Follower = *Followers->begin();
+      auto It = AccessDAG.find(Follower);
+      if (It == AccessDAG.end())
+        break;
+      Followers = &It->second;
+      Offset += 1;
+    }
+    MemberCounts[Leader] = Offset;
   }
 }
