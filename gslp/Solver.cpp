@@ -119,7 +119,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
       // Pay the insert cost
       if ((*OP)[i] == I)
         Cost +=
-            2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
+            2*TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
     if (resolved(*OP))
       ResolvedPackIds.push_back(i);
@@ -244,7 +244,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
       auto *I = dyn_cast<Instruction>(V);
       if (!I || I->getParent() != BB) {
         // Assume I is always scalar and pay the insert cost.
-        Cost += TTI->getVectorInstrCost(Instruction::InsertElement, OperandTy,
+        Cost += 2* TTI->getVectorInstrCost(Instruction::InsertElement, OperandTy,
                                         LaneId);
       }
     }
@@ -959,13 +959,13 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
   std::vector<VectorPack *> Extensions;
   for (auto *OP : Frt.getUnresolvedPacks()) {
     ////////
-    //errs() << "Looking for a pack to extend:{\n";
-    //for (auto *V : *OP)
-    //  if (V)
-    //    errs() << *V << '\n';
-    //  else
-    //    errs() << "undef\n";
-    //errs() << "}\n";
+    errs() << "Looking for a pack to extend:{\n";
+    for (auto *V : *OP)
+      if (V)
+        errs() << *V << '\n';
+      else
+        errs() << "undef\n";
+    errs() << "}\n";
     ///////
     if (!Extensions.empty())
       break;
@@ -1001,6 +1001,10 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
       Elements.set(InstId);
       Depended |= LDA.getDepended(I);
     }
+
+    errs() << "Extensible? " << Extensible
+      << ", AllLoads? " << AllLoads 
+      << '\n';
 
     if (!Extensible)
       continue;
@@ -1183,6 +1187,11 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
 
 static float estimateAllScalarCost(const Frontier &Frt,
                                    TargetTransformInfo *TTI) {
+  // errs() << "Finding vector load to extend: {\n";
+  // for (auto *V : OP)
+  //  if (V)
+  //    errs() << "\t" << *V << '\n';
+  // errs() << "}\n\n";
   auto *BB = Frt.getBasicBlock();
   float Cost = 0;
   // Pay insertion cost
@@ -1200,7 +1209,7 @@ static float estimateAllScalarCost(const Frontier &Frt,
             TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
         break;
       }
-      Cost += 2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
+      Cost += 2*TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
   }
   return Cost;
@@ -1239,6 +1248,7 @@ class DPSolver {
 
     // Figure out the cost of adding one extension
     auto Extensions = findExtensionPacks2(Frt);
+    //errs() << "NUM EXTENSIONS: " << Extensions.size() << '\n';
     for (const VectorPack *ExtVP : Extensions) {
       float LocalCost;
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
@@ -1247,7 +1257,9 @@ class DPSolver {
       //errs () << " EXTENDING WITH " << *ExtVP
       // << ", transition cost : " << LocalCost
       // << ", local cost : " << ExtVP->getCost()
+      // << ", total cost : " << TotalCost
       // << ", num elems: " << ExtVP->getOrderedValues().size()
+      // << ", best cost so far: " << Sol.Cost
       // << '\n';
 
       if (Sol.Cost > TotalCost) {
@@ -1395,7 +1407,11 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         auto Sol = Solver.solve(Frt.advance(SeedVP, LocalCost, TTI));
         float Est = LocalCost + Sol.Cost;
 #endif
-        //errs() << "Estimated cost of " << *SeedVP <<  " is " << Est << '\n';
+      //  errs() << "Estimated cost of " << *SeedVP
+      //    <<  " is " << Est
+      //    << ", local cost: " << LocalCost
+      //    <<", trans cost: "<< Sol.Cost
+      //    << '\n';
         if (Est < BestEst) {
 #if 0
            Cost += Frt.advanceInplace(SeedVP, TTI);
@@ -1407,6 +1423,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
           while (auto *ExtVP = Solver.solve(Frt).VP) {
+    //errs() << "!!! Adding : " << *ExtVP << '\n';
+    //errs() << "\t updated cost: " << Cost << '\n';
             Cost += Frt.advanceInplace(ExtVP, TTI);
             Packs.tryAdd(ExtVP);
           }
