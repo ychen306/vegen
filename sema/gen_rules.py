@@ -389,10 +389,10 @@ if __name__ == '__main__':
       continue
     # Also skip instructions that use `mm` registers
     operands = specs[inst].inst_form.split(',')
-    if operands and any(operand.strip() == 'mm'
-        for operand in operands):
-      print(inst, 'bad inst form')
-      continue
+    #if operands and any(operand.strip() == 'mm'
+    #    for operand in operands):
+    #  print(inst, 'bad inst form')
+    #  continue
     try:
       print('Emitting pattern for', inst)
       rb = RuleBundle(sigs[inst], semas[inst], out_ids, dag)

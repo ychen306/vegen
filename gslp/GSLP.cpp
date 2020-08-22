@@ -323,6 +323,9 @@ bool GSLP::runOnFunction(Function &F) {
       SupportedIntrinsics.push_back(&Inst);
     }
   }
+  //for (auto *Inst : VecBindingTable.getBindings())
+  //  SupportedIntrinsics.push_back(Inst);
+
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size() << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
@@ -334,6 +337,8 @@ bool GSLP::runOnFunction(Function &F) {
   IntrinsicBuilder Builder(*InstWrappers);
   errs() << "Generating vector code\n";
   Packs.codegen(Builder, Pkr);
+
+  errs() << F << '\n';
 
   assert(!verifyFunction(F, &errs()));
   return true;
