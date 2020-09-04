@@ -1027,6 +1027,7 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
       for (unsigned i = 0; i < NumLanes; i++) {
         ArrayRef<Operation::Match> Matches =
             MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
+        errs() << "!!! num matches" << Matches.size() << " \n";
         if (Matches.empty())
           break;
         // FIXME: consider multiple matches for the same operation
@@ -1254,13 +1255,13 @@ class DPSolver {
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
 
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
-      //errs () << " EXTENDING WITH " << *ExtVP
-      // << ", transition cost : " << LocalCost
-      // << ", local cost : " << ExtVP->getCost()
-      // << ", total cost : " << TotalCost
-      // << ", num elems: " << ExtVP->getOrderedValues().size()
-      // << ", best cost so far: " << Sol.Cost
-      // << '\n';
+      errs () << " EXTENDING WITH " << *ExtVP
+       << ", transition cost : " << LocalCost
+       << ", local cost : " << ExtVP->getCost()
+       << ", total cost : " << TotalCost
+       << ", num elems: " << ExtVP->getOrderedValues().size()
+       << ", best cost so far: " << Sol.Cost
+       << '\n';
 
       if (Sol.Cost > TotalCost) {
         Sol.Cost = TotalCost;
@@ -1388,6 +1389,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     return GetChainLen(A) > GetChainLen(B);
   });
 
+  errs() << "??? num stores: " << Stores.size() << '\n';
+
   auto *TTI = Pkr->getTTI();
 
   DPSolver Solver(TTI);
@@ -1407,11 +1410,11 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         auto Sol = Solver.solve(Frt.advance(SeedVP, LocalCost, TTI));
         float Est = LocalCost + Sol.Cost;
 #endif
-      //  errs() << "Estimated cost of " << *SeedVP
-      //    <<  " is " << Est
-      //    << ", local cost: " << LocalCost
-      //    <<", trans cost: "<< Sol.Cost
-      //    << '\n';
+        errs() << "Estimated cost of " << *SeedVP
+          <<  " is " << Est
+          << ", local cost: " << LocalCost
+          <<", trans cost: "<< Sol.Cost
+          << '\n';
         if (Est < BestEst) {
 #if 0
            Cost += Frt.advanceInplace(SeedVP, TTI);

@@ -306,7 +306,9 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  //balanceReductionTree(F);
+  if (!F.getName().contains("idct8"))
+    return false;
+  balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
@@ -323,8 +325,8 @@ bool GSLP::runOnFunction(Function &F) {
       SupportedIntrinsics.push_back(&Inst);
     }
   }
-  //for (auto *Inst : VecBindingTable.getBindings())
-  //  SupportedIntrinsics.push_back(Inst);
+  for (auto *Inst : VecBindingTable.getBindings())
+    SupportedIntrinsics.push_back(Inst);
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size() << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
@@ -355,6 +357,7 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 // http://adriansampson.net/blog/clangpass.html
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
+  MPM.add(createSROAPass());
   MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
   if (UseMainlineSLP) {
     errs() << "USING LLVM SLP\n";
