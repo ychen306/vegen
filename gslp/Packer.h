@@ -19,7 +19,6 @@ class ScalarEvolution;
 class TargetTransformInfo;
 } // namespace llvm
 
-
 // Auxiliary class to assign linear numbers to loads/stores
 // accessing the same object (but at different offsets).
 class AccessLayoutInfo {
@@ -28,9 +27,11 @@ public:
     llvm::Instruction *Leader;
     unsigned Id; // Leader's id should be 0.
   };
+
 private:
   llvm::DenseMap<llvm::Instruction *, AddressInfo> Info;
   llvm::DenseMap<llvm::Instruction *, unsigned> MemberCounts;
+
 public:
   AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG);
   // Get num followers + 1
@@ -62,6 +63,11 @@ class Packer {
       LoadInfo;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<AccessLayoutInfo>>
       StoreInfo;
+  // mapping <vector operand> -> <producer packs>
+  using ExtensionCache =
+      llvm::DenseMap<const OperandPack *, llvm::SmallVector<VectorPack *, 4>>;
+  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ExtensionCache>>
+      ExtensionCaches;
 
   std::vector<InstBinding *> SupportedInsts;
 
@@ -89,17 +95,17 @@ public:
   ConsecutiveAccessDAG &getStoreDAG(llvm::BasicBlock *BB) {
     return *StoreDAGs[BB];
   }
-  AccessLayoutInfo &getLoadInfo(llvm::BasicBlock *BB) {
-    return *LoadInfo[BB];
-  }
-  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) {
-    return *LoadInfo[BB];
-  }
+  AccessLayoutInfo &getLoadInfo(llvm::BasicBlock *BB) { return *LoadInfo[BB]; }
+  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) { return *LoadInfo[BB]; }
   LocalDependenceAnalysis &getLDA(llvm::BasicBlock *BB) { return *LDAs[BB]; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
 
   llvm::Function *getFunction() const { return F; }
+  llvm::ArrayRef<VectorPack *> findExtensions(VectorPackContext *VPCtx,
+                                              const OperandPack *OP,
+                                              llvm::BitVector Elements,
+                                              llvm::BitVector Depended);
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

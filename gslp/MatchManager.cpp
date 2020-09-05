@@ -47,34 +47,6 @@ bool MatchManager::sortByOutput(const Operation::Match &A,
 }
 
 void MatchManager::match(llvm::Value *V) {
-  using namespace PatternMatch;
-  bool Matched = PatternMatch::match(V, m_c_Add(
-      m_c_Add(
-        m_c_Add(
-          m_c_Add(
-            m_c_Mul(
-              m_SExt(
-                m_Value()),
-              m_ZExt(
-                m_Value())),
-            m_Value()),
-          m_c_Mul(
-            m_SExt(
-              m_Value()),
-            m_ZExt(
-              m_Value()))),
-        m_c_Mul(
-          m_SExt(
-            m_Value()),
-          m_ZExt(
-            m_Value()))),
-      m_c_Mul(
-        m_SExt(
-          m_Value()),
-        m_ZExt(
-          m_Value()))));
-  if (Matched)
-  errs() << "!!!  matched : " << *V << '\n';
   for (auto &KV : OpMatches) {
     const Operation *Op = KV.first;
     Op->match(V, KV.second);

@@ -5,13 +5,12 @@ using namespace llvm;
 
 namespace {
 
-bool isScalarType(llvm::Type *Ty) { return Ty->getScalarType() == Ty; }
+bool isScalarType(Type *Ty) { return Ty->getScalarType() == Ty; }
 
 // Do a quadratic search to build the access dags
 template <typename MemAccessTy>
-void buildAccessDAG(ConsecutiveAccessDAG &DAG,
-                    llvm::ArrayRef<MemAccessTy *> Accesses,
-                    const llvm::DataLayout *DL, llvm::ScalarEvolution *SE) {
+void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
+                    const DataLayout *DL, ScalarEvolution *SE) {
   using namespace llvm;
   for (auto *A1 : Accesses) {
     // Get type of the value being acccessed
@@ -29,12 +28,13 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG,
 
 } // end anonymous namespace
 
-Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
+Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
     : F(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
+    ExtensionCaches[&BB] = std::make_unique<ExtensionCache>();
     std::vector<LoadInst *> Loads;
     std::vector<StoreInst *> Stores;
     // Find packable instructions
@@ -79,12 +79,12 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
     Instruction *Leader = AccessAndNext.first;
     if (Followers.count(Leader))
       continue;
-    Info[Leader] = { Leader, 0 };
+    Info[Leader] = {Leader, 0};
     unsigned Offset = 0;
     auto *Followers = &AccessAndNext.second;
     for (;;) {
       for (auto *Follower : *Followers) {
-        Info[Follower] = { Leader, Offset + 1 }; 
+        Info[Follower] = {Leader, Offset + 1};
       }
       if (Followers->empty())
         break;
@@ -97,4 +97,42 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
     }
     MemberCounts[Leader] = Offset;
   }
+}
+
+ArrayRef<VectorPack *> Packer::findExtensions(VectorPackContext *VPCtx,
+                                              const OperandPack *OP,
+                                              BitVector Elements,
+                                              BitVector Depended) {
+  auto *BB = VPCtx->getBasicBlock();
+  auto &MM = *MMs[BB];
+  auto &Cache = *ExtensionCaches[BB];
+  auto It = Cache.find(OP);
+  if (It != Cache.end()) {
+    return It->second;
+  }
+
+  unsigned NumLanes = OP->size();
+  auto &Extensions = Cache[OP];
+
+  for (auto *Inst : SupportedInsts) {
+    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+    if (LaneOps.size() != NumLanes)
+      continue;
+
+    std::vector<const Operation::Match *> Lanes;
+    for (unsigned i = 0; i < NumLanes; i++) {
+      ArrayRef<Operation::Match> Matches =
+          MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
+      if (Matches.empty())
+        break;
+      // FIXME: consider multiple matches for the same operation
+      Lanes.push_back(&Matches[0]);
+    }
+
+    if (Lanes.size() == NumLanes) {
+      Extensions.push_back(
+          VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+    }
+  }
+  return Extensions;
 }
