@@ -212,6 +212,8 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
           TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
   }
 
+  // FIXME: instead of doing this, which is broken if some intermediate values have external user,
+  // directly subtract cost of dead instructions. We have enough information to check if a value is dead.
   auto ReplacedInsts = VP->getReplacedInsts();
   std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
             [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
