@@ -31,6 +31,20 @@ public:
   }
 };
 
+struct BackwardShuffle {
+  virtual std::vector<const OperandPack *> run(const OperandPack *Output) const = 0;
+  virtual float getCost(llvm::TargetTransformInfo *) const = 0;
+};
+
+struct ShuffleTask {
+  const BackwardShuffle *Shfl;
+  const OperandPack *Output;
+  std::vector<const OperandPack *> Inputs;
+  ShuffleTask(const BackwardShuffle *Shfl, const OperandPack *Output) 
+    : Shfl(Shfl), Output(Output), Inputs(Shfl->run(Output)) {}
+  float getCost(llvm::TargetTransformInfo *TTI) { return Shfl->getCost(TTI); }
+};
+
 class MatchManager;
 class Frontier {
   Packer *Pkr;
@@ -59,9 +73,11 @@ public:
                                     llvm::TargetTransformInfo *TTI) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
+  std::unique_ptr<Frontier> advance(ShuffleTask, float &Cost, llvm::TargetTransformInfo *TTI) const;
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
+  float advanceInplace(ShuffleTask, llvm::TargetTransformInfo *);
   llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   bool isFree(llvm::Instruction *I) const {
