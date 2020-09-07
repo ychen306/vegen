@@ -892,7 +892,6 @@ static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
     return nullptr;
 
   auto *SomeLoad = *MainPack->elementValues().begin();
-  assert(Loads[0]);
   auto *Leader = LayoutInfo.get(cast<Instruction>(SomeLoad)).Leader;
   BitVector Elements = MainPack->getElements();
   BitVector Depended = MainPack->getDepended();

@@ -401,7 +401,7 @@ int main() {
     # TODO: add CPUIDs 
     try:
       subprocess.check_output(
-          'clang %s -o %s -I%s %s/printers.o %s 2>/dev/null >/dev/null' % (
+          'gcc %s -o %s -I%s %s/printers.o %s 2>/dev/null >/dev/null' % (
             outf.name, exe.name, src_path, src_path, features),
           shell=True)
     except subprocess.CalledProcessError:

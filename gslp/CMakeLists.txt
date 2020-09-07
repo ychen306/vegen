@@ -25,8 +25,6 @@ target_link_libraries(GSLP Packing)
 
 SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)
 
-set_target_properties(Packing PROPERTIES COMPILE_FLAGS "-frtti")
-
 # THANKS AJAY!
 set(INST_WRAPPERS "${CMAKE_BINARY_DIR}/InstWrappers.bc")
 set(ALL_FLAGS -mssse3 -msse -mavx512bw -msse3 -msse4.1 -msse4.2 -mfma -msse2 -mavx2 -mavx512vnni -mavx512vl -mavx512dq -mgfni -mavx512vbmi2 -mavx512vbmi -mavx512cd -mavx -mavx512f -mbmi2)
