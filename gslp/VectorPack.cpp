@@ -379,5 +379,8 @@ std::vector<Instruction *> VectorPack::getReplacedInsts() const {
         Replaced.push_back(I);
     }
   }
+  std::sort(Replaced.begin(), Replaced.end());
+  auto It = std::unique(Replaced.begin(), Replaced.end());
+  Replaced.resize(std::distance(Replaced.begin(), It));
   return Replaced;
 }

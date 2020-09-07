@@ -217,8 +217,12 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   auto ReplacedInsts = VP->getReplacedInsts();
   std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
             [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
-  for (auto *I : ReplacedInsts)
+  errs() << "Freezing replace insts\n";
+  for (auto *I : ReplacedInsts) {
+    errs() << "Freezing " << *I << '\n';
     freezeOneInst(I);
+  }
+  errs() << "Finished freezing replace insts\n";
 
   advanceBBIt();
 
