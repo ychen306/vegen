@@ -33,13 +33,16 @@ public:
 
 struct BackwardShuffle {
   virtual std::vector<const OperandPack *> run(const OperandPack *Output) const = 0;
+  virtual float getCost(llvm::TargetTransformInfo *) const = 0;
 };
 
 struct ShuffleTask {
+  const BackwardShuffle *Shfl;
+  const OperandPack *Output;
   std::vector<const OperandPack *> Inputs;
-  ShuffleTask(const BackwardShuffle *Shfl, const OperandPack *Output) {
-    Inputs = Shfl->run(Output);
-  }
+  ShuffleTask(const BackwardShuffle *Shfl, const OperandPack *Output) 
+    : Shfl(Shfl), Output(Output), Inputs(Shfl->run(Output)) {}
+  float getCost(llvm::TargetTransformInfo *TTI) { return Shfl->getCost(TTI); }
 };
 
 class MatchManager;
