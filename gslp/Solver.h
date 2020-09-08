@@ -32,7 +32,8 @@ public:
 };
 
 struct BackwardShuffle {
-  virtual std::vector<const OperandPack *> run(const OperandPack *Output) const = 0;
+  virtual std::vector<const OperandPack *>
+  run(const VectorPackContext *, const OperandPack *Output) const = 0;
   virtual float getCost(llvm::TargetTransformInfo *) const = 0;
 };
 
@@ -40,10 +41,14 @@ struct ShuffleTask {
   const BackwardShuffle *Shfl;
   const OperandPack *Output;
   std::vector<const OperandPack *> Inputs;
-  ShuffleTask(const BackwardShuffle *Shfl, const OperandPack *Output) 
-    : Shfl(Shfl), Output(Output), Inputs(Shfl->run(Output)) {}
-  float getCost(llvm::TargetTransformInfo *TTI) { return Shfl->getCost(TTI); }
+  ShuffleTask(const BackwardShuffle *Shfl, const OperandPack *Output, const VectorPackContext *VPCtx)
+      : Shfl(Shfl), Output(Output), Inputs(Shfl->run(VPCtx, Output)) {}
+  float getCost(llvm::TargetTransformInfo *TTI) const { return Shfl->getCost(TTI); }
+  bool feasible() const { return Inputs.size() > 0; }
 };
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ShuffleTask &);
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class MatchManager;
 class Frontier {
@@ -73,7 +78,8 @@ public:
                                     llvm::TargetTransformInfo *TTI) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
-  std::unique_ptr<Frontier> advance(ShuffleTask, float &Cost, llvm::TargetTransformInfo *TTI) const;
+  std::unique_ptr<Frontier> advance(ShuffleTask, float &Cost,
+                                    llvm::TargetTransformInfo *TTI) const;
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
@@ -103,9 +109,8 @@ public:
     return VPCtx->iter_values(UsableInsts);
   }
 
-  unsigned numUsableInsts() const {
-    return UsableInsts.count();
-  }
+  unsigned numUsableInsts() const { return UsableInsts.count(); }
+  const VectorPackContext *getContext() const { return VPCtx; }
 };
 
 // Hashing support for `Frontier`
@@ -239,11 +244,11 @@ public:
     bool IsScalar;
     // If non-null then we've finished filling out a pack w/ this transition
     const VectorPack *VP;
-    llvm::Instruction *I {nullptr};
+    llvm::Instruction *I{nullptr};
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
-    float Bias {0};
+    float Bias{0};
 
     Transition(const VectorPack *VP, UCTNode *Next, float Cost)
         : IsScalar(false), VP(VP), Next(Next), Count(0), Cost(Cost) {}
@@ -269,8 +274,8 @@ public:
   // ``Transpositions and Move Groups in Monte Carlo Tree Search''
   float score(const Transition &T, float C) const {
     return -normalize(T.avgCost()) +
-           C * sqrt(logf(visitCount()) / float(T.visitCount()))
-           + T.Bias/float(T.visitCount());
+           C * sqrt(logf(visitCount()) / float(T.visitCount())) +
+           T.Bias / float(T.visitCount());
   }
 
 private:

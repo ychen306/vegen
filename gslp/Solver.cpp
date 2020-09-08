@@ -46,7 +46,9 @@ Instruction *Frontier::getNextFreeInst() const {
 
 void Frontier::freezeOneInst(Instruction *I) {
   unsigned InstId = VPCtx->getScalarId(I);
-  assert(FreeInsts.test(InstId));
+  //assert(FreeInsts.test(InstId));
+  if (!FreeInsts.test(InstId))
+    return;
   FreeInsts.reset(InstId);
   UnresolvedScalars.reset(InstId);
   UsableInsts.reset(InstId);
@@ -119,7 +121,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
       // Pay the insert cost
       if ((*OP)[i] == I)
         Cost +=
-            2*TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
+            2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
     if (resolved(*OP))
       ResolvedPackIds.push_back(i);
@@ -212,8 +214,9 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
           TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
   }
 
-  // FIXME: instead of doing this, which is broken if some intermediate values have external user,
-  // directly subtract cost of dead instructions. We have enough information to check if a value is dead.
+  // FIXME: instead of doing this, which is broken if some intermediate values
+  // have external user, directly subtract cost of dead instructions. We have
+  // enough information to check if a value is dead.
   auto ReplacedInsts = VP->getReplacedInsts();
   std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
             [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
@@ -250,8 +253,8 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
       auto *I = dyn_cast<Instruction>(V);
       if (!I || I->getParent() != BB) {
         // Assume I is always scalar and pay the insert cost.
-        Cost += 2* TTI->getVectorInstrCost(Instruction::InsertElement, OperandTy,
-                                        LaneId);
+        Cost += 2 * TTI->getVectorInstrCost(Instruction::InsertElement,
+                                            OperandTy, LaneId);
       }
     }
     if (!resolved(*OpndPack) &&
@@ -266,7 +269,8 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
 }
 
 float Frontier::advanceInplace(ShuffleTask ST, TargetTransformInfo *TTI) {
-  auto It = std::lower_bound(UnresolvedPacks.begin(), UnresolvedPacks.end(), ST.Output);
+  auto It = std::lower_bound(UnresolvedPacks.begin(), UnresolvedPacks.end(),
+                             ST.Output);
   assert(It != UnresolvedPacks.end());
   assert(*It == ST.Output);
   std::swap(*It, UnresolvedPacks.back());
@@ -275,6 +279,22 @@ float Frontier::advanceInplace(ShuffleTask ST, TargetTransformInfo *TTI) {
     UnresolvedPacks.push_back(OP);
   std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return ST.getCost(TTI);
+}
+
+raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
+  OS << "[";
+  for (auto *V : OP)
+    errs() << *V << ", ";
+  OS << "]";
+  return OS;
+}
+
+raw_ostream &operator<<(raw_ostream &OS, const ShuffleTask &ST) {
+  OS << *ST.Output << "\t\n->\n" << "{\n";
+  for (auto *OP : ST.Inputs)
+    OS << *OP << '\n';
+  OS << "}\n";
+  return OS;
 }
 
 std::unique_ptr<Frontier>
@@ -293,8 +313,8 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   return Next;
 }
 
-std::unique_ptr<Frontier>
-Frontier::advance(ShuffleTask ST, float &Cost, TargetTransformInfo *TTI) const {
+std::unique_ptr<Frontier> Frontier::advance(ShuffleTask ST, float &Cost,
+                                            TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(ST, TTI);
   return Next;
@@ -864,10 +884,9 @@ class SlotSet {
   unsigned MinId, MaxId;
   unsigned NumElems = 0;
   unsigned HasValue = false;
+
 public:
-  LoadInst *operator[](unsigned i) const {
-    return Slots[i];
-  }
+  LoadInst *operator[](unsigned i) const { return Slots[i]; }
   bool try_insert(unsigned i, LoadInst *LI) {
     if (i >= Slots.size())
       Slots.resize(i + 1);
@@ -880,27 +899,19 @@ public:
         MinId = MaxId = i;
         HasValue = true;
       }
-      NumElems ++;
+      NumElems++;
       return true;
     }
     return false;
   }
 
-  double utilization() const {
-    return (double)NumElems / (MaxId - MinId + 1);
-  }
+  double utilization() const { return (double)NumElems / (MaxId - MinId + 1); }
 
-  unsigned num_elems() const {
-    return NumElems;
-  }
+  unsigned num_elems() const { return NumElems; }
 
-  unsigned minId() const {
-    return MinId;
-  }
+  unsigned minId() const { return MinId; }
 
-  unsigned maxId() const {
-    return MaxId;
-  }
+  unsigned maxId() const { return MaxId; }
 };
 
 // Try to coalesce main pack with some other packs
@@ -925,7 +936,8 @@ static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
   }
 
   for (auto *Other : OtherPacks) {
-    auto &Info = LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
+    auto &Info =
+        LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
     // Cannot coalesce with loads accessing a different object
     if (Info.Leader != Leader)
       continue;
@@ -940,7 +952,8 @@ static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
       auto *LI = cast<LoadInst>(V);
       unsigned SlotId = LayoutInfo.get(LI).Id;
       // Can only coalesce if the slot if empty
-      bool Ok = Temp.try_insert(SlotId, LI);;
+      bool Ok = Temp.try_insert(SlotId, LI);
+      ;
       if (!Ok) {
         Coalesced = false;
         break;
@@ -961,9 +974,9 @@ static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
     Loads.push_back(Slots[i]);
   }
 
-  return Pkr->getContext(BB)->createLoadPack(Loads, Elements, Depended, Pkr->getTTI());
+  return Pkr->getContext(BB)->createLoadPack(Loads, Elements, Depended,
+                                             Pkr->getTTI());
 }
-
 
 static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
   auto *Pkr = Frt.getPacker();
@@ -1025,9 +1038,8 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
       Depended |= LDA.getDepended(I);
     }
 
-    errs() << "Extensible? " << Extensible
-      << ", AllLoads? " << AllLoads 
-      << '\n';
+    errs() << "Extensible? " << Extensible << ", AllLoads? " << AllLoads
+           << '\n';
 
     if (!Extensible)
       continue;
@@ -1070,8 +1082,7 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
   if (!LoadExtensions.empty()) {
     auto *LoadVP = LoadExtensions[0];
     if (auto *Coalesced = tryCoalesceLoads(
-            LoadVP, ArrayRef<VectorPack *>(LoadExtensions).slice(1),
-            Pkr)) {
+            LoadVP, ArrayRef<VectorPack *>(LoadExtensions).slice(1), Pkr)) {
       return {Coalesced, LoadVP};
     }
     return {LoadVP};
@@ -1079,7 +1090,6 @@ static std::vector<VectorPack *> findExtensionPacks2(const Frontier &Frt) {
 
   return {};
 }
-
 
 static VectorPack *findExtensionPack(const Frontier &Frt) {
   {
@@ -1192,20 +1202,22 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
-    //errs() << "!!! Extending with: "<< *ExtVP << ", COST AFTER EXTENSION = " << Cost << '\n';
+    // errs() << "!!! Extending with: "<< *ExtVP << ", COST AFTER EXTENSION = "
+    // << Cost << '\n';
   }
 
   while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
     for (auto *V : Frt.usableInsts()) {
       if (auto *I = dyn_cast<Instruction>(V)) {
         Cost += Frt.advanceInplace(I, TTI);
-        //errs() << "!!! Scalarizing "<< *I << ", COST AFTER = " << Cost << '\n';
+        // errs() << "!!! Scalarizing "<< *I << ", COST AFTER = " << Cost <<
+        // '\n';
         break;
       }
     }
   }
 
-  //errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
+  // errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
   return Cost;
 }
 
@@ -1233,20 +1245,47 @@ static float estimateAllScalarCost(const Frontier &Frt,
             TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
         break;
       }
-      Cost += 2*TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
+      Cost += 2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
   }
   return Cost;
 }
 
+// Hack! purely for debugging
+struct : public BackwardShuffle {
+  std::vector<const OperandPack *>
+  run(const VectorPackContext *VPCtx,
+      const OperandPack *Output) const override {
+    if (Output->size() != 16)
+      return {};
+    std::map<unsigned, OperandPack> ShuffleOperands;
+    for (auto *V : *Output) {
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        return {};
+      ShuffleOperands[I->getOpcode()].push_back(V);
+    }
+    if (ShuffleOperands.size() != 2)
+      return {};
+    auto *OP1 = VPCtx->getCanonicalOperandPack(ShuffleOperands.begin()->second);
+    auto *OP2 = VPCtx->getCanonicalOperandPack(std::next(ShuffleOperands.begin())->second);
+    if (OP1 == OP2)
+      return {OP1};
+    return {OP1, OP2};
+  }
+  float getCost(llvm::TargetTransformInfo *) const override { return 1.0; }
+} DeInterleave;
+
 class DPSolver {
   struct Solution {
     float Cost;
     const VectorPack *VP;
+    Optional<ShuffleTask> ST;
 
     // Default solution is no extension
     Solution() = default;
     Solution(float Cost, VectorPack *VP) : Cost(Cost), VP(VP) {}
+    Solution(float Cost, ShuffleTask TheST) : Cost(Cost), VP(nullptr), ST(ST) {}
   };
   TargetTransformInfo *TTI;
 
@@ -1272,25 +1311,47 @@ class DPSolver {
 
     // Figure out the cost of adding one extension
     auto Extensions = findExtensionPacks2(Frt);
-    //errs() << "NUM EXTENSIONS: " << Extensions.size() << '\n';
+    // errs() << "NUM EXTENSIONS: " << Extensions.size() << '\n';
     for (const VectorPack *ExtVP : Extensions) {
       float LocalCost;
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
 
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
-      errs () << " EXTENDING WITH " << *ExtVP
-       << ", transition cost : " << LocalCost
-       << ", local cost : " << ExtVP->getCost()
-       << ", total cost : " << TotalCost
-       << ", num elems: " << ExtVP->getOrderedValues().size()
-       << ", best cost so far: " << Sol.Cost
-       << '\n';
+      errs() << " EXTENDING WITH " << *ExtVP
+             << ", transition cost : " << LocalCost
+             << ", local cost : " << ExtVP->getCost()
+             << ", total cost : " << TotalCost
+             << ", num elems: " << ExtVP->getOrderedValues().size()
+             << ", best cost so far: " << Sol.Cost << '\n';
 
       if (Sol.Cost > TotalCost) {
         Sol.Cost = TotalCost;
         Sol.VP = ExtVP;
       }
     }
+
+    auto *VPCtx = Frt.getContext();
+    for (auto *OP : Frt.getUnresolvedPacks()) {
+      ShuffleTask ST(&DeInterleave, OP, VPCtx);
+      if (!ST.feasible())
+        continue;
+
+      float LocalCost;
+      auto NextFrt = Frt.advance(ST, LocalCost, TTI);
+
+      float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
+      errs() << " EXTENDING WITH Shuffle " << ST
+             << ", transition cost : " << LocalCost
+             << ", total cost : " << TotalCost
+             << ", best cost so far: " << Sol.Cost << '\n';
+      if (Sol.Cost > TotalCost) {
+        Sol.Cost = TotalCost;
+        Sol.VP = nullptr;
+        Sol.ST = ST;
+      }
+    }
+
+    // Also try shuffle
     return Sol;
   }
 
@@ -1418,8 +1479,9 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   DPSolver Solver(TTI);
 
-  //std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
-  std::vector<unsigned> VL{16, 8, 4, 2};
+  // std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
+  //std::vector<unsigned> VL{16, 8, 4, 2};
+  std::vector<unsigned> VL { 16 };
   float Cost = 0;
   float BestEst = 0;
 
@@ -1434,11 +1496,9 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         auto Sol = Solver.solve(Frt.advance(SeedVP, LocalCost, TTI));
         float Est = LocalCost + Sol.Cost;
 #endif
-        errs() << "Estimated cost of " << *SeedVP
-          <<  " is " << Est
-          << ", local cost: " << LocalCost
-          <<", trans cost: "<< Sol.Cost
-          << '\n';
+        errs() << "Estimated cost of " << *SeedVP << " is " << Est
+               << ", local cost: " << LocalCost << ", trans cost: " << Sol.Cost
+               << '\n';
         if (Est < BestEst) {
 #if 0
            Cost += Frt.advanceInplace(SeedVP, TTI);
@@ -1449,11 +1509,18 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           //////////////
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
-          while (auto *ExtVP = Solver.solve(Frt).VP) {
-    //errs() << "!!! Adding : " << *ExtVP << '\n';
-    //errs() << "\t updated cost: " << Cost << '\n';
-            Cost += Frt.advanceInplace(ExtVP, TTI);
-            Packs.tryAdd(ExtVP);
+          for (;;) {
+            // errs() << "!!! Adding : " << *ExtVP << '\n';
+            // errs() << "\t updated cost: " << Cost << '\n';
+            auto Sol = Solver.solve(Frt);
+            if (auto *ExtVP = Sol.VP) {
+              Cost += Frt.advanceInplace(ExtVP, TTI);
+              Packs.tryAdd(ExtVP);
+            } else if (Sol.ST) {
+              Cost += Frt.advanceInplace(Sol.ST.getValue(), TTI);
+            } else {
+              break;
+            }
           }
           BestEst = estimateAllScalarCost(Frt, TTI);
           /////////////
@@ -1472,8 +1539,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     if (!ExtVP)
       break;
     Cost += Frt.advanceInplace(ExtVP, TTI);
-    //errs() << "!!! Adding : " << *ExtVP << '\n';
-    //errs() << "\t updated cost: " << Cost << '\n';
+    // errs() << "!!! Adding : " << *ExtVP << '\n';
+    // errs() << "\t updated cost: " << Cost << '\n';
     Packs.tryAdd(ExtVP);
   }
 
