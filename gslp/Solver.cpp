@@ -1418,7 +1418,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   DPSolver Solver(TTI);
 
-  std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
+  //std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
+  std::vector<unsigned> VL{16, 8, 4, 2};
   float Cost = 0;
   float BestEst = 0;
 
