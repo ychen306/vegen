@@ -152,55 +152,6 @@ struct FrontierHashInfo {
   }
 };
 
-class PartialPack {
-  bool IsLoad, IsStore;
-  llvm::BasicBlock *BB;
-  VectorPackContext *VPCtx;
-  llvm::Instruction *Focus;
-
-  llvm::BitVector Elements;
-  llvm::BitVector Depended;
-  unsigned NumLanes;
-  // The lane we are filling out.
-  unsigned LaneId;
-  const InstBinding *Producer;
-
-  const ConsecutiveAccessDAG &LoadDAG;
-  const ConsecutiveAccessDAG &StoreDAG;
-  const LocalDependenceAnalysis &LDA;
-  const MatchManager &MM;
-  llvm::TargetTransformInfo *TTI;
-
-  std::vector<llvm::Instruction *> FilledLanes;
-  std::vector<const Operation::Match *> Matches;
-  std::vector<llvm::LoadInst *> Loads;
-  std::vector<llvm::StoreInst *> Stores;
-
-public:
-  PartialPack(const PartialPack &) = default;
-
-  // Start a partial load/store pack
-  PartialPack(bool, bool, llvm::BasicBlock *, unsigned NumLanes, Packer *);
-
-  // Start a general pack
-  PartialPack(const InstBinding *, llvm::BasicBlock *, Packer *);
-
-  unsigned getNumLanes() const { return NumLanes; }
-  // Return the lanes we've filled out so far
-  llvm::ArrayRef<llvm::Instruction *> getFilledLanes() const {
-    return FilledLanes;
-  }
-
-  // Return the list of instructions we can place at the current lane.
-  std::vector<llvm::Instruction *> getUsableInsts(const Frontier *) const;
-
-  std::unique_ptr<PartialPack> fillOneLane(llvm::Instruction *) const;
-
-  // Return a filled vector pack if we are done.
-  VectorPack *getPack() const;
-  bool isFilled() const { return Elements.count() == NumLanes; }
-};
-
 class UCTNode;
 class UCTNodeFactory {
   std::vector<std::unique_ptr<Frontier>> Frontiers;
@@ -210,7 +161,6 @@ class UCTNodeFactory {
 public:
   UCTNodeFactory() : FrontierToNodeMap(1000000) {}
   UCTNode *getNode(std::unique_ptr<Frontier>);
-  UCTNode *getNode(const Frontier *, std::unique_ptr<PartialPack>);
 };
 
 class UCTNode {
@@ -218,7 +168,6 @@ class UCTNode {
 
   // State
   const Frontier *Frt;
-  std::unique_ptr<PartialPack> PP;
 
   // Return
   float TotalCost;
@@ -281,10 +230,6 @@ public:
 private:
   std::vector<Transition> Transitions;
 
-  UCTNode(const Frontier *Frt, std::unique_ptr<PartialPack> PP)
-      : Frt(Frt), PP(std::move(PP)), TotalCost(0), Count(0),
-        TransitionWeight(nullptr) {}
-
   UCTNode(const Frontier *Frt)
       : Frt(Frt), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
 
@@ -309,7 +254,6 @@ public:
 
   uint64_t visitCount() const { return Count; }
   const Frontier *getFrontier() const { return Frt; }
-  const PartialPack *getPartialPack() const { return PP.get(); }
   void update(float Cost) {
     TotalCost += Cost;
 
@@ -343,21 +287,21 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(unsigned MaxNumLanes, unsigned EnumCap,
-                         const Frontier *Frt, const PartialPack *PP,
-                         PackEnumerationCache &EnumCache, Packer *Pkr) = 0;
+  virtual float evaluate(const Frontier *Frt) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned, unsigned, const Frontier *, const PartialPack *PP,
-                 PackEnumerationCache &, Packer *) override {
+  float evaluate(const Frontier *) override {
     return 0;
   }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  float evaluate(unsigned, unsigned, const Frontier *, const PartialPack *PP,
-                 PackEnumerationCache &, Packer *) override;
+  llvm::DenseMap<const Frontier *, std::vector<VectorPack *>, FrontierHashInfo> ExtensionCache;
+  std::vector<std::unique_ptr<Frontier>> Frontiers;
+  std::vector<VectorPack *> getExtensions(const Frontier &);
+public:
+  float evaluate(const Frontier *) override;
 };
 
 // Interface for asynchronous policy prediction.
@@ -384,7 +328,6 @@ class UCTSearch {
   // Controlling how much we trust the policy bias.
   float W;
 
-  unsigned EnumCap;
   unsigned ExpandThreshold;
 
   UCTNodeFactory *Factory;
@@ -398,18 +341,16 @@ class UCTSearch {
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, float W, unsigned EnumCap, unsigned ExpandThreshold,
+  UCTSearch(float C, float W, unsigned ExpandThreshold,
             UCTNodeFactory *Factory, Packer *Pkr, PackingPolicy *Policy,
             FrontierEvaluator *Evaluator, llvm::TargetTransformInfo *TTI)
-      : C(C), W(W), EnumCap(EnumCap), ExpandThreshold(ExpandThreshold),
+      : C(C), W(W), ExpandThreshold(ExpandThreshold),
         Factory(Factory), Pkr(Pkr), Policy(Policy), Evaluator(Evaluator),
         TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N) {
-    return Evaluator->evaluate(Policy ? Policy->getMaxNumLanes() : 8, EnumCap,
-                               N->getFrontier(), N->getPartialPack(), EnumCache,
-                               Pkr);
+    return Evaluator->evaluate(N->getFrontier());
   }
 };
 

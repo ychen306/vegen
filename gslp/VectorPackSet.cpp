@@ -62,7 +62,7 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OpndPack,
   // We don't care about the performance that much at this stage
   // because we are going to optimize the gather sequences later.
 
-  // 1) Emit hte partial gathers
+  // 1) Emit the partial gathers
   struct PartialGather {
     BitVector DefinedBits;
     Value *Gather;
@@ -86,7 +86,7 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OpndPack,
     auto *Mask = ConstantVector::get(MaskValues);
     Value *Gather;
     // Minor optimization: avoid unnecessary shuffle.
-    if (SrcVP->numElements() == NumValues &&
+    if (SrcVP->getOrderedValues().size() == NumValues &&
         ShuffleVectorInst::isIdentityMask(Mask))
       Gather = Src;
     else

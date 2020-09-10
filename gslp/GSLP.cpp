@@ -146,7 +146,7 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
 
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(ParamC, ParamW, EnumCap, ExpandThreshold, &Factory, &Pkr,
+  UCTSearch MCTS(ParamC, ParamW, ExpandThreshold, &Factory, &Pkr,
                  Policy, &Evaluator, Pkr.getTTI());
   PackEnumerationCache EnumCache;
 
@@ -306,8 +306,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  if (!F.getName().contains("idct8"))
-    return false;
+  //if (!F.getName().contains("idct8_partial"))
+  //  return false;
   balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
