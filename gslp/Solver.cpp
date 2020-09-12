@@ -12,7 +12,7 @@ static cl::opt<unsigned> MaxSearchDist(
     cl::init(20));
 
 Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
-    : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)), BBIt(BB->rbegin()),
+    : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)),
       UnresolvedScalars(VPCtx->getNumValues(), false),
       FreeInsts(VPCtx->getNumValues(), true),
       UsableInsts(VPCtx->getNumValues(), false) {
@@ -36,12 +36,6 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     if (AllUsersResolved || isa<PHINode>(&I))
       UsableInsts.set(InstId);
   }
-}
-
-Instruction *Frontier::getNextFreeInst() const {
-  if (BBIt != BB->rend())
-    return &*BBIt;
-  return nullptr;
 }
 
 void Frontier::freezeOneInst(Instruction *I) {
@@ -76,12 +70,6 @@ void Frontier::freezeOneInst(Instruction *I) {
   }
 }
 
-void Frontier::advanceBBIt() {
-  for (auto E = BB->rend(); BBIt != E; ++BBIt)
-    if (FreeInsts.test(VPCtx->getScalarId(&*BBIt)))
-      break;
-}
-
 bool Frontier::resolved(const OperandPack &OP) const {
   for (Value *V : OP) {
     if (!V)
@@ -98,7 +86,6 @@ bool Frontier::resolved(const OperandPack &OP) const {
 float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
   float Cost = 0;
   freezeOneInst(I);
-  advanceBBIt();
 
   // Go over unresolved packs and see if we've resolved any lanes
   SmallVector<unsigned, 2> ResolvedPackIds;
@@ -108,7 +95,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     assert(VecTy->getNumElements() == OP->size());
 
     // Special case: we can build OP by broadcasting `I`.
-    if (is_splat(*OP) && (*OP)[0] == I) {
+    if ((*OP)[0] == I && is_splat(*OP)) {
       Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
       ResolvedPackIds.push_back(i);
       continue;
@@ -139,6 +126,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
+  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
@@ -222,14 +210,16 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   for (auto *I : ReplacedInsts)
     freezeOneInst(I);
 
-  advanceBBIt();
-
   SmallVector<unsigned, 2> ResolvedPackIds;
   if (!VP->isStore()) {
     for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
       auto *OP = UnresolvedPacks[i];
       auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-      if (OPI.Elements.anyCommon(VP->getElements())) {
+      // Fast path: when OP is produced exactly
+      if (OPI.Elements == VP->getElements()) {
+        ResolvedPackIds.push_back(i);
+        break;
+      } else if (OPI.Elements.anyCommon(VP->getElements())) {
         Cost += getGatherCost(*VP, *OP, TTI);
         if (resolved(*OP))
           ResolvedPackIds.push_back(i);
@@ -250,28 +240,30 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
       if (!I || I->getParent() != BB) {
         // Assume I is always scalar and pay the insert cost.
         Cost += 2 * TTI->getVectorInstrCost(Instruction::InsertElement,
-                                            OperandTy, LaneId);
+            OperandTy, LaneId);
       }
     }
     if (!resolved(*OpndPack) &&
         !std::binary_search(UnresolvedPacks.begin(), UnresolvedPacks.end(),
-                            OpndPack))
+          OpndPack))
       UnresolvedPacks.push_back(OpndPack);
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
+  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
 float Frontier::advanceInplace(ShuffleTask ST, TargetTransformInfo *TTI) {
   auto It = std::lower_bound(UnresolvedPacks.begin(), UnresolvedPacks.end(),
-                             ST.Output);
+      ST.Output);
   assert(It != UnresolvedPacks.end());
   assert(*It == ST.Output);
   std::swap(*It, UnresolvedPacks.back());
   UnresolvedPacks.pop_back();
   for (auto *OP : ST.Inputs)
     UnresolvedPacks.push_back(OP);
+  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return ST.getCost(TTI);
 }
 
@@ -288,7 +280,7 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
 
 raw_ostream &operator<<(raw_ostream &OS, const ShuffleTask &ST) {
   OS << *ST.Output << "\t\n->\n"
-     << "{\n";
+    << "{\n";
   for (auto *OP : ST.Inputs)
     OS << *OP << '\n';
   OS << "}\n";
@@ -297,7 +289,7 @@ raw_ostream &operator<<(raw_ostream &OS, const ShuffleTask &ST) {
 
 std::unique_ptr<Frontier>
 Frontier::advance(const VectorPack *VP, float &Cost,
-                  llvm::TargetTransformInfo *TTI) const {
+    llvm::TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
@@ -306,7 +298,7 @@ Frontier::advance(const VectorPack *VP, float &Cost,
 
 std::unique_ptr<Frontier>
 Frontier::advance(llvm::Instruction *I, float &Cost,
-                  llvm::TargetTransformInfo *TTI) const {
+    llvm::TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(I, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
@@ -314,7 +306,7 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
 }
 
 std::unique_ptr<Frontier> Frontier::advance(ShuffleTask ST, float &Cost,
-                                            TargetTransformInfo *TTI) const {
+    TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(ST, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
@@ -339,7 +331,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
 VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
-                                         Packer *Pkr) {
+    Packer *Pkr) {
   // errs() << "Finding vector load to extend: {\n";
   // for (auto *V : OP)
   //  if (V)
@@ -415,7 +407,7 @@ class SlotSet {
   unsigned NumElems = 0;
   unsigned HasValue = false;
 
-public:
+  public:
   LoadInst *operator[](unsigned i) const { return Slots[i]; }
   bool try_insert(unsigned i, LoadInst *LI) {
     if (i >= Slots.size())
@@ -446,8 +438,8 @@ public:
 
 // Try to coalesce main pack with some other packs
 static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
-                                    ArrayRef<VectorPack *> OtherPacks,
-                                    Packer *Pkr) {
+    ArrayRef<VectorPack *> OtherPacks,
+    Packer *Pkr) {
   auto *BB = MainPack->getBasicBlock();
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
   // Full, can't coalesce
@@ -467,7 +459,7 @@ static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
 
   for (auto *Other : OtherPacks) {
     auto &Info =
-        LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
+      LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
     // Cannot coalesce with loads accessing a different object
     if (Info.Leader != Leader)
       continue;
@@ -505,12 +497,12 @@ static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
   }
 
   return Pkr->getContext(BB)->createLoadPack(Loads, Elements, Depended,
-                                             Pkr->getTTI());
+      Pkr->getTTI());
 }
 
 // Remove duplicate elements in OP
 static const OperandPack *dedup(const VectorPackContext *VPCtx,
-                                const OperandPack *OP) {
+    const OperandPack *OP) {
   return OP;
   SmallPtrSet<Value *, 4> Seen;
   OperandPack Deduped;
@@ -645,7 +637,7 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
   if (!LoadExtensions.empty()) {
     auto *LoadVP = LoadExtensions[0];
     if (auto *Coalesced = tryCoalesceLoads(
-            LoadVP, ArrayRef<VectorPack *>(LoadExtensions).slice(1), Pkr)) {
+          LoadVP, ArrayRef<VectorPack *>(LoadExtensions).slice(1), Pkr)) {
       return {Coalesced, LoadVP};
     }
     return {LoadVP};
@@ -655,7 +647,7 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
 }
 
 static std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
-                                                   StoreInst *SI, unsigned VL) {
+    StoreInst *SI, unsigned VL) {
   if (!Frt.isUsable(SI)) {
     return {};
   }
@@ -670,35 +662,35 @@ static std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
   std::vector<VectorPack *> Seeds;
 
   std::function<void(std::vector<StoreInst *>, BitVector, BitVector)>
-      Enumerate = [&](std::vector<StoreInst *> Stores, BitVector Elements,
-                      BitVector Depended) {
-        if (Stores.size() == VL) {
-          Seeds.push_back(
-              VPCtx->createStorePack(Stores, Elements, Depended, TTI));
-          return;
-        }
+    Enumerate = [&](std::vector<StoreInst *> Stores, BitVector Elements,
+        BitVector Depended) {
+      if (Stores.size() == VL) {
+        Seeds.push_back(
+            VPCtx->createStorePack(Stores, Elements, Depended, TTI));
+        return;
+      }
 
-        auto It = StoreDAG.find(Stores.back());
-        if (It == StoreDAG.end()) {
-          return;
+      auto It = StoreDAG.find(Stores.back());
+      if (It == StoreDAG.end()) {
+        return;
+      }
+      for (auto *Next : It->second) {
+        auto *NextSI = cast<StoreInst>(Next);
+        if (!Frt.isUsable(NextSI)) {
+          continue;
         }
-        for (auto *Next : It->second) {
-          auto *NextSI = cast<StoreInst>(Next);
-          if (!Frt.isUsable(NextSI)) {
-            continue;
-          }
-          if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
-            continue;
-          }
-          auto StoresExt = Stores;
-          auto ElementsExt = Elements;
-          auto DependedExt = Depended;
-          StoresExt.push_back(NextSI);
-          ElementsExt.set(VPCtx->getScalarId(NextSI));
-          DependedExt |= LDA.getDepended(NextSI);
-          Enumerate(StoresExt, ElementsExt, DependedExt);
+        if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
+          continue;
         }
-      };
+        auto StoresExt = Stores;
+        auto ElementsExt = Elements;
+        auto DependedExt = Depended;
+        StoresExt.push_back(NextSI);
+        ElementsExt.set(VPCtx->getScalarId(NextSI));
+        DependedExt |= LDA.getDepended(NextSI);
+        Enumerate(StoresExt, ElementsExt, DependedExt);
+      }
+    };
 
   std::vector<StoreInst *> Stores{SI};
   BitVector Elements(VPCtx->getNumValues());
@@ -712,7 +704,7 @@ static std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
 }
 
 static VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI,
-                                    unsigned VL) {
+    unsigned VL) {
   auto Seeds = getSeedStorePacks(Frt, SI, VL);
   if (Seeds.empty())
     return nullptr;
@@ -856,7 +848,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
 }
 
 static float estimateAllScalarCost(const Frontier &Frt,
-                                   TargetTransformInfo *TTI) {
+    TargetTransformInfo *TTI) {
   // errs() << "Finding vector load to extend: {\n";
   // for (auto *V : OP)
   //  if (V)
@@ -876,7 +868,7 @@ static float estimateAllScalarCost(const Frontier &Frt,
         continue;
       if (i == 0 && is_splat(*OP)) {
         Cost +=
-            TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
+          TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
         break;
       }
       Cost += 2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
@@ -948,9 +940,9 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
 
     // Take the extension pack with the lowest local cost
     std::sort(Extensions.begin(), Extensions.end(),
-              [](const VectorPack *A, const VectorPack *B) {
-                return A->getCost() < B->getCost();
-              });
+        [](const VectorPack *A, const VectorPack *B) {
+        return A->getCost() < B->getCost();
+        });
     return Extensions[0];
   }
   auto *Pkr = Frt.getPacker();
@@ -1019,7 +1011,7 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
       std::vector<const Operation::Match *> Lanes;
       for (unsigned i = 0; i < NumLanes; i++) {
         ArrayRef<Operation::Match> Matches =
-            MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
+          MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
         if (Matches.empty())
           break;
         // FIXME: consider multiple matches for the same operation
@@ -1042,9 +1034,9 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
 
   // Take the extension pack with the lowest local cost
   std::sort(Extensions.begin(), Extensions.end(),
-            [](const VectorPack *A, const VectorPack *B) {
-              return A->getCost() < B->getCost();
-            });
+      [](const VectorPack *A, const VectorPack *B) {
+      return A->getCost() < B->getCost();
+      });
   return Extensions[0];
 }
 
@@ -1082,29 +1074,29 @@ float estimateCost(Frontier Frt, VectorPack *VP) {
 
 // Hack! purely for debugging
 struct : public BackwardShuffle {
-  std::vector<const OperandPack *>
-  run(const VectorPackContext *VPCtx,
-      const OperandPack *Output) const override {
-    if (Output->size() != 16)
-      return {};
-    std::map<unsigned, OperandPack> ShuffleOperands;
-    for (auto *V : *Output) {
-      auto *I = dyn_cast<Instruction>(V);
-      if (!I)
-        return {};
-      ShuffleOperands[I->getOpcode()].push_back(V);
-    }
-    if (ShuffleOperands.size() != 2)
-      return {};
-    auto *OP1 = VPCtx->getCanonicalOperandPack(ShuffleOperands.begin()->second);
-    auto *OP2 = VPCtx->getCanonicalOperandPack(
-        std::next(ShuffleOperands.begin())->second);
-    if (OP1 == OP2)
-      return {OP1};
-    return {OP1, OP2};
-  }
-  float getCost(llvm::TargetTransformInfo *) const override { return 1.0; }
-} DeInterleave;
+           std::vector<const OperandPack *>
+             run(const VectorPackContext *VPCtx,
+                 const OperandPack *Output) const override {
+               if (Output->size() != 16)
+                 return {};
+               std::map<unsigned, OperandPack> ShuffleOperands;
+               for (auto *V : *Output) {
+                 auto *I = dyn_cast<Instruction>(V);
+                 if (!I)
+                   return {};
+                 ShuffleOperands[I->getOpcode()].push_back(V);
+               }
+               if (ShuffleOperands.size() != 2)
+                 return {};
+               auto *OP1 = VPCtx->getCanonicalOperandPack(ShuffleOperands.begin()->second);
+               auto *OP2 = VPCtx->getCanonicalOperandPack(
+                   std::next(ShuffleOperands.begin())->second);
+               if (OP1 == OP2)
+                 return {OP1};
+               return {OP1, OP2};
+             }
+           float getCost(llvm::TargetTransformInfo *) const override { return 1.0; }
+         } DeInterleave;
 
 class DPSolver {
   struct Solution {
@@ -1187,7 +1179,7 @@ class DPSolver {
     return Sol;
   }
 
-public:
+  public:
   DPSolver(TargetTransformInfo *TTI) : TTI(TTI), Solutions(1000000) {}
 
   Solution solve(const Frontier &Frt) {
@@ -1219,18 +1211,18 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   DenseMap<Instruction *, unsigned> StoreChainLen;
   std::function<unsigned(Instruction *)> GetChainLen =
-      [&](Instruction *I) -> unsigned {
-    if (StoreChainLen.count(I))
-      return StoreChainLen[I];
-    auto It = StoreDAG.find(I);
-    if (It == StoreDAG.end())
-      return StoreChainLen[I] = 1;
-    unsigned MaxLen = 0;
-    for (auto *Next : It->second) {
-      MaxLen = std::max<unsigned>(MaxLen, GetChainLen(Next));
-    }
-    return StoreChainLen[I] = MaxLen + 1;
-  };
+    [&](Instruction *I) -> unsigned {
+      if (StoreChainLen.count(I))
+        return StoreChainLen[I];
+      auto It = StoreDAG.find(I);
+      if (It == StoreDAG.end())
+        return StoreChainLen[I] = 1;
+      unsigned MaxLen = 0;
+      for (auto *Next : It->second) {
+        MaxLen = std::max<unsigned>(MaxLen, GetChainLen(Next));
+      }
+      return StoreChainLen[I] = MaxLen + 1;
+    };
 
   std::vector<StoreInst *> Stores;
   for (auto &StoreAndNext : StoreDAG)
@@ -1238,8 +1230,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   // Sort stores by store chain length
   std::sort(Stores.begin(), Stores.end(), [&](StoreInst *A, StoreInst *B) {
-    return GetChainLen(A) > GetChainLen(B);
-  });
+      return GetChainLen(A) > GetChainLen(B);
+      });
 
   errs() << "??? num stores: " << Stores.size() << '\n';
 
@@ -1306,7 +1298,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
   UCTSearch MCTS(0.05 /*c*/, 0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
-                 nullptr /*Policy*/, &Evaluator, TTI);
+      nullptr /*Policy*/, &Evaluator, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
   unsigned NumSimulations = 1000;
   float TotalCost = 0;
@@ -1325,30 +1317,30 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           Transitions.begin(), Transitions.end(),
 
           [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
-            float ACost = -A.Cost - A.Next->minCost();
-            float BCost = -B.Cost - B.Next->minCost();
-            return std::tie(ACost, A.Count) < std::tie(BCost, B.Count);
+          float ACost = -A.Cost - A.Next->minCost();
+          float BCost = -B.Cost - B.Next->minCost();
+          return std::tie(ACost, A.Count) < std::tie(BCost, B.Count);
           });
     }
 
     auto Node = Root;
     errs() << "====================================="
-           << "\n\t t transition cost: " << T->transitionCost()
-           << "\n\t num transitions: " << Transitions.size()
-           << "\n\t scalar cost: " << Transitions.begin()->avgCost()
-           << "\n\t t avg cost: " << T->avgCost()
-           << "\n\t t->next avg cost: " << T->Next->avgCost()
-           << "\n\t t->next min cost: " << T->Next->minCost()
-           << "\n\t t->next terminal? " << T->Next->isTerminal()
-           << "\n\t t visit count : " << T->visitCount()
-           << "\n\t node visit count: " << Node->visitCount()
-           << "\n\t min cost : " << Node->minCost()
-           << "\n\t max cost : " << Node->maxCost()
-           << "\n\t avg cost : " << Node->avgCost()
-           << "\n\t num unresolved packs : "
-           << Node->getFrontier()->getUnresolvedPacks().size()
-           << "\n\t num unresolved scalars : "
-           << Node->getFrontier()->numUnresolvedScalars() << '\n';
+      << "\n\t t transition cost: " << T->transitionCost()
+      << "\n\t num transitions: " << Transitions.size()
+      << "\n\t scalar cost: " << Transitions.begin()->avgCost()
+      << "\n\t t avg cost: " << T->avgCost()
+      << "\n\t t->next avg cost: " << T->Next->avgCost()
+      << "\n\t t->next min cost: " << T->Next->minCost()
+      << "\n\t t->next terminal? " << T->Next->isTerminal()
+      << "\n\t t visit count : " << T->visitCount()
+      << "\n\t node visit count: " << Node->visitCount()
+      << "\n\t min cost : " << Node->minCost()
+      << "\n\t max cost : " << Node->maxCost()
+      << "\n\t avg cost : " << Node->avgCost()
+      << "\n\t num unresolved packs : "
+      << Node->getFrontier()->getUnresolvedPacks().size()
+      << "\n\t num unresolved scalars : "
+      << Node->getFrontier()->numUnresolvedScalars() << '\n';
 
     if (T->VP) {
       errs() << "[MCTS] ADDING: " << *T->VP << '\n';

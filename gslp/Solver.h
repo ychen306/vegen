@@ -56,7 +56,6 @@ class Frontier {
   friend struct FrontierHashInfo;
   llvm::BasicBlock *BB;
   const VectorPackContext *VPCtx;
-  llvm::BasicBlock::reverse_iterator BBIt;
   std::vector<const OperandPack *> UnresolvedPacks;
   llvm::BitVector UnresolvedScalars;
   // Instructions we haven't assigned yet.
@@ -66,7 +65,6 @@ class Frontier {
 
   void freezeOneInst(llvm::Instruction *);
   bool resolveOperandPack(const VectorPack &VP, const OperandPack &UP);
-  void advanceBBIt();
 
   // Check if `OP` has been resolved.
   bool resolved(const OperandPack &OP) const;
@@ -84,7 +82,6 @@ public:
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
   float advanceInplace(ShuffleTask, llvm::TargetTransformInfo *);
-  llvm::Instruction *getNextFreeInst() const;
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
@@ -124,17 +121,14 @@ struct FrontierHashInfo {
     using namespace llvm;
 
     if (Frt == getEmptyKey()) {
-      return hash_combine(reinterpret_cast<BasicBlock *>(0),
-                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
+      return hash_combine(ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
                           ArrayRef<const OperandPack *>());
     } else if (Frt == getTombstoneKey()) {
-      return hash_combine(reinterpret_cast<BasicBlock *>(1),
-                          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
+      return hash_combine(ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
                           ArrayRef<const OperandPack *>());
     }
 
-    return hash_combine(reinterpret_cast<BasicBlock *>(2),
-                        Frt->UnresolvedScalars.getData(),
+    return hash_combine(Frt->UnresolvedScalars.getData(),
                         Frt->FreeInsts.getData(),
                         ArrayRef<const OperandPack *>(Frt->UnresolvedPacks));
   }
@@ -249,7 +243,7 @@ public:
   void expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
               llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
-  bool isTerminal() const { return !Frt->getNextFreeInst() || IsTerminal; }
+  bool isTerminal() const { return Frt->getFreeInsts().count() == 0 || IsTerminal; }
 
   std::vector<Transition> &transitions() { return Transitions; }
 
