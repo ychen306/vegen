@@ -46,7 +46,7 @@ Instruction *Frontier::getNextFreeInst() const {
 
 void Frontier::freezeOneInst(Instruction *I) {
   unsigned InstId = VPCtx->getScalarId(I);
-  //assert(FreeInsts.test(InstId));
+  // assert(FreeInsts.test(InstId));
   if (!FreeInsts.test(InstId))
     return;
   FreeInsts.reset(InstId);
@@ -139,7 +139,6 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
-  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
@@ -185,7 +184,6 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 0.5;
   return 2;
 }
 
@@ -230,7 +228,8 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   if (!VP->isStore()) {
     for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
       auto *OP = UnresolvedPacks[i];
-      if (resolveOperandPack(*VP, *OP)) {
+      auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+      if (OPI.Elements.anyCommon(VP->getElements())) {
         Cost += getGatherCost(*VP, *OP, TTI);
         if (resolved(*OP))
           ResolvedPackIds.push_back(i);
@@ -261,7 +260,6 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
-  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
@@ -274,7 +272,6 @@ float Frontier::advanceInplace(ShuffleTask ST, TargetTransformInfo *TTI) {
   UnresolvedPacks.pop_back();
   for (auto *OP : ST.Inputs)
     UnresolvedPacks.push_back(OP);
-  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return ST.getCost(TTI);
 }
 
@@ -290,7 +287,8 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
 }
 
 raw_ostream &operator<<(raw_ostream &OS, const ShuffleTask &ST) {
-  OS << *ST.Output << "\t\n->\n" << "{\n";
+  OS << *ST.Output << "\t\n->\n"
+     << "{\n";
   for (auto *OP : ST.Inputs)
     OS << *OP << '\n';
   OS << "}\n";
@@ -302,6 +300,7 @@ Frontier::advance(const VectorPack *VP, float &Cost,
                   llvm::TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
+  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
   return Next;
 }
 
@@ -310,6 +309,7 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
                   llvm::TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(I, TTI);
+  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
   return Next;
 }
 
@@ -317,6 +317,7 @@ std::unique_ptr<Frontier> Frontier::advance(ShuffleTask ST, float &Cost,
                                             TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(ST, TTI);
+  std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
   return Next;
 }
 
@@ -337,7 +338,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 }
 
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
-static VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
+VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
                                          Packer *Pkr) {
   // errs() << "Finding vector load to extend: {\n";
   // for (auto *V : OP)
@@ -443,7 +444,6 @@ public:
   unsigned maxId() const { return MaxId; }
 };
 
-
 // Try to coalesce main pack with some other packs
 static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                                     ArrayRef<VectorPack *> OtherPacks,
@@ -509,7 +509,8 @@ static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
 }
 
 // Remove duplicate elements in OP
-static const OperandPack *dedup(VectorPackContext *VPCtx, const OperandPack *OP) {
+static const OperandPack *dedup(const VectorPackContext *VPCtx,
+                                const OperandPack *OP) {
   return OP;
   SmallPtrSet<Value *, 4> Seen;
   OperandPack Deduped;
@@ -525,35 +526,40 @@ static const OperandPack *dedup(VectorPackContext *VPCtx, const OperandPack *OP)
   return VPCtx->getCanonicalOperandPack(Deduped);
 }
 
-
 static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
   auto *Pkr = Frt.getPacker();
-  auto *BB = Frt.getBasicBlock();
-  auto &LDA = Pkr->getLDA(BB);
-  auto *VPCtx = Pkr->getContext(BB);
-  auto *TTI = Pkr->getTTI();
-  auto &LoadDAG = Pkr->getLoadDAG(BB);
-  auto &MM = Pkr->getMatchManager(BB);
+  auto *VPCtx = Frt.getContext();
 
   // Put load extensions in a separate category.
   // We don't extend with a load pack if we can extend with other arithmetic
   // packs
   std::vector<VectorPack *> LoadExtensions;
 
+  BitVector UnusableIds = Frt.usableInstIds();
+  UnusableIds.flip();
+
   std::vector<VectorPack *> Extensions;
   for (auto *OP : Frt.getUnresolvedPacks()) {
     OP = dedup(VPCtx, OP);
+    const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    if (!OPI.Feasible || OPI.Elements.anyCommon(UnusableIds))
+      continue;
+    for (auto *VP : OPI.Producers)
+      Extensions.push_back(VP);
+    if (OPI.LoadProducer)
+      LoadExtensions.push_back(OPI.LoadProducer);
+#if 0
     ////////
-    //errs() << "Looking for a pack to extend:{\n";
-    //for (auto *V : *OP)
+    // errs() << "Looking for a pack to extend:{\n";
+    // for (auto *V : *OP)
     //  if (V)
     //    errs() << *V << '\n';
     //  else
     //    errs() << "undef\n";
-    //errs() << "}\n";
+    // errs() << "}\n";
     ///////
 
-    //if (!Extensions.empty())
+    // if (!Extensions.empty())
     //  break;
 
     unsigned NumLanes = OP->size();
@@ -578,13 +584,14 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
         AllLoads = false;
 
       if (!I || I->getParent() != BB || !Frt.isUsable(I)) {
-        //errs() << "BAD INST: " << *I << ", usable? " << Frt.isUsable(I) << '\n';
+        // errs() << "BAD INST: " << *I << ", usable? " << Frt.isUsable(I) <<
+        // '\n';
         Extensible = false;
         break;
       }
       unsigned InstId = VPCtx->getScalarId(I);
       if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended)) {
-        //errs() << "BREAKS DEPENDENCY: " << *I << '\n';
+        // errs() << "BREAKS DEPENDENCY: " << *I << '\n';
         Extensible = false;
         break;
       }
@@ -592,7 +599,7 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
       Depended |= LDA.getDepended(I);
     }
 
-    //errs() << "Extensible? " << Extensible << ", AllLoads? " << AllLoads
+    // errs() << "Extensible? " << Extensible << ", AllLoads? " << AllLoads
     //       << '\n';
 
     if (!Extensible)
@@ -607,26 +614,29 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
     if (HasUndef)
       continue;
 
-    for (auto *Inst : Pkr->getInsts()) {
-      ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
-      if (LaneOps.size() != NumLanes)
-        continue;
+    for (auto *VP : findExtensionsForOperand(VPCtx, OP, Elements, Depended))
+      Extensions.push_back(VP);
+    //for (auto *Inst : Pkr->getInsts()) {
+    //  ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+    //  if (LaneOps.size() != NumLanes)
+    //    continue;
 
-      std::vector<const Operation::Match *> Lanes;
-      for (unsigned i = 0; i < NumLanes; i++) {
-        ArrayRef<Operation::Match> Matches =
-            MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
-        if (Matches.empty())
-          break;
-        // FIXME: consider multiple matches for the same operation
-        Lanes.push_back(&Matches[0]);
-      }
+    //  std::vector<const Operation::Match *> Lanes;
+    //  for (unsigned i = 0; i < NumLanes; i++) {
+    //    ArrayRef<Operation::Match> Matches =
+    //        MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
+    //    if (Matches.empty())
+    //      break;
+    //    // FIXME: consider multiple matches for the same operation
+    //    Lanes.push_back(&Matches[0]);
+    //  }
 
-      if (Lanes.size() == NumLanes) {
-        Extensions.push_back(
-            VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
-      }
-    }
+    //  if (Lanes.size() == NumLanes) {
+    //    Extensions.push_back(
+    //        VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+    //  }
+    //}
+#endif
   }
 
   if (!Extensions.empty())
@@ -644,24 +654,119 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
   return {};
 }
 
+static std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
+                                                   StoreInst *SI, unsigned VL) {
+  if (!Frt.isUsable(SI)) {
+    return {};
+  }
+
+  auto *Pkr = Frt.getPacker();
+  auto *BB = Frt.getBasicBlock();
+  auto &LDA = Pkr->getLDA(BB);
+  auto *VPCtx = Pkr->getContext(BB);
+  auto *TTI = Pkr->getTTI();
+  auto &StoreDAG = Pkr->getStoreDAG(BB);
+
+  std::vector<VectorPack *> Seeds;
+
+  std::function<void(std::vector<StoreInst *>, BitVector, BitVector)>
+      Enumerate = [&](std::vector<StoreInst *> Stores, BitVector Elements,
+                      BitVector Depended) {
+        if (Stores.size() == VL) {
+          Seeds.push_back(
+              VPCtx->createStorePack(Stores, Elements, Depended, TTI));
+          return;
+        }
+
+        auto It = StoreDAG.find(Stores.back());
+        if (It == StoreDAG.end()) {
+          return;
+        }
+        for (auto *Next : It->second) {
+          auto *NextSI = cast<StoreInst>(Next);
+          if (!Frt.isUsable(NextSI)) {
+            continue;
+          }
+          if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
+            continue;
+          }
+          auto StoresExt = Stores;
+          auto ElementsExt = Elements;
+          auto DependedExt = Depended;
+          StoresExt.push_back(NextSI);
+          ElementsExt.set(VPCtx->getScalarId(NextSI));
+          DependedExt |= LDA.getDepended(NextSI);
+          Enumerate(StoresExt, ElementsExt, DependedExt);
+        }
+      };
+
+  std::vector<StoreInst *> Stores{SI};
+  BitVector Elements(VPCtx->getNumValues());
+  BitVector Depended(VPCtx->getNumValues());
+
+  Elements.set(VPCtx->getScalarId(SI));
+  Depended |= LDA.getDepended(SI);
+
+  Enumerate(Stores, Elements, Depended);
+  return Seeds;
+}
+
+static VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI,
+                                    unsigned VL) {
+  auto Seeds = getSeedStorePacks(Frt, SI, VL);
+  if (Seeds.empty())
+    return nullptr;
+  return Seeds[0];
+}
+
 // Fill out the children node
 void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     llvm::TargetTransformInfo *TTI) {
   assert(Transitions.empty() && "expanded already");
   auto *Pkr = getPacker();
 
-  // We are not working w/ any partial pack, start partial packs!
   auto *BB = Frt->getBasicBlock();
+
+  bool CanExpandWithStore = false;
+
+  //for (auto *V : Frt->usableInsts()) {
+  //  // Consider seed packs
+  //  if (auto *SI = dyn_cast<StoreInst>(V)) {
+  //    CanExpandWithStore = true;
+  //    for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+  //    //for (unsigned VL : {8}) {
+  //      if (auto *VP = getSeedStorePack(*Frt, SI, VL)) {
+  //        float Cost;
+  //        auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
+  //        Transitions.emplace_back(VP, Next, Cost);
+  //      }
+  //    }
+
+  //    float Cost;
+  //    // Consider scalars
+  //    auto *Next = Factory->getNode(Frt->advance(SI, Cost, TTI));
+  //    Transitions.emplace_back(SI, Next, Cost);
+  //  }
+  //}
+  if (CanExpandWithStore)
+    return;
+
+  IsTerminal = Frt->getUnresolvedPacks().empty();
+
   for (auto *V : Frt->usableInsts()) {
     auto *I = dyn_cast<Instruction>(V);
     if (!I)
       continue;
+
     float Cost;
+
+    // Consider scalars
     auto *Next = Factory->getNode(Frt->advance(I, Cost, TTI));
     Transitions.emplace_back(I, Next, Cost);
   }
 
-  //// Also consider the extension packs
+
+  // Also consider the extension packs
   for (auto *VP : findExtensionPacks(*Frt)) {
     float Cost;
     auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
@@ -780,7 +885,6 @@ static float estimateAllScalarCost(const Frontier &Frt,
   return Cost;
 }
 
-
 std::vector<VectorPack *> RolloutEvaluator::getExtensions(const Frontier &Frt) {
   return findExtensionPacks(Frt);
   auto It = ExtensionCache.find(&Frt);
@@ -795,13 +899,43 @@ float RolloutEvaluator::evaluate(const Frontier *Frt) {
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
   auto ScratchFrt = *Frt;
+  auto *BB = Frt->getBasicBlock();
   std::vector<VectorPack *> Extensions = getExtensions(ScratchFrt);
+  auto *VPCtx = Frt->getContext();
   float Cost = 0;
-  while (!Extensions.empty()) {
-    auto *VP = Extensions[rand_int(Extensions.size())];
-    Cost += ScratchFrt.advanceInplace(VP, TTI);
-    Extensions = getExtensions(ScratchFrt);
-  }
+  bool Changed;
+  do {
+    Changed = false;
+    while (!Extensions.empty()) {
+      auto *VP = Extensions[rand_int(Extensions.size())];
+      Cost += ScratchFrt.advanceInplace(VP, TTI);
+      Extensions = getExtensions(ScratchFrt);
+      Changed = true;
+    }
+
+    BitVector VectorOperandSet(VPCtx->getNumValues());
+    for (auto *OP : ScratchFrt.getUnresolvedPacks()) {
+      for (auto *V : *OP) {
+        if (!V)
+          continue;
+        auto *I = dyn_cast<Instruction>(V);
+        if (I && I->getParent() == BB)
+          VectorOperandSet.set(VPCtx->getScalarId(I));
+      }
+    }
+
+    const BitVector &UsableIds = ScratchFrt.usableInstIds();
+    for (auto It = UsableIds.set_bits_begin(), E = UsableIds.set_bits_end();
+        It != E; ++It) {
+      if (VectorOperandSet.test(*It))
+        continue;
+      if (auto *I = dyn_cast<Instruction>(VPCtx->getScalar(*It))) {
+        Cost += ScratchFrt.advanceInplace(I, TTI);
+        Changed = true;
+      }
+    }
+  } while (Changed);
+
   return Cost + estimateAllScalarCost(ScratchFrt, TTI);
 }
 
@@ -814,9 +948,9 @@ static VectorPack *findExtensionPack(const Frontier &Frt) {
 
     // Take the extension pack with the lowest local cost
     std::sort(Extensions.begin(), Extensions.end(),
-        [](const VectorPack *A, const VectorPack *B) {
-        return A->getCost() < B->getCost();
-        });
+              [](const VectorPack *A, const VectorPack *B) {
+                return A->getCost() < B->getCost();
+              });
     return Extensions[0];
   }
   auto *Pkr = Frt.getPacker();
@@ -963,7 +1097,8 @@ struct : public BackwardShuffle {
     if (ShuffleOperands.size() != 2)
       return {};
     auto *OP1 = VPCtx->getCanonicalOperandPack(ShuffleOperands.begin()->second);
-    auto *OP2 = VPCtx->getCanonicalOperandPack(std::next(ShuffleOperands.begin())->second);
+    auto *OP2 = VPCtx->getCanonicalOperandPack(
+        std::next(ShuffleOperands.begin())->second);
     if (OP1 == OP2)
       return {OP1};
     return {OP1, OP2};
@@ -994,15 +1129,15 @@ class DPSolver {
     Sol.Cost = 0;
     Sol.Cost = estimateAllScalarCost(Frt, TTI);
 
-    //errs() << "============== FRONTIER STATE ==========\n";
-    //errs() << "UNRESOLVED VECTOR OPERANDS: <<<<<<<<<<<<<<<<<<<<<<\n";
-    //for (auto *OP : Frt.getUnresolvedPacks())
+    // errs() << "============== FRONTIER STATE ==========\n";
+    // errs() << "UNRESOLVED VECTOR OPERANDS: <<<<<<<<<<<<<<<<<<<<<<\n";
+    // for (auto *OP : Frt.getUnresolvedPacks())
     //  errs() << *OP << '\n';
-    //errs() << ">>>>>>>>>>>>>>>\n";
-    //errs() << "UNRESOLVED SCALAR OPERANDS: <<<<<<<<<<<<\n";
-    //for (auto *V : Frt.getUnresolvedScalars())
+    // errs() << ">>>>>>>>>>>>>>>\n";
+    // errs() << "UNRESOLVED SCALAR OPERANDS: <<<<<<<<<<<<\n";
+    // for (auto *V : Frt.getUnresolvedScalars())
     //  errs() << V->getName() << ", ";
-    //errs() << ">>>>>>>>>>>>>>>\n";
+    // errs() << ">>>>>>>>>>>>>>>\n";
 
     // Figure out the cost of adding one extension
     auto Extensions = findExtensionPacks(Frt);
@@ -1012,7 +1147,7 @@ class DPSolver {
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
 
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
-      //errs() << " EXTENDING WITH " << *ExtVP
+      // errs() << " EXTENDING WITH " << *ExtVP
       //       << ", transition cost : " << LocalCost
       //       << ", local cost : " << ExtVP->getCost()
       //       << ", total cost : " << TotalCost
@@ -1037,9 +1172,9 @@ class DPSolver {
 
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
       errs() << " EXTENDING WITH Shuffle " << ST
-             << ", transition cost : " << LocalCost
-             << ", total cost : " << TotalCost
-             << ", best cost so far: " << Sol.Cost << '\n';
+        << ", transition cost : " << LocalCost
+        << ", total cost : " << TotalCost
+        << ", best cost so far: " << Sol.Cost << '\n';
       if (Sol.Cost > TotalCost) {
         Sol.Cost = TotalCost;
         Sol.VP = nullptr;
@@ -1078,70 +1213,6 @@ public:
   }
 };
 
-std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt, StoreInst *SI,
-                                            unsigned VL) {
-  if (!Frt.isUsable(SI)) {
-    return {};
-  }
-
-  auto *Pkr = Frt.getPacker();
-  auto *BB = Frt.getBasicBlock();
-  auto &LDA = Pkr->getLDA(BB);
-  auto *VPCtx = Pkr->getContext(BB);
-  auto *TTI = Pkr->getTTI();
-  auto &StoreDAG = Pkr->getStoreDAG(BB);
-
-  std::vector<VectorPack *> Seeds;
-
-  std::function<void(std::vector<StoreInst *>, BitVector, BitVector)>
-      Enumerate = [&](std::vector<StoreInst *> Stores, BitVector Elements,
-                      BitVector Depended) {
-        if (Stores.size() == VL) {
-          Seeds.push_back(
-              VPCtx->createStorePack(Stores, Elements, Depended, TTI));
-          return;
-        }
-
-        auto It = StoreDAG.find(Stores.back());
-        if (It == StoreDAG.end()) {
-          return;
-        }
-        for (auto *Next : It->second) {
-          auto *NextSI = cast<StoreInst>(Next);
-          if (!Frt.isUsable(NextSI)) {
-            continue;
-          }
-          if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
-            continue;
-          }
-          auto StoresExt = Stores;
-          auto ElementsExt = Elements;
-          auto DependedExt = Depended;
-          StoresExt.push_back(NextSI);
-          ElementsExt.set(VPCtx->getScalarId(NextSI));
-          DependedExt |= LDA.getDepended(NextSI);
-          Enumerate(StoresExt, ElementsExt, DependedExt);
-        }
-      };
-
-  std::vector<StoreInst *> Stores{SI};
-  BitVector Elements(VPCtx->getNumValues());
-  BitVector Depended(VPCtx->getNumValues());
-
-  Elements.set(VPCtx->getScalarId(SI));
-  Depended |= LDA.getDepended(SI);
-
-  Enumerate(Stores, Elements, Depended);
-  return Seeds;
-}
-
-VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI, unsigned VL) {
-  auto Seeds = getSeedStorePacks(Frt, SI, VL);
-  if (Seeds.empty())
-    return nullptr;
-  return Seeds[0];
-}
-
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   Frontier Frt(BB, Pkr);
   auto &StoreDAG = Pkr->getStoreDAG(BB);
@@ -1177,20 +1248,19 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   DPSolver Solver(TTI);
 
   std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
-  //std::vector<unsigned> VL{16, 8, 4, 2};
-  //std::vector<unsigned> VL { 8 };
+  // std::vector<unsigned> VL{16, 8, 4, 2};
+  // std::vector<unsigned> VL { 8 };
   float Cost = 0;
   float BestEst = 0;
 
+#if 1
   for (unsigned i : VL) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
-        if (SeedVP) {
-           Cost += Frt.advanceInplace(SeedVP, TTI);
-           Packs.tryAdd(SeedVP);
-           continue;
-        }
+        Cost += Frt.advanceInplace(SeedVP, TTI);
+        Packs.tryAdd(SeedVP);
+        continue;
 #if 1
         float Est = estimateCost(Frt, SeedVP);
 #else
@@ -1203,9 +1273,9 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         //       << '\n';
         if (Est < BestEst) {
 #if 1
-           Cost += Frt.advanceInplace(SeedVP, TTI);
-           Packs.tryAdd(SeedVP);
-           BestEst = Est;
+          Cost += Frt.advanceInplace(SeedVP, TTI);
+          Packs.tryAdd(SeedVP);
+          BestEst = Est;
 
 #else
           //////////////
@@ -1231,10 +1301,12 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       }
     }
   }
+#endif
+
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.1/*c*/, 0/*w*/, 0/*ExpandThreshold*/, &Factory, Pkr,
-                 nullptr/*Policy*/, &Evaluator, TTI);
+  UCTSearch MCTS(0.05 /*c*/, 0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+                 nullptr /*Policy*/, &Evaluator, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
   unsigned NumSimulations = 1000;
   float TotalCost = 0;
@@ -1247,17 +1319,17 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     UCTNode::Transition *T;
     if (Transitions.size() == 1) {
       T = &*Transitions.begin();
-    } {
-      T = &*std::max_element(Transitions.begin(), Transitions.end(),
+    }
+    {
+      T = &*std::max_element(
+          Transitions.begin(), Transitions.end(),
 
           [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
-              float ACost = -A.Cost - A.Next->minCost();
-              float BCost = -B.Cost - B.Next->minCost();
+            float ACost = -A.Cost - A.Next->minCost();
+            float BCost = -B.Cost - B.Next->minCost();
             return std::tie(ACost, A.Count) < std::tie(BCost, B.Count);
-          }
-                              );
+          });
     }
-
 
     auto Node = Root;
     errs() << "====================================="
@@ -1284,8 +1356,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
     Root = T->Next;
     TotalCost += T->transitionCost();
-      errs() << "[MCTS} New cost: " << TotalCost << '\n';
-
+    errs() << "[MCTS} New cost: " << TotalCost << '\n';
   }
 #if 0
   for (;;) {

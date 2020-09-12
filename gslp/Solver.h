@@ -108,6 +108,7 @@ public:
   llvm::iterator_range<VectorPackContext::value_iterator> usableInsts() const {
     return VPCtx->iter_values(UsableInsts);
   }
+  const llvm::BitVector &usableInstIds() const { return UsableInsts; }
 
   unsigned numUsableInsts() const { return UsableInsts.count(); }
   const VectorPackContext *getContext() const { return VPCtx; }
@@ -230,8 +231,10 @@ public:
 private:
   std::vector<Transition> Transitions;
 
+  bool IsTerminal;
+
   UCTNode(const Frontier *Frt)
-      : Frt(Frt), TotalCost(0), Count(0), TransitionWeight(nullptr) {}
+      : Frt(Frt), TotalCost(0), Count(0), TransitionWeight(nullptr), IsTerminal(false) {}
 
 public:
   float minCost() const { return CostRange->Min; }
@@ -246,7 +249,7 @@ public:
   void expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
               llvm::TargetTransformInfo *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
-  bool isTerminal() const { return !Frt->getNextFreeInst(); }
+  bool isTerminal() const { return !Frt->getNextFreeInst() || IsTerminal; }
 
   std::vector<Transition> &transitions() { return Transitions; }
 

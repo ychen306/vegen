@@ -306,8 +306,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  //if (!F.getName().contains("idct8_partial"))
-  //  return false;
+  if (!F.getName().contains("idct8_partial"))
+    return false;
   balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions

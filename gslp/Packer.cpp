@@ -34,7 +34,6 @@ Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, Function &F,
     : F(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
-    ExtensionCaches[&BB] = std::make_unique<ExtensionCache>();
     std::vector<LoadInst *> Loads;
     std::vector<StoreInst *> Stores;
     // Find packable instructions
@@ -99,22 +98,76 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
   }
 }
 
-ArrayRef<VectorPack *> Packer::findExtensions(VectorPackContext *VPCtx,
-                                              const OperandPack *OP,
-                                              BitVector Elements,
-                                              BitVector Depended) {
-  auto *BB = VPCtx->getBasicBlock();
-  auto &MM = *MMs[BB];
-  auto &Cache = *ExtensionCaches[BB];
-  auto It = Cache.find(OP);
-  if (It != Cache.end()) {
+extern VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
+                                         Packer *Pkr);
+
+const OperandProducerInfo Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
+#if 1
+  bool Inserted;
+  decltype(Producers)::iterator It;
+  std::tie(It, Inserted) = Producers.try_emplace(OP);
+  if (!Inserted)
     return It->second;
-  }
+  
+  OperandProducerInfo &OPI = It->second;
+#else
+  if (Producers.count(OP))
+    return Producers[OP];
+  auto &OPI = Producers[OP];
+#endif
+
+  auto *BB = VPCtx->getBasicBlock();
+  auto &LDA = *LDAs[BB];
+  auto &MM = *MMs[BB];
 
   unsigned NumLanes = OP->size();
-  auto &Extensions = Cache[OP];
+  BitVector Elements(VPCtx->getNumValues());
+  BitVector Depended(VPCtx->getNumValues());
+  OPI.Feasible = true;
+  bool AllLoads = true;
+  bool HasUndef = false;
+  for (unsigned i = 0; i < NumLanes; i++) {
+    auto *V = (*OP)[i];
+    if (!V) {
+      HasUndef = true;
+      continue;
+    }
+    auto *I = dyn_cast<Instruction>(V);
+    if (!I) {
+      AllLoads = false;
+      continue;
+    }
 
-  for (auto *Inst : SupportedInsts) {
+    if (!isa<LoadInst>(I))
+      AllLoads = false;
+
+    if (!I || I->getParent() != BB)
+      OPI.Feasible = false;
+
+    unsigned InstId = VPCtx->getScalarId(I);
+    if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended))
+      OPI.Feasible = false;
+    Elements.set(InstId);
+    Depended |= LDA.getDepended(I);
+  }
+
+  OPI.Elements = std::move(Elements);
+
+  if (!OPI.Feasible)
+    return OPI;
+
+  if (AllLoads) {
+    if (auto *LoadVP = findExtendingLoadPack(*OP, BB, this))
+      OPI.LoadProducer = LoadVP;
+    return OPI;
+  }
+
+  if (HasUndef) {
+    OPI.Feasible = false;
+    return OPI;
+  }
+
+  for (auto *Inst : getInsts()) {
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
     if (LaneOps.size() != NumLanes)
       continue;
@@ -130,9 +183,48 @@ ArrayRef<VectorPack *> Packer::findExtensions(VectorPackContext *VPCtx,
     }
 
     if (Lanes.size() == NumLanes) {
-      Extensions.push_back(
-          VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+      OPI.Producers.push_back(
+          VPCtx->createVectorPack(Lanes, OPI.Elements, Depended, Inst, TTI));
     }
   }
-  return Extensions;
+  OPI.Feasible = !OPI.Producers.empty();
+  return OPI;
 }
+
+//ArrayRef<VectorPack *>
+//Packer::findExtensionsForOperand(VectorPackContext *VPCtx,
+//                                 const OperandPack *OP, BitVector Elements,
+//                                 BitVector Depended) {
+//  auto *BB = VPCtx->getBasicBlock();
+//  auto &MM = *MMs[BB];
+//  auto &Cache = *ExtensionCaches[BB];
+//  auto It = Cache.find(OP);
+//  if (It != Cache.end()) {
+//    return It->second;
+//  }
+//
+//  unsigned NumLanes = OP->size();
+//  auto &Extensions = Cache[OP];
+//
+//  for (auto *Inst : SupportedInsts) {
+//    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
+//    if (LaneOps.size() != NumLanes)
+//      continue;
+//
+//    std::vector<const Operation::Match *> Lanes;
+//    for (unsigned i = 0; i < NumLanes; i++) {
+//      ArrayRef<Operation::Match> Matches =
+//          MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
+//      if (Matches.empty())
+//        break;
+//      // FIXME: consider multiple matches for the same operation
+//      Lanes.push_back(&Matches[0]);
+//    }
+//
+//    if (Lanes.size() == NumLanes) {
+//      Extensions.push_back(
+//          VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
+//    }
+//  }
+//  return Extensions;
+//}

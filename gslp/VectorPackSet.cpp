@@ -251,7 +251,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
         ValueIndex[V] = {VP, i++};
   }
 
-  const int GatherCost = 4;
+  const int GatherCost = 2;
 
   // FIXME:
   // use of block frequency is pessimistic when we can hoist gathers out of
