@@ -102,6 +102,7 @@ extern VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
                                          Packer *Pkr);
 
 const OperandProducerInfo Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
+#if 0
 #if 1
   bool Inserted;
   decltype(Producers)::iterator It;
@@ -115,6 +116,11 @@ const OperandProducerInfo Packer::getProducerInfo(const VectorPackContext *VPCtx
     return Producers[OP];
   auto &OPI = Producers[OP];
 #endif
+#endif
+  if (OP->OPIValid)
+    return OP->OPI;
+  OP->OPIValid = true;
+  auto &OPI = OP->OPI;
 
   auto *BB = VPCtx->getBasicBlock();
   auto &LDA = *LDAs[BB];

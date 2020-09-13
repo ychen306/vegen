@@ -7,8 +7,22 @@
 #include "llvm/ADT/Hashing.h"
 #include <vector>
 
+
+class VectorPack;
+struct OperandProducerInfo {
+  bool Feasible; // Whether it's feasible to produce this operand pack
+  llvm::BitVector Elements;
+  llvm::SmallVector<VectorPack *, 4> Producers;
+  VectorPack *LoadProducer;
+};
+
 // Use this to model input operands
-using OperandPack = llvm::SmallVector<llvm::Value *, 8>;
+struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
+  mutable bool OPIValid = false;
+  mutable OperandProducerInfo OPI;
+  unsigned Hash;
+  mutable llvm::VectorType *Ty;
+};
 
 // VectorPackContext captures various meta data we use to create and manage
 // vector packs. Basically we want to store vector packs are a bitvector, and we
@@ -58,6 +72,8 @@ public:
     if (It != OperandCache.end())
       return It->second.get();
     auto NewOP = std::make_unique<OperandPack>(OP);
+    // Use this for tabulation hashing
+    NewOP->Hash = std::rand();
     return (OperandCache[*NewOP] = std::move(NewOP)).get();
   }
 

@@ -71,6 +71,7 @@ void Frontier::freezeOneInst(Instruction *I) {
 }
 
 bool Frontier::resolved(const OperandPack &OP) const {
+  return !Pkr->getProducerInfo(VPCtx, &OP).Elements.anyCommon(FreeInsts);
   for (Value *V : OP) {
     if (!V)
       continue;
@@ -97,6 +98,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     // Special case: we can build OP by broadcasting `I`.
     if ((*OP)[0] == I && is_splat(*OP)) {
       Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
+      OperandPackHash ^= OP->Hash;
       ResolvedPackIds.push_back(i);
       continue;
     }
@@ -110,8 +112,10 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
         Cost +=
             2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
-    if (resolved(*OP))
+    if (resolved(*OP)) {
+      OperandPackHash ^= OP->Hash;
       ResolvedPackIds.push_back(i);
+    }
   }
 
   // If `I` uses any free instructions,
@@ -204,10 +208,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   // FIXME: instead of doing this, which is broken if some intermediate values
   // have external user, directly subtract cost of dead instructions. We have
   // enough information to check if a value is dead.
-  auto ReplacedInsts = VP->getReplacedInsts();
-  std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
-            [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
-  for (auto *I : ReplacedInsts)
+  for (auto *I : VP->getReplacedInsts())
     freezeOneInst(I);
 
   SmallVector<unsigned, 2> ResolvedPackIds;
@@ -215,14 +216,13 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
     for (unsigned i = 0; i < UnresolvedPacks.size(); i++) {
       auto *OP = UnresolvedPacks[i];
       auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-      // Fast path: when OP is produced exactly
-      if (OPI.Elements == VP->getElements()) {
-        ResolvedPackIds.push_back(i);
-        break;
-      } else if (OPI.Elements.anyCommon(VP->getElements())) {
+
+      if (OPI.Elements.anyCommon(VP->getElements())) {
         Cost += getGatherCost(*VP, *OP, TTI);
-        if (resolved(*OP))
+        if (resolved(*OP)) {
+          OperandPackHash ^= OP->Hash;
           ResolvedPackIds.push_back(i);
+        }
       }
     }
   }
@@ -245,8 +245,10 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
     }
     if (!resolved(*OpndPack) &&
         !std::binary_search(UnresolvedPacks.begin(), UnresolvedPacks.end(),
-          OpndPack))
+          OpndPack)) {
+      OperandPackHash ^= OpndPack->Hash;
       UnresolvedPacks.push_back(OpndPack);
+    }
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
@@ -255,16 +257,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
 }
 
 float Frontier::advanceInplace(ShuffleTask ST, TargetTransformInfo *TTI) {
-  auto It = std::lower_bound(UnresolvedPacks.begin(), UnresolvedPacks.end(),
-      ST.Output);
-  assert(It != UnresolvedPacks.end());
-  assert(*It == ST.Output);
-  std::swap(*It, UnresolvedPacks.back());
-  UnresolvedPacks.pop_back();
-  for (auto *OP : ST.Inputs)
-    UnresolvedPacks.push_back(OP);
-  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
-  return ST.getCost(TTI);
+  assert(false && "don't use this");
 }
 
 raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
@@ -890,10 +883,10 @@ std::vector<VectorPack *> RolloutEvaluator::getExtensions(const Frontier &Frt) {
 float RolloutEvaluator::evaluate(const Frontier *Frt) {
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
-  auto ScratchFrt = *Frt;
   auto *BB = Frt->getBasicBlock();
-  std::vector<VectorPack *> Extensions = getExtensions(ScratchFrt);
   auto *VPCtx = Frt->getContext();
+  auto ScratchFrt = *Frt;
+  std::vector<VectorPack *> Extensions = getExtensions(ScratchFrt);
   float Cost = 0;
   bool Changed;
   do {
@@ -926,7 +919,7 @@ float RolloutEvaluator::evaluate(const Frontier *Frt) {
         Changed = true;
       }
     }
-  } while (Changed);
+  } while (Changed && !ScratchFrt.getUnresolvedPacks().empty());
 
   return Cost + estimateAllScalarCost(ScratchFrt, TTI);
 }

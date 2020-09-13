@@ -46,13 +46,6 @@ public:
   }
 };
 
-struct OperandProducerInfo {
-  bool Feasible; // Whether it's feasible to produce this operand pack
-  llvm::BitVector Elements;
-  llvm::SmallVector<VectorPack *, 4> Producers;
-  VectorPack *LoadProducer;
-};
-
 class Packer {
   llvm::Function *F;
 

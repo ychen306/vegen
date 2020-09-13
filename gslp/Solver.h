@@ -68,6 +68,7 @@ class Frontier {
 
   // Check if `OP` has been resolved.
   bool resolved(const OperandPack &OP) const;
+  unsigned OperandPackHash = 0;
 
 public:
   // Create the initial frontier, which surrounds the whole basic block
@@ -121,16 +122,16 @@ struct FrontierHashInfo {
     using namespace llvm;
 
     if (Frt == getEmptyKey()) {
-      return hash_combine(ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
-                          ArrayRef<const OperandPack *>());
+      return hash_combine(ArrayRef<uint64_t>(), ArrayRef<uint64_t>(), 0);
     } else if (Frt == getTombstoneKey()) {
-      return hash_combine(ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
-                          ArrayRef<const OperandPack *>());
+      return hash_combine(ArrayRef<uint64_t>(), ArrayRef<uint64_t>(), 0);
     }
 
+    //return hash_combine(Frt->UnresolvedScalars.getData(),
+    //                    Frt->FreeInsts.getData(),
+    //                    ArrayRef<const OperandPack *>(Frt->UnresolvedPacks));
     return hash_combine(Frt->UnresolvedScalars.getData(),
-                        Frt->FreeInsts.getData(),
-                        ArrayRef<const OperandPack *>(Frt->UnresolvedPacks));
+                        Frt->FreeInsts.getData(), Frt->OperandPackHash);
   }
 
   static bool isTombstoneOrEmpty(const Frontier *Frt) {
