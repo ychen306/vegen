@@ -718,16 +718,12 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
   //    for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
   //    //for (unsigned VL : {8}) {
   //      if (auto *VP = getSeedStorePack(*Frt, SI, VL)) {
-  //        float Cost;
-  //        auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
-  //        Transitions.emplace_back(VP, Next, Cost);
+  //        Transitions.emplace_back(VP);
   //      }
   //    }
 
-  //    float Cost;
   //    // Consider scalars
-  //    auto *Next = Factory->getNode(Frt->advance(SI, Cost, TTI));
-  //    Transitions.emplace_back(SI, Next, Cost);
+  //    Transitions.emplace_back(SI);
   //  }
   //}
   if (CanExpandWithStore)
@@ -743,17 +739,13 @@ void UCTNode::expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
     float Cost;
 
     // Consider scalars
-    auto *Next = Factory->getNode(Frt->advance(I, Cost, TTI));
-    Transitions.emplace_back(I, Next, Cost);
+    Transitions.emplace_back(I);
   }
 
 
   // Also consider the extension packs
-  for (auto *VP : findExtensionPacks(*Frt)) {
-    float Cost;
-    auto *Next = Factory->getNode(Frt->advance(VP, Cost, TTI));
-    Transitions.emplace_back(VP, Next, Cost);
-  }
+  for (auto *VP : findExtensionPacks(*Frt))
+    Transitions.emplace_back(VP);
 }
 
 // Do one iteration of MCTS
@@ -808,7 +800,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       }
 
       Path.push_back(FullTransition{CurNode, BestT});
-      CurNode = BestT->Next;
+      CurNode = BestT->getNext(CurNode, Factory, TTI);
     }
 
     float LeafCost = 0;

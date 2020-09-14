@@ -190,18 +190,26 @@ public:
     float Cost; // Reward
     float Bias{0};
 
-    Transition(const VectorPack *VP, UCTNode *Next, float Cost)
-        : IsScalar(false), VP(VP), Next(Next), Count(0), Cost(Cost) {}
+    Transition(const VectorPack *VP)
+        : IsScalar(false), VP(VP), Next(nullptr), Count(0) {}
 
-    Transition(UCTNode *Next)
-        : IsScalar(false), VP(nullptr), Next(Next), Count(0), Cost(0) {}
-
-    Transition(llvm::Instruction *I, UCTNode *Next, float Cost)
-        : IsScalar(true), VP(nullptr), I(I), Next(Next), Count(0), Cost(Cost) {}
+    Transition(llvm::Instruction *I)
+        : IsScalar(true), VP(nullptr), I(I), Next(nullptr), Count(0) {}
 
     float visited() const { return Count > 0; }
 
     unsigned visitCount() const { return Count; }
+
+    UCTNode *getNext(UCTNode *Parent, UCTNodeFactory *Factory, llvm::TargetTransformInfo *TTI) {
+      if (Next)
+        return Next;
+
+      if (VP)
+        Next = Factory->getNode(Parent->getFrontier()->advance(VP, Cost, TTI));
+      else
+        Next = Factory->getNode(Parent->getFrontier()->advance(I, Cost, TTI));
+      return Next;
+    }
 
     // Average Q value
     float avgCost() const { return Cost + Next->avgCost(); }
