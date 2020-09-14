@@ -24,6 +24,8 @@ VectorPackContext::VectorPackContext(BasicBlock *BB)
   for (auto &I : *BB) {
     ScalarToIdMap[&I] = i++;
     Scalars.push_back(&I);
+    HashValues.push_back(std::rand());
+    HashValues2.push_back(std::rand());
   }
 }
 

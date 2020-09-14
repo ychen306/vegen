@@ -33,6 +33,8 @@ struct OperandPackCache;
 class VectorPackContext {
   llvm::BasicBlock *BB;
   std::vector<llvm::Value *> Scalars;
+  std::vector<unsigned> HashValues;
+  std::vector<unsigned> HashValues2;
   llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
 
   std::unique_ptr<VectorPackCache> PackCache;
@@ -91,6 +93,22 @@ public:
     auto It = ScalarToIdMap.find(V);
     assert(It != ScalarToIdMap.end());
     return It->second;
+  }
+
+  unsigned getHashValue(const llvm::Value *V) const {
+    return HashValues[getScalarId(V)];
+  }
+
+  unsigned getHashValue(unsigned InstId) const {
+    return HashValues[InstId];
+  }
+
+  unsigned getHashValue2(const llvm::Value *V) const {
+    return HashValues2[getScalarId(V)];
+  }
+
+  unsigned getHashValue2(unsigned InstId) const {
+    return HashValues2[InstId];
   }
 
   unsigned getNumValues() const { return Scalars.size(); }

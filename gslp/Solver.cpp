@@ -16,18 +16,21 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
       UnresolvedScalars(VPCtx->getNumValues(), false),
       FreeInsts(VPCtx->getNumValues(), true),
       UsableInsts(VPCtx->getNumValues(), false) {
+  Hash = 0;
   // Find external uses of any instruction `I` in `BB`
   // and mark `I` as an unresolved scalar.
   for (auto &I : *BB) {
     bool AllUsersResolved = true;
     unsigned InstId = VPCtx->getScalarId(&I);
+    Hash ^= VPCtx->getHashValue(InstId);
     for (User *U : I.users()) {
       auto UserInst = dyn_cast<Instruction>(U);
       if (UserInst) {
-        if (UserInst->getParent() != BB)
+        if (UserInst->getParent() != BB) {
           // Mark that `I` has a scalar use.
           UnresolvedScalars.set(InstId);
-        else
+          Hash ^= VPCtx->getHashValue2(InstId);
+        } else
           // `I` is used by some other instruction in `BB`
           AllUsersResolved = false;
       }
@@ -43,6 +46,8 @@ void Frontier::freezeOneInst(Instruction *I) {
   // assert(FreeInsts.test(InstId));
   if (!FreeInsts.test(InstId))
     return;
+  Hash ^= VPCtx->getHashValue(InstId);
+  Hash ^= VPCtx->getHashValue2(InstId);
   FreeInsts.reset(InstId);
   UnresolvedScalars.reset(InstId);
   UsableInsts.reset(InstId);
@@ -98,7 +103,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     // Special case: we can build OP by broadcasting `I`.
     if ((*OP)[0] == I && is_splat(*OP)) {
       Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
-      OperandPackHash ^= OP->Hash;
+      Hash ^= OP->Hash;
       ResolvedPackIds.push_back(i);
       continue;
     }
@@ -113,7 +118,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
             2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
     if (resolved(*OP)) {
-      OperandPackHash ^= OP->Hash;
+      Hash ^= OP->Hash;
       ResolvedPackIds.push_back(i);
     }
   }
@@ -125,8 +130,10 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     if (!I2 || I2->getParent() != BB)
       continue;
     unsigned InstId = VPCtx->getScalarId(I2);
-    if (FreeInsts.test(InstId))
+    if (FreeInsts.test(InstId)) {
       UnresolvedScalars.set(InstId);
+      Hash ^= VPCtx->getHashValue2(InstId);
+    }
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
@@ -220,7 +227,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
       if (OPI.Elements.anyCommon(VP->getElements())) {
         Cost += getGatherCost(*VP, *OP, TTI);
         if (resolved(*OP)) {
-          OperandPackHash ^= OP->Hash;
+          Hash ^= OP->Hash;
           ResolvedPackIds.push_back(i);
         }
       }
@@ -246,7 +253,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
     if (!resolved(*OpndPack) &&
         !std::binary_search(UnresolvedPacks.begin(), UnresolvedPacks.end(),
           OpndPack)) {
-      OperandPackHash ^= OpndPack->Hash;
+      Hash ^= OpndPack->Hash;
       UnresolvedPacks.push_back(OpndPack);
     }
   }
@@ -887,6 +894,13 @@ float RolloutEvaluator::evaluate(const Frontier *Frt) {
   auto *VPCtx = Frt->getContext();
   auto ScratchFrt = *Frt;
   std::vector<VectorPack *> Extensions = getExtensions(ScratchFrt);
+
+  BitVector VectorOperandSet(VPCtx->getNumValues());
+  for (auto *OP : ScratchFrt.getUnresolvedPacks())
+    VectorOperandSet |= Pkr->getProducerInfo(VPCtx, OP).Elements;
+
+  BitVector NonFree(VPCtx->getNumValues());
+
   float Cost = 0;
   bool Changed;
   do {
@@ -895,18 +909,14 @@ float RolloutEvaluator::evaluate(const Frontier *Frt) {
       auto *VP = Extensions[rand_int(Extensions.size())];
       Cost += ScratchFrt.advanceInplace(VP, TTI);
       Extensions = getExtensions(ScratchFrt);
-      Changed = true;
-    }
 
-    BitVector VectorOperandSet(VPCtx->getNumValues());
-    for (auto *OP : ScratchFrt.getUnresolvedPacks()) {
-      for (auto *V : *OP) {
-        if (!V)
-          continue;
-        auto *I = dyn_cast<Instruction>(V);
-        if (I && I->getParent() == BB)
-          VectorOperandSet.set(VPCtx->getScalarId(I));
-      }
+      for (auto *OP : VP->getOperandPacks())
+        VectorOperandSet |= Pkr->getProducerInfo(VPCtx, OP).Elements;
+      NonFree = ScratchFrt.getFreeInsts();
+      NonFree.flip();
+      VectorOperandSet &= NonFree;
+
+      Changed = true;
     }
 
     const BitVector &UsableIds = ScratchFrt.usableInstIds();
