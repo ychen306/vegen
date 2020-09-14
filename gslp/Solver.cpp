@@ -77,16 +77,6 @@ void Frontier::freezeOneInst(Instruction *I) {
 
 bool Frontier::resolved(const OperandPack &OP) const {
   return !Pkr->getProducerInfo(VPCtx, &OP).Elements.anyCommon(FreeInsts);
-  for (Value *V : OP) {
-    if (!V)
-      continue;
-    auto *I = dyn_cast<Instruction>(V);
-    if (!I || I->getParent() != BB)
-      continue;
-    if (FreeInsts[VPCtx->getScalarId(V)])
-      return false;
-  }
-  return true;
 }
 
 float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
@@ -209,7 +199,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
     // Pay the extract cost
     if (UnresolvedScalars.test(InstId))
       Cost +=
-          TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
+        TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
   }
 
   // FIXME: instead of doing this, which is broken if some intermediate values
