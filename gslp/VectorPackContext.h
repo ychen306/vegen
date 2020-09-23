@@ -13,7 +13,7 @@ struct OperandProducerInfo {
   bool Feasible; // Whether it's feasible to produce this operand pack
   llvm::BitVector Elements;
   llvm::SmallVector<VectorPack *, 4> Producers;
-  VectorPack *LoadProducer;
+  llvm::SmallVector<VectorPack *, 2> LoadProducers;
 };
 
 // Use this to model input operands
@@ -21,7 +21,7 @@ struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
   mutable bool OPIValid = false;
   mutable OperandProducerInfo OPI;
   unsigned Hash;
-  mutable llvm::VectorType *Ty;
+  mutable llvm::VectorType *Ty = nullptr;
 };
 
 // VectorPackContext captures various meta data we use to create and manage

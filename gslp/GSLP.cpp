@@ -156,7 +156,7 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
     if (UseMCTS)
       MCTS.run(Root, NumSimulations);
     else
-      Root->expand(MaxNumLanes, &Factory, Pkr.getTTI());
+      Root->expand();
 
     assert(Root->expanded());
 
@@ -306,7 +306,7 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  if (!F.getName().contains("idct8_partial"))
+  if (!F.getName().contains("sbc"))
     return false;
   balanceReductionTree(F);
   errs() << F << '\n';

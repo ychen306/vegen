@@ -31,20 +31,21 @@ public:
   }
 };
 
+class Frontier;
 struct BackwardShuffle {
   virtual std::vector<const OperandPack *>
-  run(const VectorPackContext *, const OperandPack *Output) const = 0;
+  run(const VectorPackContext *, llvm::ArrayRef<const OperandPack *> Outputs) const = 0;
   virtual float getCost(llvm::TargetTransformInfo *) const = 0;
 };
 
 struct ShuffleTask {
   const BackwardShuffle *Shfl;
-  const OperandPack *Output;
+  std::vector<const OperandPack *> Outputs;
   std::vector<const OperandPack *> Inputs;
-  ShuffleTask(const BackwardShuffle *Shfl, const OperandPack *Output, const VectorPackContext *VPCtx)
-      : Shfl(Shfl), Output(Output), Inputs(Shfl->run(VPCtx, Output)) {}
+  bool Feasible;
+  ShuffleTask(const BackwardShuffle *Shfl, std::vector<const OperandPack *> Outputs, const Frontier *Frt);
   float getCost(llvm::TargetTransformInfo *TTI) const { return Shfl->getCost(TTI); }
-  bool feasible() const { return Inputs.size() > 0; }
+  bool feasible() const { return Feasible; }
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ShuffleTask &);
@@ -139,6 +140,7 @@ struct FrontierHashInfo {
 
     return A->BB == B->BB && A->FreeInsts == B->FreeInsts &&
            A->UnresolvedScalars == B->UnresolvedScalars &&
+           A->UsableInsts == B->UsableInsts &&
            A->UnresolvedPacks == B->UnresolvedPacks;
   }
 };
@@ -181,20 +183,23 @@ class UCTNode {
 public:
   // The next action state pair
   struct Transition {
-    bool IsScalar;
     // If non-null then we've finished filling out a pack w/ this transition
     const VectorPack *VP;
-    llvm::Instruction *I{nullptr};
+    llvm::Instruction *I;
+    llvm::Optional<ShuffleTask> ST;
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
     float Bias{0};
 
     Transition(const VectorPack *VP)
-        : IsScalar(false), VP(VP), Next(nullptr), Count(0) {}
+        : I(nullptr), VP(VP), Next(nullptr), Count(0) {}
 
     Transition(llvm::Instruction *I)
-        : IsScalar(true), VP(nullptr), I(I), Next(nullptr), Count(0) {}
+        : VP(nullptr), I(I), Next(nullptr), Count(0) {}
+
+    Transition(ShuffleTask ST)
+        : VP(nullptr), I(nullptr), ST(ST), Next(nullptr), Count(0) {}
 
     float visited() const { return Count > 0; }
 
@@ -206,8 +211,10 @@ public:
 
       if (VP)
         Next = Factory->getNode(Parent->getFrontier()->advance(VP, Cost, TTI));
-      else
+      else if (I)
         Next = Factory->getNode(Parent->getFrontier()->advance(I, Cost, TTI));
+      else
+        Next = Factory->getNode(Parent->getFrontier()->advance(ST.getValue(), Cost, TTI));
       return Next;
     }
 
@@ -244,8 +251,7 @@ public:
   }
 
   // Fill out the out edge
-  void expand(unsigned MaxNumLanes, UCTNodeFactory *Factory,
-              llvm::TargetTransformInfo *);
+  void expand();
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const { return Frt->getFreeInsts().count() == 0 || IsTerminal; }
 

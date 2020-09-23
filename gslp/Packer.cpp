@@ -98,25 +98,164 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
   }
 }
 
-extern VectorPack *findExtendingLoadPack(const OperandPack &OP, BasicBlock *BB,
-                                         Packer *Pkr);
+class SlotSet {
+  std::vector<LoadInst *> Slots;
+  unsigned MinId, MaxId;
+  unsigned NumElems = 0;
+  unsigned HasValue = false;
 
-const OperandProducerInfo Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
-#if 0
+public:
+  LoadInst *operator[](unsigned i) const { return Slots[i]; }
+  bool try_insert(unsigned i, LoadInst *LI) {
+    if (i >= Slots.size())
+      Slots.resize(i + 1);
+    if (!Slots[i] || Slots[i] == LI) {
+      Slots[i] = LI;
+      if (HasValue) {
+        MinId = std::min(i, MinId);
+        MaxId = std::max(i, MaxId);
+      } else {
+        MinId = MaxId = i;
+        HasValue = true;
+      }
+      NumElems++;
+      return true;
+    }
+    return false;
+  }
+
+  double utilization() const { return (double)NumElems / (MaxId - MinId + 1); }
+
+  unsigned num_elems() const { return NumElems; }
+
+  unsigned minId() const { return MinId; }
+
+  unsigned maxId() const { return MaxId; }
+};
+
+// Try to coalesce main pack with some other packs
+VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
+                                    ArrayRef<VectorPack *> OtherPacks,
+                                    Packer *Pkr) {
+  auto *BB = MainPack->getBasicBlock();
+  auto &LayoutInfo = Pkr->getLoadInfo(BB);
 #if 1
-  bool Inserted;
-  decltype(Producers)::iterator It;
-  std::tie(It, Inserted) = Producers.try_emplace(OP);
-  if (!Inserted)
-    return It->second;
-  
-  OperandProducerInfo &OPI = It->second;
-#else
-  if (Producers.count(OP))
-    return Producers[OP];
-  auto &OPI = Producers[OP];
+  // Full, can't coalesce
+  if (MainPack->getOrderedValues().size() == MainPack->getElements().count())
+    return nullptr;
 #endif
-#endif
+
+  auto *SomeLoad = *MainPack->elementValues().begin();
+  auto *Leader = LayoutInfo.get(cast<Instruction>(SomeLoad)).Leader;
+  BitVector Elements = MainPack->getElements();
+  BitVector Depended = MainPack->getDepended();
+  SlotSet Slots;
+  for (auto *V : MainPack->elementValues()) {
+    auto *LI = cast<LoadInst>(V);
+    unsigned SlotId = LayoutInfo.get(LI).Id;
+    Slots.try_insert(SlotId, LI);
+  }
+
+  for (auto *Other : OtherPacks) {
+    auto &Info =
+        LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
+    // Cannot coalesce with loads accessing a different object
+    if (Info.Leader != Leader)
+      continue;
+    // Cannot coalesce if not independent
+    if (Depended.anyCommon(Other->getElements()) ||
+        Other->getDepended().anyCommon(Elements))
+      continue;
+
+    auto Temp = Slots;
+    bool Coalesced = true;
+    for (auto *V : Other->elementValues()) {
+      auto *LI = cast<LoadInst>(V);
+      unsigned SlotId = LayoutInfo.get(LI).Id;
+      // Can only coalesce if the slot if empty
+      bool Ok = Temp.try_insert(SlotId, LI);
+      if (!Ok) {
+        Coalesced = false;
+        break;
+      }
+    }
+    if (Coalesced && Temp.utilization() >= Slots.utilization()) {
+      Slots = Temp;
+      Depended |= Other->getDepended();
+      Elements |= Other->getElements();
+    }
+  }
+
+  if (Elements == MainPack->getElements())
+    return nullptr;
+
+  std::vector<LoadInst *> Loads;
+  for (unsigned i = Slots.minId(), e = Slots.maxId(); i <= e; i++) {
+    Loads.push_back(Slots[i]);
+  }
+
+  return Pkr->getContext(BB)->createLoadPack(Loads, Elements, Depended,
+                                             Pkr->getTTI());
+}
+
+// TODO: do this properly
+static void decomposeIntoLoadPacks(const SlotSet &Slots,
+                                   VectorPackContext *VPCtx,
+                                   LocalDependenceAnalysis &LDA,
+                                   TargetTransformInfo *TTI,
+                                   SmallVectorImpl<VectorPack *> &Extensions) {
+  BitVector Elements(VPCtx->getNumValues());
+  BitVector Depended(VPCtx->getNumValues());
+  std::vector<LoadInst *> Loads;
+  for (unsigned i = Slots.minId(), e = Slots.maxId(); i <= e; i++) {
+    auto *LI = Slots[i];
+    if (LI) {
+      Loads.push_back(cast<LoadInst>(LI));
+      Elements.set(VPCtx->getScalarId(LI));
+      Depended |= LDA.getDepended(LI);
+    } else if (!Loads.empty()) {
+      unsigned N = PowerOf2Ceil(Loads.size());
+      while (Loads.size() != N)
+        Loads.push_back(nullptr);
+      Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+      Elements.reset();
+      Depended.reset();
+      Loads.clear();
+    }
+  }
+  if (!Loads.empty()) {
+    unsigned N = PowerOf2Ceil(Loads.size());
+    while (Loads.size() != N)
+      Loads.push_back(nullptr);
+    Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+  }
+}
+
+// Assuming all elements of `OP` are loads, try to find an extending load pack.
+static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
+                                   Packer *Pkr,
+                                   SmallVectorImpl<VectorPack *> &Extensions) {
+  auto &LayoutInfo = Pkr->getLoadInfo(BB);
+  // mapping <leader> -> <slot set>
+  DenseMap<Instruction *, SlotSet> Slots;
+  for (auto *V : OP) {
+    if (!V)
+      continue;
+    auto *LI = dyn_cast<LoadInst>(V);
+    if (!LI)
+      continue;
+    auto &Info = LayoutInfo.get(LI);
+    Slots[Info.Leader].try_insert(Info.Id, LI);
+  }
+  auto *VPCtx = Pkr->getContext(BB);
+  auto &LDA = Pkr->getLDA(BB);
+  auto *TTI = Pkr->getTTI();
+  for (auto &LeaderAndSlots : Slots)
+    decomposeIntoLoadPacks(LeaderAndSlots.second, VPCtx, LDA, TTI, Extensions);
+}
+
+const OperandProducerInfo
+Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;
   OP->OPIValid = true;
@@ -147,8 +286,10 @@ const OperandProducerInfo Packer::getProducerInfo(const VectorPackContext *VPCtx
     if (!isa<LoadInst>(I))
       AllLoads = false;
 
-    if (!I || I->getParent() != BB)
+    if (!I || I->getParent() != BB) {
       OPI.Feasible = false;
+      continue;
+    }
 
     unsigned InstId = VPCtx->getScalarId(I);
     if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended))
@@ -163,8 +304,9 @@ const OperandProducerInfo Packer::getProducerInfo(const VectorPackContext *VPCtx
     return OPI;
 
   if (AllLoads) {
-    if (auto *LoadVP = findExtendingLoadPack(*OP, BB, this))
-      OPI.LoadProducer = LoadVP;
+    findExtendingLoadPacks(*OP, BB, this, OPI.LoadProducers);
+    if (OPI.LoadProducers.empty())
+      OPI.Feasible = false;
     return OPI;
   }
 
@@ -196,41 +338,3 @@ const OperandProducerInfo Packer::getProducerInfo(const VectorPackContext *VPCtx
   OPI.Feasible = !OPI.Producers.empty();
   return OPI;
 }
-
-//ArrayRef<VectorPack *>
-//Packer::findExtensionsForOperand(VectorPackContext *VPCtx,
-//                                 const OperandPack *OP, BitVector Elements,
-//                                 BitVector Depended) {
-//  auto *BB = VPCtx->getBasicBlock();
-//  auto &MM = *MMs[BB];
-//  auto &Cache = *ExtensionCaches[BB];
-//  auto It = Cache.find(OP);
-//  if (It != Cache.end()) {
-//    return It->second;
-//  }
-//
-//  unsigned NumLanes = OP->size();
-//  auto &Extensions = Cache[OP];
-//
-//  for (auto *Inst : SupportedInsts) {
-//    ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
-//    if (LaneOps.size() != NumLanes)
-//      continue;
-//
-//    std::vector<const Operation::Match *> Lanes;
-//    for (unsigned i = 0; i < NumLanes; i++) {
-//      ArrayRef<Operation::Match> Matches =
-//          MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
-//      if (Matches.empty())
-//        break;
-//      // FIXME: consider multiple matches for the same operation
-//      Lanes.push_back(&Matches[0]);
-//    }
-//
-//    if (Lanes.size() == NumLanes) {
-//      Extensions.push_back(
-//          VPCtx->createVectorPack(Lanes, Elements, Depended, Inst, TTI));
-//    }
-//  }
-//  return Extensions;
-//}
