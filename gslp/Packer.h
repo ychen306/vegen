@@ -63,11 +63,7 @@ class Packer {
       LoadInfo;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<AccessLayoutInfo>>
       StoreInfo;
-  // mapping <vector operand> -> <producer packs>
-  using ExtensionCache =
-      llvm::DenseMap<const OperandPack *, llvm::SmallVector<VectorPack *, 4>>;
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ExtensionCache>>
-      ExtensionCaches;
+  llvm::DenseMap<const OperandPack *, OperandProducerInfo> Producers;
 
   std::vector<InstBinding *> SupportedInsts;
 
@@ -102,10 +98,7 @@ public:
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
 
   llvm::Function *getFunction() const { return F; }
-  llvm::ArrayRef<VectorPack *> findExtensions(VectorPackContext *VPCtx,
-                                              const OperandPack *OP,
-                                              llvm::BitVector Elements,
-                                              llvm::BitVector Depended);
+  const OperandProducerInfo getProducerInfo(const VectorPackContext *, const OperandPack *);
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

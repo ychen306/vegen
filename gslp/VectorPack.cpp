@@ -244,6 +244,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     MaybeAlign Alignment(LI->getAlignment());
     auto *VecTy = VectorType::get(LI->getType(), Loads.size());
     Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, Alignment, 0, LI);
+    Cost = 2.0;
     break;
   }
   case Store: {
@@ -342,6 +343,8 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
 }
 
 VectorType *getVectorType(const OperandPack &OpndPack) {
+  if (OpndPack.Ty)
+    return OpndPack.Ty;
   Type *ScalarTy = nullptr;
   for (auto *V : OpndPack)
     if (V) {
@@ -349,7 +352,7 @@ VectorType *getVectorType(const OperandPack &OpndPack) {
       break;
     }
   assert(ScalarTy && "Operand pack can't be all empty");
-  return VectorType::get(ScalarTy, OpndPack.size());
+  return OpndPack.Ty = VectorType::get(ScalarTy, OpndPack.size());
 }
 
 VectorType *getVectorType(const VectorPack &VP) {
@@ -360,27 +363,28 @@ VectorType *getVectorType(const VectorPack &VP) {
 
 bool isConstantPack(const OperandPack &OpndPack) {
   for (auto *V : OpndPack)
-    if (!isa<Constant>(V))
+    if (V && !isa<Constant>(V))
       return false;
   return true;
 }
 
-std::vector<Instruction *> VectorPack::getReplacedInsts() const {
-  std::vector<Instruction *> Replaced;
+void VectorPack::computeReplacedInsts() {
+  ReplacedInsts.clear();
   if (Kind != General) {
     for (auto *V : getOrderedValues())
       if (V)
-        Replaced.push_back(cast<Instruction>(V));
+        ReplacedInsts.push_back(cast<Instruction>(V));
   } else {
     for (auto *M : Matches) {
       SmallPtrSet<Instruction *, 4> Insts;
       getIntermediateInsts(*M, Insts);
       for (auto *I : Insts)
-        Replaced.push_back(I);
+        ReplacedInsts.push_back(I);
     }
   }
-  std::sort(Replaced.begin(), Replaced.end());
-  auto It = std::unique(Replaced.begin(), Replaced.end());
-  Replaced.resize(std::distance(Replaced.begin(), It));
-  return Replaced;
+  std::sort(ReplacedInsts.begin(), ReplacedInsts.end());
+  auto It = std::unique(ReplacedInsts.begin(), ReplacedInsts.end());
+  ReplacedInsts.resize(std::distance(ReplacedInsts.begin(), It));
+  std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
+            [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
 }

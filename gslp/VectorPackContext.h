@@ -7,8 +7,22 @@
 #include "llvm/ADT/Hashing.h"
 #include <vector>
 
+
+class VectorPack;
+struct OperandProducerInfo {
+  bool Feasible; // Whether it's feasible to produce this operand pack
+  llvm::BitVector Elements;
+  llvm::SmallVector<VectorPack *, 4> Producers;
+  llvm::SmallVector<VectorPack *, 2> LoadProducers;
+};
+
 // Use this to model input operands
-using OperandPack = llvm::SmallVector<llvm::Value *, 8>;
+struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
+  mutable bool OPIValid = false;
+  mutable OperandProducerInfo OPI;
+  unsigned Hash;
+  mutable llvm::VectorType *Ty = nullptr;
+};
 
 // VectorPackContext captures various meta data we use to create and manage
 // vector packs. Basically we want to store vector packs are a bitvector, and we
@@ -19,6 +33,8 @@ struct OperandPackCache;
 class VectorPackContext {
   llvm::BasicBlock *BB;
   std::vector<llvm::Value *> Scalars;
+  std::vector<unsigned> HashValues;
+  std::vector<unsigned> HashValues2;
   llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
 
   std::unique_ptr<VectorPackCache> PackCache;
@@ -58,6 +74,8 @@ public:
     if (It != OperandCache.end())
       return It->second.get();
     auto NewOP = std::make_unique<OperandPack>(OP);
+    // Use this for tabulation hashing
+    NewOP->Hash = std::rand();
     return (OperandCache[*NewOP] = std::move(NewOP)).get();
   }
 
@@ -75,6 +93,22 @@ public:
     auto It = ScalarToIdMap.find(V);
     assert(It != ScalarToIdMap.end());
     return It->second;
+  }
+
+  unsigned getHashValue(const llvm::Value *V) const {
+    return HashValues[getScalarId(V)];
+  }
+
+  unsigned getHashValue(unsigned InstId) const {
+    return HashValues[InstId];
+  }
+
+  unsigned getHashValue2(const llvm::Value *V) const {
+    return HashValues2[getScalarId(V)];
+  }
+
+  unsigned getHashValue2(unsigned InstId) const {
+    return HashValues2[InstId];
   }
 
   unsigned getNumValues() const { return Scalars.size(); }
