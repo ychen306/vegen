@@ -173,7 +173,7 @@ static unsigned getGatherCost(const VectorPack &VP, const OperandPack &OpndPack,
                                  getVectorType(VP));
   }
 
-  return 1.0;
+  return 2.0;
 }
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
@@ -378,6 +378,7 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 // Remove duplicate elements in OP
 static const OperandPack *dedup(const VectorPackContext *VPCtx,
                                 const OperandPack *OP) {
+  return OP;
   SmallPtrSet<Value *, 4> Seen;
   OperandPack Deduped;
   for (auto *V : *OP) {
@@ -1147,7 +1148,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
 #endif
 
-#if 1
+#if 0
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
   UCTSearch MCTS(0.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
