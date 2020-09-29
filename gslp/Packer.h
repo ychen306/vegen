@@ -44,6 +44,16 @@ public:
     assert(It != Info.end());
     return It->second;
   }
+
+  bool isAdjacent(llvm::Instruction *I1, llvm::Instruction *I2) const {
+    auto It1 = Info.find(I1);
+    auto It2 = Info.find(I2);
+    if (It1 == Info.end() || It2 == Info.end())
+      return false;
+    const AddressInfo &Info1 = It1->second;
+    const AddressInfo &Info2 = It2->second;
+    return Info1.Leader == Info2.Leader && Info1.Id + 1 == Info2.Id;
+  }
 };
 
 class Packer {

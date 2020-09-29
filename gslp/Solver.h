@@ -53,6 +53,7 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class MatchManager;
 class Frontier {
+  bool Shuffled = false;
   Packer *Pkr;
   friend struct FrontierHashInfo;
   llvm::BasicBlock *BB;
@@ -75,7 +76,7 @@ public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, Packer *Pkr);
   std::unique_ptr<Frontier> advance(const VectorPack *VP, float &Cost,
-                                    llvm::TargetTransformInfo *TTI) const;
+                                    llvm::TargetTransformInfo *TTI, bool Shuffled=false) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
   std::unique_ptr<Frontier> advance(ShuffleTask, float &Cost,
@@ -88,6 +89,7 @@ public:
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
   }
+  bool shuffled() const { return Shuffled; }
   llvm::ArrayRef<const OperandPack *> getUnresolvedPacks() const {
     return UnresolvedPacks;
   }
@@ -111,6 +113,20 @@ public:
 
   unsigned numUsableInsts() const { return UsableInsts.count(); }
   const VectorPackContext *getContext() const { return VPCtx; }
+};
+
+class PartialShuffle {
+  // Any usable instruction in a frontier, eventually, should be either in the set of new operands,
+  // or scalarized
+  unsigned NumDecided = 0;
+  std::vector<llvm::BitVector> NewOperands;
+  llvm::BitVector Scalarized;
+public:
+  PartialShuffle(VectorPackContext *VPCtx, unsigned MaxNumOperands);
+  float sample(Frontier &Frt) const;
+  unsigned scalarize(unsigned InstId) { Scalarized.set(InstId); }
+  unsigned addToOperand(unsigned InstId, unsigned OperandId) { NewOperands[OperandId].set(InstId); }
+  bool complete(const Frontier *Frt) const { return NumDecided == Frt->usableInstIds().count(); }
 };
 
 // Hashing support for `Frontier`
@@ -138,7 +154,8 @@ struct FrontierHashInfo {
     if (isTombstoneOrEmpty(A) || isTombstoneOrEmpty(B))
       return A == B;
 
-    return A->BB == B->BB && A->FreeInsts == B->FreeInsts &&
+    return A->BB == B->BB && A->Shuffled == B->Shuffled &&
+           A->FreeInsts == B->FreeInsts &&
            A->UnresolvedScalars == B->UnresolvedScalars &&
            A->UsableInsts == B->UsableInsts &&
            A->UnresolvedPacks == B->UnresolvedPacks;
@@ -187,19 +204,23 @@ public:
     const VectorPack *VP;
     llvm::Instruction *I;
     llvm::Optional<ShuffleTask> ST;
+    std::unique_ptr<PartialShuffle> PS;
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
     float Bias{0};
+    bool DisableShuffling;
 
-    Transition(const VectorPack *VP)
-        : I(nullptr), VP(VP), Next(nullptr), Count(0) {}
+    Transition(const VectorPack *VP, bool DisableShuffling = false)
+        : I(nullptr), VP(VP), Next(nullptr), Count(0), DisableShuffling(DisableShuffling) {}
 
     Transition(llvm::Instruction *I)
-        : VP(nullptr), I(I), Next(nullptr), Count(0) {}
+        : VP(nullptr), I(I), Next(nullptr), Count(0), DisableShuffling(true) {}
 
     Transition(ShuffleTask ST)
-        : VP(nullptr), I(nullptr), ST(ST), Next(nullptr), Count(0) {}
+        : VP(nullptr), I(nullptr), ST(ST), Next(nullptr), Count(0), DisableShuffling(false) {}
+
+    Transition(PartialShuffle)
 
     float visited() const { return Count > 0; }
 
@@ -210,7 +231,7 @@ public:
         return Next;
 
       if (VP)
-        Next = Factory->getNode(Parent->getFrontier()->advance(VP, Cost, TTI));
+        Next = Factory->getNode(Parent->getFrontier()->advance(VP, Cost, TTI, DisableShuffling));
       else if (I)
         Next = Factory->getNode(Parent->getFrontier()->advance(I, Cost, TTI));
       else

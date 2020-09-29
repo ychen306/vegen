@@ -336,10 +336,11 @@ raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
 
 std::unique_ptr<Frontier>
 Frontier::advance(const VectorPack *VP, float &Cost,
-                  llvm::TargetTransformInfo *TTI) const {
+                  llvm::TargetTransformInfo *TTI, bool Shuffled) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
+  Next->Shuffled |= Shuffled;
   return Next;
 }
 
@@ -378,7 +379,6 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 // Remove duplicate elements in OP
 static const OperandPack *dedup(const VectorPackContext *VPCtx,
                                 const OperandPack *OP) {
-  return OP;
   SmallPtrSet<Value *, 4> Seen;
   OperandPack Deduped;
   for (auto *V : *OP) {
@@ -558,7 +558,7 @@ struct : public BackwardShuffle {
     return {OP1, OP2};
 #endif
   }
-  float getCost(llvm::TargetTransformInfo *) const override { return 2.0; }
+  float getCost(llvm::TargetTransformInfo *) const override { return 1.0; }
 } UnpackHiLo;
 
 struct : public BackwardShuffle {
@@ -603,6 +603,281 @@ struct : public BackwardShuffle {
   float getCost(llvm::TargetTransformInfo *) const override { return 2.0; }
 } Split;
 
+static float evaluateOperandPack(const OperandPack *OP, const VectorPackContext *VPCtx, Packer *Pkr) {
+  DenseMap<const OperandPack *, float> Pack2Cost;
+  std::function<float(const OperandPack *)> Eval = [&](const OperandPack *OP) -> float {
+    auto It = Pack2Cost.find(OP);
+    if (It != Pack2Cost.end())
+      return It->second;
+
+    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    if (!OPI.Feasible)
+      return 4; // TODO: try harder
+
+    float BestCost = 0;
+    bool BestValid = false;
+    for (auto *VP : OPI.getProducers()) {
+      float Cost = VP->getCost();
+      for (auto *OP : VP->getOperandPacks())
+        Cost += Eval(OP);
+      if (!BestValid || BestCost > Cost) {
+        BestValid = true;
+        BestCost = Cost;
+      }
+    }
+    return Pack2Cost[OP] = BestCost;
+  };
+  float Cost = Eval(OP);
+  return Cost;
+}
+
+static std::vector<const VectorPack *> enumerateCandidates(const Frontier &Frt) {
+  std::vector<const OperandPack *> CandidateOperands;
+  auto *Pkr = Frt.getPacker();
+  auto *VPCtx = Frt.getContext();
+  auto *BB = VPCtx->getBasicBlock();
+  auto &LDA = Pkr->getLDA(BB);
+
+  std::vector<unsigned> UsableIds;
+  std::vector<Instruction *> UsableInsts;
+  for (unsigned i : Frt.usableInstIds().set_bits())
+    UsableIds.push_back(i);
+  for (auto *V : Frt.usableInsts())
+    UsableInsts.push_back(cast<Instruction>(V));
+
+  for (unsigned i = 0, e = UsableIds.size(); i != e; i++) {
+    unsigned I = UsableIds[i];
+    BitVector IndependentI = LDA.getIndependent(UsableInsts[i]);
+    unsigned Opcode = UsableInsts[i]->getOpcode();
+    for (unsigned j = i+1; j != e; j++) {
+      unsigned J = UsableIds[j];
+      if (UsableInsts[j]->getOpcode() != Opcode)
+        continue;
+      if (!IndependentI.test(J))
+        continue;
+      BitVector IndependentJ = IndependentI;
+      IndependentJ &= LDA.getIndependent(UsableInsts[j]);
+
+      for (unsigned k = j+1; k != e; k++) {
+        unsigned K = UsableIds[k];
+        if (!IndependentJ.test(K))
+          continue;
+        if (UsableInsts[k]->getOpcode() != Opcode)
+        continue;
+        BitVector IndependentK = IndependentJ;
+        IndependentK &= LDA.getIndependent(UsableInsts[k]);
+        for (unsigned l = k+1; l != e; l++) {
+          unsigned L = UsableIds[l];
+          if (UsableInsts[l]->getOpcode() != Opcode)
+            continue;
+          if (!IndependentK.test(L))
+            continue;
+
+          OperandPack OP;
+          OP.push_back(UsableInsts[i]);
+          OP.push_back(UsableInsts[j]);
+          OP.push_back(UsableInsts[k]);
+          OP.push_back(UsableInsts[l]);
+          auto *CanonOP = VPCtx->getCanonicalOperandPack(OP);
+          if (evaluateOperandPack(CanonOP, VPCtx, Pkr) < 0) {
+            CandidateOperands.push_back(CanonOP);
+          }
+        }
+      }
+    }
+  }
+
+  std::vector<const VectorPack *> Candidates;
+  for (auto *OP : CandidateOperands) {
+    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    for (auto *VP : OPI.getProducers())
+      Candidates.push_back(VP);
+  }
+  return Candidates;
+}
+
+class Aligner {
+  BasicBlock *BB;
+  const AccessLayoutInfo &LayoutInfo;
+  DenseMap<std::pair<Instruction *, Instruction *>, float> AlignmentCache;
+
+  // Alignment cost model
+  static constexpr float MismatchCost = 4.0;
+  static constexpr float ConstantCost = 0.0;
+  static constexpr float SplatCost = 1.0;
+  static constexpr float GatherCost = 4.0;
+  static constexpr float MatchReward = -1.0;
+
+public:
+  Aligner(BasicBlock *BB, Packer *Pkr) : BB(BB), LayoutInfo(Pkr->getLoadInfo(BB)) {}
+  float align(Instruction *I1, Instruction *I2) {
+    auto It = AlignmentCache.find({I1, I2});
+    if (It != AlignmentCache.end())
+      return It->second;
+
+    if (I1->getParent() != BB || I2->getParent() != BB)
+      return MismatchCost;
+
+    if (I1->getOpcode() != I2->getOpcode())
+      return MismatchCost;
+
+    // Special case for aligning a pair of loads: pay extra cost if the loads are not adjacent
+    auto *LI1 = dyn_cast<LoadInst>(I1);
+    auto *LI2 = dyn_cast<LoadInst>(I2);
+    if (LI1 && LI2)  {
+      if (LayoutInfo.isAdjacent(LI1, LI2))
+        return MatchReward;
+      return MatchReward + GatherCost;
+    }
+
+    float Cost = MatchReward;
+    for (unsigned i = 0, e = I1->getNumOperands(); i != e; i++) {
+      Value *O1 = I1->getOperand(i);
+      Value *O2 = I2->getOperand(i);
+      auto *OI1 = dyn_cast<Instruction>(O1);
+      auto *OI2 = dyn_cast<Instruction>(O2);
+      if (isa<Constant>(O1) && isa<Constant>(O2)) {
+        Cost += ConstantCost;
+      } else if (OI1 && OI2) {
+        Cost += align(OI1, OI2);
+      } else if (O1 == O2) {
+        Cost += SplatCost;
+      } else {
+        Cost += MismatchCost;
+      }
+    }
+    return AlignmentCache[{I1, I2}] = Cost;
+  }
+};
+
+bool usedByStore(Instruction *I) {
+  for (User *U : I->users())
+    if (isa<StoreInst>(U))
+      return true;
+  return false;
+}
+
+std::vector<OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr, unsigned Rounds = 3) {
+  auto &LDA = Pkr->getLDA(BB);
+  auto *VPCtx = Pkr->getContext(BB);
+  Aligner A(BB, Pkr);
+
+  struct CandidatePack {
+    BitVector Elements, Depended;
+  };
+
+  std::vector<CandidatePack> Aligned;
+  for (auto &I : *BB) {
+    if (!usedByStore(&I))
+      continue;
+    auto Independent = LDA.getIndependent(&I);
+    for (auto &J : *BB) {
+    if (!usedByStore(&J))
+      continue;
+      if (!Independent.test(VPCtx->getScalarId(&J)))
+        continue;
+      float AlignmentCost = A.align(&I, &J);
+      if (AlignmentCost < 0) {
+        errs() << "ALIGNED " << I << " AND " << J
+          << ", COST = " << AlignmentCost
+          << '\n';
+        BitVector Elements(VPCtx->getNumValues());
+        BitVector Depended = LDA.getDepended(&I);
+        Depended |= LDA.getDepended(&J);
+        Elements.set(VPCtx->getScalarId(&I)).set(VPCtx->getScalarId(&J));
+        Aligned.push_back({Elements, Depended});
+      }
+    }
+  }
+  errs() << "NUM ALIGNED: "<< Aligned.size() << '\n';
+  abort();
+
+  std::vector<CandidatePack> Final = Aligned;
+  for (unsigned R = 0; R < Rounds; R++) {
+    std::vector<CandidatePack> NextAligned;
+    for (auto I = Aligned.begin(), E = Aligned.end(); I != E; ++I) {
+      for (auto J = std::next(I); J != E; ++J) {
+        if (I->Elements.anyCommon(J->Elements) &&
+            !I->Depended.anyCommon(J->Elements) && 
+            !J->Depended.anyCommon(I->Elements)) {
+          BitVector Elements = I->Elements;
+          Elements |= J->Elements;
+          BitVector Depended = I->Depended;
+          Depended |= J->Depended;
+          Final.push_back({Elements, Depended});
+          NextAligned.push_back({Elements, Depended});
+        }
+      }
+    }
+    Aligned.swap(NextAligned);
+
+
+    ///////////
+    float TotalSize = 0;
+    for (auto &P : Final)
+      TotalSize += P.Elements.count();
+
+    errs() << "!!! number of candidates "<< Final.size()
+      << " after " << R << " rounds"
+      << ", average size " << TotalSize / float(Final.size())
+      << "\n";
+    //////////
+
+  }
+
+  return {};
+}
+
+
+PartialShuffle::PartialShuffle(VectorPackContext *VPCtx, unsigned MaxNumOperands) {
+  for (unsigned i = 0; i < MaxNumOperands; i++)
+    NewOperands.emplace_back(VPCtx->getNumValues());
+  Scalarized = BitVector(MaxNumOperands);
+}
+
+static OperandPack *buildOperandPack(const VectorPackContext *VPCtx, BitVector Elements) {
+  OperandPack OP;
+  for (unsigned i : Elements.set_bits())
+    OP.push_back(VPCtx->getScalar(i));
+  return VPCtx->getCanonicalOperandPack(OP);
+}
+
+float PartialShuffle::sample(Frontier &Frt) const {
+  BitVector Undecided = Scalarized;
+  for (auto &Elems : NewOperands)
+    Undecided |= Elems;
+  Undecided.flip();
+  auto *Pkr = Frt.getPacker();
+  auto *VPCtx = Frt.getContext();
+  auto *TTI = Pkr->getTTI();
+
+  auto SampledOperands = NewOperands;
+
+  float Cost = 0;
+  for (unsigned i : Undecided.set_bits()) {
+    unsigned P = rand_int(NewOperands.size() + 1);
+    if (P == NewOperands.size())
+      Cost += Frt.advanceInplace(cast<Instruction>(VPCtx->getScalar(i)), TTI);
+    else
+      SampledOperands[P].set(i);
+  }
+
+  for (auto &Elements : SampledOperands) {
+    auto *OP = buildOperandPack(VPCtx, Elements);
+    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    if (unsigned N = OPI.Producers.size()) {
+      // Sample a random producer
+      auto *VP = OPI.Producers[rand_int(N)];
+      Cost += Frt.advanceInplace(VP, TTI);
+    } else {
+      // just scalarize everything if this operand pack is not feasible
+      for (unsigned i : Elements.set_bits())
+        Cost += Frt.advanceInplace(cast<Instruction>(VPCtx->getScalar(i)), TTI);
+    }
+  }
+  return Cost;
+}
+
 // Fill out the children node
 void UCTNode::expand() {
   assert(Transitions.empty() && "expanded already");
@@ -637,7 +912,7 @@ void UCTNode::expand() {
   auto Extensions = findExtensionPacks(*Frt);
   // Also consider the extension packs
   for (auto *VP : Extensions)
-    Transitions.emplace_back(VP);
+    Transitions.emplace_back(VP, true/*disable shuffling*/);
 
   if (Transitions.empty()) {
     for (auto *V : Frt->usableInsts()) {
@@ -651,6 +926,10 @@ void UCTNode::expand() {
   }
 
 #if 0
+  // Only allow shuffle in the beginning
+  if (Frt->shuffled())
+    return;
+
   // Consider shuffles
   ArrayRef<const OperandPack *> UnresolvedPacks = Frt->getUnresolvedPacks();
   for (auto *OP1 : UnresolvedPacks) {
@@ -664,10 +943,10 @@ void UCTNode::expand() {
         Transitions.emplace_back(std::move(ST));
       }
 
-      //ST = ShuffleTask(&Combine, {OP1, OP2}, Frt);
-      //if (ST.feasible()) {
-      //  Transitions.emplace_back(std::move(ST));
-      //}
+      ST = ShuffleTask(&Combine, {OP1, OP2}, Frt);
+      if (ST.feasible()) {
+        Transitions.emplace_back(std::move(ST));
+      }
     }
   }
 #endif
@@ -1088,10 +1367,10 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
   // std::vector<unsigned> VL{16, 8, 4, 2};
-  VL = {16};
+  //VL = {8};
+  //VL = {4};
+  VL = {64};
   VL = {8};
-  VL = {4};
-  //VL = {64};
   float Cost = 0;
   float BestEst = 0;
 
@@ -1147,14 +1426,15 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
 #endif
+  Aligner TheAligner(BB, Pkr);
 
-#if 0
+#if 1
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+  UCTSearch MCTS(0.05 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                  nullptr /*Policy*/, &Evaluator, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
-  unsigned NumSimulations = 10000;
+  unsigned NumSimulations = 1000;
   float TotalCost = 0;
   Root->expand();
   DenseSet<UCTNode *> Visited;
@@ -1195,39 +1475,56 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     if (!T)
       abort();
 #endif
-
-    auto Node = Root;
-    errs() << "====================================="
-           << "\n\t t transition cost: " << T->transitionCost()
-           << "\n\t num transitions: " << Transitions.size()
-           << "\n\t scalar cost: " << Transitions.begin()->avgCost()
-           << "\n\t t avg cost: " << T->avgCost()
-           << "\n\t t->next avg cost: " << T->Next->avgCost()
-           << "\n\t t->next min cost: " << T->Next->minCost()
-           << "\n\t t->next terminal? " << T->Next->isTerminal()
-           << "\n\t t visit count : " << T->visitCount()
-           << "\n\t node visit count: " << Node->visitCount()
-           << "\n\t min cost : " << Node->minCost()
-           << "\n\t max cost : " << Node->maxCost()
-           << "\n\t avg cost : " << Node->avgCost()
-           << "\n\t num unresolved packs : "
-           << Node->getFrontier()->getUnresolvedPacks().size()
-           << "\n\t num unresolved scalars : "
-           << Node->getFrontier()->numUnresolvedScalars() << '\n';
-
-    if (T->VP) {
-      errs() << "[MCTS] ADDING: " << *T->VP << '\n';
-      Packs.tryAdd(T->VP);
-    } else if (T->ST) {
-      errs() << "[MCTS] Going with shuffle: " << T->ST << '\n';
-    } else {
-      errs() << "[MCTS] Scalarizing: " << *T->I << '\n';
+    {
+      unsigned NumAligned = 0, NumSameOpcodes = 0;
+      auto *Frt = Root->getFrontier();
+      for (auto *V1 : Frt->usableInsts()) {
+        for (auto *V2 : Frt->usableInsts()) {
+          if (V2 == V1) continue;
+          if (V2 > V1)
+            continue;
+          NumAligned += TheAligner.align(cast<Instruction>(V1), cast<Instruction>(V2)) < 0;
+          NumSameOpcodes += cast<Instruction>(V1)->getOpcode() == cast<Instruction>(V2)->getOpcode();
+        }
+      }
+      errs() << "!!!!!1 NUM ALIGNED : " << NumAligned
+        << ", NUM W/ SAME OPCODE : " << NumSameOpcodes
+        << '\n';
     }
-    Root = T->Next;
-    TotalCost += T->transitionCost();
-    errs() << "[MCTS] New cost: " << TotalCost << '\n';
-    errs() << *Root->getFrontier() << '\n';
-  }
+
+      auto Node = Root;
+      errs() << "====================================="
+        << "\n\t t transition cost: " << T->transitionCost()
+        << "\n\t num transitions: " << Transitions.size()
+        << "\n\t scalar cost: " << Transitions.begin()->avgCost()
+        << "\n\t t avg cost: " << T->avgCost()
+        << "\n\t t->next avg cost: " << T->Next->avgCost()
+        << "\n\t t->next min cost: " << T->Next->minCost()
+        << "\n\t t->next terminal? " << T->Next->isTerminal()
+        << "\n\t t visit count : " << T->visitCount()
+        << "\n\t node visit count: " << Node->visitCount()
+        << "\n\t min cost : " << Node->minCost()
+        << "\n\t max cost : " << Node->maxCost()
+        << "\n\t avg cost : " << Node->avgCost()
+        << "\n\t score : " << Node->score(*T, 0)
+        << "\n\t num unresolved packs : "
+        << Node->getFrontier()->getUnresolvedPacks().size()
+        << "\n\t num unresolved scalars : "
+        << Node->getFrontier()->numUnresolvedScalars() << '\n';
+
+      if (T->VP) {
+        errs() << "[MCTS] ADDING: " << *T->VP << '\n';
+        Packs.tryAdd(T->VP);
+      } else if (T->ST) {
+        errs() << "[MCTS] Going with shuffle: " << T->ST << '\n';
+      } else {
+        errs() << "[MCTS] Scalarizing: " << *T->I << '\n';
+      }
+      Root = T->getNext(Root, &Factory, TTI);
+      TotalCost += T->transitionCost();
+      errs() << "[MCTS] New cost: " << TotalCost << '\n';
+      errs() << *Root->getFrontier() << '\n';
+    }
 #else
   for (;;) {
 #if 0
