@@ -719,6 +719,8 @@ public:
   }
 };
 
+std::unique_ptr<Aligner> TheAligner;
+
 bool usedByStore(Value *V) {
   for (User *U : V->users())
     if (auto *SI = dyn_cast<StoreInst>(U))
@@ -826,20 +828,49 @@ float PartialShuffle::sample(Frontier &Frt) const {
   auto SampledOperands = NewOperands;
 
   float Cost = 0;
-  std::vector<unsigned> UndecidedIds;
-  for (unsigned i : Undecided.set_bits())
-    UndecidedIds.push_back(i);
-  std::random_shuffle(UndecidedIds.begin(), UndecidedIds.end(), rand_int);
+  std::vector<std::vector<Instruction *>> OperandElems;
   for (auto &Elems : SampledOperands) {
-    unsigned Count = Elems.count();
-    if (UndecidedIds.empty())
-      break;
-    while (Count++ < 16 && !UndecidedIds.empty()) {
-      unsigned i = UndecidedIds.back();
-      UndecidedIds.pop_back();
-      Elems.set(i);
-    }
+    std::vector<Instruction *> ElemsVec;
+    for (unsigned i : Elems.set_bits())
+      ElemsVec.push_back(cast<Instruction>(VPCtx->getScalar(i)));
+    OperandElems.push_back(ElemsVec);
   }
+  for (unsigned i : Undecided.set_bits()) {
+    auto *I = cast<Instruction>(VPCtx->getScalar(i));
+    int BestOperand = -1;
+    int BestAlignmentScore;
+    for (unsigned j = 0; j < OperandElems.size(); j++) {
+      unsigned N = OperandElems[j].size();
+      if (N == 16)
+        continue;
+      if (N == 0)
+        continue;
+
+      float Score = TheAligner->align(OperandElems[j][rand_int(N)], I);
+      if (BestOperand == -1 || Score < BestAlignmentScore) {
+        BestOperand = j;
+        BestAlignmentScore = Score;
+      }
+    }
+    if (BestOperand == -1)
+      BestOperand = rand_int(OperandElems.size());
+    OperandElems[BestOperand].push_back(I);
+    SampledOperands[BestOperand].set(i);
+  }
+  //std::vector<unsigned> UndecidedIds;
+  //for (unsigned i : Undecided.set_bits())
+  //  UndecidedIds.push_back(i);
+  //std::random_shuffle(UndecidedIds.begin(), UndecidedIds.end(), rand_int);
+  //for (auto &Elems : SampledOperands) {
+  //  unsigned Count = Elems.count();
+  //  if (UndecidedIds.empty())
+  //    break;
+  //  while (Count++ < 16 && !UndecidedIds.empty()) {
+  //    unsigned i = UndecidedIds.back();
+  //    UndecidedIds.pop_back();
+  //    Elems.set(i);
+  //  }
+  //}
 
 #if 0
   for (unsigned i : Undecided.set_bits()) {
@@ -1366,6 +1397,7 @@ public:
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   Frontier Frt(BB, Pkr);
   auto &StoreDAG = Pkr->getStoreDAG(BB);
+  TheAligner.reset(new Aligner(BB, Pkr));
 
   DenseMap<Instruction *, unsigned> StoreChainLen;
   std::function<unsigned(Instruction *)> GetChainLen =
@@ -1464,7 +1496,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(10 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+  UCTSearch MCTS(1.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                  nullptr /*Policy*/, &Evaluator, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
   unsigned NumSimulations = 10000;

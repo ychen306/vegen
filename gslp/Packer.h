@@ -52,7 +52,7 @@ public:
       return false;
     const AddressInfo &Info1 = It1->second;
     const AddressInfo &Info2 = It2->second;
-    return Info1.Leader == Info2.Leader && Info1.Id + 1 == Info2.Id;
+    return Info1.Leader == Info2.Leader && (Info1.Id + 1 == Info2.Id || Info1.Id == Info2.Id+1);
   }
 };
 
