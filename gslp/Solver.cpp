@@ -1088,9 +1088,9 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
   // std::vector<unsigned> VL{16, 8, 4, 2};
-  VL = {16};
-  VL = {8};
-  VL = {4};
+  //VL = {16};
+  //VL = {8};
+  //VL = {4};
   //VL = {64};
   float Cost = 0;
   float BestEst = 0;
@@ -1100,11 +1100,11 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
-        Cost += Frt.advanceInplace(SeedVP, TTI);
-        //auto *OP = Frt.getUnresolvedPacks()[0];
-        //Cost += Frt.advanceInplace(ShuffleTask(&UnpackHiLo, {OP}, &Frt), TTI);
-        Packs.tryAdd(SeedVP);
-        continue;
+        //Cost += Frt.advanceInplace(SeedVP, TTI);
+        ////auto *OP = Frt.getUnresolvedPacks()[0];
+        ////Cost += Frt.advanceInplace(ShuffleTask(&UnpackHiLo, {OP}, &Frt), TTI);
+        //Packs.tryAdd(SeedVP);
+        //continue;
 #if 0
           float Est = estimateCost(Frt, SeedVP);
 #else

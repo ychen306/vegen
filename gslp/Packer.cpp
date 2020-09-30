@@ -235,6 +235,7 @@ static void decomposeIntoLoadPacks(const SlotSet &Slots,
 static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
                                    Packer *Pkr,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
+#if 0
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
   // mapping <leader> -> <slot set>
   DenseMap<Instruction *, SlotSet> Slots;
@@ -252,6 +253,69 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
   auto *TTI = Pkr->getTTI();
   for (auto &LeaderAndSlots : Slots)
     decomposeIntoLoadPacks(LeaderAndSlots.second, VPCtx, LDA, TTI, Extensions);
+#else
+  auto *VPCtx = Pkr->getContext(BB);
+  auto &LoadDAG = Pkr->getLoadDAG(BB);
+  auto &LDA = Pkr->getLDA(BB);
+
+  // The set of loads producing elements of `OP`
+  SmallPtrSet<Instruction *, 8> LoadSet;
+  for (auto *V : OP) {
+    if (!V)
+      continue;
+    if (auto *I = dyn_cast<Instruction>(V))
+      LoadSet.insert(I);
+  }
+
+  // The loads might jumbled.
+  // In other words, any one of the lanes could be the leading load
+  for (auto *V : OP) {
+    if (!V)
+      continue;
+    auto *LeadLI = cast<LoadInst>(V);
+    BitVector Elements(VPCtx->getNumValues());
+    BitVector Depended(VPCtx->getNumValues());
+    Elements.set(VPCtx->getScalarId(LeadLI));
+    Depended |= LDA.getDepended(LeadLI);
+    std::vector<LoadInst *> Loads{LeadLI};
+
+    LoadInst *CurLoad = LeadLI;
+    while (Elements.count() < LoadSet.size()) {
+      auto It = LoadDAG.find(CurLoad);
+      // End of the chain
+      if (It == LoadDAG.end())
+        break;
+
+      LoadInst *NextLI = nullptr;
+      // Only use the next load in the load set
+      for (auto *Next : It->second) {
+        if (LoadSet.count(Next)) {
+          NextLI = cast<LoadInst>(Next);
+          break;
+        }
+      }
+      if (!NextLI) {
+        // load a don't care to fill the gap
+        Loads.push_back(nullptr);
+        CurLoad = cast<LoadInst>(*It->second.begin());
+        continue;
+      }
+      if (!checkIndependence(LDA, *VPCtx, NextLI, Elements, Depended))
+        break;
+      Loads.push_back(NextLI);
+      Elements.set(VPCtx->getScalarId(NextLI));
+      Depended |= LDA.getDepended(NextLI);
+      CurLoad = NextLI;
+    }
+    if (Elements.count() == LoadSet.size()) {
+      // Pad
+      while (Loads.size() < PowerOf2Ceil(OP.size()))
+        Loads.push_back(nullptr);
+      Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI()));
+      return;
+    }
+  }
+#endif
 }
 
 const OperandProducerInfo
