@@ -131,6 +131,7 @@ class PartialShuffle {
 
 public:
   PartialShuffle(const VectorPackContext *VPCtx, unsigned MaxNumOperands);
+  PartialShuffle(const Frontier *Frt);
   float sample(Frontier &Frt) const;
   std::unique_ptr<PartialShuffle> scalarize(unsigned InstId) const {
     auto Next = std::make_unique<PartialShuffle>(*this);
@@ -143,6 +144,7 @@ public:
     Decided |= X;
   }
   unsigned getNumOperands() const { return NewOperands.size(); }
+  unsigned getOperandSize(unsigned i) const { return NewOperands[i].count(); }
   std::unique_ptr<PartialShuffle> addToOperand(unsigned InstId, unsigned OperandId) const {
     auto Next = std::make_unique<PartialShuffle>(*this);
     Next->NewOperands[OperandId].set(InstId);
@@ -157,6 +159,7 @@ public:
   }
   const llvm::BitVector getScalarized() const { return Scalarized; }
   std::vector<const OperandPack *> getOperandPacks(const VectorPackContext *) const;
+  void dump(const VectorPackContext *VPCtx) const;
 };
 
 // Hashing support for `Frontier`
