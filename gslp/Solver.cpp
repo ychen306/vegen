@@ -734,11 +734,8 @@ std::vector<OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr,
   auto *VPCtx = Pkr->getContext(BB);
   Aligner A(BB, Pkr);
 
-  struct CandidatePack {
-    BitVector Elements, Depended;
-  };
-
-  std::vector<CandidatePack> Aligned;
+  using InstSet = SmallPtrSet<Instruction *, 4>;
+  DenseMap<Instruction *, std::unique_ptr<InstSet>> AlignmentGraph;
   for (auto &I : *BB) {
     if (!usedByStore(&I))
       continue;
@@ -752,47 +749,14 @@ std::vector<OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr,
       if (AlignmentCost < 0) {
         errs() << "ALIGNED " << I << " AND " << J
                << ", COST = " << AlignmentCost << '\n';
-        BitVector Elements(VPCtx->getNumValues());
-        BitVector Depended = LDA.getDepended(&I);
-        Depended |= LDA.getDepended(&J);
-        Elements.set(VPCtx->getScalarId(&I)).set(VPCtx->getScalarId(&J));
-        Aligned.push_back({Elements, Depended});
-      }
-    }
-  }
-  errs() << "NUM ALIGNED: " << Aligned.size() << '\n';
-  abort();
-
-  std::vector<CandidatePack> Final = Aligned;
-  for (unsigned R = 0; R < Rounds; R++) {
-    std::vector<CandidatePack> NextAligned;
-    for (auto I = Aligned.begin(), E = Aligned.end(); I != E; ++I) {
-      for (auto J = std::next(I); J != E; ++J) {
-        if (I->Elements.anyCommon(J->Elements) &&
-            !I->Depended.anyCommon(J->Elements) &&
-            !J->Depended.anyCommon(I->Elements)) {
-          BitVector Elements = I->Elements;
-          Elements |= J->Elements;
-          BitVector Depended = I->Depended;
-          Depended |= J->Depended;
-          Final.push_back({Elements, Depended});
-          NextAligned.push_back({Elements, Depended});
+        auto &Next = AlignmentGraph[&I];
+        if (!Next) {
+          Next = std::make_unique<InstSet>();
         }
       }
     }
-    Aligned.swap(NextAligned);
-
-    ///////////
-    float TotalSize = 0;
-    for (auto &P : Final)
-      TotalSize += P.Elements.count();
-
-    errs() << "!!! number of candidates " << Final.size() << " after " << R
-           << " rounds"
-           << ", average size " << TotalSize / float(Final.size()) << "\n";
-    //////////
   }
-
+  abort();
   return {};
 }
 
@@ -840,7 +804,8 @@ void PartialShuffle::dump(const VectorPackContext *VPCtx) const {
 std::vector<const OperandPack *> PartialShuffle::getOperandPacks(const VectorPackContext *VPCtx) const {
   std::vector<const OperandPack *> OperandPacks;
   for (auto &Elements : NewOperands)
-    OperandPacks.push_back(buildOperandPack(VPCtx, Elements));
+    if (Elements.count())
+      OperandPacks.push_back(buildOperandPack(VPCtx, Elements));
   return OperandPacks;
 }
 
@@ -875,7 +840,8 @@ float PartialShuffle::sample(Frontier &Frt) const {
       if (N >= 16)
         continue;
       if (N == 0) {
-        if (rand_int(3)) {
+        continue;
+        if (rand_int(8)==0) {
           BestOperand = j;
           break;
         }
@@ -1450,6 +1416,7 @@ public:
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   Frontier Frt(BB, Pkr);
+  enumerate(BB, Pkr);
   auto &StoreDAG = Pkr->getStoreDAG(BB);
   TheAligner.reset(new Aligner(BB, Pkr));
 
@@ -1488,7 +1455,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   // VL = {8};
   // VL = {4};
   VL = {16};
-  VL = {64};
+  //VL = {64};
+  VL = {8};
   float Cost = 0;
   float BestEst = 0;
 
@@ -1498,9 +1466,9 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
         Cost += Frt.advanceInplace(SeedVP, TTI);
-        auto *OP = Frt.getUnresolvedPacks()[0];
-        Cost += Frt.advanceInplace(ShuffleTask(&UnpackHiLo, {OP}, &Frt),
-        TTI);
+        //auto *OP = Frt.getUnresolvedPacks()[0];
+        //Cost += Frt.advanceInplace(ShuffleTask(&UnpackHiLo, {OP}, &Frt),
+        //TTI);
         Packs.tryAdd(SeedVP);
         continue;
 #if 0
