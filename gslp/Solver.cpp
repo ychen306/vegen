@@ -694,7 +694,7 @@ class Aligner {
   static constexpr float ConstantCost = 0.0;
   static constexpr float SplatCost = 1.0;
   static constexpr float GatherCost = 1.0;
-  static constexpr float MatchReward = -1.0;
+  static constexpr float MatchReward = -2.0;
 
 public:
   Aligner(BasicBlock *BB, Packer *Pkr)
@@ -721,7 +721,7 @@ public:
       auto Info2 = LayoutInfo.get(LI2);
       if (Info1.Leader != Info2.Leader)
         return GatherCost;
-      return 0.1 * std::abs(float(Info1.Id) - float(Info2.Id));
+      return 0.2 * std::abs(float(Info1.Id) - float(Info2.Id));
     }
 
     float Cost = MatchReward;
@@ -834,10 +834,10 @@ std::vector<const OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   for (auto &I : *BB) {
     if (!usedByStore(&I))
       continue;
-    //unsigned OldSize = Enumerated.size();
+    unsigned OldSize = Enumerated.size();
     enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 8/*VL*/);
-    //for (unsigned i = OldSize; i < Enumerated.size(); i++)
-    //  errs() << "!!! candidate: " << *Enumerated[i] << '\n';
+    for (unsigned i = OldSize; i < Enumerated.size(); i++)
+      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
   errs() << "!!! num candidates: " << Enumerated.size() << '\n';
   return Enumerated;;
@@ -1483,8 +1483,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       if (isa<StoreInst>(&I))
         ScratchFrt.advanceInplace(&I, TTI);
     }
-    DPSolver Solver(TTI);
     for (auto *OP : enumerate(BB, Pkr)) {
+      DPSolver Solver(TTI);
       auto Frt2 = ScratchFrt;
 
       auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
@@ -1494,8 +1494,25 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       }
       Frt2.advanceInplace(OPI.Producers[0], TTI);
 
+      errs() << "!!!!!!!!1 simulating\n";
       auto Sol = Solver.solve(Frt2);
       errs() << "Cost of " << *OP << " is " << Sol.Cost << '\n';
+      for (;;) {
+        auto Sol = Solver.solve(Frt2);
+
+        if (auto *ExtVP = Sol.VP) {
+          Frt2.advanceInplace(ExtVP, TTI);
+          errs() << "!!! [sim] adding : " << *ExtVP << '\n';
+        } else if (Sol.Fill) {
+          makeOperandPacksUsable(Frt2);
+        } else {
+          break;
+        }
+        // errs() << "!!! Adding : " << *ExtVP << '\n';
+        // errs() << "\t updated cost: " << Cost << '\n';
+      }
+
+
     }
     exit(1);
   }
