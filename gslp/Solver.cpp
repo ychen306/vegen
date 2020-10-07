@@ -492,8 +492,8 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
 #endif
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    if (!Extensions.empty())
-      return Extensions;
+    //if (!Extensions.empty())
+    //  return Extensions;
     OP = dedup(VPCtx, OP);
     const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
     if (!OPI.Feasible)
@@ -602,11 +602,7 @@ struct : public BackwardShuffle {
       Inputs[i % 8].push_back(OP[i]);
     }
     std::vector<const OperandPack *> Canonicalized;
-    // for (auto &OP : Inputs) {
-    for (unsigned i = 0; i < 8; i += 2) {
-      auto &OP = Inputs[i];
-      for (auto *V : Inputs[i + 1])
-        OP.push_back(V);
+    for (auto &OP : Inputs) {
       Canonicalized.push_back(VPCtx->getCanonicalOperandPack(OP));
     }
     return Canonicalized;
@@ -1518,11 +1514,13 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
 #endif
   {
-    auto *VPCtx = Pkr->getContext(BB);
     Enumerated = enumerate(BB, Pkr);
+    auto *VPCtx = Frt.getContext();
     EnumeratedIds = BitVector(VPCtx->getNumValues());
-    for (auto *OP : Enumerated)
+    for (auto *OP : Enumerated)  {
       EnumeratedIds |= Pkr->getProducerInfo(VPCtx, OP).Elements;
+      Enumerated.push_back(OP);
+    }
   }
 
   auto &StoreDAG = Pkr->getStoreDAG(BB);
@@ -1564,6 +1562,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   // VL = {4};
   // VL = {64};
   VL = {16};
+  VL = { 64 };
   VL = {8};
   float Cost = 0;
   float BestEst = 0;
@@ -1574,10 +1573,18 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
         Cost += Frt.advanceInplace(SeedVP, TTI);
-        // auto *OP = Frt.getUnresolvedPacks()[0];
-        // Cost += Frt.advanceInplace(ShuffleTask(&UnpackHiLo, {OP}, &Frt),
-        // TTI);
+        //auto *OP = Frt.getUnresolvedPacks()[0];
+        //Cost += Frt.advanceInplace(ShuffleTask(&UnpackHiLo, {OP}, &Frt),
+        //TTI);
         Packs.tryAdd(SeedVP);
+        //ShuffleTask ST(&UnpackHiLo, {OP}, &Frt);
+        //Enumerated.clear();
+        //auto *VPCtx = Frt.getContext();
+        //EnumeratedIds = BitVector(VPCtx->getNumValues());
+        //for (auto *OP : ST.Inputs) {
+        //  EnumeratedIds |= Pkr->getProducerInfo(VPCtx, OP).Elements;
+        //  Enumerated.push_back(OP);
+        //}
         continue;
 #if 0
           float Est = estimateCost(Frt, SeedVP);
@@ -1634,7 +1641,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.05 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+  UCTSearch MCTS(0.01 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                  nullptr /*Policy*/, &Evaluator, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
   unsigned NumSimulations = 1000;
