@@ -1519,7 +1519,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     EnumeratedIds = BitVector(VPCtx->getNumValues());
     for (auto *OP : Enumerated)  {
       EnumeratedIds |= Pkr->getProducerInfo(VPCtx, OP).Elements;
-      Enumerated.push_back(OP);
     }
   }
 
