@@ -264,47 +264,6 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   return Cost;
 }
 
-ShuffleTask::ShuffleTask(const BackwardShuffle *Shfl,
-                         std::vector<const OperandPack *> Outputs,
-                         const Frontier *Frt)
-    : Shfl(Shfl), Outputs(Outputs),
-      Inputs(Shfl->run(Frt->getContext(), Outputs)), Feasible(!Inputs.empty()) {
-  if (!Feasible)
-    return;
-  auto UnresolvedPacks = Frt->getUnresolvedPacks();
-  auto *Pkr = Frt->getPacker();
-  auto *VPCtx = Frt->getContext();
-  for (auto *OP : Inputs) {
-    if (!Pkr->getProducerInfo(VPCtx, OP).Feasible ||
-        std::binary_search(UnresolvedPacks.begin(), UnresolvedPacks.end(),
-                           OP)) {
-      Feasible = false;
-      return;
-    }
-  }
-}
-
-float Frontier::advanceInplace(ShuffleTask ST, TargetTransformInfo *TTI) {
-#if 1
-  for (int i = (int)UnresolvedPacks.size() - 1; i >= 0; i--)
-    for (auto *OP : ST.Outputs)
-      if (UnresolvedPacks[i] == OP) {
-        std::swap(UnresolvedPacks[i], UnresolvedPacks.back());
-        UnresolvedPacks.pop_back();
-        Hash ^= OP->Hash;
-        break;
-      }
-#endif
-  for (auto *OP : ST.Inputs)
-    if (!std::binary_search(UnresolvedPacks.begin(), UnresolvedPacks.end(),
-                            OP)) {
-      UnresolvedPacks.push_back(OP);
-      Hash ^= OP->Hash;
-    }
-  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
-  return ST.getCost(TTI);
-}
-
 float Frontier::replaceAllUnresolvedPacks(ArrayRef<const OperandPack *> OPs,
                                           TargetTransformInfo *TTI) {
   float Cost = 0;
@@ -362,17 +321,6 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   return OS;
 }
 
-raw_ostream &operator<<(raw_ostream &OS, const ShuffleTask &ST) {
-  OS << "{\n";
-  for (auto *OP : ST.Outputs)
-    OS << *OP << '\n';
-  OS << "} -> {\n";
-  for (auto *OP : ST.Inputs)
-    OS << *OP << '\n';
-  OS << "}\n";
-  return OS;
-}
-
 static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt);
 
 raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
@@ -404,13 +352,6 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(I, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
-  return Next;
-}
-
-std::unique_ptr<Frontier> Frontier::advance(ShuffleTask ST, float &Cost,
-                                            TargetTransformInfo *TTI) const {
-  auto Next = std::make_unique<Frontier>(*this);
-  Cost = Next->advanceInplace(ST, TTI);
   return Next;
 }
 
@@ -875,17 +816,6 @@ void UCTNode::expand() {
   for (auto *VP : Extensions)
     Transitions.emplace_back(VP, true /*disable shuffling*/);
 
-  //BitVector UnusableIds = Frt->usableInstIds();
-  //UnusableIds.flip();
-  //auto *VPCtx = Frt->getContext();
-  //for (auto *OP : Enumerated) {
-  //  auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-  //  if (OPI.Elements.anyCommon(UnusableIds))
-  //    continue;
-  //  for (auto *VP : OPI.Producers)
-  //    Transitions.emplace_back(VP);
-  //}
-
   if (Transitions.empty()) {
     for (auto *V : Frt->usableInsts()) {
       auto *I = dyn_cast<Instruction>(V);
@@ -896,32 +826,6 @@ void UCTNode::expand() {
       Transitions.emplace_back(I);
     }
   }
-
-#if 0
-  // Only allow shuffle in the beginning
-  if (Frt->shuffled())
-    return;
-
-  // Consider shuffles
-  ArrayRef<const OperandPack *> UnresolvedPacks = Frt->getUnresolvedPacks();
-  for (auto *OP1 : UnresolvedPacks) {
-    ShuffleTask ST(&Split, {OP1}, Frt);
-    if (ST.feasible()) {
-      Transitions.emplace_back(std::move(ST));
-    }
-    for (auto *OP2 : UnresolvedPacks) {
-      ShuffleTask ST(&UnpackHiLo, {OP1, OP2}, Frt);
-      if (ST.feasible()) {
-        Transitions.emplace_back(std::move(ST));
-      }
-
-      ST = ShuffleTask(&Combine, {OP1, OP2}, Frt);
-      if (ST.feasible()) {
-        Transitions.emplace_back(std::move(ST));
-      }
-    }
-  }
-#endif
 }
 
 // Do one iteration of MCTS
@@ -1221,7 +1125,6 @@ class DPSolver {
     float Cost;
     const VectorPack *VP;
     bool Fill;
-    Optional<ShuffleTask> ST;
 
     // Default solution is no extension
     Solution() = default;
@@ -1411,18 +1314,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
         Cost += Frt.advanceInplace(SeedVP, TTI);
-        //auto *OP = Frt.getUnresolvedPacks()[0];
-        //Cost += Frt.advanceInplace(ShuffleTask(&UnpackHiLo, {OP}, &Frt),
-        //TTI);
         Packs.tryAdd(SeedVP);
-        //ShuffleTask ST(&UnpackHiLo, {OP}, &Frt);
-        //Enumerated.clear();
-        //auto *VPCtx = Frt.getContext();
-        //EnumeratedIds = BitVector(VPCtx->getNumValues());
-        //for (auto *OP : ST.Inputs) {
-        //  EnumeratedIds |= Pkr->getProducerInfo(VPCtx, OP).Elements;
-        //  Enumerated.push_back(OP);
-        //}
         continue;
 #if 0
           float Est = estimateCost(Frt, SeedVP);
@@ -1542,8 +1434,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     if (T->VP) {
       errs() << "[MCTS] ADDING: " << *T->VP << '\n';
       Packs.tryAdd(T->VP);
-    } else if (T->ST) {
-      errs() << "[MCTS] Going with shuffle: " << T->ST << '\n';
     } else if (T->I) {
       errs() << "[MCTS] Scalarizing: " << *T->I << '\n';
     }

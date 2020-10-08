@@ -39,20 +39,6 @@ struct BackwardShuffle {
   virtual float getCost(llvm::TargetTransformInfo *) const = 0;
 };
 
-struct ShuffleTask {
-  const BackwardShuffle *Shfl;
-  std::vector<const OperandPack *> Outputs;
-  std::vector<const OperandPack *> Inputs;
-  bool Feasible;
-  ShuffleTask(const BackwardShuffle *Shfl,
-              std::vector<const OperandPack *> Outputs, const Frontier *Frt);
-  float getCost(llvm::TargetTransformInfo *TTI) const {
-    return Shfl->getCost(TTI);
-  }
-  bool feasible() const { return Feasible; }
-};
-
-llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ShuffleTask &);
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class MatchManager;
@@ -84,12 +70,9 @@ public:
                                     bool Shuffled = false) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
-  std::unique_ptr<Frontier> advance(ShuffleTask, float &Cost,
-                                    llvm::TargetTransformInfo *TTI) const;
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
-  float advanceInplace(ShuffleTask, llvm::TargetTransformInfo *);
   float replaceAllUnresolvedPacks(llvm::ArrayRef<const OperandPack *>,
                                   llvm::TargetTransformInfo *);
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
@@ -196,7 +179,6 @@ public:
     // If non-null then we've finished filling out a pack w/ this transition
     const VectorPack *VP;
     llvm::Instruction *I;
-    llvm::Optional<ShuffleTask> ST;
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
@@ -209,10 +191,6 @@ public:
 
     Transition(llvm::Instruction *I)
         : VP(nullptr), I(I), Next(nullptr), Count(0), DisableShuffling(true) {}
-
-    Transition(ShuffleTask ST)
-        : VP(nullptr), I(nullptr), ST(ST), Next(nullptr), Count(0),
-          DisableShuffling(false) {}
 
     float visited() const { return Count > 0; }
 
@@ -228,9 +206,6 @@ public:
             Parent->getFrontier()->advance(VP, Cost, TTI, DisableShuffling));
       else if (I)
         Next = Factory->getNode(Parent->getFrontier()->advance(I, Cost, TTI));
-      else if (ST)
-        Next = Factory->getNode(
-            Parent->getFrontier()->advance(ST.getValue(), Cost, TTI));
 
       assert(Next);
 
