@@ -581,8 +581,6 @@ public:
   }
 };
 
-std::unique_ptr<Aligner> TheAligner;
-
 bool usedByStore(Value *V) {
   for (User *U : V->users())
     if (auto *SI = dyn_cast<StoreInst>(U))
@@ -1118,49 +1116,6 @@ public:
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   Frontier Frt(BB, Pkr);
-#if 0
-  {
-    auto ScratchFrt = Frt;
-    auto *TTI = Pkr->getTTI();
-    auto *VPCtx = Frt.getContext();
-    for (auto &I : *BB) {
-      if (isa<StoreInst>(&I))
-        ScratchFrt.advanceInplace(&I, TTI);
-    }
-    for (auto *OP : enumerate(BB, Pkr)) {
-      DPSolver Solver(TTI);
-      auto Frt2 = ScratchFrt;
-
-      auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-      if (!OPI.Feasible) {
-        errs() << *OP << " is infeasible\n";
-        continue;
-      }
-      Frt2.advanceInplace(OPI.Producers[0], TTI);
-
-      errs() << "!!!!!!!!1 simulating\n";
-      auto Sol = Solver.solve(Frt2);
-      errs() << "Cost of " << *OP << " is " << Sol.Cost << '\n';
-      for (;;) {
-        auto Sol = Solver.solve(Frt2);
-
-        if (auto *ExtVP = Sol.VP) {
-          Frt2.advanceInplace(ExtVP, TTI);
-          errs() << "!!! [sim] adding : " << *ExtVP << '\n';
-        } else if (Sol.Fill) {
-          makeOperandPacksUsable(Frt2);
-        } else {
-          break;
-        }
-        // errs() << "!!! Adding : " << *ExtVP << '\n';
-        // errs() << "\t updated cost: " << Cost << '\n';
-      }
-
-
-    }
-    exit(1);
-  }
-#endif
   {
     Enumerated = enumerate(BB, Pkr);
     auto *VPCtx = Frt.getContext();
@@ -1171,7 +1126,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
 
   auto &StoreDAG = Pkr->getStoreDAG(BB);
-  TheAligner.reset(new Aligner(BB, Pkr));
 
   DenseMap<Instruction *, unsigned> StoreChainLen;
   std::function<unsigned(Instruction *)> GetChainLen =
@@ -1264,7 +1218,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
 #endif
-  Aligner TheAligner(BB, Pkr);
 
 #if 1
   UCTNodeFactory Factory;
