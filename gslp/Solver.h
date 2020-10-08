@@ -122,46 +122,6 @@ public:
   const VectorPackContext *getContext() const { return VPCtx; }
 };
 
-class PartialShuffle {
-  // Any usable instruction in a frontier, eventually, should be either in the
-  // set of new operands, or scalarized
-  std::vector<llvm::BitVector> NewOperands;
-  llvm::BitVector Scalarized;
-  llvm::BitVector Decided;
-
-public:
-  PartialShuffle(const VectorPackContext *VPCtx, unsigned MaxNumOperands);
-  PartialShuffle(const Frontier *Frt);
-  float sample(Frontier &Frt) const;
-  std::unique_ptr<PartialShuffle> scalarize(unsigned InstId) const {
-    auto Next = std::make_unique<PartialShuffle>(*this);
-    Next->Scalarized.set(InstId);
-    Next->Decided.set(InstId);
-    return Next;
-  }
-  void scalarizeMany(llvm::BitVector X) {
-    Scalarized |= X;
-    Decided |= X;
-  }
-  unsigned getNumOperands() const { return NewOperands.size(); }
-  unsigned getOperandSize(unsigned i) const { return NewOperands[i].count(); }
-  std::unique_ptr<PartialShuffle> addToOperand(unsigned InstId, unsigned OperandId) const {
-    auto Next = std::make_unique<PartialShuffle>(*this);
-    Next->NewOperands[OperandId].set(InstId);
-    Next->Decided.set(InstId);
-    return Next;
-  }
-  llvm::BitVector getUndecided(const Frontier &Frt) const { 
-    auto Undecided = Decided;
-    Undecided.flip();
-    Undecided &= Frt.usableInstIds();
-    return Undecided;
-  }
-  const llvm::BitVector getScalarized() const { return Scalarized; }
-  std::vector<const OperandPack *> getOperandPacks(const VectorPackContext *) const;
-  void dump(const VectorPackContext *VPCtx) const;
-};
-
 // Hashing support for `Frontier`
 struct FrontierHashInfo {
   static Frontier *getEmptyKey() { return nullptr; }
@@ -204,7 +164,6 @@ class UCTNodeFactory {
 public:
   UCTNodeFactory() : FrontierToNodeMap(1000000) {}
   UCTNode *getNode(std::unique_ptr<Frontier>);
-  UCTNode *getNode(const Frontier *, const PartialShuffle *);
 };
 
 class UCTNode {
@@ -212,7 +171,6 @@ class UCTNode {
 
   // State
   const Frontier *Frt;
-  const PartialShuffle *PS;
 
   // Return
   float TotalCost;
@@ -239,7 +197,6 @@ public:
     const VectorPack *VP;
     llvm::Instruction *I;
     llvm::Optional<ShuffleTask> ST;
-    std::unique_ptr<PartialShuffle> PS;
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
@@ -256,9 +213,6 @@ public:
     Transition(ShuffleTask ST)
         : VP(nullptr), I(nullptr), ST(ST), Next(nullptr), Count(0),
           DisableShuffling(false) {}
-
-    Transition(std::unique_ptr<PartialShuffle> PS)
-        : VP(nullptr), I(nullptr), PS(std::move(PS)), Next(nullptr), Count(0), DisableShuffling(false) {}
 
     float visited() const { return Count > 0; }
 
@@ -277,24 +231,6 @@ public:
       else if (ST)
         Next = Factory->getNode(
             Parent->getFrontier()->advance(ST.getValue(), Cost, TTI));
-      else {
-        Cost = 0;
-        if (PS->getUndecided(*Parent->getFrontier()).count())
-          Next = Factory->getNode(Parent->getFrontier(), PS.get());
-        else {
-          using namespace llvm;
-          // We've completed this partial shuffle
-          auto Frt = std::make_unique<Frontier>(*Parent->getFrontier());
-          auto *VPCtx = Frt->getContext();
-          BitVector Scalarized = PS->getScalarized();
-          for (unsigned i : Scalarized.set_bits()) {
-            Cost += Frt->advanceInplace(cast<Instruction>(VPCtx->getScalar(i)), TTI);
-          }
-          auto OperandPacks = PS->getOperandPacks(VPCtx);
-          Cost += Frt->replaceAllUnresolvedPacks(OperandPacks, TTI);
-          Next = Factory->getNode(std::move(Frt));
-        }
-      }
 
       assert(Next);
 
@@ -322,12 +258,8 @@ private:
   bool IsTerminal;
 
   UCTNode(const Frontier *Frt)
-      : Frt(Frt), PS(nullptr), TotalCost(0), Count(0),
+      : Frt(Frt), TotalCost(0), Count(0),
         TransitionWeight(nullptr), IsTerminal(false) {}
-  UCTNode(const Frontier *Frt, const PartialShuffle *PS)
-      : Frt(Frt), PS(PS), TotalCost(0), Count(0),
-        TransitionWeight(nullptr), IsTerminal(false) {}
-
 public:
   float minCost() const { return CostRange->Min; }
   float maxCost() const { return CostRange->Max; }
@@ -350,7 +282,6 @@ public:
 
   uint64_t visitCount() const { return Count; }
   const Frontier *getFrontier() const { return Frt; }
-  const PartialShuffle *getPartialShuffle() const { return PS; }
   void update(float Cost) {
     TotalCost += Cost;
 

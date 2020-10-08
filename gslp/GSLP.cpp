@@ -321,8 +321,6 @@ bool GSLP::runOnFunction(Function &F) {
 
   std::vector<InstBinding *> SupportedIntrinsics;
   for (auto &Inst : Insts) {
-    if (Inst.getName().contains("hadd"))
-      continue;
     if (isSupported(&Inst, F)) {
       SupportedIntrinsics.push_back(&Inst);
     }

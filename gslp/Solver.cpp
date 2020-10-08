@@ -430,12 +430,6 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
   return It->second;
 }
 
-UCTNode *UCTNodeFactory::getNode(const Frontier *Frt,
-                                 const PartialShuffle *PS) {
-  Nodes.push_back(std::unique_ptr<UCTNode>(new UCTNode(Frt, PS)));
-  return Nodes.back().get();
-}
-
 // Remove duplicate elements in OP
 static const OperandPack *dedup(const VectorPackContext *VPCtx,
                                 const OperandPack *OP) {
@@ -839,154 +833,12 @@ std::vector<const OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   return Enumerated;;
 }
 
-PartialShuffle::PartialShuffle(const VectorPackContext *VPCtx,
-                               unsigned MaxNumOperands) {
-  for (unsigned i = 0; i < MaxNumOperands; i++)
-    NewOperands.emplace_back(VPCtx->getNumValues());
-  Scalarized = BitVector(VPCtx->getNumValues());
-  Decided = BitVector(VPCtx->getNumValues());
-}
-
-PartialShuffle::PartialShuffle(const Frontier *Frt) {
-  auto *VPCtx = Frt->getContext();
-  auto *Pkr = Frt->getPacker();
-  Scalarized = BitVector(VPCtx->getNumValues());
-  Decided = BitVector(VPCtx->getNumValues());
-
-  for (auto *OP : Frt->getUnresolvedPacks()) {
-    auto &Elements = Pkr->getProducerInfo(VPCtx, OP).Elements;
-    NewOperands.push_back(Elements);
-    Decided |= Elements;
-  }
-  auto Undecided = getUndecided(*Frt);
-  for (unsigned i : Undecided.set_bits()) {
-    Scalarized.set(i);
-    Decided.set(i);
-  }
-}
-
 static OperandPack *buildOperandPack(const VectorPackContext *VPCtx,
                                      const BitVector &Elements) {
   OperandPack OP;
   for (unsigned i : Elements.set_bits())
     OP.push_back(VPCtx->getScalar(i));
   return VPCtx->getCanonicalOperandPack(OP);
-}
-
-void PartialShuffle::dump(const VectorPackContext *VPCtx) const {
-  for (auto &Elems : NewOperands)
-    if (Elems.count())
-      errs() << *buildOperandPack(VPCtx, Elems) << '\n';
-};
-
-std::vector<const OperandPack *>
-PartialShuffle::getOperandPacks(const VectorPackContext *VPCtx) const {
-  std::vector<const OperandPack *> OperandPacks;
-  for (auto &Elements : NewOperands)
-    if (Elements.count())
-      OperandPacks.push_back(buildOperandPack(VPCtx, Elements));
-  return OperandPacks;
-}
-
-float PartialShuffle::sample(Frontier &Frt) const {
-  BitVector Undecided = getUndecided(Frt);
-  auto *Pkr = Frt.getPacker();
-  auto *VPCtx = Frt.getContext();
-  auto *TTI = Pkr->getTTI();
-
-  auto SampledOperands = NewOperands;
-
-  float Cost = 0;
-  std::vector<std::vector<Instruction *>> OperandElems;
-  for (auto &Elems : SampledOperands) {
-    std::vector<Instruction *> ElemsVec;
-    for (unsigned i : Elems.set_bits())
-      ElemsVec.push_back(cast<Instruction>(VPCtx->getScalar(i)));
-    OperandElems.push_back(ElemsVec);
-  }
-
-  std::vector<unsigned> UndecidedIds;
-  for (unsigned i : Undecided.set_bits())
-    UndecidedIds.push_back(i);
-  std::random_shuffle(UndecidedIds.begin(), UndecidedIds.end(), rand_int);
-
-  for (unsigned i : UndecidedIds) {
-    auto *I = cast<Instruction>(VPCtx->getScalar(i));
-    int BestOperand = -1;
-    int BestAlignmentScore;
-    for (unsigned j = 0; j < OperandElems.size(); j++) {
-      unsigned N = OperandElems[j].size();
-      if (N >= 16)
-        continue;
-      if (N == 0) {
-        continue;
-        if (rand_int(8) == 0) {
-          BestOperand = j;
-          break;
-        }
-        continue;
-      }
-
-      float Score = TheAligner->align(OperandElems[j][rand_int(N)], I);
-      if (BestOperand == -1 || Score < BestAlignmentScore) {
-        BestOperand = j;
-        BestAlignmentScore = Score;
-      }
-    }
-    if (BestOperand == -1)
-      BestOperand = rand_int(OperandElems.size());
-    OperandElems[BestOperand].push_back(I);
-    SampledOperands[BestOperand].set(i);
-  }
-  // std::vector<unsigned> UndecidedIds;
-  // for (unsigned i : Undecided.set_bits())
-  //  UndecidedIds.push_back(i);
-  // std::random_shuffle(UndecidedIds.begin(), UndecidedIds.end(), rand_int);
-  // for (auto &Elems : SampledOperands) {
-  //  unsigned Count = Elems.count();
-  //  if (UndecidedIds.empty())
-  //    break;
-  //  while (Count++ < 16 && !UndecidedIds.empty()) {
-  //    unsigned i = UndecidedIds.back();
-  //    UndecidedIds.pop_back();
-  //    Elems.set(i);
-  //  }
-  //}
-
-#if 0
-  for (unsigned i : Undecided.set_bits()) {
-    //unsigned P = rand_int(NewOperands.size() + 1);
-    unsigned P = rand_int(NewOperands.size() );
-    //if (P == NewOperands.size())
-    //  Cost += Frt.advanceInplace(cast<Instruction>(VPCtx->getScalar(i)), TTI);
-    //else
-      SampledOperands[P].set(i);
-  }
-#endif
-
-  std::vector<const OperandPack *> OPs;
-  for (auto &Elements : SampledOperands) {
-    if (Elements.count() == 0)
-      continue;
-    auto *OP = buildOperandPack(VPCtx, Elements);
-    OPs.push_back(OP);
-    // auto *OP = buildOperandPack(VPCtx, Elements);
-    // auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-    // if (unsigned N = OPI.Producers.size()) {
-    //  // Sample a random producer
-    //  auto *VP = OPI.Producers[rand_int(N)];
-    //  Cost += Frt.advanceInplace(VP, TTI);
-    //} else {
-    //  // just scalarize everything if this operand pack is not feasible
-    //  for (unsigned i : Elements.set_bits())
-    //    Cost += Frt.advanceInplace(cast<Instruction>(VPCtx->getScalar(i)),
-    //    TTI);
-    //}
-  }
-  for (unsigned i : Scalarized.set_bits())
-    Cost += Frt.advanceInplace(cast<Instruction>(VPCtx->getScalar(i)), TTI);
-  Cost = Frt.replaceAllUnresolvedPacks(OPs, TTI);
-  return Cost;
 }
 
 // Fill out the children node
@@ -1231,19 +1083,6 @@ float makeOperandPacksUsable(Frontier &Frt) {
 }
 
 float UCTSearch::evalLeafNode(UCTNode *N) {
-  if (auto *PS = N->getPartialShuffle()) {
-    Frontier Frt = *N->getFrontier();
-    PS->sample(Frt);
-    float Cost = Evaluator->evaluate(&Frt);
-    // errs() << "!! COST FROM SAMPLING = " << Cost << '\n';
-    // errs() << "STATE AFTER SAMPLING:\n";
-    // PS->dump(Frt.getContext());
-    // errs() << Frt << '\n';
-    // if (Cost < -1e3) {
-    //  abort();
-    //}
-    return Cost;
-  }
   return Evaluator->evaluate(N->getFrontier());
 }
 
@@ -1560,9 +1399,9 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   // VL = {8};
   // VL = {4};
   // VL = {64};
-  VL = {16};
   VL = { 64 };
   VL = {8};
+  VL = {16};
   float Cost = 0;
   float BestEst = 0;
 
@@ -1628,14 +1467,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
 #endif
   Aligner TheAligner(BB, Pkr);
-
-  if (false) {
-    PartialShuffle PS(&Frt);
-    float Cost = PS.sample(Frt);
-    // errs() << "!! cost = " << Cost << '\n';
-    // errs() << Frt << '\n';
-    // abort();
-  }
 
 #if 1
   UCTNodeFactory Factory;
@@ -1708,11 +1539,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
            << "\n\t num unresolved scalars : "
            << Node->getFrontier()->numUnresolvedScalars() << '\n';
 
-    if (auto *PS = Node->getPartialShuffle()) {
-      errs() << "NUM UNDECIDED "
-             << PS->getUndecided(*Node->getFrontier()).count() << '\n';
-    }
-
     if (T->VP) {
       errs() << "[MCTS] ADDING: " << *T->VP << '\n';
       Packs.tryAdd(T->VP);
@@ -1720,9 +1546,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       errs() << "[MCTS] Going with shuffle: " << T->ST << '\n';
     } else if (T->I) {
       errs() << "[MCTS] Scalarizing: " << *T->I << '\n';
-    } else {
-      errs() << "===========PARTIAL SHUFFLE STATE===========\n";
-      T->PS->dump(Root->getFrontier()->getContext());
     }
     Root = T->getNext(Root, &Factory, TTI);
     TotalCost += T->transitionCost();
