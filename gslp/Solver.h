@@ -141,6 +141,11 @@ public:
   UCTNode *getNode(std::unique_ptr<Frontier>);
 };
 
+struct CandidatePackSet {
+  std::vector<const OperandPack *> Packs;
+  llvm::BitVector Members;
+};
+
 class UCTNode {
   friend class UCTNodeFactory;
 
@@ -237,7 +242,7 @@ public:
   }
 
   // Fill out the out edge
-  void expand();
+  void expand(const CandidatePackSet *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
   bool isTerminal() const {
     return Frt->getFreeInsts().count() == 0 || IsTerminal;
@@ -282,21 +287,20 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(const Frontier *Frt) = 0;
+  virtual float evaluate(const Frontier *Frt, const CandidatePackSet *) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
-  float evaluate(const Frontier *) override { return 0; }
+  float evaluate(const Frontier *, const CandidatePackSet *) override { return 0; }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
   llvm::DenseMap<const Frontier *, std::vector<VectorPack *>, FrontierHashInfo>
       ExtensionCache;
   std::vector<std::unique_ptr<Frontier>> Frontiers;
-  std::vector<VectorPack *> getExtensions(const Frontier &);
 
 public:
-  float evaluate(const Frontier *) override;
+  float evaluate(const Frontier *, const CandidatePackSet *) override;
 };
 
 // Interface for asynchronous policy prediction.
@@ -332,15 +336,17 @@ class UCTSearch {
 
   // How we evaluate a leaf UCTNode (e.g., w/ a value network or rollout)
   FrontierEvaluator *Evaluator;
-  PackEnumerationCache EnumCache;
+  const CandidatePackSet *CandidateSet;
   llvm::TargetTransformInfo *TTI;
 
 public:
   UCTSearch(float C, float W, unsigned ExpandThreshold, UCTNodeFactory *Factory,
             Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
+            const CandidatePackSet *CandidateSet,
             llvm::TargetTransformInfo *TTI)
       : C(C), W(W), ExpandThreshold(ExpandThreshold), Factory(Factory),
-        Pkr(Pkr), Policy(Policy), Evaluator(Evaluator), TTI(TTI) {}
+        Pkr(Pkr), Policy(Policy), Evaluator(Evaluator), CandidateSet(CandidateSet),
+        TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N);

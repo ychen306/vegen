@@ -321,7 +321,7 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   return OS;
 }
 
-static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt);
+static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet=nullptr);
 
 raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
   OS << "============== FRONTIER STATE ==========\n";
@@ -392,10 +392,7 @@ extern VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                                     ArrayRef<VectorPack *> OtherPacks,
                                     Packer *Pkr);
 
-std::vector<const OperandPack *> Enumerated;
-BitVector EnumeratedIds;
-
-static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
+static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   auto *Pkr = Frt.getPacker();
   auto *VPCtx = Frt.getContext();
 
@@ -409,22 +406,22 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt) {
 
   std::vector<VectorPack *> Extensions;
 
-#if 1
-  BitVector X = EnumeratedIds;
-  X &= Frt.usableInstIds();
-  if (X.count()) {
-    unsigned InstId = *X.set_bits_begin();
-    for (auto *OP : Enumerated) {
-      auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-      if (!OPI.Elements.test(InstId) || OPI.Elements.anyCommon(UnusableIds))
-        continue;
-      for (auto *VP : OPI.Producers)
-        Extensions.push_back(VP);
+  if (CandidateSet) {
+    BitVector CandidateMembers = CandidateSet->Members;
+    CandidateMembers &= Frt.usableInstIds();
+    if (CandidateMembers.count()) {
+      unsigned InstId = *CandidateMembers.set_bits_begin();
+      for (auto *OP : CandidateSet->Packs) {
+        auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+        if (!OPI.Elements.test(InstId) || OPI.Elements.anyCommon(UnusableIds))
+          continue;
+        for (auto *VP : OPI.Producers)
+          Extensions.push_back(VP);
+      }
     }
+    if (!Extensions.empty())
+      return Extensions;
   }
-  if (!Extensions.empty())
-    return Extensions;
-#endif
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
     //if (!Extensions.empty())
@@ -687,7 +684,7 @@ static OperandPack *buildOperandPack(const VectorPackContext *VPCtx,
 }
 
 // Fill out the children node
-void UCTNode::expand() {
+void UCTNode::expand(const CandidatePackSet *CandidateSet) {
   assert(Transitions.empty() && "expanded already");
   auto *Pkr = getPacker();
 
@@ -715,7 +712,7 @@ void UCTNode::expand() {
   if (CanExpandWithStore)
     return;
 
-  auto Extensions = findExtensionPacks(*Frt);
+  auto Extensions = findExtensionPacks(*Frt, CandidateSet);
   // Also consider the extension packs
   for (auto *VP : Extensions)
     Transitions.emplace_back(VP, true /*disable shuffling*/);
@@ -803,7 +800,7 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       // ======= 3) Evaluation/Simulation =======
       LeafCost = evalLeafNode(CurNode);
       if (CurNode->visitCount() >= ExpandThreshold) {
-        CurNode->expand();
+        CurNode->expand(CandidateSet);
         auto &Transitions = CurNode->transitions();
         // Bias future exploration on this node if there is a prior
         if (Policy && Transitions.size() > 1)
@@ -852,15 +849,6 @@ static float estimateAllScalarCost(const Frontier &Frt,
   return Cost;
 }
 
-std::vector<VectorPack *> RolloutEvaluator::getExtensions(const Frontier &Frt) {
-  return findExtensionPacks(Frt);
-  auto It = ExtensionCache.find(&Frt);
-  if (It != ExtensionCache.end())
-    return It->second;
-  Frontiers.push_back(std::make_unique<Frontier>(Frt));
-  return ExtensionCache[Frontiers.back().get()] = findExtensionPacks(Frt);
-}
-
 float makeOperandPacksUsable(Frontier &Frt) {
   auto *Pkr = Frt.getPacker();
   auto *TTI = Pkr->getTTI();
@@ -891,11 +879,11 @@ float makeOperandPacksUsable(Frontier &Frt) {
 }
 
 float UCTSearch::evalLeafNode(UCTNode *N) {
-  return Evaluator->evaluate(N->getFrontier());
+  return Evaluator->evaluate(N->getFrontier(), CandidateSet);
 }
 
 // Uniformly random rollout
-float RolloutEvaluator::evaluate(const Frontier *Frt) {
+float RolloutEvaluator::evaluate(const Frontier *Frt, const CandidatePackSet *CandidateSet) {
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
   auto *BB = Frt->getBasicBlock();
@@ -913,11 +901,11 @@ float RolloutEvaluator::evaluate(const Frontier *Frt) {
   std::vector<VectorPack *> Extensions;
   do {
     Changed = false;
-    Extensions = getExtensions(ScratchFrt);
+    Extensions = findExtensionPacks(ScratchFrt, CandidateSet);
     while (!Extensions.empty()) {
       auto *VP = Extensions[rand_int(Extensions.size())];
       Cost += ScratchFrt.advanceInplace(VP, TTI);
-      Extensions = getExtensions(ScratchFrt);
+      Extensions = findExtensionPacks(ScratchFrt, CandidateSet);
 
       for (auto *OP : VP->getOperandPacks())
         VectorOperandSet |= Pkr->getProducerInfo(VPCtx, OP).Elements;
@@ -973,55 +961,6 @@ float RolloutEvaluator::evaluate(const Frontier *Frt) {
   } while (Changed && !ScratchFrt.getUnresolvedPacks().empty());
 
   return Cost + estimateAllScalarCost(ScratchFrt, TTI);
-}
-
-static VectorPack *findExtensionPack(const Frontier &Frt) {
-  {
-    auto Extensions = findExtensionPacks(Frt);
-
-    if (Extensions.empty())
-      return nullptr;
-
-    // Take the extension pack with the lowest local cost
-    std::sort(Extensions.begin(), Extensions.end(),
-              [](const VectorPack *A, const VectorPack *B) {
-                return A->getCost() < B->getCost();
-              });
-    return Extensions[0];
-  }
-}
-
-float estimateCost(Frontier Frt, VectorPack *VP) {
-  auto *Pkr = Frt.getPacker();
-  auto *BB = Frt.getBasicBlock();
-  auto &LDA = Pkr->getLDA(BB);
-  auto *VPCtx = Pkr->getContext(BB);
-  auto *TTI = Pkr->getTTI();
-
-  float Cost = Frt.advanceInplace(VP, TTI);
-  return Cost + RolloutEvaluator().evaluate(&Frt);
-  for (;;) {
-    auto *ExtVP = findExtensionPack(Frt);
-    if (!ExtVP)
-      break;
-    Cost += Frt.advanceInplace(ExtVP, TTI);
-    // errs() << "!!! Extending with: "<< *ExtVP << ", COST AFTER EXTENSION = "
-    // << Cost << '\n';
-  }
-
-  while (Frt.numUnresolvedScalars() != 0 || Frt.getUnresolvedPacks().size()) {
-    for (auto *V : Frt.usableInsts()) {
-      if (auto *I = dyn_cast<Instruction>(V)) {
-        Cost += Frt.advanceInplace(I, TTI);
-        // errs() << "!!! Scalarizing "<< *I << ", COST AFTER = " << Cost <<
-        // '\n';
-        break;
-      }
-    }
-  }
-
-  // errs() << "!!! est cost : " << Cost << " of  " << *VP << '\n';
-  return Cost;
 }
 
 class DPSolver {
@@ -1116,13 +1055,13 @@ public:
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   Frontier Frt(BB, Pkr);
-  {
-    Enumerated = enumerate(BB, Pkr);
-    auto *VPCtx = Frt.getContext();
-    EnumeratedIds = BitVector(VPCtx->getNumValues());
-    for (auto *OP : Enumerated)  {
-      EnumeratedIds |= Pkr->getProducerInfo(VPCtx, OP).Elements;
-    }
+
+  CandidatePackSet CandidateSet;
+  CandidateSet.Packs = enumerate(BB, Pkr);
+  auto *VPCtx = Frt.getContext();
+  CandidateSet.Members = BitVector(VPCtx->getNumValues());
+  for (auto *OP : CandidateSet.Packs)  {
+    CandidateSet.Members |= Pkr->getProducerInfo(VPCtx, OP).Elements;
   }
 
   auto &StoreDAG = Pkr->getStoreDAG(BB);
@@ -1222,12 +1161,12 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.01 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
-                 nullptr /*Policy*/, &Evaluator, TTI);
+  UCTSearch MCTS(0.1 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+                 nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
   unsigned NumSimulations = 1000;
   float TotalCost = 0;
-  Root->expand();
+  Root->expand(&CandidateSet);
   DenseSet<UCTNode *> Visited;
   auto IsWorse = [](const UCTNode::Transition &A,
                     const UCTNode::Transition &B) -> bool {
