@@ -31,14 +31,6 @@ public:
   }
 };
 
-class Frontier;
-struct BackwardShuffle {
-  virtual std::vector<const OperandPack *>
-  run(const VectorPackContext *,
-      llvm::ArrayRef<const OperandPack *> Outputs) const = 0;
-  virtual float getCost(llvm::TargetTransformInfo *) const = 0;
-};
-
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class MatchManager;
