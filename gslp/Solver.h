@@ -31,28 +31,11 @@ public:
   }
 };
 
-class Frontier;
-struct BackwardShuffle {
-  virtual std::vector<const OperandPack *>
-  run(const VectorPackContext *, llvm::ArrayRef<const OperandPack *> Outputs) const = 0;
-  virtual float getCost(llvm::TargetTransformInfo *) const = 0;
-};
-
-struct ShuffleTask {
-  const BackwardShuffle *Shfl;
-  std::vector<const OperandPack *> Outputs;
-  std::vector<const OperandPack *> Inputs;
-  bool Feasible;
-  ShuffleTask(const BackwardShuffle *Shfl, std::vector<const OperandPack *> Outputs, const Frontier *Frt);
-  float getCost(llvm::TargetTransformInfo *TTI) const { return Shfl->getCost(TTI); }
-  bool feasible() const { return Feasible; }
-};
-
-llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ShuffleTask &);
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class MatchManager;
 class Frontier {
+  bool Shuffled = false;
   Packer *Pkr;
   friend struct FrontierHashInfo;
   llvm::BasicBlock *BB;
@@ -75,19 +58,20 @@ public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, Packer *Pkr);
   std::unique_ptr<Frontier> advance(const VectorPack *VP, float &Cost,
-                                    llvm::TargetTransformInfo *TTI) const;
+                                    llvm::TargetTransformInfo *TTI,
+                                    bool Shuffled = false) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
-                                    llvm::TargetTransformInfo *TTI) const;
-  std::unique_ptr<Frontier> advance(ShuffleTask, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
-  float advanceInplace(ShuffleTask, llvm::TargetTransformInfo *);
+  float replaceAllUnresolvedPacks(llvm::ArrayRef<const OperandPack *>,
+                                  llvm::TargetTransformInfo *);
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
   }
+  bool shuffled() const { return Shuffled; }
   llvm::ArrayRef<const OperandPack *> getUnresolvedPacks() const {
     return UnresolvedPacks;
   }
@@ -138,7 +122,8 @@ struct FrontierHashInfo {
     if (isTombstoneOrEmpty(A) || isTombstoneOrEmpty(B))
       return A == B;
 
-    return A->BB == B->BB && A->FreeInsts == B->FreeInsts &&
+    return A->BB == B->BB && A->Shuffled == B->Shuffled &&
+           A->FreeInsts == B->FreeInsts &&
            A->UnresolvedScalars == B->UnresolvedScalars &&
            A->UsableInsts == B->UsableInsts &&
            A->UnresolvedPacks == B->UnresolvedPacks;
@@ -154,6 +139,11 @@ class UCTNodeFactory {
 public:
   UCTNodeFactory() : FrontierToNodeMap(1000000) {}
   UCTNode *getNode(std::unique_ptr<Frontier>);
+};
+
+struct CandidatePackSet {
+  std::vector<const OperandPack *> Packs;
+  llvm::BitVector Members;
 };
 
 class UCTNode {
@@ -186,35 +176,36 @@ public:
     // If non-null then we've finished filling out a pack w/ this transition
     const VectorPack *VP;
     llvm::Instruction *I;
-    llvm::Optional<ShuffleTask> ST;
     UCTNode *Next;
     uint64_t Count;
     float Cost; // Reward
     float Bias{0};
+    bool DisableShuffling;
 
-    Transition(const VectorPack *VP)
-        : I(nullptr), VP(VP), Next(nullptr), Count(0) {}
+    Transition(const VectorPack *VP, bool DisableShuffling = false)
+        : I(nullptr), VP(VP), Next(nullptr), Count(0),
+          DisableShuffling(DisableShuffling) {}
 
     Transition(llvm::Instruction *I)
-        : VP(nullptr), I(I), Next(nullptr), Count(0) {}
-
-    Transition(ShuffleTask ST)
-        : VP(nullptr), I(nullptr), ST(ST), Next(nullptr), Count(0) {}
+        : VP(nullptr), I(I), Next(nullptr), Count(0), DisableShuffling(true) {}
 
     float visited() const { return Count > 0; }
 
     unsigned visitCount() const { return Count; }
 
-    UCTNode *getNext(UCTNode *Parent, UCTNodeFactory *Factory, llvm::TargetTransformInfo *TTI) {
+    UCTNode *getNext(UCTNode *Parent, UCTNodeFactory *Factory,
+                     llvm::TargetTransformInfo *TTI) {
       if (Next)
         return Next;
 
       if (VP)
-        Next = Factory->getNode(Parent->getFrontier()->advance(VP, Cost, TTI));
+        Next = Factory->getNode(
+            Parent->getFrontier()->advance(VP, Cost, TTI, DisableShuffling));
       else if (I)
         Next = Factory->getNode(Parent->getFrontier()->advance(I, Cost, TTI));
-      else
-        Next = Factory->getNode(Parent->getFrontier()->advance(ST.getValue(), Cost, TTI));
+
+      assert(Next);
+
       return Next;
     }
 
@@ -239,8 +230,8 @@ private:
   bool IsTerminal;
 
   UCTNode(const Frontier *Frt)
-      : Frt(Frt), TotalCost(0), Count(0), TransitionWeight(nullptr), IsTerminal(false) {}
-
+      : Frt(Frt), TotalCost(0), Count(0),
+        TransitionWeight(nullptr), IsTerminal(false) {}
 public:
   float minCost() const { return CostRange->Min; }
   float maxCost() const { return CostRange->Max; }
@@ -251,9 +242,11 @@ public:
   }
 
   // Fill out the out edge
-  void expand();
+  void expand(const CandidatePackSet *);
   bool expanded() { return !Transitions.empty() && !isTerminal(); }
-  bool isTerminal() const { return Frt->getFreeInsts().count() == 0 || IsTerminal; }
+  bool isTerminal() const {
+    return Frt->getFreeInsts().count() == 0 || IsTerminal;
+  }
 
   std::vector<Transition> &transitions() { return Transitions; }
 
@@ -294,21 +287,20 @@ public:
 
 // Interface for state evaluation
 struct FrontierEvaluator {
-  virtual float evaluate(const Frontier *Frt) = 0;
+  virtual float evaluate(const Frontier *Frt, const CandidatePackSet *) = 0;
 };
 
 struct DummyEvaluator : public FrontierEvaluator {
-  float evaluate(const Frontier *) override {
-    return 0;
-  }
+  float evaluate(const Frontier *, const CandidatePackSet *) override { return 0; }
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  llvm::DenseMap<const Frontier *, std::vector<VectorPack *>, FrontierHashInfo> ExtensionCache;
+  llvm::DenseMap<const Frontier *, std::vector<VectorPack *>, FrontierHashInfo>
+      ExtensionCache;
   std::vector<std::unique_ptr<Frontier>> Frontiers;
-  std::vector<VectorPack *> getExtensions(const Frontier &);
+
 public:
-  float evaluate(const Frontier *) override;
+  float evaluate(const Frontier *, const CandidatePackSet *) override;
 };
 
 // Interface for asynchronous policy prediction.
@@ -344,21 +336,20 @@ class UCTSearch {
 
   // How we evaluate a leaf UCTNode (e.g., w/ a value network or rollout)
   FrontierEvaluator *Evaluator;
-  PackEnumerationCache EnumCache;
+  const CandidatePackSet *CandidateSet;
   llvm::TargetTransformInfo *TTI;
 
 public:
-  UCTSearch(float C, float W, unsigned ExpandThreshold,
-            UCTNodeFactory *Factory, Packer *Pkr, PackingPolicy *Policy,
-            FrontierEvaluator *Evaluator, llvm::TargetTransformInfo *TTI)
-      : C(C), W(W), ExpandThreshold(ExpandThreshold),
-        Factory(Factory), Pkr(Pkr), Policy(Policy), Evaluator(Evaluator),
+  UCTSearch(float C, float W, unsigned ExpandThreshold, UCTNodeFactory *Factory,
+            Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
+            const CandidatePackSet *CandidateSet,
+            llvm::TargetTransformInfo *TTI)
+      : C(C), W(W), ExpandThreshold(ExpandThreshold), Factory(Factory),
+        Pkr(Pkr), Policy(Policy), Evaluator(Evaluator), CandidateSet(CandidateSet),
         TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
-  float evalLeafNode(UCTNode *N) {
-    return Evaluator->evaluate(N->getFrontier());
-  }
+  float evalLeafNode(UCTNode *N);
 };
 
 class VectorPackSet;

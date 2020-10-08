@@ -32,6 +32,13 @@ public:
     assert(It != IndependentInsts.end());
     return It->second;
   }
+
+  const llvm::BitVector &getIndependent(llvm::Value *V) const {
+    using namespace llvm;
+    auto It = IndependentInsts.find(cast<Instruction>(V));
+    assert(It != IndependentInsts.end());
+    return It->second;
+  }
 };
 
 #endif // end LOCAL_DEPENDENCE_ANALYSIS_H

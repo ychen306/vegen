@@ -139,7 +139,7 @@ VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                                     Packer *Pkr) {
   auto *BB = MainPack->getBasicBlock();
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
-#if 1
+#if 0
   // Full, can't coalesce
   if (MainPack->getOrderedValues().size() == MainPack->getElements().count())
     return nullptr;
@@ -204,6 +204,25 @@ static void decomposeIntoLoadPacks(const SlotSet &Slots,
                                    LocalDependenceAnalysis &LDA,
                                    TargetTransformInfo *TTI,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
+#if 0
+  for (unsigned VL : {2, 4, 8, 16, 32}) {
+    for (unsigned i = Slots.minId(), e = Slots.maxId(); i <= e; i++) {
+      BitVector Elements(VPCtx->getNumValues());
+      BitVector Depended(VPCtx->getNumValues());
+      std::vector<LoadInst *> Loads;
+      for (unsigned j = i; j <= std::min(e, i+VL); j++) {
+        auto *LI = Slots[i];
+        if (LI) {
+          Loads.push_back(cast<LoadInst>(LI));
+          Elements.set(VPCtx->getScalarId(LI));
+          Depended |= LDA.getDepended(LI);
+        }
+      }
+      if (Elements.count())
+        Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+    }
+  }
+#else
   BitVector Elements(VPCtx->getNumValues());
   BitVector Depended(VPCtx->getNumValues());
   std::vector<LoadInst *> Loads;
@@ -229,13 +248,14 @@ static void decomposeIntoLoadPacks(const SlotSet &Slots,
       Loads.push_back(nullptr);
     Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
   }
+#endif
 }
 
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
-static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
+void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
                                    Packer *Pkr,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
-#if 0
+#if 1
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
   // mapping <leader> -> <slot set>
   DenseMap<Instruction *, SlotSet> Slots;

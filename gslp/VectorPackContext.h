@@ -14,6 +14,11 @@ struct OperandProducerInfo {
   llvm::BitVector Elements;
   llvm::SmallVector<VectorPack *, 4> Producers;
   llvm::SmallVector<VectorPack *, 2> LoadProducers;
+  llvm::ArrayRef<VectorPack *> getProducers() const {
+    if (!Producers.empty())
+      return Producers;
+    return LoadProducers;
+  }
 };
 
 // Use this to model input operands

@@ -1,6 +1,6 @@
 #include "VectorPackSet.h"
-#include "Packer.h"
 #include "LocalDependenceAnalysis.h"
+#include "Packer.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/IR/Function.h"
