@@ -393,9 +393,11 @@ extern VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                                     Packer *Pkr);
 
 static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
+  if (Frt.usableInstIds().count() == 0)
+    return {};
+
   auto *Pkr = Frt.getPacker();
   auto *VPCtx = Frt.getContext();
-
   // Put load extensions in a separate category.
   // We don't extend with a load pack if we can extend with other arithmetic
   // packs
@@ -418,6 +420,21 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt, const C
         for (auto *VP : OPI.Producers)
           Extensions.push_back(VP);
       }
+      ///////////
+      for (auto *OP : Frt.getUnresolvedPacks()) {
+        //if (!Extensions.empty())
+        //  return Extensions;
+        OP = dedup(VPCtx, OP);
+        const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
+        if (!OPI.Feasible)
+          continue;
+        if (!OPI.Elements.test(InstId) || OPI.Elements.anyCommon(UnusableIds))
+          continue;
+        for (auto *VP : OPI.Producers)
+          if (!VP->getElements().anyCommon(UnusableIds))
+            Extensions.push_back(VP);
+      }
+      //////////
     }
     if (!Extensions.empty())
       return Extensions;
