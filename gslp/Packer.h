@@ -52,7 +52,8 @@ public:
       return false;
     const AddressInfo &Info1 = It1->second;
     const AddressInfo &Info2 = It2->second;
-    return Info1.Leader == Info2.Leader && (Info1.Id + 1 == Info2.Id /*|| Info1.Id == Info2.Id + 1*/);
+    return Info1.Leader == Info2.Leader &&
+           (Info1.Id + 1 == Info2.Id /*|| Info1.Id == Info2.Id + 1*/);
   }
 };
 
@@ -108,7 +109,8 @@ public:
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
 
   llvm::Function *getFunction() const { return F; }
-  const OperandProducerInfo getProducerInfo(const VectorPackContext *, const OperandPack *);
+  const OperandProducerInfo &getProducerInfo(const VectorPackContext *,
+                                             const OperandPack *);
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

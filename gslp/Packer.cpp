@@ -135,8 +135,7 @@ public:
 
 // Try to coalesce main pack with some other packs
 VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
-                                    ArrayRef<VectorPack *> OtherPacks,
-                                    Packer *Pkr) {
+                             ArrayRef<VectorPack *> OtherPacks, Packer *Pkr) {
   auto *BB = MainPack->getBasicBlock();
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
 #if 0
@@ -236,7 +235,8 @@ static void decomposeIntoLoadPacks(const SlotSet &Slots,
       unsigned N = PowerOf2Ceil(Loads.size());
       while (Loads.size() != N)
         Loads.push_back(nullptr);
-      Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
+      Extensions.push_back(
+          VPCtx->createLoadPack(Loads, Elements, Depended, TTI));
       Elements.reset();
       Depended.reset();
       Loads.clear();
@@ -252,9 +252,8 @@ static void decomposeIntoLoadPacks(const SlotSet &Slots,
 }
 
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
-void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
-                                   Packer *Pkr,
-                                   SmallVectorImpl<VectorPack *> &Extensions) {
+void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB, Packer *Pkr,
+                            SmallVectorImpl<VectorPack *> &Extensions) {
 #if 1
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
   // mapping <leader> -> <slot set>
@@ -331,14 +330,15 @@ void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
       // Pad
       while (Loads.size() < PowerOf2Ceil(OP.size()))
         Loads.push_back(nullptr);
-      Extensions.push_back(VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI()));
+      Extensions.push_back(
+          VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI()));
       return;
     }
   }
 #endif
 }
 
-const OperandProducerInfo
+const OperandProducerInfo &
 Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;

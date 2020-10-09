@@ -684,7 +684,9 @@ std::vector<const OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     if (!usedByStore(&I))
       continue;
     unsigned OldSize = Enumerated.size();
+    enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4/*VL*/);
     enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 8/*VL*/);
+    enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16/*VL*/);
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
       errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
@@ -712,7 +714,8 @@ void UCTNode::expand(const CandidatePackSet *CandidateSet) {
   for (auto *V : Frt->usableInsts()) {
     // Consider seed packs
     if (auto *SI = dyn_cast<StoreInst>(V)) {
-      for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+      //for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+      for (unsigned VL : {2, 4, 8, 16}) {
         if (auto *VP = getSeedStorePack(*Frt, SI, VL)) {
           CanExpandWithStore = true;
           Transitions.emplace_back(VP);
@@ -763,9 +766,6 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
     // ========= 1) Selection ==========
     UCTNode *CurNode = Root;
 
-    // Deal with cycle
-    DenseSet<UCTNode *> Visited;
-
     // Traverse down to a leaf node.
     while (CurNode->expanded()) {
       auto &Transitions = CurNode->transitions();
@@ -782,33 +782,26 @@ void UCTSearch::run(UCTNode *Root, unsigned NumIters) {
       };
 
       UCTNode::Transition *BestT = &Transitions[0];
-      bool FirstFeasible =
-          !Visited.count(BestT->getNext(CurNode, Factory, TTI));
       float MaxUCTScore = 0;
-      if (FirstFeasible && BestT->visited())
+      if (BestT->visited())
         MaxUCTScore = ScoreTransition(0);
 
       for (unsigned i = 0; i < Transitions.size(); i++) {
         auto &T = Transitions[i];
-        if (Visited.count(T.getNext(CurNode, Factory, TTI)))
-          continue;
         if (!T.visited()) {
           BestT = &T;
           break;
         }
 
         float UCTScore = ScoreTransition(i);
-        if (!FirstFeasible || UCTScore > MaxUCTScore) {
+        if (UCTScore > MaxUCTScore) {
           MaxUCTScore = UCTScore;
           BestT = &T;
         }
       }
 
-      if (Visited.count(BestT->getNext(CurNode, Factory, TTI)))
-        abort();
       Path.push_back(FullTransition{CurNode, BestT});
       CurNode = BestT->getNext(CurNode, Factory, TTI);
-      Visited.insert(CurNode);
     }
 
     float LeafCost = 0;
@@ -1078,7 +1071,10 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   auto *VPCtx = Frt.getContext();
   CandidateSet.Members = BitVector(VPCtx->getNumValues());
   for (auto *OP : CandidateSet.Packs)  {
-    CandidateSet.Members |= Pkr->getProducerInfo(VPCtx, OP).Elements;
+    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    if (!OPI.Feasible)
+      continue;
+    CandidateSet.Members |= OPI.Elements;
   }
 
   auto &StoreDAG = Pkr->getStoreDAG(BB);
@@ -1124,7 +1120,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   float Cost = 0;
   float BestEst = 0;
 
-#if 1
+#if 0
   for (unsigned i : VL) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
@@ -1178,25 +1174,16 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.1 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+  UCTSearch MCTS(0.05 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                  nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
   unsigned NumSimulations = 1000;
   float TotalCost = 0;
   Root->expand(&CandidateSet);
-  DenseSet<UCTNode *> Visited;
-  auto IsWorse = [](const UCTNode::Transition &A,
-                    const UCTNode::Transition &B) -> bool {
-    // return A.Count < B.Count;
-    float ACost = -A.Cost - A.Next->minCost();
-    float BCost = -B.Cost - B.Next->minCost();
-    return std::tie(ACost, A.Count) < std::tie(BCost, B.Count);
-  };
 
   while (!Root->isTerminal()) {
     MCTS.run(Root, NumSimulations);
     assert(Root->expanded());
-    Visited.insert(Root);
 
     if (Root->transitions().empty())
       break;
@@ -1204,7 +1191,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     auto &Transitions = Root->transitions();
     errs() << "NUM TRANSITIONS : " << Transitions.size() << '\n';
 
-#if 0
     UCTNode::Transition *T = &*std::max_element(
         Transitions.begin(), Transitions.end(),
 
@@ -1213,17 +1199,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           float BCost = -B.Cost - B.Next->minCost();
           return std::tie(ACost, A.Count) < std::tie(BCost, B.Count);
         });
-#else
-    UCTNode::Transition *T = nullptr;
-    for (auto &T2 : Transitions) {
-      if (Visited.count(T2.getNext(Root, &Factory, TTI)))
-        continue;
-      if (!T || IsWorse(*T, T2))
-        T = &T2;
-    }
-    if (!T)
-      abort();
-#endif
 
     auto Node = Root;
     auto *Next = T->getNext(Node, &Factory, TTI);
