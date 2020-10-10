@@ -426,12 +426,8 @@ static std::vector<VectorPack *> findExtensionPacks(const Frontier &Frt, const C
         //  return Extensions;
         OP = dedup(VPCtx, OP);
         const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
-        if (!OPI.Feasible)
-          continue;
-        if (!OPI.Elements.test(InstId) || OPI.Elements.anyCommon(UnusableIds))
-          continue;
         for (auto *VP : OPI.Producers)
-          if (!VP->getElements().anyCommon(UnusableIds))
+          if (!VP->getElements().anyCommon(UnusableIds) && VP->getElements().test(InstId))
             Extensions.push_back(VP);
       }
       //////////
@@ -1117,6 +1113,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   VL = { 64 };
   VL = {8};
   VL = {16};
+  VL = { 4 };
   float Cost = 0;
   float BestEst = 0;
 
@@ -1174,10 +1171,10 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.05 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+  UCTSearch MCTS(0.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                  nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
-  unsigned NumSimulations = 1000;
+  unsigned NumSimulations = 10000;
   float TotalCost = 0;
   Root->expand(&CandidateSet);
 

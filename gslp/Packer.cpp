@@ -254,7 +254,7 @@ static void decomposeIntoLoadPacks(const SlotSet &Slots,
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
 void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB, Packer *Pkr,
                             SmallVectorImpl<VectorPack *> &Extensions) {
-#if 1
+#if 0
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
   // mapping <leader> -> <slot set>
   DenseMap<Instruction *, SlotSet> Slots;
