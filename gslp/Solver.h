@@ -142,9 +142,8 @@ public:
 };
 
 struct CandidatePackSet {
-  std::vector<const VectorPack *> Packs;
+  std::vector<const OperandPack *> Packs;
   llvm::BitVector Members;
-  llvm::BitVector StoreMembers;
 };
 
 class UCTNode {

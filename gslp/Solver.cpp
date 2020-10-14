@@ -321,7 +321,7 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   return OS;
 }
 
-static std::vector<const VectorPack *>
+static std::vector<VectorPack *>
 findExtensionPacks(const Frontier &Frt,
                    const CandidatePackSet *CandidateSet = nullptr);
 
@@ -394,7 +394,7 @@ extern VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                                     ArrayRef<VectorPack *> OtherPacks,
                                     Packer *Pkr);
 
-static std::vector<const VectorPack *>
+static std::vector<VectorPack *>
 findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   if (Frt.usableInstIds().count() == 0)
     return {};
@@ -409,20 +409,13 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   BitVector UnusableIds = Frt.usableInstIds();
   UnusableIds.flip();
 
-  std::vector<const VectorPack *> Extensions;
+  std::vector<VectorPack *> Extensions;
 
   if (CandidateSet) {
     BitVector CandidateMembers = CandidateSet->Members;
     CandidateMembers &= Frt.usableInstIds();
-    BitVector StoreMembers = CandidateSet->StoreMembers;
-    StoreMembers &= Frt.usableInstIds();
     if (CandidateMembers.count()) {
-      unsigned InstId;
-      if (StoreMembers.count())
-        InstId = *StoreMembers.set_bits_begin();
-      else
-        InstId = *CandidateMembers.set_bits_begin();
-#if 0
+      unsigned InstId = *CandidateMembers.set_bits_begin();
       for (auto *OP : CandidateSet->Packs) {
         auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
         if (!OPI.Elements.test(InstId) || OPI.Elements.anyCommon(UnusableIds))
@@ -430,14 +423,6 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
         for (auto *VP : OPI.Producers)
           Extensions.push_back(VP);
       }
-#else
-      for (auto *VP : CandidateSet->Packs) {
-        auto &Elements = VP->getElements();
-        if (Elements.test(InstId) && !Elements.anyCommon(UnusableIds))
-          Extensions.push_back(VP);
-      }
-
-#endif
       ///////////
       for (auto *OP : Frt.getUnresolvedPacks()) {
         // if (!Extensions.empty())
@@ -667,7 +652,7 @@ void enumerateImpl(std::vector<const OperandPack *> &Enumerated, Instruction *I,
     }
 }
 
-std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
+std::vector<const OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto &LDA = Pkr->getLDA(BB);
   auto *VPCtx = Pkr->getContext(BB);
   Aligner A(BB, Pkr);
@@ -705,27 +690,9 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
       errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
-
-  std::vector<const VectorPack *> Packs;
-  for (auto *OP : Enumerated) {
-    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-    for (auto *VP : OPI.Producers)
-      Packs.push_back(VP);
-  }
-
-  Frontier Frt(BB, Pkr);
-  for (auto &I : *BB) {
-    if (auto *SI = dyn_cast<StoreInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16}) {
-        if (auto *VP = getSeedStorePack(Frt, SI, VL)) {
-          Packs.push_back(VP);
-        }
-      }
-    }
-  }
-
-  errs() << "!!! num candidates: " << Packs.size() << '\n';
-  return Packs;
+  errs() << "!!! num candidates: " << Enumerated.size() << '\n';
+  return Enumerated;
+  ;
 }
 
 static OperandPack *buildOperandPack(const VectorPackContext *VPCtx,
@@ -743,7 +710,6 @@ void UCTNode::expand(const CandidatePackSet *CandidateSet) {
 
   auto *BB = Frt->getBasicBlock();
 
-#if 0
   bool CanExpandWithStore = false;
 
   for (auto *V : Frt->usableInsts()) {
@@ -766,7 +732,6 @@ void UCTNode::expand(const CandidatePackSet *CandidateSet) {
 
   if (CanExpandWithStore)
     return;
-#endif
 
   auto Extensions = findExtensionPacks(*Frt, CandidateSet);
   // Also consider the extension packs
@@ -945,7 +910,7 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
 
   float Cost = 0;
   bool Changed;
-  std::vector<const VectorPack *> Extensions;
+  std::vector<VectorPack *> Extensions;
   do {
     Changed = false;
     Extensions = findExtensionPacks(ScratchFrt, CandidateSet);
@@ -1107,21 +1072,12 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   CandidateSet.Packs = enumerate(BB, Pkr);
   auto *VPCtx = Frt.getContext();
   CandidateSet.Members = BitVector(VPCtx->getNumValues());
-  CandidateSet.StoreMembers = BitVector(VPCtx->getNumValues());
-#if 0
   for (auto *OP : CandidateSet.Packs) {
     auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
     if (!OPI.Feasible)
       continue;
     CandidateSet.Members |= OPI.Elements;
   }
-#else
-  for (auto *VP : CandidateSet.Packs) {
-    CandidateSet.Members |= VP->getElements();
-    if (VP->isStore())
-      CandidateSet.StoreMembers |= VP->getElements();
-  }
-#endif
 
   auto &StoreDAG = Pkr->getStoreDAG(BB);
 
