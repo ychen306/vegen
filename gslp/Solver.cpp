@@ -485,14 +485,11 @@ VectorPack *createMemPack(VectorPackContext *VPCtx, ArrayRef<LoadInst *> Loads,
 }
 
 template<typename AccessType>
-std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
+std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
                                             AccessType *Access, unsigned VL) {
-  if (!Frt.isUsable(Access)) {
-    return {};
-  }
-
-  auto *Pkr = Frt.getPacker();
-  auto *BB = Frt.getBasicBlock();
+  //if (!Frt.isUsable(Access)) {
+  //  return {};
+  //}
   auto &LDA = Pkr->getLDA(BB);
   auto *VPCtx = Pkr->getContext(BB);
   auto *TTI = Pkr->getTTI();
@@ -515,9 +512,9 @@ std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
         }
         for (auto *Next : It->second) {
           auto *NextAccess = cast<AccessType>(Next);
-          if (!Frt.isUsable(NextAccess)) {
-            continue;
-          }
+          //if (!Frt.isUsable(NextAccess)) {
+          //  continue;
+          //}
           if (!checkIndependence(LDA, *VPCtx, NextAccess, Elements, Depended)) {
             continue;
           }
@@ -544,7 +541,7 @@ std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
 
 static VectorPack *getSeedStorePack(const Frontier &Frt, StoreInst *SI,
                                     unsigned VL) {
-  auto Seeds = getSeedStorePacks(Frt, SI, VL);
+  auto Seeds = getSeedMemPacks(Frt.getPacker(), Frt.getBasicBlock(), SI, VL);
   if (Seeds.empty())
     return nullptr;
   return Seeds[0];
@@ -713,6 +710,14 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
     for (auto *VP : OPI.Producers)
       Packs.push_back(VP);
+  }
+
+  for (auto &I : *BB) {
+    if (auto *LI = dyn_cast<LoadInst>(&I)) {
+      for (unsigned VL : {2, 4, 8, 16 })
+        for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
+          Packs.push_back(VP);
+    }
   }
 
   return Packs;
@@ -1200,7 +1205,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+  UCTSearch MCTS(0.05 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                  nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
   unsigned NumSimulations = 10000;
