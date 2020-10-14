@@ -135,7 +135,7 @@ public:
 
 // Try to coalesce main pack with some other packs
 VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
-                             ArrayRef<VectorPack *> OtherPacks, Packer *Pkr) {
+                             ArrayRef<const VectorPack *> OtherPacks, Packer *Pkr) {
   auto *BB = MainPack->getBasicBlock();
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
 #if 0
