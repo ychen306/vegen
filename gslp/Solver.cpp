@@ -321,7 +321,7 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   return OS;
 }
 
-static std::vector<VectorPack *>
+static std::vector<const VectorPack *>
 findExtensionPacks(const Frontier &Frt,
                    const CandidatePackSet *CandidateSet = nullptr);
 
@@ -391,10 +391,10 @@ static const OperandPack *dedup(const VectorPackContext *VPCtx,
 }
 
 extern VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
-                                    ArrayRef<VectorPack *> OtherPacks,
+                                    ArrayRef<const VectorPack *> OtherPacks,
                                     Packer *Pkr);
 
-static std::vector<VectorPack *>
+static std::vector<const VectorPack *>
 findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   if (Frt.usableInstIds().count() == 0)
     return {};
@@ -404,23 +404,21 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   // Put load extensions in a separate category.
   // We don't extend with a load pack if we can extend with other arithmetic
   // packs
-  std::vector<VectorPack *> LoadExtensions;
+  std::vector<const VectorPack *> LoadExtensions;
 
   BitVector UnusableIds = Frt.usableInstIds();
   UnusableIds.flip();
 
-  std::vector<VectorPack *> Extensions;
+  std::vector<const VectorPack *> Extensions;
 
   if (CandidateSet) {
     BitVector CandidateMembers = CandidateSet->Members;
     CandidateMembers &= Frt.usableInstIds();
     if (CandidateMembers.count()) {
       unsigned InstId = *CandidateMembers.set_bits_begin();
-      for (auto *OP : CandidateSet->Packs) {
-        auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-        if (!OPI.Elements.test(InstId) || OPI.Elements.anyCommon(UnusableIds))
-          continue;
-        for (auto *VP : OPI.Producers)
+      for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
+        auto &Elements = VP->getElements();
+        if (Elements.test(InstId) && !Elements.anyCommon(UnusableIds))
           Extensions.push_back(VP);
       }
       ///////////
@@ -462,7 +460,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   if (!LoadExtensions.empty()) {
     auto *LoadVP = LoadExtensions.front();
     if (auto *Coalesced = tryCoalesceLoads(
-            LoadVP, ArrayRef<VectorPack *>(LoadExtensions).slice(1), Pkr)) {
+            LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1), Pkr)) {
       return {Coalesced, LoadVP};
     }
     return {LoadVP};
@@ -470,9 +468,26 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   return {};
 }
 
-static std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
-                                                   StoreInst *SI, unsigned VL) {
-  if (!Frt.isUsable(SI)) {
+template <typename AccessType>
+VectorPack *createMemPack(VectorPackContext *VPCtx, ArrayRef<AccessType *> Accesses, 
+    const BitVector &Elements, const BitVector &Depended, TargetTransformInfo *TTI);
+
+template <>
+VectorPack *createMemPack(VectorPackContext *VPCtx, ArrayRef<StoreInst *> Stores, 
+    const BitVector &Elements, const BitVector &Depended, TargetTransformInfo *TTI) {
+  return VPCtx->createStorePack(Stores, Elements, Depended, TTI);
+}
+
+template <>
+VectorPack *createMemPack(VectorPackContext *VPCtx, ArrayRef<LoadInst *> Loads, 
+    const BitVector &Elements, const BitVector &Depended, TargetTransformInfo *TTI) {
+  return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
+}
+
+template<typename AccessType>
+std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
+                                            AccessType *Access, unsigned VL) {
+  if (!Frt.isUsable(Access)) {
     return {};
   }
 
@@ -481,49 +496,49 @@ static std::vector<VectorPack *> getSeedStorePacks(const Frontier &Frt,
   auto &LDA = Pkr->getLDA(BB);
   auto *VPCtx = Pkr->getContext(BB);
   auto *TTI = Pkr->getTTI();
-  auto &StoreDAG = Pkr->getStoreDAG(BB);
+  bool IsStore = std::is_same<AccessType, StoreInst>::value;
+  auto &AccessDAG = IsStore ? Pkr->getStoreDAG(BB) : Pkr->getLoadDAG(BB);
 
   std::vector<VectorPack *> Seeds;
 
-  std::function<void(std::vector<StoreInst *>, BitVector, BitVector)>
-      Enumerate = [&](std::vector<StoreInst *> Stores, BitVector Elements,
+  std::function<void(std::vector<AccessType *>, BitVector, BitVector)>
+      Enumerate = [&](std::vector<AccessType *> Accesses, BitVector Elements,
                       BitVector Depended) {
-        if (Stores.size() == VL) {
-          Seeds.push_back(
-              VPCtx->createStorePack(Stores, Elements, Depended, TTI));
+        if (Accesses.size() == VL) {
+          Seeds.push_back(createMemPack<AccessType>(VPCtx, Accesses, Elements, Depended, TTI));
           return;
         }
 
-        auto It = StoreDAG.find(Stores.back());
-        if (It == StoreDAG.end()) {
+        auto It = AccessDAG.find(Accesses.back());
+        if (It == AccessDAG.end()) {
           return;
         }
         for (auto *Next : It->second) {
-          auto *NextSI = cast<StoreInst>(Next);
-          if (!Frt.isUsable(NextSI)) {
+          auto *NextAccess = cast<AccessType>(Next);
+          if (!Frt.isUsable(NextAccess)) {
             continue;
           }
-          if (!checkIndependence(LDA, *VPCtx, NextSI, Elements, Depended)) {
+          if (!checkIndependence(LDA, *VPCtx, NextAccess, Elements, Depended)) {
             continue;
           }
-          auto StoresExt = Stores;
+          auto AccessesExt = Accesses;
           auto ElementsExt = Elements;
           auto DependedExt = Depended;
-          StoresExt.push_back(NextSI);
-          ElementsExt.set(VPCtx->getScalarId(NextSI));
-          DependedExt |= LDA.getDepended(NextSI);
-          Enumerate(StoresExt, ElementsExt, DependedExt);
+          AccessesExt.push_back(NextAccess);
+          ElementsExt.set(VPCtx->getScalarId(NextAccess));
+          DependedExt |= LDA.getDepended(NextAccess);
+          Enumerate(AccessesExt, ElementsExt, DependedExt);
         }
       };
 
-  std::vector<StoreInst *> Stores{SI};
+  std::vector<AccessType *> Accesses{Access};
   BitVector Elements(VPCtx->getNumValues());
   BitVector Depended(VPCtx->getNumValues());
 
-  Elements.set(VPCtx->getScalarId(SI));
-  Depended |= LDA.getDepended(SI);
+  Elements.set(VPCtx->getScalarId(Access));
+  Depended |= LDA.getDepended(Access);
 
-  Enumerate(Stores, Elements, Depended);
+  Enumerate(Accesses, Elements, Depended);
   return Seeds;
 }
 
@@ -652,7 +667,7 @@ void enumerateImpl(std::vector<const OperandPack *> &Enumerated, Instruction *I,
     }
 }
 
-std::vector<const OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
+std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto &LDA = Pkr->getLDA(BB);
   auto *VPCtx = Pkr->getContext(BB);
   Aligner A(BB, Pkr);
@@ -690,9 +705,17 @@ std::vector<const OperandPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
       errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
+
   errs() << "!!! num candidates: " << Enumerated.size() << '\n';
-  return Enumerated;
-  ;
+
+  std::vector<const VectorPack *> Packs;
+  for (auto *OP : Enumerated) {
+    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    for (auto *VP : OPI.Producers)
+      Packs.push_back(VP);
+  }
+
+  return Packs;
 }
 
 static OperandPack *buildOperandPack(const VectorPackContext *VPCtx,
@@ -910,7 +933,7 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
 
   float Cost = 0;
   bool Changed;
-  std::vector<VectorPack *> Extensions;
+  std::vector<const VectorPack *> Extensions;
   do {
     Changed = false;
     Extensions = findExtensionPacks(ScratchFrt, CandidateSet);
@@ -1072,11 +1095,11 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   CandidateSet.Packs = enumerate(BB, Pkr);
   auto *VPCtx = Frt.getContext();
   CandidateSet.Members = BitVector(VPCtx->getNumValues());
-  for (auto *OP : CandidateSet.Packs) {
-    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-    if (!OPI.Feasible)
-      continue;
-    CandidateSet.Members |= OPI.Elements;
+  CandidateSet.Inst2Packs.resize(VPCtx->getNumValues());
+  for (auto *VP : CandidateSet.Packs) {
+    CandidateSet.Members |= VP->getElements();
+    for (unsigned i : VP->getElements().set_bits())
+      CandidateSet.Inst2Packs[i].push_back(VP);
   }
 
   auto &StoreDAG = Pkr->getStoreDAG(BB);

@@ -203,7 +203,7 @@ static void decomposeIntoLoadPacks(const SlotSet &Slots,
                                    LocalDependenceAnalysis &LDA,
                                    TargetTransformInfo *TTI,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
-#if 0
+#if 1
   for (unsigned VL : {2, 4, 8, 16, 32}) {
     for (unsigned i = Slots.minId(), e = Slots.maxId(); i <= e; i++) {
       BitVector Elements(VPCtx->getNumValues());
