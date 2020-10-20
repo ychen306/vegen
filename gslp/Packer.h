@@ -39,10 +39,11 @@ public:
     return MemberCounts.lookup(I);
   }
 
-  const AddressInfo &get(llvm::Instruction *I) const {
+  AddressInfo get(llvm::Instruction *I) const {
     auto It = Info.find(I);
-    assert(It != Info.end());
-    return It->second;
+    if (It != Info.end())
+      return It->second;
+    return AddressInfo{I, 0};
   }
 
   bool isAdjacent(llvm::Instruction *I1, llvm::Instruction *I2) const {
