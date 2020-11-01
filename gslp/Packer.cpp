@@ -156,7 +156,7 @@ VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
   }
 
   for (auto *Other : OtherPacks) {
-    auto &Info =
+    auto Info =
         LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
     // Cannot coalesce with loads accessing a different object
     if (Info.Leader != Leader)

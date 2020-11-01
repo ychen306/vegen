@@ -439,8 +439,8 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   }
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    // if (!Extensions.empty())
-    //  return Extensions;
+    if (!Extensions.empty())
+     return Extensions;
     OP = dedup(VPCtx, OP);
     const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
     if (!OPI.Feasible)
@@ -1004,6 +1004,7 @@ float RolloutEvaluator::evaluate(const Frontier *Frt,
 }
 
 class DPSolver {
+  const CandidatePackSet *CandidateSet;
   struct Solution {
     float Cost;
     const VectorPack *VP;
@@ -1028,7 +1029,7 @@ class DPSolver {
     Sol.Cost = estimateAllScalarCost(Frt, TTI);
 
     // Figure out the cost of adding one extension
-    auto Extensions = findExtensionPacks(Frt);
+    auto Extensions = findExtensionPacks(Frt, CandidateSet);
     // errs() << "NUM EXTENSIONS: " << Extensions.size() << '\n';
     for (const VectorPack *ExtVP : Extensions) {
       float LocalCost;
@@ -1068,7 +1069,8 @@ class DPSolver {
   }
 
 public:
-  DPSolver(TargetTransformInfo *TTI) : TTI(TTI), Solutions(1000000) {}
+  DPSolver(TargetTransformInfo *TTI, const CandidatePackSet *CandidateSet=nullptr) 
+    : CandidateSet(CandidateSet), TTI(TTI), Solutions(1000000) {}
 
   Solution solve(const Frontier &Frt) {
     auto It = Solutions.find(&Frt);
@@ -1144,21 +1146,21 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   // VL = {8};
   // VL = {4};
   // VL = {64};
-  VL = {64};
-  VL = {8};
-  VL = {16};
-  VL = {4};
+  //VL = {64};
+  //VL = {8};
+  //VL = {16};
+  //VL = {4};
   float Cost = 0;
   float BestEst = 0;
 
-#if 0
+#if 1
   for (unsigned i : VL) {
     for (auto *SI : Stores) {
       auto *SeedVP = getSeedStorePack(Frt, SI, i);
       if (SeedVP) {
-        Cost += Frt.advanceInplace(SeedVP, TTI);
-        Packs.tryAdd(SeedVP);
-        continue;
+        //Cost += Frt.advanceInplace(SeedVP, TTI);
+        //Packs.tryAdd(SeedVP);
+        //continue;
 #if 0
           float Est = estimateCost(Frt, SeedVP);
 #else
@@ -1202,13 +1204,13 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
 #endif
 
-#if 1
+#if 0
   UCTNodeFactory Factory;
   RolloutEvaluator Evaluator;
-  UCTSearch MCTS(0.05 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+  UCTSearch MCTS(0.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                  nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
   UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
-  unsigned NumSimulations = 10000;
+  unsigned NumSimulations = 1000;
   float TotalCost = 0;
   Root->expand(&CandidateSet);
 
