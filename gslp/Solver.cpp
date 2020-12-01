@@ -47,7 +47,8 @@ void Frontier::freezeOneInst(Instruction *I) {
   if (!FreeInsts.test(InstId))
     return;
   Hash ^= VPCtx->getHashValue(InstId);
-  Hash ^= VPCtx->getHashValue2(InstId);
+  if (UnresolvedScalars.test(InstId))
+    Hash ^= VPCtx->getHashValue2(InstId);
   FreeInsts.reset(InstId);
   UnresolvedScalars.reset(InstId);
   UsableInsts.reset(InstId);
