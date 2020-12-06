@@ -656,7 +656,7 @@ void enumerateImpl(std::vector<const OperandPack *> &Enumerated, Instruction *I,
     std::sort(
         Candidates.begin(), Candidates.end(),
         [](const Candidate &A, const Candidate &B) { return A.Cost < B.Cost; });
-    Candidates.resize(BeamWidth);
+    Candidates.resize(std::min(Candidates.size(), BeamWidth));
   }
 
   for (auto &Cand : Candidates)
