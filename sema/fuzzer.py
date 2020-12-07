@@ -570,28 +570,32 @@ dst[MAX:256] := 0
 </intrinsic>
 '''
   sema = '''
-<intrinsic tech="AVX2" name="_mm256_sad_epu8">
+<intrinsic tech="AVX-512" name="_mm512_mask_ternarylogic_epi32">
 	<type>Integer</type>
-	<CPUID>AVX2</CPUID>
-	<category>Arithmetic</category>
-	<return type="__m256i" varname="dst" etype="UI16"/>
-	<parameter type="__m256i" varname="a" etype="UI8"/>
-	<parameter type="__m256i" varname="b" etype="UI8"/>
-	<description>Compute the absolute differences of packed unsigned 8-bit integers in "a" and "b", then horizontally sum each consecutive 8 differences to produce four unsigned 16-bit integers, and pack these unsigned 16-bit integers in the low 16 bits of 64-bit elements in "dst".</description>
+	<CPUID>AVX512F</CPUID>
+	<category>Logical</category>
+	<return type="__m512i" varname="dst" etype="UI32"/>
+	<parameter type="__m512i" varname="src" etype="UI32"/>
+	<parameter type="__mmask16" varname="k" etype="MASK"/>
+	<parameter type="__m512i" varname="a" etype="UI32"/>
+	<parameter type="__m512i" varname="b" etype="UI32"/>
+	<parameter type="int" varname="imm8" etype="IMM" immwidth="8"/>
+	<description>Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in "imm8". For each bit in each packed 32-bit integer, the corresponding bit from "src", "a", and "b" are used to form a 3 bit index into "imm8", and the value at that bit in "imm8" is written to the corresponding bit in "dst" using writemask "k" at 32-bit granularity (32-bit elements are copied from "src" when the corresponding mask bit is not set).</description>
 	<operation>
-FOR j := 0 to 31
-	i := j*8
-	tmp[i+7:i] := ABS(a[i+7:i] - b[i+7:i])
+FOR j := 0 to 15
+	i := j*32
+	IF k[j]
+		FOR h := 0 to 31
+			index[2:0] := (src[i+h] &lt;&lt; 2) OR (a[i+h] &lt;&lt; 1) OR b[i+h]
+			dst[i+h] := imm8[index[2:0]]
+		ENDFOR
+	ELSE
+		dst[i+31:i] := src[i+31:i]
+	FI
 ENDFOR
-FOR j := 0 to 3
-	i := j*64
-	dst[i+15:i] := tmp[i+7:i] + tmp[i+15:i+8] + tmp[i+23:i+16] + tmp[i+31:i+24] + \
-	               tmp[i+39:i+32] + tmp[i+47:i+40] + tmp[i+55:i+48] + tmp[i+63:i+56]
-	dst[i+63:i+16] := 0
-ENDFOR
-dst[MAX:256] := 0
+dst[MAX:512] := 0
 	</operation>
-	<instruction name="VPSADBW" form="ymm, ymm, ymm" xed="VPSADBW_YMMqq_YMMqq_YMMqq"/>
+	<instruction name="VPTERNLOGD" form="zmm {k}, zmm, zmm, imm8" xed="VPTERNLOGD_ZMMu32_MASKmskw_ZMMu32_ZMMu32_IMM8_AVX512"/>
 	<header>immintrin.h</header>
 </intrinsic>
 '''

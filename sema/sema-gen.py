@@ -6,7 +6,8 @@ from compiler import compile
 from spec_serializer import dump_spec
 from multiprocessing import Pool
 
-data_f, out_fname = sys.argv[1:]
+data_f, out_fname, num_threads = sys.argv[1:]
+num_threads = int(num_threads)
 data_root = ET.parse(data_f)
 
 num_parsed = 0
@@ -70,6 +71,7 @@ for intrin in data_root.iter('intrinsic'):
       'mant' in intrin.attrib['name'] or
       'ord' in intrin.attrib['name'] or
       '4dpwss' in intrin.attrib['name'] or
+      'ternarylogic' in intrin.attrib['name'] or
       #'cvt' in intrin.attrib['name'] or
       intrin.attrib['name'].startswith('_bit') or
       intrin.attrib['name'] in ('_rdpmc', '_rdtsc') or
@@ -145,11 +147,11 @@ for intrin in data_root.iter('intrinsic'):
     #  continue
     intrins.append(intrin)
 
-from pprint import pprint
-pprint(categories)
-print('Total filtered:', sum(categories.values()))
+#from pprint import pprint
+#pprint(categories)
+#print('Total filtered:', sum(categories.values()))
 
-pool = Pool(1 if debug else 128)
+pool = Pool(1 if debug else num_threads)
 num_intrins = 0
 for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
   num_intrins+=1
@@ -160,9 +162,8 @@ for ok, compiled, spec in pool.imap_unordered(get_verified_spec, intrins):
     outf.flush()
     num_interpreted += compiled
     num_ok += ok
-    num_parsed += 1
-    print(spec.intrin, spec.cpuids, num_parsed, flush=True)
-    print('\t',ok, num_ok,'/', num_intrins, flush=True)
+    print(spec.intrin, spec.cpuids, flush=True)
+    print('\tverified / parsed ',num_ok,'/', num_intrins, flush=True)
     supported_insts.add(inst_form)
   else:
     print('Parsed', num_parsed, ' semantics, failling:')
