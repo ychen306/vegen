@@ -28,6 +28,7 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
 
 } // end anonymous namespace
 
+raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP);
 Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)

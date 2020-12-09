@@ -697,11 +697,11 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     if (!usedByStore(&I))
       continue;
     unsigned OldSize = Enumerated.size();
-    enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 4 /*VL*/);
-    enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 8 /*VL*/);
-    enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 16 /*VL*/);
-    for (unsigned i = OldSize; i < Enumerated.size(); i++)
-      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
+    //enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 4 /*VL*/);
+    //enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 8 /*VL*/);
+    //enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 16 /*VL*/);
+    //for (unsigned i = OldSize; i < Enumerated.size(); i++)
+    //  errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
 
   errs() << "!!! num candidates: " << Enumerated.size() << '\n';
@@ -1140,7 +1140,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   auto *TTI = Pkr->getTTI();
 
-  DPSolver Solver(TTI);
+  DPSolver Solver(TTI, &CandidateSet);
 
   std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
   // std::vector<unsigned> VL{16, 8, 4, 2};
@@ -1169,6 +1169,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
         errs() << "Estimating seed pack " << *SeedVP << '\n';
         auto Sol = Solver.solve(Frt.advance(SeedVP, LocalCost, TTI));
         float Est = LocalCost + Sol.Cost;
+        auto *OP = SeedVP->getOperandPacks()[0];
+        auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
 #endif
         errs() << "Estimated cost of " << *SeedVP << " is " << Est
                << ", local cost: " << LocalCost << ", trans cost: " << Sol.Cost
