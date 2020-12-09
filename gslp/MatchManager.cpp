@@ -58,40 +58,8 @@ MatchManager::MatchManager(llvm::ArrayRef<InstBinding *> Insts,
   for (auto &Inst : Insts)
     for (auto &LaneOp : Inst->getLaneOps())
       OpMatches.FindAndConstruct(LaneOp.getOperation());
-  for (auto &I : BB) {
+  for (auto &I : BB)
     match(&I);
-
-    {
-      using namespace PatternMatch;
-      Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8;
-      if (PatternMatch::match(&I, m_c_Add(
-              m_c_Add(
-                m_c_Add(
-                  m_c_Add(
-                    m_c_Mul(
-                      m_SExt(
-                        m_Value(tmp0)),
-                      m_ZExt(
-                        m_Value(tmp1))),
-                    m_Value(tmp2)),
-                  m_c_Mul(
-                    m_SExt(
-                      m_Value(tmp3)),
-                    m_ZExt(
-                      m_Value(tmp4)))),
-                m_c_Mul(
-                  m_SExt(
-                    m_Value(tmp5)),
-                  m_ZExt(
-                    m_Value(tmp6)))),
-              m_c_Mul(
-                m_SExt(
-                  m_Value(tmp7)),
-                m_ZExt(
-                  m_Value(tmp8))))))
-                  errs() << "!!!!!!!!!!!1111 MATCHED\n";
-    }
-  }
 
   for (auto &KV : OpMatches) {
     auto &Matches = KV.second;
