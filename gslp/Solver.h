@@ -35,7 +35,6 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class MatchManager;
 class Frontier {
-  bool Shuffled = false;
   Packer *Pkr;
   friend struct FrontierHashInfo;
   llvm::BasicBlock *BB;
@@ -58,8 +57,7 @@ public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, Packer *Pkr);
   std::unique_ptr<Frontier> advance(const VectorPack *VP, float &Cost,
-                                    llvm::TargetTransformInfo *TTI,
-                                    bool Shuffled = false) const;
+                                    llvm::TargetTransformInfo *TTI) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
   llvm::BasicBlock *getBasicBlock() const { return BB; }
@@ -71,7 +69,6 @@ public:
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
   }
-  bool shuffled() const { return Shuffled; }
   llvm::ArrayRef<const OperandPack *> getUnresolvedPacks() const {
     return UnresolvedPacks;
   }
@@ -105,6 +102,7 @@ struct FrontierHashInfo {
 
   static unsigned getHashValue(const Frontier *Frt) {
     using namespace llvm;
+#if 0
 
     if (Frt == getEmptyKey()) {
       return ~0;
@@ -112,6 +110,22 @@ struct FrontierHashInfo {
       return ~1;
     }
     return Frt->Hash;
+#else
+    if (Frt == getEmptyKey()) {
+      return hash_combine(reinterpret_cast<BasicBlock *>(0),
+          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
+          ArrayRef<const OperandPack *>());
+    } else if (Frt == getTombstoneKey()) {
+      return hash_combine(reinterpret_cast<BasicBlock *>(1),
+          ArrayRef<uint64_t>(), ArrayRef<uint64_t>(),
+          ArrayRef<const OperandPack *>());
+    }
+
+    return hash_combine(reinterpret_cast<BasicBlock *>(2),
+        Frt->UnresolvedScalars.getData(),
+        Frt->FreeInsts.getData(),
+        ArrayRef<const OperandPack *>(Frt->UnresolvedPacks));
+#endif
   }
 
   static bool isTombstoneOrEmpty(const Frontier *Frt) {
@@ -122,11 +136,11 @@ struct FrontierHashInfo {
     if (isTombstoneOrEmpty(A) || isTombstoneOrEmpty(B))
       return A == B;
 
-    return A->BB == B->BB && A->Shuffled == B->Shuffled &&
-           A->FreeInsts == B->FreeInsts &&
-           A->UnresolvedScalars == B->UnresolvedScalars &&
-           A->UsableInsts == B->UsableInsts &&
-           A->UnresolvedPacks == B->UnresolvedPacks;
+    return A->BB == B->BB && 
+      A->FreeInsts == B->FreeInsts &&
+      A->UnresolvedScalars == B->UnresolvedScalars &&
+      A->UsableInsts == B->UsableInsts &&
+      A->UnresolvedPacks == B->UnresolvedPacks;
   }
 };
 
@@ -136,7 +150,7 @@ class UCTNodeFactory {
   std::vector<std::unique_ptr<UCTNode>> Nodes;
   llvm::DenseMap<Frontier *, UCTNode *, FrontierHashInfo> FrontierToNodeMap;
 
-public:
+  public:
   UCTNodeFactory() : FrontierToNodeMap(1000000) {}
   UCTNode *getNode(std::unique_ptr<Frontier>);
 };
@@ -171,7 +185,7 @@ class UCTNode {
     return (Cost - CostRange->Min) / CostRange->range();
   }
 
-public:
+  public:
   // The next action state pair
   struct Transition {
     // If non-null then we've finished filling out a pack w/ this transition
@@ -181,27 +195,25 @@ public:
     uint64_t Count;
     float Cost; // Reward
     float Bias{0};
-    bool DisableShuffling;
 
-    Transition(const VectorPack *VP, bool DisableShuffling = false)
-        : I(nullptr), VP(VP), Next(nullptr), Count(0),
-          DisableShuffling(DisableShuffling) {}
+    Transition(const VectorPack *VP)
+      : I(nullptr), VP(VP), Next(nullptr), Count(0) {}
 
     Transition(llvm::Instruction *I)
-        : VP(nullptr), I(I), Next(nullptr), Count(0), DisableShuffling(true) {}
+      : VP(nullptr), I(I), Next(nullptr), Count(0) {}
 
     float visited() const { return Count > 0; }
 
     unsigned visitCount() const { return Count; }
 
     UCTNode *getNext(UCTNode *Parent, UCTNodeFactory *Factory,
-                     llvm::TargetTransformInfo *TTI) {
+        llvm::TargetTransformInfo *TTI) {
       if (Next)
         return Next;
 
       if (VP)
         Next = Factory->getNode(
-            Parent->getFrontier()->advance(VP, Cost, TTI, DisableShuffling));
+            Parent->getFrontier()->advance(VP, Cost, TTI));
       else if (I)
         Next = Factory->getNode(Parent->getFrontier()->advance(I, Cost, TTI));
 
@@ -221,19 +233,19 @@ public:
   // ``Transpositions and Move Groups in Monte Carlo Tree Search''
   float score(const Transition &T, float C) const {
     return -normalize(T.avgCost()) +
-           C * sqrt(logf(visitCount()) / float(T.visitCount())) +
-           T.Bias / float(T.visitCount());
+      C * sqrt(logf(visitCount()) / float(T.visitCount())) +
+      T.Bias / float(T.visitCount());
   }
 
-private:
+  private:
   std::vector<Transition> Transitions;
 
   bool IsTerminal;
 
   UCTNode(const Frontier *Frt)
-      : Frt(Frt), TotalCost(0), Count(0),
-        TransitionWeight(nullptr), IsTerminal(false) {}
-public:
+    : Frt(Frt), TotalCost(0), Count(0),
+    TransitionWeight(nullptr), IsTerminal(false) {}
+  public:
   float minCost() const { return CostRange->Min; }
   float maxCost() const { return CostRange->Max; }
   ~UCTNode() {
@@ -281,7 +293,7 @@ public:
 
   Packer *getPacker() const { return Frt->getPacker(); }
   static inline bool compareByVisitCount(const UCTNode::Transition &A,
-                                         const UCTNode::Transition &B) {
+      const UCTNode::Transition &B) {
     return A.visitCount() < B.visitCount();
   }
 };
@@ -297,10 +309,10 @@ struct DummyEvaluator : public FrontierEvaluator {
 
 class RolloutEvaluator : public FrontierEvaluator {
   llvm::DenseMap<const Frontier *, std::vector<VectorPack *>, FrontierHashInfo>
-      ExtensionCache;
+    ExtensionCache;
   std::vector<std::unique_ptr<Frontier>> Frontiers;
 
-public:
+  public:
   float evaluate(const Frontier *, const CandidatePackSet *) override;
 };
 
@@ -308,7 +320,7 @@ public:
 class PackingPolicy {
   unsigned MaxNumLanes;
 
-public:
+  public:
   PackingPolicy() = delete;
   PackingPolicy(unsigned MaxNumLanes) : MaxNumLanes(MaxNumLanes) {}
   virtual ~PackingPolicy() {}
@@ -340,14 +352,14 @@ class UCTSearch {
   const CandidatePackSet *CandidateSet;
   llvm::TargetTransformInfo *TTI;
 
-public:
+  public:
   UCTSearch(float C, float W, unsigned ExpandThreshold, UCTNodeFactory *Factory,
-            Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
-            const CandidatePackSet *CandidateSet,
-            llvm::TargetTransformInfo *TTI)
-      : C(C), W(W), ExpandThreshold(ExpandThreshold), Factory(Factory),
-        Pkr(Pkr), Policy(Policy), Evaluator(Evaluator), CandidateSet(CandidateSet),
-        TTI(TTI) {}
+      Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
+      const CandidatePackSet *CandidateSet,
+      llvm::TargetTransformInfo *TTI)
+    : C(C), W(W), ExpandThreshold(ExpandThreshold), Factory(Factory),
+    Pkr(Pkr), Policy(Policy), Evaluator(Evaluator), CandidateSet(CandidateSet),
+    TTI(TTI) {}
 
   void run(UCTNode *Root, unsigned Iter);
   float evalLeafNode(UCTNode *N);

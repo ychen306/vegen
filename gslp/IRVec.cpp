@@ -67,12 +67,12 @@ Value *IRVectorBinding::emit(ArrayRef<Value *> Operands,
 
 IRInstTable::IRInstTable() {
   std::vector<Instruction::BinaryOps> VectorizableOpcodes = {
-      Instruction::BinaryOps::Add,  Instruction::BinaryOps::FAdd,
-      Instruction::BinaryOps::Sub,  Instruction::BinaryOps::FSub,
-      Instruction::BinaryOps::Mul,  Instruction::BinaryOps::FMul,
-      Instruction::BinaryOps::UDiv, Instruction::BinaryOps::SDiv,
-      Instruction::BinaryOps::FDiv, Instruction::BinaryOps::URem,
-      Instruction::BinaryOps::SRem, Instruction::BinaryOps::FRem,
+      //Instruction::BinaryOps::Add,  Instruction::BinaryOps::FAdd,
+      //Instruction::BinaryOps::Sub,  Instruction::BinaryOps::FSub,
+      //Instruction::BinaryOps::Mul,  Instruction::BinaryOps::FMul,
+      //Instruction::BinaryOps::UDiv, Instruction::BinaryOps::SDiv,
+      //Instruction::BinaryOps::FDiv, Instruction::BinaryOps::URem,
+      //Instruction::BinaryOps::SRem, Instruction::BinaryOps::FRem,
       Instruction::BinaryOps::Shl,  Instruction::BinaryOps::LShr,
       Instruction::BinaryOps::AShr, Instruction::BinaryOps::And,
       Instruction::BinaryOps::Or,   Instruction::BinaryOps::Xor};

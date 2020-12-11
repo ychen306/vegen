@@ -139,7 +139,7 @@ VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                              ArrayRef<const VectorPack *> OtherPacks, Packer *Pkr) {
   auto *BB = MainPack->getBasicBlock();
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
-#if 0
+#if 1
   // Full, can't coalesce
   if (MainPack->getOrderedValues().size() == MainPack->getElements().count())
     return nullptr;

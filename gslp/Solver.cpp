@@ -5,6 +5,8 @@
 
 using namespace llvm;
 
+extern cl::opt<bool> AggressivePacking;
+
 static cl::opt<unsigned> MaxSearchDist(
     "max-search-dist",
     cl::value_desc(
@@ -121,7 +123,7 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     if (!I2 || I2->getParent() != BB)
       continue;
     unsigned InstId = VPCtx->getScalarId(I2);
-    if (FreeInsts.test(InstId)) {
+    if (FreeInsts.test(InstId) && !UnresolvedScalars.test(InstId)) {
       UnresolvedScalars.set(InstId);
       Hash ^= VPCtx->getHashValue2(InstId);
     }
@@ -302,8 +304,6 @@ float Frontier::replaceAllUnresolvedPacks(ArrayRef<const OperandPack *> OPs,
   UnresolvedPacks.insert(UnresolvedPacks.end(), OPs.begin(), OPs.end());
   std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
 
-  Shuffled = true;
-
   return 0;
   return Cost;
 }
@@ -339,13 +339,24 @@ raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
   return OS;
 }
 
+static unsigned computeHash(const Frontier *Frt) {
+  unsigned Hash = 0;
+  for (auto *OP : Frt->getUnresolvedPacks())
+    Hash ^= OP->Hash;
+  auto *VPCtx = Frt->getContext();
+  for (auto *V : Frt->getUnresolvedScalars())
+    Hash ^= VPCtx->getHashValue2(V);
+  for (unsigned i : Frt->getFreeInsts().set_bits())
+    Hash ^= VPCtx->getHashValue(i);
+  return Hash;
+}
+
 std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
-                                            llvm::TargetTransformInfo *TTI,
-                                            bool Shuffled) const {
+                                            llvm::TargetTransformInfo *TTI) const {
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
-  Next->Shuffled |= Shuffled;
+  //assert(Next->Hash == computeHash(Next.get()));
   return Next;
 }
 
@@ -355,6 +366,7 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(I, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
+  //assert(Next->Hash == computeHash(Next.get()));
   return Next;
 }
 
@@ -377,6 +389,8 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
 // Remove duplicate elements in OP
 static const OperandPack *dedup(const VectorPackContext *VPCtx,
                                 const OperandPack *OP) {
+  if (!AggressivePacking)
+    return OP;
   SmallPtrSet<Value *, 4> Seen;
   OperandPack Deduped;
   for (auto *V : *OP) {
@@ -432,6 +446,10 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
           if (!VP->getElements().anyCommon(UnusableIds) &&
               VP->getElements().test(InstId))
             Extensions.push_back(VP);
+        for (auto *VP : OPI.LoadProducers)
+          if (!VP->getElements().anyCommon(UnusableIds) &&
+              VP->getElements().test(InstId))
+            LoadExtensions.push_back(VP);
       }
       //////////
     }
@@ -460,10 +478,10 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
 
   if (!LoadExtensions.empty()) {
     auto *LoadVP = LoadExtensions.front();
-    if (auto *Coalesced = tryCoalesceLoads(
-            LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1), Pkr)) {
-      return {Coalesced, LoadVP};
-    }
+    //if (auto *Coalesced = tryCoalesceLoads(
+    //        LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1), Pkr)) {
+    //  return {Coalesced, LoadVP};
+    //}
     return {LoadVP};
   }
   return {};
@@ -704,7 +722,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     //  errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
 
-  errs() << "!!! num candidates: " << Enumerated.size() << '\n';
+  //errs() << "!!! num candidates: " << Enumerated.size() << '\n';
 
   std::vector<const VectorPack *> Packs;
   for (auto *OP : Enumerated) {
@@ -715,7 +733,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16 })
+      for (unsigned VL : {2, 4, 8, 16,32,64 })
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           Packs.push_back(VP);
     }
@@ -765,7 +783,7 @@ void UCTNode::expand(const CandidatePackSet *CandidateSet) {
   auto Extensions = findExtensionPacks(*Frt, CandidateSet);
   // Also consider the extension packs
   for (auto *VP : Extensions)
-    Transitions.emplace_back(VP, true /*disable shuffling*/);
+    Transitions.emplace_back(VP);
 
   if (Transitions.empty()) {
     for (auto *V : Frt->usableInsts()) {
@@ -1140,7 +1158,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 
   auto *TTI = Pkr->getTTI();
 
-  DPSolver Solver(TTI, &CandidateSet);
+  DPSolver Solver(TTI, AggressivePacking ? &CandidateSet : nullptr);
 
   std::vector<unsigned> VL{64, 32, 16, 8, 4, 2};
   // std::vector<unsigned> VL{16, 8, 4, 2};
@@ -1150,7 +1168,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   //VL = {64};
   //VL = {8};
   //VL = {16};
-  //VL = {4};
+  //VL = {8};
   float Cost = 0;
   float BestEst = 0;
 
@@ -1193,6 +1211,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
             if (auto *ExtVP = Sol.VP) {
               errs() << "Adding pack " << *ExtVP << '\n';
               Cost += Frt.advanceInplace(ExtVP, TTI);
+              errs() << "NEW COST: " << Cost << '\n';
               Packs.tryAdd(ExtVP);
             } else {
               break;

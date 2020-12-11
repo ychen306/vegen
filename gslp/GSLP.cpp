@@ -41,6 +41,9 @@
 using namespace llvm;
 using namespace PatternMatch;
 
+cl::opt<bool> AggressivePacking("aggressive", cl::desc("Turn on aggressive packing decisions"),
+    cl::init(false));
+
 static cl::opt<std::string>
     InstWrappersPath("inst-wrappers", cl::desc("Path to InstWrappers.bc"),
                      cl::Required);
@@ -231,6 +234,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  //if (!F.getName().contains("dot"))
+  //  return false;
   //if (!F.getName().contains("_Z5idct8PKsPs"))
   //  return false;
   ////if (!F.getName().contains("sbc"))
@@ -239,7 +244,8 @@ bool GSLP::runOnFunction(Function &F) {
   //if (!F.getName().contains("interp"))
   //  return false;
 
-  balanceReductionTree(F);
+  if (AggressivePacking)
+    balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
