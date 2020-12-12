@@ -552,6 +552,8 @@ public:
   Aligner(BasicBlock *BB, Packer *Pkr)
       : BB(BB), LayoutInfo(Pkr->getLoadInfo(BB)) {}
   float align(Instruction *I1, Instruction *I2) {
+    if (I1->getParent() != BB || I2->getParent() != BB || isa<PHINode>(I1) || isa<PHINode>(I2))
+      return MismatchCost;
     auto It = AlignmentCache.find({I1, I2});
     if (It != AlignmentCache.end())
       return It->second;
