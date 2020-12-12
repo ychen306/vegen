@@ -13,6 +13,18 @@ static cl::opt<unsigned> MaxSearchDist(
         "Max distance with which we consider two instructions packable."),
     cl::init(20));
 
+static unsigned computeHash(const Frontier *Frt) {
+  unsigned Hash = 0;
+  for (auto *OP : Frt->getUnresolvedPacks())
+    Hash ^= OP->Hash;
+  auto *VPCtx = Frt->getContext();
+  for (auto *V : Frt->getUnresolvedScalars())
+    Hash ^= VPCtx->getHashValue2(V);
+  for (unsigned i : Frt->getFreeInsts().set_bits())
+    Hash ^= VPCtx->getHashValue(i);
+  return Hash;
+}
+
 Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)),
       UnresolvedScalars(VPCtx->getNumValues(), false),
@@ -30,8 +42,10 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
       if (UserInst) {
         if (UserInst->getParent() != BB) {
           // Mark that `I` has a scalar use.
-          UnresolvedScalars.set(InstId);
-          Hash ^= VPCtx->getHashValue2(InstId);
+          if (UnresolvedScalars.test(InstId)) {
+            UnresolvedScalars.set(InstId);
+            Hash ^= VPCtx->getHashValue2(InstId);
+          }
         } else
           // `I` is used by some other instruction in `BB`
           AllUsersResolved = false;
@@ -41,6 +55,7 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     if (AllUsersResolved || isa<PHINode>(&I))
       UsableInsts.set(InstId);
   }
+  assert(Hash == computeHash(this));
 }
 
 void Frontier::freezeOneInst(Instruction *I) {
@@ -239,6 +254,7 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   }
 
   // Track the unresolved operand packs used by `VP`
+  SmallPtrSet<const OperandPack *, 8> UnresolvedSet(UnresolvedPacks.begin(), UnresolvedPacks.end());
   for (auto *OpndPack : VP->getOperandPacks()) {
     auto *OperandTy = getVectorType(*OpndPack);
     for (unsigned LaneId = 0; LaneId < OpndPack->size(); LaneId++) {
@@ -254,57 +270,17 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
                                             OperandTy, LaneId);
       }
     }
-    if (!resolved(*OpndPack) &&
-        !std::binary_search(UnresolvedPacks.begin(), UnresolvedPacks.end(),
-                            OpndPack)) {
-      Hash ^= OpndPack->Hash;
-      UnresolvedPacks.push_back(OpndPack);
+    if (!resolved(*OpndPack)) {
+      bool Inserted = UnresolvedSet.insert(OpndPack).second;
+      if (Inserted) {
+        Hash ^= OpndPack->Hash;
+        UnresolvedPacks.push_back(OpndPack);
+      }
     }
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
   std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
-  return Cost;
-}
-
-float Frontier::replaceAllUnresolvedPacks(ArrayRef<const OperandPack *> OPs,
-                                          TargetTransformInfo *TTI) {
-  float Cost = 0;
-  for (auto *OP : OPs) {
-    auto *VecTy = getVectorType(*OP);
-
-    // Tick off instructions taking part in `OP`
-    for (unsigned LaneId = 0; LaneId < OP->size(); LaneId++) {
-      if (!(*OP)[LaneId])
-        continue;
-      auto *I = dyn_cast<Instruction>((*OP)[LaneId]);
-      if (!I)
-        continue;
-      unsigned InstId = VPCtx->getScalarId(I);
-
-      // Pay the extract cost
-      if (UnresolvedScalars.test(InstId))
-        Cost +=
-            TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, LaneId);
-    }
-    const BitVector &Elements = Pkr->getProducerInfo(VPCtx, OP).Elements;
-
-    for (auto *OP2 : UnresolvedPacks) {
-      auto &OPI = Pkr->getProducerInfo(VPCtx, OP2);
-      if (OPI.Elements.anyCommon(Elements))
-        Cost += getGatherCost(*OP, *OP2, TTI);
-    }
-    Hash ^= OP->Hash;
-  }
-
-  for (auto *OP : UnresolvedPacks)
-    Hash ^= OP->Hash;
-
-  UnresolvedPacks.clear();
-  UnresolvedPacks.insert(UnresolvedPacks.end(), OPs.begin(), OPs.end());
-  std::sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
-
-  return 0;
   return Cost;
 }
 
@@ -339,34 +315,28 @@ raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
   return OS;
 }
 
-static unsigned computeHash(const Frontier *Frt) {
-  unsigned Hash = 0;
-  for (auto *OP : Frt->getUnresolvedPacks())
-    Hash ^= OP->Hash;
-  auto *VPCtx = Frt->getContext();
-  for (auto *V : Frt->getUnresolvedScalars())
-    Hash ^= VPCtx->getHashValue2(V);
-  for (unsigned i : Frt->getFreeInsts().set_bits())
-    Hash ^= VPCtx->getHashValue(i);
-  return Hash;
-}
-
 std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
                                             llvm::TargetTransformInfo *TTI) const {
+  assert(Hash == computeHash(this));
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
-  //assert(Next->Hash == computeHash(Next.get()));
+  if (Next->Hash != computeHash(Next.get())) {
+    errs() << "ADVANCED WITH " << *VP << '\n';
+    errs() << "??????? " << *Next << '\n';
+  }
+  assert(Next->Hash == computeHash(Next.get()));
   return Next;
 }
 
 std::unique_ptr<Frontier>
 Frontier::advance(llvm::Instruction *I, float &Cost,
                   llvm::TargetTransformInfo *TTI) const {
+  assert(Hash == computeHash(this));
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(I, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
-  //assert(Next->Hash == computeHash(Next.get()));
+  assert(Next->Hash == computeHash(Next.get()));
   return Next;
 }
 

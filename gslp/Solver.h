@@ -63,8 +63,6 @@ public:
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
-  float replaceAllUnresolvedPacks(llvm::ArrayRef<const OperandPack *>,
-                                  llvm::TargetTransformInfo *);
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
