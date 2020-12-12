@@ -321,10 +321,6 @@ std::unique_ptr<Frontier> Frontier::advance(const VectorPack *VP, float &Cost,
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
   std::sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
-  if (Next->Hash != computeHash(Next.get())) {
-    errs() << "ADVANCED WITH " << *VP << '\n';
-    errs() << "??????? " << *Next << '\n';
-  }
   assert(Next->Hash == computeHash(Next.get()));
   return Next;
 }
@@ -674,8 +670,6 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       float AlignmentCost = A.align(&I, &J);
       if (AlignmentCost < 0) {
-        errs() << "ALIGNED " << I << " AND " << J
-               << ", COST = " << AlignmentCost << '\n';
         AG[&I].push_back({&J, AlignmentCost});
       }
     }
@@ -1126,7 +1120,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     return GetChainLen(A) > GetChainLen(B);
   });
 
-  errs() << "??? num stores: " << Stores.size() << '\n';
+  //errs() << "??? num stores: " << Stores.size() << '\n';
 
   auto *TTI = Pkr->getTTI();
 
@@ -1156,15 +1150,11 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           float Est = estimateCost(Frt, SeedVP);
 #else
         float LocalCost;
-        errs() << "Estimating seed pack " << *SeedVP << '\n';
         auto Sol = Solver.solve(Frt.advance(SeedVP, LocalCost, TTI));
         float Est = LocalCost + Sol.Cost;
         auto *OP = SeedVP->getOperandPacks()[0];
         auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
 #endif
-        errs() << "Estimated cost of " << *SeedVP << " is " << Est
-               << ", local cost: " << LocalCost << ", trans cost: " << Sol.Cost
-               << '\n';
         if (Est < BestEst) {
 #if 0
             Cost += Frt.advanceInplace(SeedVP, TTI);
@@ -1178,12 +1168,12 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           for (;;) {
             // errs() << "!!! Adding : " << *ExtVP << '\n';
             // errs() << "\t updated cost: " << Cost << '\n';
-            errs() << "????\n";
+            //errs() << "????\n";
             auto Sol = Solver.solve(Frt);
             if (auto *ExtVP = Sol.VP) {
-              errs() << "Adding pack " << *ExtVP << '\n';
+              //errs() << "Adding pack " << *ExtVP << '\n';
               Cost += Frt.advanceInplace(ExtVP, TTI);
-              errs() << "NEW COST: " << Cost << '\n';
+              //errs() << "NEW COST: " << Cost << '\n';
               Packs.tryAdd(ExtVP);
             } else {
               break;
