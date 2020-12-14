@@ -12,7 +12,7 @@ Constant *AffineEmbedder::evaluate(Instruction *Out,
                                    std::vector<Value *> LiveIns,
                                    std::vector<Constant *> LiveInVals) const {
   DenseMap<Value *, Constant *> Values;
-  assert(LiveIns.size() == LiveInsVals.size());
+  assert(LiveIns.size() == LiveInVals.size());
   for (unsigned i = 0; i < LiveIns.size(); i++) {
     Values[LiveIns[i]] = LiveInVals[i];
   }
