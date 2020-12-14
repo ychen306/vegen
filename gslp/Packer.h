@@ -81,6 +81,7 @@ class Packer {
 
   llvm::TargetTransformInfo *TTI;
   llvm::BlockFrequencyInfo *BFI;
+  const llvm::DataLayout *DL;
 
 public:
   Packer(llvm::ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
@@ -108,6 +109,7 @@ public:
   LocalDependenceAnalysis &getLDA(llvm::BasicBlock *BB) { return *LDAs[BB]; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
+  const llvm::DataLayout *getDataLayout() { return DL; }
 
   llvm::Function *getFunction() const { return F; }
   const OperandProducerInfo &getProducerInfo(const VectorPackContext *,

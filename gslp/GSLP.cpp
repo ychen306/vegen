@@ -51,14 +51,6 @@ static cl::opt<std::string>
 static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                                     cl::init(false));
 
-static cl::opt<bool> UseBottomUp("use-bottom-up",
-                             cl::desc("Use the bottom up heuristics"),
-                             cl::init(false));
-
-static cl::opt<bool> UseMCTS("use-mcts",
-                             cl::desc("Use tree search during optimization"),
-                             cl::init(false));
-
 ///////// MCTS configs ///////////
 
 static cl::opt<float> ParamC("c",
@@ -243,6 +235,9 @@ bool GSLP::runOnFunction(Function &F) {
   //  return false;
   //if (!F.getName().contains("interp"))
   //  return false;
+  //if (!F.getName().contains("idct8"))
+  if (!F.getName().contains("_Z5idct8PKsPs"))
+    return false;
 
   if (AggressivePacking)
     balanceReductionTree(F);
