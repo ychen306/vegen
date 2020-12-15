@@ -123,7 +123,7 @@ float Embedding::operator-(const Embedding &E2) const {
   for (unsigned i = 0; i < N; i++) {
     DiffSqr += square(E1[i] - E2[i]);
   }
-  return std::sqrtf(std::powf(2 * S, N/2) * square(S) / 3. * DiffSqr);
+  return S * std::sqrtf(DiffSqr / 3.0);
 }
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const Embedding &E) {

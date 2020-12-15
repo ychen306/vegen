@@ -348,7 +348,6 @@ UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
   decltype(FrontierToNodeMap)::iterator It;
   bool Inserted;
   std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
-  assert(Inserted);
   if (Inserted) {
     It->first = Frt.get();
     auto *NewNode = new UCTNode(Frt.get());
@@ -558,30 +557,10 @@ class Aligner {
   static constexpr float GatherCost = 1.0;
   static constexpr float MatchReward = -2.0;
 
-  AffineEmbedder Embedder;
-  DenseMap<Instruction *, Optional<Embedding>> Embeddings;
-  Optional<Embedding> getEmbedding(Instruction *I) {
-    auto It = Embeddings.find(I);
-    if (It != Embeddings.end())
-      return It->second;
-    auto E = Embedder.embed(I);
-    errs() << "Embedding of " << *I << ": " << E << '\n';
-    return Embeddings[I] = E;
-  }
-
 public:
   Aligner(BasicBlock *BB, Packer *Pkr)
-      : BB(BB), LayoutInfo(Pkr->getLoadInfo(BB)), Embedder(BB, Pkr->getDataLayout()) {}
+      : BB(BB), LayoutInfo(Pkr->getLoadInfo(BB)) {}
   float align(Instruction *I1, Instruction *I2) {
-#if 1
-    auto E1OrNull = getEmbedding(I1);
-    auto E2OrNull = getEmbedding(I2);
-    if (!E1OrNull || !E2OrNull)
-      return 10000000;
-    auto E1 = *E1OrNull;
-    auto E2 = *E2OrNull;
-    return (E1 - E2);
-#else
     if (I1->getParent() != BB || I2->getParent() != BB || isa<PHINode>(I1) ||
         isa<PHINode>(I2))
       return MismatchCost;
@@ -626,7 +605,6 @@ public:
       }
     }
     return AlignmentCache[{I1, I2}] = Cost;
-#endif
   }
 };
 
@@ -691,9 +669,30 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto &LDA = Pkr->getLDA(BB);
   auto *VPCtx = Pkr->getContext(BB);
   Aligner A(BB, Pkr);
+  Metricizer<AffineEmbedder> Metric(AffineEmbedder(BB, Pkr->getDataLayout()));
+  auto &LayoutInfo = Pkr->getStoreInfo(BB);
 
   AlignmentGraph AG;
   for (auto &I : *BB) {
+#if 0
+    if (auto *SI = dyn_cast<StoreInst>(&I)) {
+      auto Info = LayoutInfo.get(SI);
+      if (Info.Id == 0) {
+        for (auto *VP : getSeedMemPacks(Pkr, BB, SI, 16)) {
+          auto *OP = VP->getOperandPacks()[0];
+          errs() << "SIMILARITY MATRIX:\n";
+          for (auto *V1 : *OP) {
+            for (auto *V2 : *OP) {
+              errs() << (A.align(cast<Instruction>(V1), cast<Instruction>(V2)) /*< 10*/) << ' ';
+            }
+            errs() << '\n';
+          }
+          abort();
+        }
+      }
+    }
+#endif
+
     if (!usedByStore(&I))
       continue;
     auto Independent = LDA.getIndependent(&I);
@@ -704,9 +703,9 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       if (!Independent.test(VPCtx->getScalarId(&J)))
         continue;
-      float AlignmentCost = A.align(&I, &J);
-      if (AlignmentCost < 1) {
-        AG[&I].push_back({&J, AlignmentCost});
+      float Dist = Metric.getDistance(&I, &J);
+      if (Dist < 1) {
+        AG[&I].push_back({&J, A.align(&I, &J)});
       }
     }
   }
@@ -718,9 +717,9 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
       continue;
     unsigned OldSize = Enumerated.size();
     if (UseMCTS) {
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 4 /*VL*/);
+      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 4 /*VL*/);
       enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 8 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 16 /*VL*/);
+      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 16 /*VL*/);
     }
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
