@@ -609,6 +609,7 @@ public:
 };
 
 bool usedByStore(Value *V) {
+  return true;
   for (User *U : V->users())
     if (auto *SI = dyn_cast<StoreInst>(U))
       return SI->getValueOperand() == V;
@@ -717,13 +718,31 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
       continue;
     unsigned OldSize = Enumerated.size();
     if (UseMCTS) {
-      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 4 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 8 /*VL*/);
-      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 16 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 4 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 8 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 16 /*VL*/);
     }
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
+#if 0
+  {
+      auto X = Enumerated;
+      for (auto *OP : Enumerated) {
+        for (auto *OP2 : Enumerated) {
+          if (OP == OP2)
+            continue;
+          if (OP->size() != 8 || OP2->size() != 8)
+            continue;
+          OperandPack Concat = *OP;
+          for (auto *V : *OP2)
+            Concat.push_back(V);
+          X.push_back(VPCtx->getCanonicalOperandPack(Concat));
+        }
+      }
+      Enumerated = X;
+  }
+#endif
 
   // errs() << "!!! num candidates: " << Enumerated.size() << '\n';
 
@@ -1232,7 +1251,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     UCTSearch MCTS(0.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                    nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
     UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
-    unsigned NumSimulations = 1000;
+    unsigned NumSimulations = 10000;
     float TotalCost = 0;
     Root->expand(&CandidateSet);
 
