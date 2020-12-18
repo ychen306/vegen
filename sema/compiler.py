@@ -8,6 +8,7 @@ from sema_ast import *
 from fp_sema import *
 import z3
 import z3_utils
+from z3_utils import fix_bitwidth
 import math
 
 '''
@@ -100,13 +101,6 @@ def match_bitwidth(a, b, signed=False):
     a = z3.ZeroExt(bitwidth-a.size(), a)
     b = z3.ZeroExt(bitwidth-b.size(), b)
   return a, b
-
-def fix_bitwidth(x, bitwidth, signed=False):
-  if x.size() < bitwidth:
-    if signed:
-      return z3.SignExt(bitwidth-x.size(), x)
-    return z3.ZeroExt(bitwidth-x.size(), x)
-  return z3.Extract(bitwidth-1, 0, x)
 
 def is_constant(x):
   return isinstance(x, z3.BitVecNumRef)
