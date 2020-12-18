@@ -81,8 +81,9 @@ static std::vector<Value *> getLiveIns(Instruction *I, BasicBlock *BB) {
 
 // Embed an expression by evaluating it with the unit vectors
 Optional<Embedding> AffineEmbedder::embed(Instruction *I, bool Signed) const {
-  assert(I->getType()->isIntegerTy() || I->getType()->isFloatingPointTy() ||
-         "can only embed numeric values");
+  // Can only embed numeric values
+  if (!I->getType()->isIntegerTy() && !I->getType()->isFloatingPointTy())
+    return Optional<Embedding>();
   std::vector<Value *> LiveIns = getLiveIns(I, BB);
   std::vector<Constant *> Zeros;
   for (auto *V : LiveIns)

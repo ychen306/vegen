@@ -236,7 +236,7 @@ bool GSLP::runOnFunction(Function &F) {
   //if (!F.getName().contains("interp"))
   //  return false;
   //if (!F.getName().contains("idct8"))
-  if (!F.getName().contains("_Z5idct8PKsPs"))
+  if (!F.getName().contains("_Z5idct4PKsPs"))
     return false;
 
   if (AggressivePacking)
@@ -253,6 +253,8 @@ bool GSLP::runOnFunction(Function &F) {
 
   std::vector<InstBinding *> SupportedIntrinsics;
   for (auto &Inst : Insts) {
+    if (Inst.getName().contains("hadd"))
+      continue;
     //if (Inst.getName().contains("hadd_ps"))
     //  continue;
     //if (Inst.getName().contains("hsub_ps"))
