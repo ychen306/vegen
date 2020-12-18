@@ -99,6 +99,14 @@ class Evaluator:
       return a >> b
     return z3.LShR(a, b)
 
+  def cmp_lt(self, a, b):
+    if self.is_float:
+      lt = fp_sema.binary_float_cmp('lt', use_uninterpreted=True)
+      return lt(a, b)[0] == 1
+    if not self.is_signed:
+      return z3.ULT(a, b)
+    return a < b
+
 class Add(Evaluator):
   def run(self, args):
     return self.add(*args)
@@ -188,6 +196,16 @@ class RoundingSubHighHalf(Evaluator):
     bw = a.size()
     return z3.Extract(bw-1, bw//2, self.sub(a, b) + (1 << (bw//2-1)))
 
+class AbsoluteDifference(Evaluator):
+  def run(self, args):
+    a, b = args
+    return z3.If(self.cmp_lt(a, b), self.sub(b, a), self.sub(a, b))
+
+class AbsoluteDifferenceAccumulate(Evaluator):
+  def run(self, args):
+    r, a, b = args
+    return self.add(r, z3.If(self.cmp_lt(a, b), self.sub(b, a), self.sub(a, b)))
+
 evaluators = {
     'add': Add,
     'hadd': HalvingAdd,
@@ -205,6 +223,8 @@ evaluators = {
     'hsub': HalvingSub,
     'subhn': SubHighHalf,
     'rsubhn': RoundingSubHighHalf,
+    'abd': AbsoluteDifference,
+    'aba': AbsoluteDifferenceAccumulate,
     }
 
 #print(gen_simd(Add, 'int8x8_t    vadd_s8(int8x8_t a, int8x8_t b);         // VADD.I8 d0,d0,d0'))
@@ -219,6 +239,12 @@ evaluators = {
 #print(gen_simd(Mul, "uint8x8_t   vmul_u8(uint8x8_t a, uint8x8_t b);       // VMUL.I8 d0,d0,d0 "))
 #print(gen_simd(MultiplyAccumulate, "int8x8_t    vmla_s8(int8x8_t a, int8x8_t b, int8x8_t c);        // VMLA.I8 d0,d0,d0 "))
 #print(gen_simd(MultiplyAccumulate, "uint16x8_t vmlal_u8(uint16x8_t a, uint8x8_t b, uint8x8_t c);    // VMLAL.U8 q0,d0,d0 "))
+#print(gen_simd(AbsoluteDifference, 'int8x8_t    vabd_s8(int8x8_t a, int8x8_t b);         // VABD.S8 d0,d0,d0 '))
+#print(gen_simd(AbsoluteDifference, 'float32x4_t vabdq_f32(float32x4_t a, float32x4_t b); // VABD.F32 q0,q0,q0'))
+#print(gen_simd(AbsoluteDifference, 'uint64x2_t vabdl_u32(uint32x2_t a, uint32x2_t b);'))
+#print(gen_simd(AbsoluteDifferenceAccumulate, 'int8x8_t   vaba_s8(int8x8_t a, int8x8_t b, int8x8_t c);'))
+#print(gen_simd(AbsoluteDifferenceAccumulate, 'uint64x2_t vabal_u32(uint64x2_t a, uint32x2_t b, uint32x2_t c);'))
+#exit()
 
 intrinsics_f = sys.argv[1]
 with open(intrinsics_f) as f:
