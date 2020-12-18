@@ -206,6 +206,16 @@ class AbsoluteDifferenceAccumulate(Evaluator):
     r, a, b = args
     return self.add(r, z3.If(self.cmp_lt(a, b), self.sub(b, a), self.sub(a, b)))
 
+class Max(Evaluator):
+  def run(self, args):
+    a, b = args
+    return z3.If(self.cmp_lt(a, b), b, a)
+
+class Min(Evaluator):
+  def run(self, args):
+    a, b = args
+    return z3.If(self.cmp_lt(a, b), a, b)
+
 evaluators = {
     'add': Add,
     'hadd': HalvingAdd,
@@ -225,6 +235,8 @@ evaluators = {
     'rsubhn': RoundingSubHighHalf,
     'abd': AbsoluteDifference,
     'aba': AbsoluteDifferenceAccumulate,
+    'max': Max,
+    'min': Min,
     }
 
 #print(gen_simd(Add, 'int8x8_t    vadd_s8(int8x8_t a, int8x8_t b);         // VADD.I8 d0,d0,d0'))

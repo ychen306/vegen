@@ -274,5 +274,37 @@
     "uint16x8_t vabal_u8(uint16x8_t a, uint8x8_t b, uint8x8_t c);    // VABAL.U8 q0,d0,d0 ",
     "uint32x4_t vabal_u16(uint32x4_t a, uint16x4_t b, uint16x4_t c); // VABAL.U16 q0,d0,d0",
     "uint64x2_t vabal_u32(uint64x2_t a, uint32x2_t b, uint32x2_t c); // VABAL.U32 q0,d0,d0"
+  ],
+  "max": [
+    "int8x8_t    vmax_s8(int8x8_t a, int8x8_t b);         // VMAX.S8 d0,d0,d0 ",
+    "int16x4_t   vmax_s16(int16x4_t a, int16x4_t b);      // VMAX.S16 d0,d0,d0",
+    "int32x2_t   vmax_s32(int32x2_t a, int32x2_t b);      // VMAX.S32 d0,d0,d0",
+    "uint8x8_t   vmax_u8(uint8x8_t a, uint8x8_t b);       // VMAX.U8 d0,d0,d0 ",
+    "uint16x4_t  vmax_u16(uint16x4_t a, uint16x4_t b);    // VMAX.U16 d0,d0,d0",
+    "uint32x2_t  vmax_u32(uint32x2_t a, uint32x2_t b);    // VMAX.U32 d0,d0,d0",
+    "float32x2_t vmax_f32(float32x2_t a, float32x2_t b);  // VMAX.F32 d0,d0,d0",
+    "int8x16_t   vmaxq_s8(int8x16_t a, int8x16_t b);      // VMAX.S8 q0,q0,q0 ",
+    "int16x8_t   vmaxq_s16(int16x8_t a, int16x8_t b);     // VMAX.S16 q0,q0,q0",
+    "int32x4_t   vmaxq_s32(int32x4_t a, int32x4_t b);     // VMAX.S32 q0,q0,q0",
+    "uint8x16_t  vmaxq_u8(uint8x16_t a, uint8x16_t b);    // VMAX.U8 q0,q0,q0 ",
+    "uint16x8_t  vmaxq_u16(uint16x8_t a, uint16x8_t b);   // VMAX.U16 q0,q0,q0",
+    "uint32x4_t  vmaxq_u32(uint32x4_t a, uint32x4_t b);   // VMAX.U32 q0,q0,q0",
+    "float32x4_t vmaxq_f32(float32x4_t a, float32x4_t b); // VMAX.F32 q0,q0,q0"
+  ],
+  "min": [
+    "int8x8_t    vmin_s8(int8x8_t a, int8x8_t b);         // VMIN.S8 d0,d0,d0 ",
+    "int16x4_t   vmin_s16(int16x4_t a, int16x4_t b);      // VMIN.S16 d0,d0,d0",
+    "int32x2_t   vmin_s32(int32x2_t a, int32x2_t b);      // VMIN.S32 d0,d0,d0",
+    "uint8x8_t   vmin_u8(uint8x8_t a, uint8x8_t b);       // VMIN.U8 d0,d0,d0 ",
+    "uint16x4_t  vmin_u16(uint16x4_t a, uint16x4_t b);    // VMIN.U16 d0,d0,d0",
+    "uint32x2_t  vmin_u32(uint32x2_t a, uint32x2_t b);    // VMIN.U32 d0,d0,d0",
+    "float32x2_t vmin_f32(float32x2_t a, float32x2_t b);  // VMIN.F32 d0,d0,d0",
+    "int8x16_t   vminq_s8(int8x16_t a, int8x16_t b);      // VMIN.S8 q0,q0,q0 ",
+    "int16x8_t   vminq_s16(int16x8_t a, int16x8_t b);     // VMIN.S16 q0,q0,q0",
+    "int32x4_t   vminq_s32(int32x4_t a, int32x4_t b);     // VMIN.S32 q0,q0,q0",
+    "uint8x16_t  vminq_u8(uint8x16_t a, uint8x16_t b);    // VMIN.U8 q0,q0,q0 ",
+    "uint16x8_t  vminq_u16(uint16x8_t a, uint16x8_t b);   // VMIN.U16 q0,q0,q0",
+    "uint32x4_t  vminq_u32(uint32x4_t a, uint32x4_t b);   // VMIN.U32 q0,q0,q0",
+    "float32x4_t vminq_f32(float32x4_t a, float32x4_t b); // VMIN.F32 q0,q0,q0"
   ]
 }
