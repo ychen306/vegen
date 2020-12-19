@@ -186,3 +186,9 @@ def get_saturator(in_size, out_size, signed):
   out_ty_z3 = z3.BitVecSort(out_size)
   builtin_name = 'Saturate_%s_to_%s' % (in_ty_str, out_ty_str)
   return get_uninterpreted_func(builtin_name, [in_ty_z3, out_ty_z3])
+
+def concat(xs):
+  if len(xs) == 1:
+    return xs[0]
+  return z3.Concat(*xs)
+

@@ -33,14 +33,9 @@ def split_vector(x, stride):
   return [z3.Extract(i * stride + stride - 1, i * stride, x)
       for i in range(x.size() // stride)]
 
-intrin_re = re.compile(r'[a-z0-9_]+\s*([a-z0-9_]+)\(.*')
+intrin_re = re.compile(r'[a-z0-9_]+\s*([a-z0-9_]+)\s*\(.*')
 def get_intrin_name(sig):
   return intrin_re.match(sig).group(1)
-
-def concat(xs):
-  if len(xs) == 1:
-    return xs[0]
-  return z3.Concat(*xs)
 
 def select(vec, vec_ty, i):
   n = vec_ty.elem_size
@@ -53,7 +48,7 @@ def gen_non_simd(run, sig):
   #evaluator = eval_ty(is_signed, is_float)
   vecs = [new_sym_val(elem_size * num_elems) for elem_size, num_elems, _, _ in vec_types]
   y = run(vecs, vec_types, ty)
-  return vecs, z3.simplify(concat(list(reversed(y))))
+  return vecs, z3.simplify(concat(list(reversed(y)))), ty
 
 def gen_simd(eval_ty, sig):
   def run(vecs, vec_types, ty):
@@ -414,32 +409,27 @@ matmuls = [
     "int32x4_t vusmmlaq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)",
     ]
 
+semas = {}
+
 for category, intrinsics in arm_simd.simds.items():
   evaluator_ty = evaluators[category]
   for intrin in intrinsics:
-    print(intrin)
-    gen_simd(evaluator_ty, intrin)
+    semas[get_intrin_name(intrin)] = gen_simd(evaluator_ty, intrin)
 
 for intrin in padds:
-  print(intrin)
-  gen_pairwise(Add, intrin)
+  semas[get_intrin_name(intrin)] = gen_pairwise(Add, intrin)
 
 for intrin in adals:
-  print(intrin)
-  gen_pairwise_accumulate(intrin)
+  semas[get_intrin_name(intrin)] = gen_pairwise_accumulate(intrin)
 
 for intrin in folding_maxs:
-  print(intrin)
-  gen_pairwise(Max, intrin)
+  semas[get_intrin_name(intrin)] = gen_pairwise(Max, intrin)
 
 for intrin in folding_mins:
-  print(intrin)
-  gen_pairwise(Min, intrin)
+  semas[get_intrin_name(intrin)] = gen_pairwise(Min, intrin)
 
 for intrin in dots:
-  print(intrin)
-  gen_dot(intrin)
+  semas[get_intrin_name(intrin)] = gen_dot(intrin)
 
 for intrin in matmuls:
-  print(intrin)
-  gen_matmul(intrin)
+  semas[get_intrin_name(intrin)] = gen_matmul(intrin)
