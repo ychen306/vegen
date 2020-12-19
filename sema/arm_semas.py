@@ -48,27 +48,16 @@ def gen_non_simd(run, sig):
   #evaluator = eval_ty(is_signed, is_float)
   vecs = [new_sym_val(elem_size * num_elems) for elem_size, num_elems, _, _ in vec_types]
   y = run(vecs, vec_types, ty)
-  return vecs, z3.simplify(concat(list(reversed(y)))), ty
+  return vecs, z3.simplify(concat(list(reversed(y)))), ty, sig[:sig.index(')')+1]
 
 def gen_simd(eval_ty, sig):
   def run(vecs, vec_types, ty):
     evaluator = eval_ty(ty.is_signed, ty.is_float)
     return [z3.Extract(ty.elem_size-1, 0, evaluator.run(x))
-        for x in zip(*(split_vector(vec, elem_size)
-          for vec, (elem_size, _, _, _) in zip(vecs, vec_types)
+        for x in zip(*(split_vector(vec, vec_ty.elem_size)
+          for vec, vec_ty in zip(vecs, vec_types)
     ))]
   return gen_non_simd(run, sig)
-  #vec_types = [parse_vector_type(arg.split()[0])
-  #    for arg in sig[sig.index('(')+1:sig.index(')')].split(',')]
-  #elem_size, _, is_signed, is_float = parse_vector_type(sig.strip().split()[0])
-  #evaluator = eval_ty(is_signed, is_float)
-  #vecs = [new_sym_val(elem_size * num_elems) for elem_size, num_elems, _, _ in vec_types]
-  ## wtf is this
-  #y = [z3.Extract(elem_size-1, 0, evaluator.run(x))
-  #    for x in zip(*(split_vector(vec, elem_size)
-  #  for vec, (elem_size, _, _, _) in zip(vecs, vec_types)
-  #  ))]
-  #return vecs, z3.simplify(concat(list(reversed(y))))
 
 def gen_pairwise(binop_ty, sig):
   def run(vecs, vec_types, ty):

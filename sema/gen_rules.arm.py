@@ -13,7 +13,7 @@ intrin2cost = { intrin : 1 for intrin in lifted.keys() }
 
 bundles = {}
 for inst, (_, out_ids, dag) in iter(lifted.items()):
-  xs, y, y_ty = semas[inst]
+  xs, y, y_ty, _ = semas[inst]
   input_types = [InputType(bitwidth=x.size(), is_constant=False) for x in xs]
   output_sizes = [y_ty.num_elems * y_ty.elem_size]
   sig = input_types, output_sizes

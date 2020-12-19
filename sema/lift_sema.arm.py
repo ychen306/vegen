@@ -13,7 +13,7 @@ debug = 'vpaddl_u32'
 debug = None
 if debug is not None:
   translator = Translator()
-  xs, y, y_ty = semas[debug]
+  xs, y, y_ty, _ = semas[debug]
   liveins = [x.decl().name() for x in xs]
   y_reduced = reduce_bitwidth(y)
   y = y_reduced
@@ -23,7 +23,7 @@ if debug is not None:
 pbar = tqdm(iter(semas.items()), total=len(semas))
 for inst, sema in pbar:
   translator = Translator()
-  xs, y, y_ty = sema
+  xs, y, y_ty, _ = sema
   liveins = [x.decl().name() for x in xs]
   y_reduced = reduce_bitwidth(y)
   y = y_reduced

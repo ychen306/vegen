@@ -44,10 +44,3 @@ with open('InstWrappers.c', 'w') as outf:
     else:
       for imm in range(1<<specs[inst].imm_width):
         emit_wrapper(inst, xs, spec, imm, outf)
-
-with open('inst_wrappers.flags', 'w') as outf:
-  cpuids = set()
-  for inst in semas.keys():
-    for cpuid in specs[inst].cpuids:
-      cpuids.add(cpuid)
-  outf.write(' '.join('-m'+cpuid for cpuid in cpuids))
