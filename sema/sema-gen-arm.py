@@ -42,18 +42,64 @@ def concat(xs):
     return xs[0]
   return z3.Concat(*xs)
 
-def gen_simd(eval_ty, sig):
+def select(vec, vec_ty, i):
+  n = vec_ty.elem_size
+  return z3.Extract(i * n + n - 1, i * n, vec)
+
+def gen_non_simd(run, sig):
   vec_types = [parse_vector_type(arg.split()[0])
       for arg in sig[sig.index('(')+1:sig.index(')')].split(',')]
-  elem_size, _, is_signed, is_float = parse_vector_type(sig.strip().split()[0])
-  evaluator = eval_ty(is_signed, is_float)
+  elem_size, num_elems, is_signed, is_float = ty = parse_vector_type(sig.strip().split()[0])
+  #evaluator = eval_ty(is_signed, is_float)
   vecs = [new_sym_val(elem_size * num_elems) for elem_size, num_elems, _, _ in vec_types]
-  # wtf is this
-  y = [z3.Extract(elem_size-1, 0, evaluator.run(x))
-      for x in zip(*(split_vector(vec, elem_size)
-    for vec, (elem_size, _, _, _) in zip(vecs, vec_types)
-    ))]
+  y = run(vecs, vec_types, ty)
   return vecs, z3.simplify(concat(list(reversed(y))))
+
+def gen_simd(eval_ty, sig):
+  def run(vecs, vec_types, ty):
+    evaluator = eval_ty(ty.is_signed, ty.is_float)
+    return [z3.Extract(ty.elem_size-1, 0, evaluator.run(x))
+        for x in zip(*(split_vector(vec, elem_size)
+          for vec, (elem_size, _, _, _) in zip(vecs, vec_types)
+    ))]
+  return gen_non_simd(run, sig)
+  #vec_types = [parse_vector_type(arg.split()[0])
+  #    for arg in sig[sig.index('(')+1:sig.index(')')].split(',')]
+  #elem_size, _, is_signed, is_float = parse_vector_type(sig.strip().split()[0])
+  #evaluator = eval_ty(is_signed, is_float)
+  #vecs = [new_sym_val(elem_size * num_elems) for elem_size, num_elems, _, _ in vec_types]
+  ## wtf is this
+  #y = [z3.Extract(elem_size-1, 0, evaluator.run(x))
+  #    for x in zip(*(split_vector(vec, elem_size)
+  #  for vec, (elem_size, _, _, _) in zip(vecs, vec_types)
+  #  ))]
+  #return vecs, z3.simplify(concat(list(reversed(y))))
+
+def gen_pairwise(binop_ty, sig):
+  def run(vecs, vec_types, ty):
+    evaluator = binop_ty(ty.is_signed, ty.is_float)
+    y = []
+    for x, x_ty in zip(vecs, vec_types):
+      for i in range(x_ty.num_elems//2):
+        y.append(z3.Extract(ty.elem_size-1, 0,
+          evaluator.run(args=(select(x, x_ty, 2*i), select(x, x_ty, 2*i+1)))))
+    return y
+  return gen_non_simd(run, sig)
+
+def gen_pairwise_accumulate(sig):
+  def run(vecs, vec_types, ty):
+    add = Evaluator(ty.is_signed, ty.is_float).add
+    a, b = vecs
+    a_ty, b_ty = vec_types
+    assert a_ty == ty
+    y = []
+    for i in range(ty.num_elems):
+      y.append(
+          z3.Extract(ty.elem_size-1, 0,
+          add(select(a, a_ty, i),
+            add(select(b, b_ty, 2*i), select(b, b_ty, 2*i+1)))))
+    return y
+  return gen_non_simd(run, sig)
 
 def round_bitwidth(bw):
   if bw <= 8:
@@ -258,10 +304,82 @@ evaluators = {
 #print(gen_simd(AbsoluteDifferenceAccumulate, 'uint64x2_t vabal_u32(uint64x2_t a, uint32x2_t b, uint32x2_t c);'))
 #exit()
 
+padds = [
+    "int8x8_t    vpadd_s8(int8x8_t a, int8x8_t b);        // VPADD.I8 d0,d0,d0 ",
+    "int16x4_t   vpadd_s16(int16x4_t a, int16x4_t b);     // VPADD.I16 d0,d0,d0",
+    "int32x2_t   vpadd_s32(int32x2_t a, int32x2_t b);     // VPADD.I32 d0,d0,d0",
+    "uint8x8_t   vpadd_u8(uint8x8_t a, uint8x8_t b);      // VPADD.I8 d0,d0,d0 ",
+    "uint16x4_t  vpadd_u16(uint16x4_t a, uint16x4_t b);   // VPADD.I16 d0,d0,d0",
+    "uint32x2_t  vpadd_u32(uint32x2_t a, uint32x2_t b);   // VPADD.I32 d0,d0,d0",
+    "float32x2_t vpadd_f32(float32x2_t a, float32x2_t b); // VPADD.F32 d0,d0,d0",
+    "int16x4_t  vpaddl_s8(int8x8_t a);      // VPADDL.S8 d0,d0 ",
+    "int32x2_t  vpaddl_s16(int16x4_t a);    // VPADDL.S16 d0,d0",
+    "int64x1_t  vpaddl_s32(int32x2_t a);    // VPADDL.S32 d0,d0",
+    "uint16x4_t vpaddl_u8(uint8x8_t a);     // VPADDL.U8 d0,d0 ",
+    "uint32x2_t vpaddl_u16(uint16x4_t a);   // VPADDL.U16 d0,d0",
+    "uint64x1_t vpaddl_u32(uint32x2_t a);   // VPADDL.U32 d0,d0",
+    "int16x8_t  vpaddlq_s8(int8x16_t a);    // VPADDL.S8 q0,q0 ",
+    "int32x4_t  vpaddlq_s16(int16x8_t a);   // VPADDL.S16 q0,q0",
+    "int64x2_t  vpaddlq_s32(int32x4_t a);   // VPADDL.S32 q0,q0",
+    "uint16x8_t vpaddlq_u8(uint8x16_t a);   // VPADDL.U8 q0,q0 ",
+    "uint32x4_t vpaddlq_u16(uint16x8_t a);  // VPADDL.U16 q0,q0",
+    "uint64x2_t vpaddlq_u32(uint32x4_t a);  // VPADDL.U32 q0,q0",
+    ]
+
+# long pairwise add and accumulate
+adals = [
+    "int16x4_t  vpadal_s8(int16x4_t a, int8x8_t b);      // VPADAL.S8 d0,d0 ",
+    "int32x2_t  vpadal_s16(int32x2_t a, int16x4_t b);    // VPADAL.S16 d0,d0",
+    "int64x1_t  vpadal_s32(int64x1_t a, int32x2_t b);    // VPADAL.S32 d0,d0",
+    "uint16x4_t vpadal_u8(uint16x4_t a, uint8x8_t b);    // VPADAL.U8 d0,d0 ",
+    "uint32x2_t vpadal_u16(uint32x2_t a, uint16x4_t b);  // VPADAL.U16 d0,d0",
+    "uint64x1_t vpadal_u32(uint64x1_t a, uint32x2_t b);  // VPADAL.U32 d0,d0",
+    "int16x8_t  vpadalq_s8(int16x8_t a, int8x16_t b);    // VPADAL.S8 q0,q0 ",
+    "int32x4_t  vpadalq_s16(int32x4_t a, int16x8_t b);   // VPADAL.S16 q0,q0",
+    "int64x2_t  vpadalq_s32(int64x2_t a, int32x4_t b);   // VPADAL.S32 q0,q0",
+    "uint16x8_t vpadalq_u8(uint16x8_t a, uint8x16_t b);  // VPADAL.U8 q0,q0 ",
+    "uint32x4_t vpadalq_u16(uint32x4_t a, uint16x8_t b); // VPADAL.U16 q0,q0",
+    "uint64x2_t vpadalq_u32(uint64x2_t a, uint32x4_t b); // VPADAL.U32 q0,q0"
+    ]
+
+folding_maxs = [
+    "int8x8_t    vpmax_s8(int8x8_t a, int8x8_t b);        // VPMAX.S8 d0,d0,d0 ",
+    "int16x4_t   vpmax_s16(int16x4_t a, int16x4_t b);     // VPMAX.S16 d0,d0,d0",
+    "int32x2_t   vpmax_s32(int32x2_t a, int32x2_t b);     // VPMAX.S32 d0,d0,d0",
+    "uint8x8_t   vpmax_u8(uint8x8_t a, uint8x8_t b);      // VPMAX.U8 d0,d0,d0 ",
+    "uint16x4_t  vpmax_u16(uint16x4_t a, uint16x4_t b);   // VPMAX.U16 d0,d0,d0",
+    "uint32x2_t  vpmax_u32(uint32x2_t a, uint32x2_t b);   // VPMAX.U32 d0,d0,d0",
+    "float32x2_t vpmax_f32(float32x2_t a, float32x2_t b); // VPMAX.F32 d0,d0,d0",
+    ]
+
+folding_mins = [
+    "int8x8_t    vpmin_s8(int8x8_t a, int8x8_t b);        // VPMIN.S8 d0,d0,d0 ",
+    "int16x4_t   vpmin_s16(int16x4_t a, int16x4_t b);     // VPMIN.S16 d0,d0,d0",
+    "int32x2_t   vpmin_s32(int32x2_t a, int32x2_t b);     // VPMIN.S32 d0,d0,d0",
+    "uint8x8_t   vpmin_u8(uint8x8_t a, uint8x8_t b);      // VPMIN.U8 d0,d0,d0 ",
+    "uint16x4_t  vpmin_u16(uint16x4_t a, uint16x4_t b);   // VPMIN.U16 d0,d0,d0",
+    "uint32x2_t  vpmin_u32(uint32x2_t a, uint32x2_t b);   // VPMIN.U32 d0,d0,d0",
+    "float32x2_t vpmin_f32(float32x2_t a, float32x2_t b); // VPMIN.F32 d0,d0,d0",
+    ]
+
 intrinsics_f = sys.argv[1]
-with open(intrinsics_f) as f:
+with open('arm-intrinsics.simd.json') as f:
   for category, intrinsics in json.load(f).items():
     evaluator_ty = evaluators[category]
     for intrin in intrinsics:
       print(intrin)
       gen_simd(evaluator_ty, intrin)
+
+for intrin in padds:
+  print(intrin)
+  gen_pairwise(Add, intrin)
+
+for intrin in adals:
+  print(intrin)
+  gen_pairwise_accumulate(intrin)
+
+for intrin in folding_maxs:
+  gen_pairwise(Max, intrin)
+
+for intrin in folding_mins:
+  gen_pairwise(Min, intrin)
