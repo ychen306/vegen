@@ -44,4 +44,4 @@ with open('InstSema.arm.cpp', 'w') as f:
 using namespace llvm;
 using namespace PatternMatch;
     ''')
-  f.write(gen_rules.codegen(bundles, inst_features, intrin2cost))
+  f.write(gen_rules.codegen(bundles, inst_features, intrin2cost, binding_vector_name='ArmInsts'))

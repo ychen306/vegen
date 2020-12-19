@@ -181,5 +181,6 @@ static inline bool hasBitWidth(const llvm::Value *V, unsigned BitWidth) {
 }
 
 extern std::vector<InstBinding> Insts;
+extern std::vector<InstBinding> ArmInsts;
 
 #endif // end INST_SEMA_H
