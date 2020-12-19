@@ -388,14 +388,14 @@ dots = [
     "int32x2_t vdot_s32 (int32x2_t r, int8x8_t a, int8x8_t b)",
     "uint32x4_t vdotq_u32 (uint32x4_t r, uint8x16_t a, uint8x16_t b)",
     "int32x4_t vdotq_s32 (int32x4_t r, int8x16_t a, int8x16_t b)",
-    "int32x2_t vusdot_s32 (int32x2_t r, uint8x8_t a, int8x8_t b)",
-    "int32x4_t vusdotq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)",
+    #"int32x2_t vusdot_s32 (int32x2_t r, uint8x8_t a, int8x8_t b)",
+    #"int32x4_t vusdotq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)",
     ]
 
 matmuls = [
-    "int32x4_t vmmlaq_s32 (int32x4_t r, int8x16_t a, int8x16_t b)",
-    "uint32x4_t vmmlaq_u32 (uint32x4_t r, uint8x16_t a, uint8x16_t b)",
-    "int32x4_t vusmmlaq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)",
+    #    "int32x4_t vmmlaq_s32 (int32x4_t r, int8x16_t a, int8x16_t b)",
+    #    "uint32x4_t vmmlaq_u32 (uint32x4_t r, uint8x16_t a, uint8x16_t b)",
+    #    "int32x4_t vusmmlaq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)",
     ]
 
 semas = {}
