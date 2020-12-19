@@ -1,9 +1,9 @@
 import fp_sema
 import sys
-import json
 from collections import namedtuple
 import re
 import operator
+import arm_simd
 from z3_utils import *
 
 VectorType = namedtuple('VectorType', ['elem_size', 'num_elems', 'is_signed', 'is_float'])
@@ -285,6 +285,40 @@ evaluators = {
     'min': Min,
     }
 
+def gen_dot(sig):
+  def run(vecs, vec_types, ty):
+    r, a, b = vecs
+    _, a_ty, b_ty = vec_types
+    assert a_ty.num_elems == b_ty.num_elems
+    n = a_ty.num_elems
+    y = []
+    for i in range(n // 4):
+      s = select(r, ty, i)
+      for j in range(4):
+        aj = fix_bitwidth(select(a, a_ty, 4 * i + j), ty.elem_size, a_ty.is_signed)
+        bj = fix_bitwidth(select(b, b_ty, 4 * i + j), ty.elem_size, b_ty.is_signed)
+        s += aj * bj
+      y.append(s)
+    return y
+  return gen_non_simd(run, sig)
+
+def gen_matmul(sig):
+  def run(vecs, vec_types, ty):
+    r, a, b = vecs
+    _, a_ty, b_ty = vec_types
+    assert ty.elem_size == 32
+    y = [None] * ty.num_elems
+    for i in range(2):
+      for j in range(2):
+        s = select(r, ty, 2*i+j)
+        for k in range(7):
+          ak = fix_bitwidth(select(a, a_ty, 8 * i + k), ty.elem_size, a_ty.is_signed)
+          bk = fix_bitwidth(select(b, b_ty, 8 * j + k), ty.elem_size, b_ty.is_signed)
+          s += ak * bk
+        y[2*i+j] = s
+    return y
+  return gen_non_simd(run, sig)
+
 #print(gen_simd(Add, 'int8x8_t    vadd_s8(int8x8_t a, int8x8_t b);         // VADD.I8 d0,d0,d0'))
 #print(gen_simd(Add, 'float32x4_t vaddq_f32(float32x4_t a, float32x4_t b); // VADD.F32 q0,q0,q0'))
 #print(gen_simd(HalvingAdd, 'int8x8_t   vhadd_s8(int8x8_t a, int8x8_t b);       // VHADD.S8 d0,d0,d0'))
@@ -302,6 +336,9 @@ evaluators = {
 #print(gen_simd(AbsoluteDifference, 'uint64x2_t vabdl_u32(uint32x2_t a, uint32x2_t b);'))
 #print(gen_simd(AbsoluteDifferenceAccumulate, 'int8x8_t   vaba_s8(int8x8_t a, int8x8_t b, int8x8_t c);'))
 #print(gen_simd(AbsoluteDifferenceAccumulate, 'uint64x2_t vabal_u32(uint64x2_t a, uint32x2_t b, uint32x2_t c);'))
+#print(gen_dot('uint32x2_t vdot_u32 (uint32x2_t r, uint8x8_t a, uint8x8_t b)'))
+#print(gen_matmul('int32x4_t vusmmlaq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)'))
+#print(gen_matmul('uint32x4_t vmmlaq_u32 (uint32x4_t r, uint8x16_t a, uint8x16_t b)'))
 #exit()
 
 padds = [
@@ -362,13 +399,26 @@ folding_mins = [
     "float32x2_t vpmin_f32(float32x2_t a, float32x2_t b); // VPMIN.F32 d0,d0,d0",
     ]
 
-intrinsics_f = sys.argv[1]
-with open('arm-intrinsics.simd.json') as f:
-  for category, intrinsics in json.load(f).items():
-    evaluator_ty = evaluators[category]
-    for intrin in intrinsics:
-      print(intrin)
-      gen_simd(evaluator_ty, intrin)
+dots = [
+    "uint32x2_t vdot_u32 (uint32x2_t r, uint8x8_t a, uint8x8_t b)",
+    "int32x2_t vdot_s32 (int32x2_t r, int8x8_t a, int8x8_t b)",
+    "uint32x4_t vdotq_u32 (uint32x4_t r, uint8x16_t a, uint8x16_t b)",
+    "int32x4_t vdotq_s32 (int32x4_t r, int8x16_t a, int8x16_t b)",
+    "int32x2_t vusdot_s32 (int32x2_t r, uint8x8_t a, int8x8_t b)",
+    "int32x4_t vusdotq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)",
+    ]
+
+matmuls = [
+    "int32x4_t vmmlaq_s32 (int32x4_t r, int8x16_t a, int8x16_t b)",
+    "uint32x4_t vmmlaq_u32 (uint32x4_t r, uint8x16_t a, uint8x16_t b)",
+    "int32x4_t vusmmlaq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)",
+    ]
+
+for category, intrinsics in arm_simd.simds.items():
+  evaluator_ty = evaluators[category]
+  for intrin in intrinsics:
+    print(intrin)
+    gen_simd(evaluator_ty, intrin)
 
 for intrin in padds:
   print(intrin)
@@ -379,7 +429,17 @@ for intrin in adals:
   gen_pairwise_accumulate(intrin)
 
 for intrin in folding_maxs:
+  print(intrin)
   gen_pairwise(Max, intrin)
 
 for intrin in folding_mins:
+  print(intrin)
   gen_pairwise(Min, intrin)
+
+for intrin in dots:
+  print(intrin)
+  gen_dot(intrin)
+
+for intrin in matmuls:
+  print(intrin)
+  gen_matmul(intrin)
