@@ -2,7 +2,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # The main "lib packing"
 set(LIB_PACKING_SRC
-  InstSema.cpp
+  InstSema.cpp InstSema.arm.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   Packer.cpp
   Solver.cpp

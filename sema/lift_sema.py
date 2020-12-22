@@ -663,14 +663,14 @@ class Translator:
             if len(partial_elem) == 1:
               elems.append(z3.simplify(partial_elem[0]))
             else:
-              elems.append(z3.simplify(z3.Concat(partial_elem[::-1])))
+              elems.append(z3.simplify(z3_utils.concat(partial_elem[::-1])))
             partial_elem = []
             partial_size = 0
 
         x_offset += x.size()
 
       elems.reverse()
-      assert z3.Solver().check(z3.Concat(elems) != f) == z3.unsat
+      assert z3.Solver().check(z3_utils.concat(elems) != f) == z3.unsat
 
       outs = [self.translate(x) for x in elems]
 

@@ -62,7 +62,7 @@ def binary_float_op(op, use_uninterpreted=False):
       ty = BV32
     else:
       ty = BV64
-    if not precise and not use_uninterpreted:
+    if not precise or use_uninterpreted:
       func_name = 'fp_%s_%d' % (op, bitwidth)
       func = get_uninterpreted_func(func_name, (ty, ty, ty))
       return func(a, b), bitwidth
@@ -84,7 +84,7 @@ def binary_float_cmp(op, use_uninterpreted=False):
       ty = BV32
     else:
       ty = BV64
-    if not precise and not use_uninterpreted:
+    if not precise or use_uninterpreted:
       func_name = 'fp_%s_%d' % (op, bitwidth)
       func = get_uninterpreted_func(func_name, (ty, ty, z3.BoolSort()))
       result = func(a,b)

@@ -171,3 +171,24 @@ def saturate(x, in_bw, in_signed, out_bw, out_signed):
         lt(x, lo+1),
         lo,
         x))
+
+def fix_bitwidth(x, bitwidth, signed=False):
+  if x.size() < bitwidth:
+    if signed:
+      return z3.SignExt(bitwidth-x.size(), x)
+    return z3.ZeroExt(bitwidth-x.size(), x)
+  return z3.Extract(bitwidth-1, 0, x)
+
+def get_saturator(in_size, out_size, signed):
+  in_ty_str = ('s%d' if signed else 'u%d') % in_size
+  out_ty_str = ('s%d' if signed else 'u%d') % out_size 
+  in_ty_z3 = z3.BitVecSort(in_size)
+  out_ty_z3 = z3.BitVecSort(out_size)
+  builtin_name = 'Saturate_%s_to_%s' % (in_ty_str, out_ty_str)
+  return get_uninterpreted_func(builtin_name, [in_ty_z3, out_ty_z3])
+
+def concat(xs):
+  if len(xs) == 1:
+    return xs[0]
+  return z3.Concat(*xs)
+

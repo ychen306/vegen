@@ -301,7 +301,7 @@ def emit_sig(sig):
 
 op_sigs = set()
 
-def codegen(bundles, inst_features, costs):
+def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
   '''
   bundles : mapping inst -> bundles
   '''
@@ -338,7 +338,7 @@ def codegen(bundles, inst_features, costs):
   inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values())
   return f'''
 {op_decls}
-std::vector<InstBinding> Insts {{
+std::vector<InstBinding> {binding_vector_name} {{
   {inst_bindings}
 }};
   '''
