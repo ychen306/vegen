@@ -234,6 +234,7 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
 }
 
 void VectorPack::computeCost(TargetTransformInfo *TTI) {
+  Cost = 0;
   // 1) First figure out cost of the vector instruction
   switch (Kind) {
   case General:
@@ -244,6 +245,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     MaybeAlign Alignment(LI->getAlignment());
     auto *VecTy = VectorType::get(LI->getType(), Loads.size());
     Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, Alignment, 0, LI);
+    Cost = 2.0;
     break;
   }
   case Store: {
@@ -257,6 +259,8 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   case Phi:
     Cost = 0;
   }
+
+  ProducingCost = Cost;
 
   // 2) Then figure out savings from removing scalar instructions
   int Saving = 0;

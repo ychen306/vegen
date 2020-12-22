@@ -41,6 +41,7 @@ private:
   std::vector<llvm::Instruction *> ReplacedInsts;
 
   int Cost;
+  int ProducingCost;
 
   void computeReplacedInsts();
   void computeCost(llvm::TargetTransformInfo *TTI);
@@ -162,6 +163,7 @@ public:
                     IntrinsicBuilder &Builder) const;
 
   int getCost() const { return Cost; }
+  int getProducingCost() const { return ProducingCost; }
 
   // Choose a right place to gather an operand
   void setOperandGatherPoint(unsigned OperandId,

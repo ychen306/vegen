@@ -2,6 +2,7 @@
 #define SOLVER_H
 
 #include "Packer.h"
+#include "CandidatePackSet.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -151,12 +152,6 @@ class UCTNodeFactory {
   public:
   UCTNodeFactory() : FrontierToNodeMap(1000000) {}
   UCTNode *getNode(std::unique_ptr<Frontier>);
-};
-
-struct CandidatePackSet {
-  std::vector<const VectorPack *> Packs;
-  llvm::BitVector Members;
-  std::vector<std::vector<const VectorPack *>> Inst2Packs;
 };
 
 class UCTNode {

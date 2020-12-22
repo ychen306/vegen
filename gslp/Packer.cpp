@@ -28,7 +28,6 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
 
 } // end anonymous namespace
 
-raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP);
 Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
@@ -139,7 +138,7 @@ VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                              ArrayRef<const VectorPack *> OtherPacks, Packer *Pkr) {
   auto *BB = MainPack->getBasicBlock();
   auto &LayoutInfo = Pkr->getLoadInfo(BB);
-#if 1
+#if 0
   // Full, can't coalesce
   if (MainPack->getOrderedValues().size() == MainPack->getElements().count())
     return nullptr;
@@ -422,4 +421,25 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
   }
   OPI.Feasible = !OPI.Producers.empty();
   return OPI;
+}
+
+float Packer::getScalarCost(Instruction *I) {
+  if (auto *LI = dyn_cast<LoadInst>(I)) {
+    return TTI->getMemoryOpCost(Instruction::Load, LI->getType(),
+        MaybeAlign(LI->getAlignment()), 0, LI);
+  } 
+  if (auto *SI = dyn_cast<StoreInst>(I))
+    return TTI->getMemoryOpCost(Instruction::Store,
+        SI->getValueOperand()->getType(),
+        MaybeAlign(SI->getAlignment()), 0, SI);
+  if (isa<GetElementPtrInst>(I) || isa<PHINode>(I) ||
+      isa<CallInst>(I) || isa<ReturnInst>(I) || I->isTerminator() ||
+      isa<AllocaInst>(I))
+    return 1;
+  //return TTI->getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
+  SmallVector<const Value *, 4> Operands(I->operand_values());
+  return TTI->getArithmeticInstrCost(
+      I->getOpcode(), I->getType(), TargetTransformInfo::OK_AnyValue,
+      TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None,
+      TargetTransformInfo::OP_None, Operands, I);
 }

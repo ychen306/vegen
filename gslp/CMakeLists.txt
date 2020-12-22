@@ -4,6 +4,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set(LIB_PACKING_SRC
   InstSema.cpp InstSema.arm.cpp
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
+  Heuristic.cpp
   Packer.cpp
   Solver.cpp
   IRVec.cpp
