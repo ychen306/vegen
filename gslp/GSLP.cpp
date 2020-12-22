@@ -236,8 +236,8 @@ bool GSLP::runOnFunction(Function &F) {
   //if (!F.getName().contains("interp"))
   //  return false;
   //if (!F.getName().contains("idct8"))
-  if (!F.getName().contains("_Z5idct4PKsPs"))
-    return false;
+  ////if (!F.getName().contains("_Z5idct4PKsPs"))
+  ////  return false;
 
   if (AggressivePacking)
     balanceReductionTree(F);

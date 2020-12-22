@@ -245,7 +245,6 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     MaybeAlign Alignment(LI->getAlignment());
     auto *VecTy = VectorType::get(LI->getType(), Loads.size());
     Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, Alignment, 0, LI);
-    Cost = 2.0;
     break;
   }
   case Store: {

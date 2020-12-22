@@ -10,12 +10,14 @@ static constexpr float C_Shuffle = 0.5;
 static constexpr float C_Extract = 0.5;
 
 static unsigned getNumUsers(Value *V) {
+  return 1;
   if (!V)
     return 0;
   return std::distance(V->user_begin(), V->user_end());
 }
 
 static unsigned getNumUsers(ArrayRef<Value *> Vals) {
+  return 1;
   unsigned NumUsers = Vals.size();
   for (auto *V : Vals)
     NumUsers = std::max<unsigned>(NumUsers, getNumUsers(V));
@@ -27,14 +29,14 @@ static unsigned getNumUsers(const VectorPack *VP) {
 }
 
 float Heuristic::getCost(const VectorPack *VP) {
-  float Cost = VP->getProducingCost() / getNumUsers(VP);
+  float Cost = VP->getProducingCost();
   for (auto *OP : VP->getOperandPacks())
     Cost += getCost(OP);
   return Cost;
 }
 
 float Heuristic::getCost(Instruction *I) {
-  float Cost = Pkr->getScalarCost(I) / (float)getNumUsers(I);
+  float Cost = Pkr->getScalarCost(I);
   for (Value *V : I->operands()) {
     Cost += getCost(V);
   }
@@ -180,7 +182,7 @@ float Heuristic::getCost(Value *V) {
 
   float NumUsers = getNumUsers(I);
 
-#if 1
+#if 0
   if (Candidates) {
     for (auto *VP : Candidates->Inst2Packs[VPCtx->getScalarId(I)]) {
       Cost = std::min(Cost, getCost(VP) + C_Extract / NumUsers);
