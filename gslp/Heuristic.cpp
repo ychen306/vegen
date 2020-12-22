@@ -10,14 +10,12 @@ static constexpr float C_Shuffle = 0.5;
 static constexpr float C_Extract = 0.5;
 
 static unsigned getNumUsers(Value *V) {
-  return 1;
   if (!V)
     return 0;
   return std::distance(V->user_begin(), V->user_end());
 }
 
 static unsigned getNumUsers(ArrayRef<Value *> Vals) {
-  return 1;
   unsigned NumUsers = Vals.size();
   for (auto *V : Vals)
     NumUsers = std::max<unsigned>(NumUsers, getNumUsers(V));

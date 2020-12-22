@@ -710,7 +710,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       //float Dist = Metric.getDistance(&I, &J);
       float Dist = A.align(&I, &J);
-      if (Dist < 0) {
+      if (Dist < 1 && false) {
         AG[&I].push_back({&J, A.align(&I, &J)});
       }
     }
@@ -723,9 +723,9 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
       continue;
     unsigned OldSize = Enumerated.size();
     if (UseMCTS) {
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 8 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 2/*beam width*/, 4 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 2/*beam width*/, 8 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 2/*beam width*/, 16 /*VL*/);
     }
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
@@ -934,7 +934,7 @@ static float estimateAllScalarCost(const Frontier &Frt,
   return Cost;
 }
 
-float makeOperandPacksUsable(Frontier &Frt) {
+float makeOperandPacksUsable(Frontier &Frt, CandidatePackSet *Candidates=nullptr) {
   auto *Pkr = Frt.getPacker();
   auto *TTI = Pkr->getTTI();
   auto *BB = Frt.getBasicBlock();
@@ -945,6 +945,8 @@ float makeOperandPacksUsable(Frontier &Frt) {
   BitVector VectorOperandSet(VPCtx->getNumValues());
   for (auto *OP : Frt.getUnresolvedPacks())
     VectorOperandSet |= Pkr->getProducerInfo(VPCtx, OP).Elements;
+  if (Candidates)
+    VectorOperandSet |= Candidates->Members;
 
   bool Changed;
   do {
@@ -1226,11 +1228,11 @@ float astar(VectorPackSet &Packs, Frontier *Frt, Packer *Pkr, BasicBlock *BB,
       }
 
       // 1) add a pack
-      BitVector UnusableIds = Frt->getFreeInsts();
+      BitVector UnusableIds = Frt->usableInstIds();
       UnusableIds.flip();
 
       //// WHY DOES THIS MATTER/???????? figure it out
-#if 1
+#if 0
       std::vector<unsigned> ids;
       for (unsigned i : Frt->usableInstIds().set_bits())
         ids.push_back(i);
@@ -1246,6 +1248,7 @@ float astar(VectorPackSet &Packs, Frontier *Frt, Packer *Pkr, BasicBlock *BB,
           VPs.push_back(VP);
       }
 #else
+      unsigned InstId = *Frt->usableInstIds().set_bits_begin();
       auto VPs = findExtensionPacks(*Frt, Candidates);
 #endif
       for (auto *VP : VPs) {
@@ -1259,52 +1262,52 @@ float astar(VectorPackSet &Packs, Frontier *Frt, Packer *Pkr, BasicBlock *BB,
             FrtCost + Cost /*- VP->getCost() + VP->getProducingCost()*/, Cost,
             VP);
       }
-      errs() << "num extension packs: " << VPs.size() << '\n';
-      auto *I = cast<Instruction>(VPCtx->getScalar(InstId));
-      float Cost;
-      Frontiers.push_back(Frt->advance(I, Cost, TTI));
-      //errs() << "!! " << *I << '\n';
-      Push(Frt, Frontiers.back().get(),
-           FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
+      //errs() << "num extension packs: " << VPs.size() << '\n';
+      //auto *I = cast<Instruction>(VPCtx->getScalar(InstId));
+      //float Cost;
+      //Frontiers.push_back(Frt->advance(I, Cost, TTI));
+      ////errs() << "!! " << *I << '\n';
+      //Push(Frt, Frontiers.back().get(),
+      //     FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
 
       // 2) scalarize
-      //if (VPs.empty()||true) {
-      //  //for (auto *V : Frt->usableInsts()) {
-      //  //  auto *I = dyn_cast<Instruction>(V);
-      //  //  // 1) fix I as scalar.
-      //  //  float Cost;
-      //  //  Frontiers.push_back(Frt->advance(I, Cost, TTI));
-      //  //  //errs() << "!! " << *I << '\n';
-      //  //  Push(Frt, Frontiers.back().get(),
-      //  //       FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
-      //  //}
-      //  auto ScratchFrt = std::make_unique<Frontier>(*Frt);
-      //  float Cost = makeOperandPacksUsable(*ScratchFrt, Candidates);
-      //  Frontiers.push_back(std::move(ScratchFrt));
-      //  Push(Frt, Frontiers.back().get(),
-      //      FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
+      if (VPs.empty()) {
+        //for (auto *V : Frt->usableInsts()) {
+        //  auto *I = dyn_cast<Instruction>(V);
+        //  // 1) fix I as scalar.
+        //  float Cost;
+        //  Frontiers.push_back(Frt->advance(I, Cost, TTI));
+        //  //errs() << "!! " << *I << '\n';
+        //  Push(Frt, Frontiers.back().get(),
+        //       FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
+        //}
+        auto ScratchFrt = std::make_unique<Frontier>(*Frt);
+        float Cost = makeOperandPacksUsable(*ScratchFrt, Candidates);
+        Frontiers.push_back(std::move(ScratchFrt));
+        Push(Frt, Frontiers.back().get(),
+            FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
 
-      //  //for (auto *V : Frt->usableInsts()) {
-      //  //  auto *I = dyn_cast<Instruction>(V);
-      //  //  // 1) fix I as scalar.
-      //  //  float Cost;
-      //  //  Frontiers.push_back(Frt->advance(I, Cost, TTI));
-      //  //  errs() << "!! " << *I << '\n';
-      //  //  Push(Frt, Frontiers.back().get(),
-      //  //      FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
-      //  //}
-      //}
-      //if (Queue.empty()) {
-      //for (auto *V : Frt->usableInsts()) {
-      //  auto *I = dyn_cast<Instruction>(V);
-      //  // 1) fix I as scalar.
-      //  float Cost;
-      //  Frontiers.push_back(Frt->advance(I, Cost, TTI));
-      //  //errs() << "!! " << *I << '\n';
-      //  Push(Frt, Frontiers.back().get(),
-      //       FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
-      //}
-      //}
+        //for (auto *V : Frt->usableInsts()) {
+        //  auto *I = dyn_cast<Instruction>(V);
+        //  // 1) fix I as scalar.
+        //  float Cost;
+        //  Frontiers.push_back(Frt->advance(I, Cost, TTI));
+        //  errs() << "!! " << *I << '\n';
+        //  Push(Frt, Frontiers.back().get(),
+        //      FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
+        //}
+      }
+      if (Queue.empty()) {
+      for (auto *V : Frt->usableInsts()) {
+        auto *I = dyn_cast<Instruction>(V);
+        // 1) fix I as scalar.
+        float Cost;
+        Frontiers.push_back(Frt->advance(I, Cost, TTI));
+        //errs() << "!! " << *I << '\n';
+        Push(Frt, Frontiers.back().get(),
+             FrtCost + Cost /* + Pkr->getScalarCost(I)*/, Cost, nullptr);
+      }
+      }
     }
 
 
@@ -1407,18 +1410,18 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   // VL = {64};
   // VL = {8};
   // VL = {16};
-  VL = {8};
+  //VL = {4};
   float Cost = 0;
   float BestEst = 0;
 
-  if (!UseMCTS || true) {
+  if (!UseMCTS) {
     for (unsigned i : VL) {
       for (auto *SI : Stores) {
         auto *SeedVP = getSeedStorePack(Frt, SI, i);
         if (SeedVP) {
-          Cost += Frt.advanceInplace(SeedVP, TTI);
-          Packs.tryAdd(SeedVP);
-          continue;
+          //Cost += Frt.advanceInplace(SeedVP, TTI);
+          //Packs.tryAdd(SeedVP);
+          //continue;
 #if 0
           float Est = estimateCost(Frt, SeedVP);
 #else
@@ -1462,7 +1465,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
 
   // try out the new heuristic
-#if 1
+#if 0
   struct Transition {
     std::unique_ptr<Frontier> Frt;
     float Cost;
@@ -1501,6 +1504,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
   return Cost;
 #endif
+  //
+  //return astar(Packs, &Frt, Pkr, BB, &CandidateSet);
 
   if (UseMCTS) {
     UCTNodeFactory Factory;
