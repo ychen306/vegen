@@ -408,9 +408,10 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     CandidateMembers &= Frt.usableInstIds();
     if (CandidateMembers.count()) {
       unsigned InstId = *CandidateMembers.set_bits_begin();
-      for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
+      //for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
+      for (auto *VP : CandidateSet->Packs) {
         auto &Elements = VP->getElements();
-        if (Elements.test(InstId) && !Elements.anyCommon(UnusableIds))
+        if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds))
           Extensions.push_back(VP);
       }
       ///////////
@@ -420,13 +421,13 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
         OP = dedup(VPCtx, OP);
         const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
         for (auto *VP : OPI.Producers)
-          if (!VP->getElements().anyCommon(UnusableIds) &&
-              VP->getElements().test(InstId))
+          if (!VP->getElements().anyCommon(UnusableIds) /*&&
+              VP->getElements().test(InstId)*/)
             Extensions.push_back(VP);
-        for (auto *VP : OPI.LoadProducers)
-          if (!VP->getElements().anyCommon(UnusableIds) &&
-              VP->getElements().test(InstId))
-            LoadExtensions.push_back(VP);
+        //for (auto *VP : OPI.LoadProducers)
+        //  if (!VP->getElements().anyCommon(UnusableIds) &&
+        //      VP->getElements().test(InstId))
+        //    LoadExtensions.push_back(VP);
       }
       //////////
     }
@@ -455,11 +456,11 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
 
   if (!LoadExtensions.empty()) {
     auto *LoadVP = LoadExtensions.front();
-    // if (auto *Coalesced = tryCoalesceLoads(
-    //        LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1),
-    //        Pkr)) {
-    //  return {Coalesced, LoadVP};
-    //}
+     if (auto *Coalesced = tryCoalesceLoads(
+            LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1),
+            Pkr)) {
+      return {Coalesced, LoadVP};
+    }
     return {LoadVP};
   }
   return {};
@@ -614,6 +615,7 @@ public:
 };
 
 bool usedByStore(Value *V) {
+  return true;
   for (User *U : V->users())
     if (auto *SI = dyn_cast<StoreInst>(U))
       return SI->getValueOperand() == V;
@@ -708,9 +710,9 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       if (!Independent.test(VPCtx->getScalarId(&J)))
         continue;
-      //float Dist = Metric.getDistance(&I, &J);
-      float Dist = A.align(&I, &J);
-      if (Dist < 1 && false) {
+      bool Close = Metric.getDistance(&I, &J) < 1;
+      //bool Close = A.align(&I, &J) < 0;
+      if (Close) {
         AG[&I].push_back({&J, A.align(&I, &J)});
       }
     }
@@ -723,9 +725,9 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
       continue;
     unsigned OldSize = Enumerated.size();
     if (UseMCTS) {
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 2/*beam width*/, 4 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 2/*beam width*/, 8 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 2/*beam width*/, 16 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 4 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 8 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 16 /*VL*/);
     }
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
@@ -760,7 +762,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+      for (unsigned VL : {2, 4, 8, 16/*, 32, 64*/})
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           Packs.push_back(VP);
     }
@@ -969,9 +971,12 @@ float UCTSearch::evalLeafNode(UCTNode *N) {
   return Evaluator->evaluate(N->getFrontier(), CandidateSet);
 }
 
+std::unique_ptr<Heuristic> H;
+
 // Uniformly random rollout
 float RolloutEvaluator::evaluate(const Frontier *Frt,
                                  const CandidatePackSet *CandidateSet) {
+  return H->getCost(Frt);
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
   auto *BB = Frt->getBasicBlock();
@@ -1408,20 +1413,20 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   // VL = {4};
   // VL = {64};
   // VL = {64};
-  // VL = {8};
+  //VL = {16};
   // VL = {16};
-  //VL = {4};
+  VL = {4};
   float Cost = 0;
   float BestEst = 0;
 
-  if (!UseMCTS) {
+  if (!UseMCTS || true) {
     for (unsigned i : VL) {
       for (auto *SI : Stores) {
         auto *SeedVP = getSeedStorePack(Frt, SI, i);
         if (SeedVP) {
-          //Cost += Frt.advanceInplace(SeedVP, TTI);
-          //Packs.tryAdd(SeedVP);
-          //continue;
+          Cost += Frt.advanceInplace(SeedVP, TTI);
+          Packs.tryAdd(SeedVP);
+          continue;
 #if 0
           float Est = estimateCost(Frt, SeedVP);
 #else
@@ -1465,7 +1470,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
 
   // try out the new heuristic
-#if 0
+#if 1
+  {
   struct Transition {
     std::unique_ptr<Frontier> Frt;
     float Cost;
@@ -1484,6 +1490,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       Costs.push_back(Cost + H.getCost(Next.get()));
       Transitions.push_back(Transition{std::move(Next), Cost, VP, nullptr});
     }
+    if (Transitions.empty())
     for (auto *V : CurFrt->usableInsts()) {
       auto *I = cast<Instruction>(V);
       float Cost;
@@ -1503,17 +1510,19 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     CurFrt = std::move(T.Frt);
   }
   return Cost;
+  }
 #endif
   //
   //return astar(Packs, &Frt, Pkr, BB, &CandidateSet);
+  H = std::make_unique<Heuristic>(Pkr, VPCtx, &CandidateSet);
 
   if (UseMCTS) {
     UCTNodeFactory Factory;
     RolloutEvaluator Evaluator;
-    UCTSearch MCTS(0.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+    UCTSearch MCTS(0.1 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                    nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
     UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
-    unsigned NumSimulations = 10000;
+    unsigned NumSimulations = 100000;
     float TotalCost = 0;
     Root->expand(&CandidateSet);
 
@@ -1531,6 +1540,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
           Transitions.begin(), Transitions.end(),
 
           [](const UCTNode::Transition &A, const UCTNode::Transition &B) {
+         // return A.Count < B.Count;
             float ACost = -A.Cost - A.Next->minCost();
             float BCost = -B.Cost - B.Next->minCost();
             return std::tie(ACost, A.Count) < std::tie(BCost, B.Count);

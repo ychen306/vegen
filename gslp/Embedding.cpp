@@ -99,15 +99,15 @@ Optional<Embedding> AffineEmbedder::embed(Instruction *I, bool Signed) const {
     Constant *Y = evaluate(I, LiveIns, X);
     if (!Y)
       return Optional<Embedding>();
-    errs() << "!!! EVALUATED " << *I << " TO " << *Y
-      << " (" << cast<ConstantInt>(Y)->getSExtValue()
-      << ")\n";
+    //errs() << "!!! EVALUATED " << *I << " TO " << *Y
+    //  << " (" << cast<ConstantInt>(Y)->getSExtValue()
+    //  << ")\n";
     if (auto *CI = dyn_cast<ConstantInt>(Y))
       E.push_back(Signed ? (float)CI->getSExtValue() : (float)CI->getZExtValue());
     else
       E.push_back(cast<ConstantFP>(Y)->getValueAPF().convertToFloat());
   }
-  std::sort(E.begin(), E.end());
+  //std::sort(E.begin(), E.end());
   return E;
 }
 

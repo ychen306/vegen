@@ -237,7 +237,10 @@ bool GSLP::runOnFunction(Function &F) {
   //  return false;
   //if (!F.getName().contains("idct8"))
   //if (!F.getName().contains("_Z5idct8PKsPs"))
-    return false;
+  //if (!F.getName().contains("_Z5idct4PKsPs"))
+  //if (!F.getName().contains("fft4"))
+  //if (!F.getName().contains("fft8"))
+  return false;
 
   if (AggressivePacking)
     balanceReductionTree(F);
@@ -253,12 +256,12 @@ bool GSLP::runOnFunction(Function &F) {
 
   std::vector<InstBinding *> SupportedIntrinsics;
   for (auto &Inst : Insts) {
-    if (Inst.getName().contains("hadd"))
+    //if (Inst.getName().contains("hadd"))
+    //  continue;
+    if (Inst.getName().contains("hadd_ps"))
       continue;
-    //if (Inst.getName().contains("hadd_ps"))
-    //  continue;
-    //if (Inst.getName().contains("hsub_ps"))
-    //  continue;
+    if (Inst.getName().contains("hsub_ps"))
+      continue;
     if (isSupported(&Inst, F)) {
       SupportedIntrinsics.push_back(&Inst);
     }
