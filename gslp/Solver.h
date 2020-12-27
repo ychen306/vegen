@@ -61,6 +61,7 @@ public:
                                     llvm::TargetTransformInfo *TTI) const;
   std::unique_ptr<Frontier> advance(llvm::Instruction *I, float &Cost,
                                     llvm::TargetTransformInfo *TTI) const;
+  void shrinkFor(llvm::BitVector R);
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
@@ -101,7 +102,7 @@ struct FrontierHashInfo {
 
   static unsigned getHashValue(const Frontier *Frt) {
     using namespace llvm;
-#if 0
+#if 1
 
     if (Frt == getEmptyKey()) {
       return ~0;

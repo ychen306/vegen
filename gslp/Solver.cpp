@@ -316,8 +316,15 @@ findExtensionPacks(const Frontier &Frt,
 raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
   OS << "============== FRONTIER STATE ==========\n";
   OS << "UNRESOLVED VECTOR OPERANDS: <<<<<<<<<<<<<<<<<<<<<<\n";
-  for (auto *OP : Frt.getUnresolvedPacks())
+  for (auto *OP : Frt.getUnresolvedPacks()) {
     OS << *OP << '\n';
+    OS << '\t';
+    for (auto *V : *OP) {
+      auto *I = dyn_cast<Instruction>(V);
+      errs() << Frt.isFree(I) << ' ';
+    }
+    errs() << '\n';
+  }
   OS << ">>>>>>>>>>>>>>>\n";
   OS << "UNRESOLVED SCALAR OPERANDS: <<<<<<<<<<<<\n";
   for (auto *V : Frt.getUnresolvedScalars())
@@ -615,7 +622,7 @@ public:
 };
 
 bool usedByStore(Value *V) {
-  return true;
+  //return true;
   for (User *U : V->users())
     if (auto *SI = dyn_cast<StoreInst>(U))
       return SI->getValueOperand() == V;
@@ -710,8 +717,8 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       if (!Independent.test(VPCtx->getScalarId(&J)))
         continue;
-      bool Close = Metric.getDistance(&I, &J) < 1;
-      //bool Close = A.align(&I, &J) < 0;
+      //bool Close = Metric.getDistance(&I, &J) < 1;
+      bool Close = A.align(&I, &J) < 0;
       if (Close) {
         AG[&I].push_back({&J, A.align(&I, &J)});
       }
@@ -724,11 +731,11 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     if (!usedByStore(&I))
       continue;
     unsigned OldSize = Enumerated.size();
-    if (UseMCTS) {
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 4 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 8 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 8/*beam width*/, 16 /*VL*/);
-    }
+    //if (UseMCTS) {
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 8 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16 /*VL*/);
+    //}
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
@@ -1087,7 +1094,6 @@ class DPSolver {
     for (const VectorPack *ExtVP : Extensions) {
       float LocalCost;
       auto NextFrt = Frt.advance(ExtVP, LocalCost, TTI);
-
       float TotalCost = solve(std::move(NextFrt)).Cost + LocalCost;
       // errs() << " EXTENDING WITH " << *ExtVP
       //       << ", transition cost : " << LocalCost
@@ -1414,8 +1420,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   // VL = {64};
   // VL = {64};
   //VL = {16};
-  // VL = {16};
-  VL = {4};
+  VL = {8};
+  //VL = { 4 };
   float Cost = 0;
   float BestEst = 0;
 
@@ -1424,6 +1430,10 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       for (auto *SI : Stores) {
         auto *SeedVP = getSeedStorePack(Frt, SI, i);
         if (SeedVP) {
+          auto Frozen = Frt.getFreeInsts();
+          Frozen.flip();
+          if (Frozen.anyCommon(SeedVP->getElements()))
+            continue;
           Cost += Frt.advanceInplace(SeedVP, TTI);
           Packs.tryAdd(SeedVP);
           continue;
@@ -1490,14 +1500,21 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       Costs.push_back(Cost + H.getCost(Next.get()));
       Transitions.push_back(Transition{std::move(Next), Cost, VP, nullptr});
     }
-    if (Transitions.empty())
-    for (auto *V : CurFrt->usableInsts()) {
-      auto *I = cast<Instruction>(V);
-      float Cost;
-      auto Next = CurFrt->advance(I, Cost, TTI);
-      Costs.push_back(Cost + H.getCost(Next.get()));
-      Transitions.push_back(Transition{std::move(Next), Cost, nullptr, I});
+    if (Transitions.empty()) {
+      float Cost2 = makeOperandPacksUsable(*CurFrt);
+      Cost += Cost2;
+      if (Cost2 != 0)
+        continue;
+      errs() << ":( STUCK " << *CurFrt << '\n';
+      for (auto *V : CurFrt->usableInsts()) {
+        auto *I = cast<Instruction>(V);
+        float Cost;
+        auto Next = CurFrt->advance(I, Cost, TTI);
+        Costs.push_back(Cost + H.getCost(Next.get()));
+        Transitions.push_back(Transition{std::move(Next), Cost, nullptr, I});
+      }
     }
+    // FIXME: this is broken when you consider the constraint that one instruction belongs to only one pack.
     unsigned MinId = std::min_element(Costs.begin(), Costs.end()) - Costs.begin();
     auto &T = Transitions[MinId];
     if (T.VP) {
@@ -1511,9 +1528,9 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
   return Cost;
   }
-#endif
-  //
+#else
   //return astar(Packs, &Frt, Pkr, BB, &CandidateSet);
+#endif
   H = std::make_unique<Heuristic>(Pkr, VPCtx, &CandidateSet);
 
   if (UseMCTS) {

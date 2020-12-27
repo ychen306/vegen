@@ -7,17 +7,16 @@ static constexpr float C_Splat = 1.0;
 static constexpr float C_Insert = 1;
 static constexpr float C_Perm = 0.5;
 static constexpr float C_Shuffle = 0.5;
-static constexpr float C_Extract = 0.5;
+static constexpr float C_Extract = 1.0;
 
 static unsigned getNumUsers(Value *V) {
-  return 1.0;
+  return 1;
   if (!V)
     return 0;
   return std::distance(V->user_begin(), V->user_end());
 }
 
 static unsigned getNumUsers(ArrayRef<Value *> Vals) {
-  return 1.0;
   unsigned NumUsers = Vals.size();
   for (auto *V : Vals)
     NumUsers = std::max<unsigned>(NumUsers, getNumUsers(V));
@@ -49,19 +48,19 @@ float Heuristic::getCost(const OperandPack *OP) {
     return It->second;
 
   OrderedCosts[OP] = 0;
-  float NumUsers = getNumUsers(*OP);
 
   // Build by explicit insertion
   float Cost = 0;
   for (auto *V : *OP) {
     if (!V || isa<Constant>(V))
       continue;
-    Cost += getCost(V) + C_Insert / NumUsers;
+    Cost += getCost(V)/*/getNumUsers(V)*/ + C_Insert;
   }
 
   // Build by broadcast
   if (is_splat(*OP)) {
-    Cost = std::min(Cost, getCost((*OP)[0]) + C_Splat / NumUsers);
+    auto *V = (*OP)[0];
+    Cost = std::min(Cost, getCost(V) / getNumUsers(V) + C_Splat);
   }
 
   // Build by producer
@@ -81,12 +80,22 @@ float Heuristic::getCost(const OperandPack *OP) {
       // FIXME: consider don't care
       if (Vals.size() == OP->size() &&
           std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
-        Cost = std::min(Cost, getCost(VP) + C_Perm / NumUsers);
+        Cost = std::min(Cost, getCost(VP)/getNumUsers(VP) + C_Perm);
       } else {
+#if 1
         BitVector Intersection = OPI.Elements;
         Intersection &= VP->getElements();
         Cost = std::min(Cost, getCost(VP) / float(Intersection.count()) *
-                                      float(OPI.Elements.count()) + C_Shuffle / NumUsers);
+                                      float(OPI.Elements.count()) / getNumUsers(VP) + C_Shuffle);
+#else
+        std::set<Value *> Leftover = OPVals;
+        for (auto *V : VP->elementValues())
+          Leftover.erase(V);
+        float LeftoverCost =
+            getCost(std::vector<Value *>(Leftover.begin(), Leftover.end()));
+        Cost =
+            std::min(Cost, getCost(VP)/getNumUsers(VP) + LeftoverCost + C_Shuffle);
+#endif
       }
     }
   }
@@ -185,7 +194,7 @@ float Heuristic::getCost(Value *V) {
 #if 0
   if (Candidates) {
     for (auto *VP : Candidates->Inst2Packs[VPCtx->getScalarId(I)]) {
-      Cost = std::min(Cost, getCost(VP) + C_Extract / NumUsers);
+      Cost = std::min(Cost, getCost(VP)/getNumUsers(VP) + C_Extract);
     }
   }
 #endif
