@@ -798,6 +798,8 @@ void UCTNode::expand(const CandidatePackSet *CandidateSet) {
 
   auto *BB = Frt->getBasicBlock();
 
+  BitVector UnusableIds = Frt->usableInstIds();
+  UnusableIds.flip();
   bool CanExpandWithStore = false;
 
   for (auto *V : Frt->usableInsts()) {
@@ -806,6 +808,8 @@ void UCTNode::expand(const CandidatePackSet *CandidateSet) {
       // for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
       for (unsigned VL : {2, 4, 8, 16}) {
         if (auto *VP = getSeedStorePack(*Frt, SI, VL)) {
+          if (VP->getElements().anyCommon(UnusableIds))
+            continue;
           CanExpandWithStore = true;
           Transitions.emplace_back(VP);
         }
@@ -985,10 +989,50 @@ float UCTSearch::evalLeafNode(UCTNode *N) {
 
 std::unique_ptr<Heuristic> H;
 
+static float followHeuristic(const Frontier *Frt, const CandidatePackSet *CandidateSet) {
+  auto *TTI = Frt->getPacker()->getTTI();
+  float Cost = 0;
+  struct Transition {
+    std::unique_ptr<Frontier> Frt;
+    float Cost;
+    const VectorPack *VP;
+    Instruction *I;
+  };
+  auto CurFrt = std::make_unique<Frontier>(*Frt);
+  while (CurFrt->numUsableInsts()) {
+    auto Extensions = findExtensionPacks(*CurFrt, CandidateSet);
+    std::vector<Transition> Transitions;
+    std::vector<float> Costs;
+    for (auto *VP : Extensions) {
+      float Cost;
+      auto Next = CurFrt->advance(VP, Cost, TTI);
+      Costs.push_back(Cost + H->getCost(Next.get()));
+      Transitions.push_back(Transition{std::move(Next), Cost, VP, nullptr});
+    }
+
+    if (Transitions.empty()) {
+      for (auto *V : CurFrt->usableInsts()) {
+        auto *I = cast<Instruction>(V);
+        float Cost;
+        auto Next = CurFrt->advance(I, Cost, TTI);
+        Costs.push_back(Cost + H->getCost(Next.get()));
+        Transitions.push_back(Transition{std::move(Next), Cost, nullptr, I});
+      }
+    }
+    unsigned MinId = std::min_element(Costs.begin(), Costs.end()) - Costs.begin();
+    auto &T = Transitions[MinId];
+    Cost += T.Cost;
+    CurFrt = std::move(T.Frt);
+  }
+  return Cost;
+}
+
 // Uniformly random rollout
 float RolloutEvaluator::evaluate(const Frontier *Frt,
                                  const CandidatePackSet *CandidateSet) {
   return H->getCost(Frt);
+  //return followHeuristic(Frt, CandidateSet);
+  //return H->getCost(Frt);
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
   auto *BB = Frt->getBasicBlock();
@@ -1486,8 +1530,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   float Cost = 0;
   float BestEst = 0;
 
-  if (!UseMCTS || true) {
-  //if (false) {
+  //if (!UseMCTS || true) {
+  if (false) {
     for (unsigned i : VL) {
       for (auto *SI : Stores) {
         auto *SeedVP = getSeedStorePack(Frt, SI, i);
@@ -1620,8 +1664,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #endif
   H = std::make_unique<Heuristic>(Pkr, VPCtx, &CandidateSet);
 
-  //if (UseMCTS || true) {
-  if (false) {
+  if (UseMCTS || true) {
     UCTNodeFactory Factory;
     RolloutEvaluator Evaluator;
     UCTSearch MCTS(0.1 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,

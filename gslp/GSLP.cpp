@@ -230,17 +230,17 @@ bool GSLP::runOnFunction(Function &F) {
   //  return false;
   //if (!F.getName().contains("_Z5idct8PKsPs"))
   //  return false;
-  //if (!F.getName().contains("sbc"))
+  ///if (!F.getName().contains("sbc"))
   //if (!F.getName().contains("fft8"))
   //  return false;
   //if (!F.getName().contains("interp"))
   //if (!F.getName().contains("idct8"))
   //if (!F.getName().contains("_Z5idct8PKsPs"))
   //if (!F.getName().contains("_Z5idct8PKsPs"))
-  if (!F.getName().contains("fft4"))
+  //if (!F.getName().contains("fft4"))
   //if (!F.getName().contains("fft4"))
   //if (!F.getName().contains("fft8"))
-  return false;
+  //return false;
 
   if (AggressivePacking)
     balanceReductionTree(F);

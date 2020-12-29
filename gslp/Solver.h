@@ -302,8 +302,8 @@ struct DummyEvaluator : public FrontierEvaluator {
 };
 
 class RolloutEvaluator : public FrontierEvaluator {
-  llvm::DenseMap<const Frontier *, std::vector<VectorPack *>, FrontierHashInfo>
-    ExtensionCache;
+  llvm::DenseMap<const Frontier *, float, FrontierHashInfo>
+    EvalCache;
   std::vector<std::unique_ptr<Frontier>> Frontiers;
 
   public:
