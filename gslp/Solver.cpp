@@ -791,6 +791,79 @@ static OperandPack *buildOperandPack(const VectorPackContext *VPCtx,
   return VPCtx->getCanonicalOperandPack(OP);
 }
 
+std::unique_ptr<Heuristic> H;
+
+float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
+    const CandidatePackSet *CandidateSet, unsigned BeamWidth=500) {
+  struct State {
+    const State *Prev;
+    const UCTNode::Transition *Incoming;
+    UCTNode *TreeNode;
+    float Cost; // Cost so far
+    float Est;
+  };
+
+  UCTNodeFactory Factory;
+  UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(*Frt));
+  auto *Pkr = Frt->getPacker();
+  auto *TTI = Pkr->getTTI();
+
+  Heuristic H(Pkr, Frt->getContext(), CandidateSet);
+
+  std::vector<std::unique_ptr<State>> States;
+  auto GetNext = [&](State *S, UCTNode::Transition *T) -> State * {
+    States.push_back(std::make_unique<State>(*S));
+    auto S2 = States.back().get();
+    S2->Prev = S;
+    S2->Incoming = T;
+    S2->TreeNode = T->getNext(S->TreeNode, &Factory, TTI);
+    S2->Cost += T->Cost;
+    S2->Est = H.getCost(S2->TreeNode->getFrontier());
+    return S2;
+  };
+
+  State *Best = nullptr;
+
+  State Start { nullptr, nullptr, Root, 0 };
+  std::vector<State *> Beam { &Start };
+  while (!Beam.empty()) {
+    std::vector<State *> NextBeam;
+    for (auto *S : Beam) {
+      if (!S->TreeNode->expanded())
+        S->TreeNode->expand(CandidateSet);
+      for (auto &T : S->TreeNode->transitions()) {
+        auto *S2 = GetNext(S, &T);
+        if (S2->TreeNode->isTerminal()) {
+          if (!Best || Best->Cost > S2->Cost) {
+            errs() << "new best cost: " << S2->Cost;
+            Best = S2;
+          }
+        } else {
+          NextBeam.push_back(S2);
+        }
+      }
+    }
+    Beam = std::move(NextBeam);
+    errs() << "BEAM SIZE = " << Beam.size() << '\n';
+
+    std::sort(Beam.begin(), Beam.end(), [](const State *S, const State *S2) {
+          return S->Cost + S->Est < S2->Cost + S2->Est;
+        });
+    Beam.resize(std::min<unsigned>(Beam.size(), BeamWidth));
+  }
+
+  assert(Best);
+  float BestCost = Best->Cost;
+  const auto *S = Best;
+  while (S->Incoming) {
+    if (auto *VP = S->Incoming->VP) {
+      Packs.tryAdd(VP);
+    }
+    S = S->Prev;
+  }
+  return BestCost;
+}
+
 // Fill out the children node
 void UCTNode::expand(const CandidatePackSet *CandidateSet) {
   assert(Transitions.empty() && "expanded already");
@@ -986,8 +1059,6 @@ float makeOperandPacksUsable(Frontier &Frt, CandidatePackSet *Candidates=nullptr
 float UCTSearch::evalLeafNode(UCTNode *N) {
   return Evaluator->evaluate(N->getFrontier(), CandidateSet);
 }
-
-std::unique_ptr<Heuristic> H;
 
 static float followHeuristic(const Frontier *Frt, const CandidatePackSet *CandidateSet) {
   auto *TTI = Frt->getPacker()->getTTI();
@@ -1585,6 +1656,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
 
+  return beamSearch(&Frt, Packs, &CandidateSet);
   // try out the new heuristic
 #if 0
   {
@@ -1675,8 +1747,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     Root->expand(&CandidateSet);
 
     while (!Root->isTerminal()) {
-      MCTS.run(Root, NumSimulations);
-      assert(Root->expanded());
+      //MCTS.run(Root, NumSimulations);
+      //assert(Root->expanded());
 
       if (Root->transitions().empty())
         break;
