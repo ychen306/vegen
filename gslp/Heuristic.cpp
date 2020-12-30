@@ -225,10 +225,10 @@ float Heuristic::getCost(const Frontier *Frt) {
   for (Value *V : Frt->getUnresolvedScalars()) {
     Cost += getCost(V);
   }
-  //for (Value *V : VPCtx->iter_values(Frt->getFreeInsts())) {
-  //  if (auto *SI = dyn_cast<StoreInst>(V))
-  //    Cost += getStoreCost(SI);
-  //}
+  for (Value *V : VPCtx->iter_values(Frt->getFreeInsts())) {
+    if (auto *SI = dyn_cast<StoreInst>(V))
+      Cost += getCost(SI);
+  }
   return Cost;
 }
 
