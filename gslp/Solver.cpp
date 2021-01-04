@@ -198,7 +198,7 @@ static float getGatherCost(VectorType *VecTy, ArrayRef<Value *> Vals,
                                  VecTy);
   }
 
-  return 0.5;
+  return 2;//0.5;
 }
 
 // Return the cost of gathering from `VP` to `OpndPack`
@@ -468,6 +468,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     }
     return {LoadVP};
   }
+
   return {};
 }
 
@@ -716,6 +717,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       //bool Close = Metric.getDistance(&I, &J) < 1;
       bool Close = A.align(&I, &J) < 0;
+      //bool Close = false;
       if (Close) {
         errs() << "ALIGNED " << I << ", " << J << ", COST = " << A.align(&I, &J) << '\n';
         AG[&I].push_back({&J, A.align(&I, &J)});
@@ -731,9 +733,9 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     unsigned OldSize = Enumerated.size();
     //if (UseMCTS) {
       //enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 2 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4 /*VL*/);
+      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4 /*VL*/);
       enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 8 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16 /*VL*/);
+      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16 /*VL*/);
     //}
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
@@ -768,18 +770,18 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+      for (unsigned VL : {2, 4, 8, 16/*, 32, 64*/})
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           Packs.push_back(VP);
     }
   }
-  for (auto &I : *BB) {
-    if (auto *LI = dyn_cast<StoreInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
-        for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
-          Packs.push_back(VP);
-    }
-  }
+  //for (auto &I : *BB) {
+  //  if (auto *LI = dyn_cast<StoreInst>(&I)) {
+  //    for (unsigned VL : {2, 4, 8, 16, 32, 64})
+  //      for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
+  //        Packs.push_back(VP);
+  //  }
+  //}
   return Packs;
 }
 
@@ -1656,7 +1658,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
 
-  return beamSearch(&Frt, Packs, &CandidateSet);
+  return beamSearch(&Frt, Packs, &CandidateSet, 128);
   // try out the new heuristic
 #if 0
   {

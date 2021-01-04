@@ -28,10 +28,28 @@ static unsigned getNumUsers(const VectorPack *VP) {
   return getNumUsers(VP->getOrderedValues());
 }
 
+// Remove duplicate elements in OP
+static const OperandPack *dedup(const VectorPackContext *VPCtx,
+                                const OperandPack *OP) {
+  SmallPtrSet<Value *, 4> Seen;
+  OperandPack Deduped;
+  for (auto *V : *OP) {
+    bool Inserted = Seen.insert(V).second;
+    if (!Inserted)
+      continue;
+    Deduped.push_back(V);
+  }
+  // Fast path for when we've removed nothing
+  if (Deduped.size() == OP->size())
+    return OP;
+  return VPCtx->getCanonicalOperandPack(Deduped);
+}
+
+
 float Heuristic::getCost(const VectorPack *VP) {
   float Cost = VP->getProducingCost();
   for (auto *OP : VP->getOperandPacks())
-    Cost += getCost(OP);
+    Cost += getCost(dedup(VPCtx, OP));
   return Cost;
 }
 
@@ -60,6 +78,8 @@ float Heuristic::getCost(const OperandPack *OP, const Frontier *Frt) {
       continue;
     Cost += getCost(V)/*/getNumUsers(V)*/ + C_Insert;
   }
+  if (Cost == 0)
+    return 0;
 
   // Build by broadcast
   if (is_splat(*OP)) {
@@ -75,9 +95,11 @@ float Heuristic::getCost(const OperandPack *OP, const Frontier *Frt) {
   
   // Build by producer
   auto OPI = Pkr->getProducerInfo(VPCtx, OP);
-  if (!OPI.Elements.anyCommon(Frozen))
-    for (auto *VP : OPI.Producers)
+  if (!OPI.Elements.anyCommon(Frozen)) {
+    for (auto *VP : OPI.getProducers()) {
       Cost = std::min(Cost, getCost(VP));
+    }
+  }
 
 #if 1
   // Build by composing with other vectors
