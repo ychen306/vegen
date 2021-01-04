@@ -408,41 +408,9 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
 
   std::vector<const VectorPack *> Extensions;
 
-  if (CandidateSet) {
-    BitVector CandidateMembers = CandidateSet->Members;
-    CandidateMembers &= Frt.usableInstIds();
-    if (CandidateMembers.count()) {
-      unsigned InstId = *CandidateMembers.set_bits_begin();
-      //for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
-      for (auto *VP : CandidateSet->Packs) {
-        auto &Elements = VP->getElements();
-        if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds))
-          Extensions.push_back(VP);
-      }
-      ///////////
-      for (auto *OP : Frt.getUnresolvedPacks()) {
-        // if (!Extensions.empty())
-        //  return Extensions;
-        OP = dedup(VPCtx, OP);
-        const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
-        for (auto *VP : OPI.Producers)
-          if (!VP->getElements().anyCommon(UnusableIds) /*&&
-              VP->getElements().test(InstId)*/)
-            Extensions.push_back(VP);
-        //for (auto *VP : OPI.LoadProducers)
-        //  if (!VP->getElements().anyCommon(UnusableIds) &&
-        //      VP->getElements().test(InstId))
-        //    LoadExtensions.push_back(VP);
-      }
-      //////////
-    }
-    if (!Extensions.empty())
-      return Extensions;
-  }
-
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    if (!Extensions.empty())
-      return Extensions;
+    //if (!Extensions.empty())
+    //  return Extensions;
     OP = dedup(VPCtx, OP);
     const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
     if (!OPI.Feasible)
@@ -468,6 +436,39 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     }
     return {LoadVP};
   }
+
+  if (CandidateSet) {
+    BitVector CandidateMembers = CandidateSet->Members;
+    CandidateMembers &= Frt.usableInstIds();
+    if (CandidateMembers.count()) {
+      unsigned InstId = *CandidateMembers.set_bits_begin();
+      //for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
+      for (auto *VP : CandidateSet->Packs) {
+        auto &Elements = VP->getElements();
+        if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds))
+          Extensions.push_back(VP);
+      }
+      ///////////
+      for (auto *OP : Frt.getUnresolvedPacks()) {
+        //if (!Extensions.empty())
+        //  return Extensions;
+        OP = dedup(VPCtx, OP);
+        const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
+        for (auto *VP : OPI.Producers)
+          if (!VP->getElements().anyCommon(UnusableIds) /*&&
+              VP->getElements().test(InstId)*/)
+            Extensions.push_back(VP);
+        //for (auto *VP : OPI.LoadProducers)
+        //  if (!VP->getElements().anyCommon(UnusableIds) &&
+        //      VP->getElements().test(InstId))
+        //    LoadExtensions.push_back(VP);
+      }
+      //////////
+    }
+    if (!Extensions.empty())
+      return Extensions;
+  }
+
 
   return {};
 }
@@ -732,10 +733,10 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
       continue;
     unsigned OldSize = Enumerated.size();
     //if (UseMCTS) {
-      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 2 /*VL*/);
-      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 2 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4 /*VL*/);
       enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 8 /*VL*/);
-      //enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16 /*VL*/);
+      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16 /*VL*/);
     //}
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
