@@ -8,7 +8,9 @@ set(LIB_PACKING_SRC
   Packer.cpp
   Solver.cpp
   IRVec.cpp
+  LaneBinding.cpp
   Embedding.cpp
+  ExpressionHasher.cpp
   MatchManager.cpp
   LocalDependenceAnalysis.cpp)
 

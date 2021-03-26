@@ -3,6 +3,7 @@
 #include "MatchManager.h"
 #include "VectorPackSet.h"
 #include "Embedding.h"
+#include "ExpressionHasher.h"
 #include "llvm/Support/CommandLine.h"
 #include <queue>
 
@@ -1547,6 +1548,19 @@ std::vector<const VectorPack *> selectPacks(ArrayRef<PackingInfo> Infos) {
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   Frontier Frt(BB, Pkr);
+  if (0) {
+    auto *M = BB->getModule();
+    ExpressionHasher H(M->createRNG("vegen"));
+    llvm::DenseSet<ExpressionHasher::HashType> Hashes;
+    for (auto &I : *BB) {
+      if (usedByStore(&I)) {
+        Hashes.insert(H.hash(&I));
+      }
+    }
+    errs() << "num unique isomorphic values: " << Hashes.size() << '\n';
+    return 0;
+  }
+
 
   CandidatePackSet CandidateSet;
   CandidateSet.Packs = enumerate(BB, Pkr);
@@ -1659,7 +1673,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
 
-  return beamSearch(&Frt, Packs, &CandidateSet, 128);
+  return beamSearch(&Frt, Packs, &CandidateSet, 8);
   // try out the new heuristic
 #if 0
   {

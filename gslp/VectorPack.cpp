@@ -1,5 +1,6 @@
 #include "VectorPack.h"
 #include "MatchManager.h"
+#include "LaneBinding.h"
 #include "llvm/ADT/SmallPtrSet.h"
 
 using namespace llvm;
@@ -7,6 +8,13 @@ using namespace llvm;
 // FIXME: we need to generalize the definition of an operand pack
 // because some of the input lanes are "DONT CARES" (e.g. _mm_div_pd)
 std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
+  LaneBinding LB(Producer);
+  std::vector<OperandPack> OperandPacks(LB.getNumInputs());
+  for (unsigned i = 0; i < OperandPacks.size(); i++) {
+    LB.apply(i, Matches, OperandPacks[i]);
+  }
+  return OperandPacks;
+#if 0
   auto &Sig = Producer->getSignature();
   unsigned NumInputs = Sig.numInputs();
   auto LaneOps = Producer->getLaneOps();
@@ -61,6 +69,7 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
   }
 
   return OperandPacks;
+#endif
 }
 
 std::vector<OperandPack> VectorPack::computeOperandPacksForLoad() {
