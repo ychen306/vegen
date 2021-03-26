@@ -14,62 +14,6 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
     LB.apply(i, Matches, OperandPacks[i]);
   }
   return OperandPacks;
-#if 0
-  auto &Sig = Producer->getSignature();
-  unsigned NumInputs = Sig.numInputs();
-  auto LaneOps = Producer->getLaneOps();
-  unsigned NumLanes = LaneOps.size();
-  std::vector<OperandPack> OperandPacks(NumInputs);
-
-  struct BoundInput {
-    InputSlice Slice;
-    Value *V;
-    // Order by offset of the slice
-    bool operator<(const BoundInput &Other) const {
-      return Slice < Other.Slice;
-    }
-  };
-
-  // Figure out which input packs we need
-  for (unsigned i = 0; i < NumInputs; i++) {
-    std::vector<BoundInput> InputValues;
-    // Find output lanes that uses input `i` and record those uses
-    for (unsigned j = 0; j < NumLanes; j++) {
-      ArrayRef<InputSlice> BoundSlices = LaneOps[j].getBoundSlices();
-      for (unsigned k = 0; k < BoundSlices.size(); k++) {
-        auto &BS = BoundSlices[k];
-        if (BS.InputId != i)
-          continue;
-        InputValues.push_back(
-            {BS, Matches[j] ? Matches[j]->Inputs[k] : nullptr});
-      }
-    }
-
-    // Sort the input values by their slice offset
-    std::sort(InputValues.begin(), InputValues.end());
-
-    unsigned CurOffset = 0;
-    unsigned Stride = InputValues[0].Slice.size();
-    auto &OpndPack = OperandPacks[i];
-    for (const BoundInput &BV : InputValues) {
-      while (CurOffset < BV.Slice.Lo) {
-        OpndPack.push_back(nullptr);
-        CurOffset += Stride;
-      }
-      assert(CurOffset == BV.Slice.Lo);
-      OpndPack.push_back(BV.V);
-      CurOffset += Stride;
-    }
-    unsigned InputSize = Sig.InputBitwidths[i];
-    while (CurOffset < InputSize) {
-      OpndPack.push_back(nullptr);
-      CurOffset += Stride;
-    }
-    assert(OpndPack.size() * Stride == InputSize);
-  }
-
-  return OperandPacks;
-#endif
 }
 
 std::vector<OperandPack> VectorPack::computeOperandPacksForLoad() {
