@@ -5,42 +5,58 @@
 
 using namespace llvm;
 
-ExpressionHasher::HashType ExpressionHasher::hashLeaf(Type *Ty) {
+Canonicalizer::HashType Canonicalizer::hashLeaf(Type *Ty) {
   if (LeafHashes.count(Ty))
     return LeafHashes[Ty];
   return LeafHashes[Ty] = (*RNG)();
 }
 
-ExpressionHasher::HashType ExpressionHasher::hashOpcode(unsigned Opcode) {
+Canonicalizer::HashType Canonicalizer::hashOpcode(unsigned Opcode) {
   if (OpcodeHashes.count(Opcode))
     return OpcodeHashes[Opcode];
   return OpcodeHashes[Opcode] = (*RNG)();
 }
 
-ExpressionHasher::HashType ExpressionHasher::hashValue(Value *V) {
-  if (isa<BinaryOperator>(V) || isa<SelectInst>(V) ||
-      isa<CastInst>(V) || isa<CmpInst>(V) || isa<UnaryOperator>(V))
-    return hash(cast<Instruction>(V));
-
-  return hashLeaf(V->getType());
+Canonicalizer::Node *Canonicalizer::canonicalize(const Node &N) {
+  auto &Slot = Nodes[N];
+  if (!Slot)
+    Slot.reset(new Node(N));
+  return Slot.get();
 }
 
-ExpressionHasher::HashType ExpressionHasher::hash(Instruction *I) {
-  if (InstHashes.count(I))
-    return InstHashes[I];
+Canonicalizer::Node *Canonicalizer::getNodeForValue(Value *V) {
+  if (isa<BinaryOperator>(V) || isa<SelectInst>(V) ||
+      isa<CastInst>(V) || isa<CmpInst>(V) || isa<UnaryOperator>(V))
+    return get(cast<Instruction>(V));
 
-  HashType H;
+  Node N(V->getType());
+  N.Hash = hashLeaf(V->getType());
+  return canonicalize(N);
+}
+
+Canonicalizer::Node *Canonicalizer::get(Instruction *I) {
   unsigned NumOperands = I->getNumOperands();
   assert(NumOperands <= 3 && "instruction with unknown number of operands");
-  auto Op = hashOpcode(I->getOpcode());
+
+  auto OpHash = hashOpcode(I->getOpcode());
+
+  HashType Hash;
+  Node N(I->getType());
+  N.Opcode = I->getOpcode();
   if (NumOperands == 1) {
-    H = hash_combine(Op, hashValue(I->getOperand(0)));
+    N.Arg1 = getNodeForValue(I->getOperand(0));
+    N.Hash = hash_combine(OpHash, N.Arg1->Hash);
   } else if (NumOperands == 2) {
-    H = hash_combine(Op, hashValue(I->getOperand(0)),
-                     hashValue(I->getOperand(1)));
+    N.Arg1 = getNodeForValue(I->getOperand(0));
+    N.Arg2 = getNodeForValue(I->getOperand(1));
+    N.Hash = hash_combine(OpHash, N.Arg1->Hash, N.Arg2->Hash);
   } else if (NumOperands == 3) {
-    H = hash_combine(Op, hashValue(I->getOperand(0)),
-                     hashValue(I->getOperand(1)), hashValue(I->getOperand(2)));
+    N.Arg1 = getNodeForValue(I->getOperand(0));
+    N.Arg2 = getNodeForValue(I->getOperand(1));
+    N.Arg3 = getNodeForValue(I->getOperand(2));
+    N.Hash = hash_combine(OpHash, N.Arg1->Hash, N.Arg2->Hash, N.Arg3->Hash);
   }
-  return InstHashes[I] = H;
+
+  N.Rep = I;
+  return canonicalize(N);
 }

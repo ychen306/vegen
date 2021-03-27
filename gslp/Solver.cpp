@@ -1551,11 +1551,11 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   {
     auto *M = BB->getModule();
-    ExpressionHasher H(M->createRNG("vegen"));
-    llvm::DenseSet<ExpressionHasher::HashType> Hashes;
+    Canonicalizer H(M->createRNG("vegen"));
+    llvm::DenseSet<Canonicalizer::Node *> Hashes;
     for (auto &I : *BB) {
       if (usedByStore(&I)) {
-        Hashes.insert(H.hash(&I));
+        Hashes.insert(H.get(&I));
       }
     }
     errs() << "num unique isomorphic values: " << Hashes.size() << '\n';
