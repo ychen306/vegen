@@ -10,7 +10,7 @@ set(LIB_PACKING_SRC
   IRVec.cpp
   LaneBinding.cpp
   Embedding.cpp
-  ExpressionHasher.cpp
+  Canonicalizer.cpp
   MatchManager.cpp
   LocalDependenceAnalysis.cpp)
 

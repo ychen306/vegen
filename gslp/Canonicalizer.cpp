@@ -1,4 +1,4 @@
-#include "ExpressionHasher.h"
+#include "Canonicalizer.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
