@@ -2,6 +2,7 @@
 #define EXPR_HASHER_H
 
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/PointerUnion.h"
 #include "llvm/Support/RandomNumberGenerator.h"
 #include "llvm/Support/raw_ostream.h"
@@ -15,16 +16,23 @@ class Value;
 class Canonicalizer {
 public:
   using HashType = uint64_t;
+  // an equivalence class of syntactically equivalent expression
   struct Node {
     llvm::Type *Ty;
     unsigned Opcode;
     HashType Hash;
     Node *Arg1, *Arg2, *Arg3;
-    llvm::Value *Rep; // representative of this expression
+    llvm::DenseSet<llvm::Instruction *> Members;
+
+    // get one arbitrary member (if there's any)
+    llvm::Instruction *getOneMember() const {
+      return Members.empty() ? nullptr : *Members.begin();
+    }
 
     // leaf node
     Node(llvm::Type *Ty)
-        : Ty(Ty), Opcode(0), Hash(0), Arg1(nullptr), Arg2(nullptr), Arg3(nullptr), Rep(nullptr) {}
+        : Ty(Ty), Opcode(0), Hash(0), Arg1(nullptr), Arg2(nullptr),
+          Arg3(nullptr) {}
   };
 
   struct NodeHashInfo {

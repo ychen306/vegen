@@ -57,6 +57,7 @@ Canonicalizer::Node *Canonicalizer::get(Instruction *I) {
     N.Hash = hash_combine(OpHash, N.Arg1->Hash, N.Arg2->Hash, N.Arg3->Hash);
   }
 
-  N.Rep = I;
-  return canonicalize(N);
+  Node *Canonical = canonicalize(N);
+  Canonical->Members.insert(I);
+  return Canonical;
 }

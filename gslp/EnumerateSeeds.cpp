@@ -67,7 +67,7 @@ bool Enumerator::isFeasible(const AbstractSeedPack &Seed) {
 
   bool AllLoads = true;
   for (const Canonicalizer::Node *N : Seed) {
-    if (N && !isa<LoadInst>(N->Rep)) {
+    if (N && !isa<LoadInst>(N->getOneMember())) {
       AllLoads = false;
       break;
     }
@@ -91,7 +91,7 @@ bool Enumerator::isFeasible(const AbstractSeedPack &Seed) {
       }
 
       ArrayRef<Operation::Match> Matches =
-          MM.getMatchesForOutput(LaneOps[i].getOperation(), Seed[i]->Rep);
+          MM.getMatchesForOutput(LaneOps[i].getOperation(), Seed[i]->getOneMember());
       if (Matches.empty())
         break;
       Lanes.push_back(&Matches[0]);
