@@ -21,9 +21,10 @@ public:
       return Members.empty() ? nullptr : *Members.begin();
     }
   };
+
 private:
   using NodeSignature =
-      std::tuple<llvm::Type *, unsigned/*opcode*/, Node *, Node *, Node *>;
+      std::tuple<llvm::Type *, unsigned /*opcode*/, Node *, Node *, Node *>;
   llvm::DenseMap<NodeSignature, std::unique_ptr<Node>> Nodes;
   Node *getNodeForValue(llvm::Value *);
   Node *getOrCreate(NodeSignature);

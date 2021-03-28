@@ -12,11 +12,12 @@ Canonicalizer::Node *Canonicalizer::getOrCreate(NodeSignature Sig) {
 }
 
 Canonicalizer::Node *Canonicalizer::getNodeForValue(Value *V) {
-  if (isa<BinaryOperator>(V) || isa<SelectInst>(V) ||
-      isa<CastInst>(V) || isa<CmpInst>(V) || isa<UnaryOperator>(V))
+  if (isa<BinaryOperator>(V) || isa<SelectInst>(V) || isa<CastInst>(V) ||
+      isa<CmpInst>(V) || isa<UnaryOperator>(V))
     return get(cast<Instruction>(V));
 
-  return getOrCreate(NodeSignature(V->getType(), ~0u, nullptr, nullptr, nullptr));
+  return getOrCreate(
+      NodeSignature(V->getType(), ~0u, nullptr, nullptr, nullptr));
 }
 
 Canonicalizer::Node *Canonicalizer::get(Instruction *I) {
@@ -33,7 +34,8 @@ Canonicalizer::Node *Canonicalizer::get(Instruction *I) {
   } else if (NumOperands == 3) {
     Arg3 = getNodeForValue(I->getOperand(2));
   }
-  Node *N = getOrCreate(NodeSignature(I->getType(), I->getOpcode(), Arg1, Arg2, Arg3));
+  Node *N = getOrCreate(
+      NodeSignature(I->getType(), I->getOpcode(), Arg1, Arg2, Arg3));
   N->Members.insert(I);
   return N;
 }
