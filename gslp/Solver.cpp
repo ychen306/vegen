@@ -4,6 +4,7 @@
 #include "VectorPackSet.h"
 #include "Embedding.h"
 #include "Canonicalizer.h"
+#include "EnumerateSeeds.h"
 #include "llvm/Support/CommandLine.h"
 #include <queue>
 
@@ -1551,14 +1552,19 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   {
     auto *M = BB->getModule();
-    Canonicalizer H(M->createRNG("vegen"));
-    llvm::DenseSet<Canonicalizer::Node *> Hashes;
+    Canonicalizer Canon(M->createRNG("vegen"));
+    llvm::DenseSet<Canonicalizer::Node *> NodeSet;
     for (auto &I : *BB) {
       if (usedByStore(&I)) {
-        Hashes.insert(H.get(&I));
+        NodeSet.insert(Canon.get(&I));
       }
     }
-    errs() << "num unique isomorphic values: " << Hashes.size() << '\n';
+    std::vector<Canonicalizer::Node *> Nodes;
+    for (auto *N : NodeSet)
+      Nodes.push_back(N);
+    std::vector<AbstractSeedPack> AbstractSeeds = enumerateAbstractSeeds(Pkr, &Canon, BB, Nodes);
+    errs() << "num unique isomorphic values: " << NodeSet.size() << '\n';
+    errs() << "num feasible abstract seeds: " << AbstractSeeds.size() <<'\n';
     return 0;
   }
 #endif

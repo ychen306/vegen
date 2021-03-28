@@ -11,6 +11,7 @@ set(LIB_PACKING_SRC
   LaneBinding.cpp
   Embedding.cpp
   Canonicalizer.cpp
+  EnumerateSeeds.cpp
   MatchManager.cpp
   LocalDependenceAnalysis.cpp)
 
