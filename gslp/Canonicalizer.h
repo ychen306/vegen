@@ -3,9 +3,6 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
-#include "llvm/ADT/PointerUnion.h"
-#include "llvm/Support/RandomNumberGenerator.h"
-#include "llvm/Support/raw_ostream.h"
 
 namespace llvm {
 class Instruction;
@@ -15,55 +12,23 @@ class Value;
 
 class Canonicalizer {
 public:
-  using HashType = uint64_t;
   // an equivalence class of syntactically equivalent expression
   struct Node {
-    llvm::Type *Ty;
-    unsigned Opcode;
-    HashType Hash;
-    Node *Arg1, *Arg2, *Arg3;
     llvm::DenseSet<llvm::Instruction *> Members;
 
     // get one arbitrary member (if there's any)
     llvm::Instruction *getOneMember() const {
       return Members.empty() ? nullptr : *Members.begin();
     }
-
-    // leaf node
-    Node(llvm::Type *Ty)
-        : Ty(Ty), Opcode(0), Hash(0), Arg1(nullptr), Arg2(nullptr),
-          Arg3(nullptr) {}
   };
-
-  struct NodeHashInfo {
-    static inline Node getEmptyKey() { return Node(nullptr); }
-
-    static inline Node getTombstoneKey() { return Node((llvm::Type *)~0ull); }
-
-    static inline bool isEqual(const Node &N1, const Node &N2) {
-      return std::tie(N1.Ty, N1.Opcode, N1.Arg1, N1.Arg2, N1.Arg3) ==
-             std::tie(N2.Ty, N2.Opcode, N2.Arg1, N2.Arg2, N2.Arg3);
-    }
-
-    static unsigned getHashValue(const Node &N) { return N.Hash; }
-  };
-
 private:
-  std::unique_ptr<llvm::RandomNumberGenerator> RNG;
-  llvm::DenseMap<unsigned, HashType> OpcodeHashes;
-  llvm::DenseMap<llvm::Type *, HashType> LeafHashes;
-
-  llvm::DenseMap<Node, std::unique_ptr<Node>, NodeHashInfo> Nodes;
-
-  Node *canonicalize(const Node &);
-
-  HashType hashLeaf(llvm::Type *);
-  HashType hashOpcode(unsigned Opcode);
-
+  using NodeSignature =
+      std::tuple<llvm::Type *, unsigned/*opcode*/, Node *, Node *, Node *>;
+  llvm::DenseMap<NodeSignature, std::unique_ptr<Node>> Nodes;
   Node *getNodeForValue(llvm::Value *);
+  Node *getOrCreate(NodeSignature);
 
 public:
-  Canonicalizer(decltype(RNG) RNG) : RNG(std::move(RNG)) {}
   Node *get(llvm::Instruction *);
 };
 #endif // end EXPR_HASHER_H

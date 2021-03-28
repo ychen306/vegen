@@ -1552,7 +1552,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
 #if 1
   {
     auto *M = BB->getModule();
-    Canonicalizer Canon(M->createRNG("vegen"));
+    Canonicalizer Canon;
     llvm::DenseSet<Canonicalizer::Node *> NodeSet;
     for (auto &I : *BB) {
       if (usedByStore(&I)) {
