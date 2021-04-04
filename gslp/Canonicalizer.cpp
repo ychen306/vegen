@@ -27,13 +27,12 @@ Canonicalizer::Node *Canonicalizer::get(Instruction *I) {
   Node *Arg1 = nullptr;
   Node *Arg2 = nullptr;
   Node *Arg3 = nullptr;
-  if (NumOperands >= 1) {
+  if (NumOperands >= 1)
     Arg1 = getNodeForValue(I->getOperand(0));
-  } else if (NumOperands >= 2) {
+  if (NumOperands >= 2)
     Arg2 = getNodeForValue(I->getOperand(1));
-  } else if (NumOperands == 3) {
+  if (NumOperands == 3)
     Arg3 = getNodeForValue(I->getOperand(2));
-  }
   Node *N = getOrCreate(
       NodeSignature(I->getType(), I->getOpcode(), Arg1, Arg2, Arg3));
   N->Members.insert(I);

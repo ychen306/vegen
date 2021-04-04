@@ -61,6 +61,13 @@ LaneBinding::LaneBinding(const InstBinding *Inst) {
 void LaneBinding::apply(unsigned i, LaneBinding::MatchList Matches,
                         SmallVectorImpl<Value *> &Input) const {
   Input.clear();
-  for (const Optional<InputRef> &M : Inputs[i])
-    Input.push_back(M ? M->get(Matches) : nullptr);
+  for (const Optional<InputRef> &Ref : Inputs[i])
+    Input.push_back(Ref ? Ref->get(Matches) : nullptr);
+}
+
+void LaneBinding::label(unsigned i,
+                        SmallVectorImpl<LaneBinding::Label> &Labels) const {
+  Labels.clear();
+  for (const Optional<InputRef> &Ref : Inputs[i])
+    Labels.push_back(Ref ? Label(Ref->getMatchIdx()) : None);
 }

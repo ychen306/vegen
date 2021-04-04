@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.4)
+
+include(sanitizers.cmake)
+
 project(GSLP)
 
 set(CMAKE_CXX_STANDARD 14)
