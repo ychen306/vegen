@@ -410,6 +410,53 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
 
   std::vector<const VectorPack *> Extensions;
 
+  if (CandidateSet) {
+    BitVector CandidateMembers = CandidateSet->Members;
+    CandidateMembers &= Frt.usableInstIds();
+    if (CandidateMembers.count()) {
+      unsigned InstId = *CandidateMembers.set_bits_begin();
+      //for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
+      for (auto *VP : CandidateSet->Packs) {
+        auto &Elements = VP->getElements();
+        if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds)) {
+          //if (!VP->isLoad())
+          //  return {VP};
+          Extensions.push_back(VP);
+        }
+      }
+        if (!Extensions.empty())
+          return Extensions;
+      ///////////
+      for (auto *OP : Frt.getUnresolvedPacks()) {
+        //if (!Extensions.empty())
+        //  return Extensions;
+        OP = dedup(VPCtx, OP);
+        const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
+        for (auto *VP : OPI.Producers)
+          if (!VP->getElements().anyCommon(UnusableIds) /*&&
+              VP->getElements().test(InstId)*/)
+            Extensions.push_back(VP);
+        for (auto *VP : OPI.LoadProducers)
+          if (!VP->getElements().anyCommon(UnusableIds) &&
+              VP->getElements().test(InstId))
+            LoadExtensions.push_back(VP);
+      }
+      //////////
+    }
+    if (!Extensions.empty())
+      return Extensions;
+
+  if (!LoadExtensions.empty()) {
+    auto *LoadVP = LoadExtensions.front();
+     if (auto *Coalesced = tryCoalesceLoads(
+            LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1),
+            Pkr)) {
+      return {Coalesced, LoadVP};
+    }
+    return {LoadVP};
+  }
+  }
+
   for (auto *OP : Frt.getUnresolvedPacks()) {
     //if (!Extensions.empty())
     //  return Extensions;
@@ -438,39 +485,6 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     }
     return {LoadVP};
   }
-
-  if (CandidateSet) {
-    BitVector CandidateMembers = CandidateSet->Members;
-    CandidateMembers &= Frt.usableInstIds();
-    if (CandidateMembers.count()) {
-      unsigned InstId = *CandidateMembers.set_bits_begin();
-      //for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
-      for (auto *VP : CandidateSet->Packs) {
-        auto &Elements = VP->getElements();
-        if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds))
-          Extensions.push_back(VP);
-      }
-      ///////////
-      for (auto *OP : Frt.getUnresolvedPacks()) {
-        //if (!Extensions.empty())
-        //  return Extensions;
-        OP = dedup(VPCtx, OP);
-        const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
-        for (auto *VP : OPI.Producers)
-          if (!VP->getElements().anyCommon(UnusableIds) /*&&
-              VP->getElements().test(InstId)*/)
-            Extensions.push_back(VP);
-        //for (auto *VP : OPI.LoadProducers)
-        //  if (!VP->getElements().anyCommon(UnusableIds) &&
-        //      VP->getElements().test(InstId))
-        //    LoadExtensions.push_back(VP);
-      }
-      //////////
-    }
-    if (!Extensions.empty())
-      return Extensions;
-  }
-
 
   return {};
 }
@@ -855,6 +869,8 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
           return S->Cost + S->Est < S2->Cost + S2->Est;
         });
     Beam.resize(std::min<unsigned>(Beam.size(), BeamWidth));
+    //if (!Beam.empty())
+    //  errs() << "STATE = " << *Beam.front()->TreeNode->getFrontier() << '\n';
   }
 
   assert(Best);
@@ -884,7 +900,7 @@ void UCTNode::expand(const CandidatePackSet *CandidateSet) {
     // Consider seed packs
     if (auto *SI = dyn_cast<StoreInst>(V)) {
       // for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
-      for (unsigned VL : {2, 4, 8, 16}) {
+      for (unsigned VL : {2, 4, 8, 16,32}) {
         if (auto *VP = getSeedStorePack(*Frt, SI, VL)) {
           if (VP->getElements().anyCommon(UnusableIds))
             continue;
@@ -1106,7 +1122,7 @@ static float followHeuristic(const Frontier *Frt, const CandidatePackSet *Candid
 // Uniformly random rollout
 float RolloutEvaluator::evaluate(const Frontier *Frt,
                                  const CandidatePackSet *CandidateSet) {
-  return H->getCost(Frt);
+  //return H->getCost(Frt);
   //return followHeuristic(Frt, CandidateSet);
   //return H->getCost(Frt);
   auto *Pkr = Frt->getPacker();
@@ -1549,7 +1565,7 @@ std::vector<const VectorPack *> selectPacks(ArrayRef<PackingInfo> Infos) {
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   Frontier Frt(BB, Pkr);
-#if 1
+#if 0
   {
     auto *M = BB->getModule();
     Canonicalizer Canon;
@@ -1562,16 +1578,48 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     std::vector<Canonicalizer::Node *> Nodes;
     for (auto *N : NodeSet)
       Nodes.push_back(N);
-    std::vector<AbstractSeedPack> AbstractSeeds = enumerateAbstractSeeds(Pkr, &Canon, BB, Nodes);
+    auto Seeds = enumerateSeeds(Pkr, &Canon, BB, Nodes);
     errs() << "num unique isomorphic values: " << NodeSet.size() << '\n';
-    errs() << "num feasible abstract seeds: " << AbstractSeeds.size() <<'\n';
+    errs() << "num feasible seeds: " << Seeds.size() <<'\n';
     return 0;
   }
 #endif
+  auto *M = BB->getModule();
+  Canonicalizer Canon;
+  llvm::DenseSet<Canonicalizer::Node *> NodeSet;
+  for (auto &I : *BB) {
+    if (usedByStore(&I)) {
+      NodeSet.insert(Canon.get(&I));
+    }
+  }
+  errs() << "num unique isomorphic values: " << NodeSet.size() << '\n';
 
+  std::vector<Canonicalizer::Node *> Nodes;
+  for (auto *N : NodeSet)
+    Nodes.push_back(N);
 
   CandidatePackSet CandidateSet;
-  CandidateSet.Packs = enumerate(BB, Pkr);
+  auto Enumerated = enumerateSeeds(Pkr, &Canon, BB, Nodes);
+  {
+    auto *VPCtx = Pkr->getContext(BB);
+
+    for (auto &OP : Enumerated) {
+      auto &OPI = Pkr->getProducerInfo(VPCtx, &OP);
+      for (auto *VP : OPI.Producers) {
+        CandidateSet.Packs.push_back(VP);
+      }
+    }
+
+    for (auto &I : *BB) {
+      if (auto *LI = dyn_cast<LoadInst>(&I)) {
+        for (unsigned VL : {2, 4, 8, 16/*, 32, 64*/})
+          for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
+            CandidateSet.Packs.push_back(VP);
+      }
+    }
+  }
+
+  //CandidateSet.Packs = enumerate(BB, Pkr);
   auto *VPCtx = Frt.getContext();
   CandidateSet.Members = BitVector(VPCtx->getNumValues());
   CandidateSet.Inst2Packs.resize(VPCtx->getNumValues());
@@ -1681,7 +1729,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
 
-  return beamSearch(&Frt, Packs, &CandidateSet, 8);
+  return beamSearch(&Frt, Packs, &CandidateSet, 32);
   // try out the new heuristic
 #if 0
   {
@@ -1764,16 +1812,16 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   if (UseMCTS || true) {
     UCTNodeFactory Factory;
     RolloutEvaluator Evaluator;
-    UCTSearch MCTS(0.1 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+    UCTSearch MCTS(1.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                    nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
     UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
-    unsigned NumSimulations = 10000;
+    unsigned NumSimulations = 1000;
     float TotalCost = 0;
     Root->expand(&CandidateSet);
 
     while (!Root->isTerminal()) {
-      //MCTS.run(Root, NumSimulations);
-      //assert(Root->expanded());
+      MCTS.run(Root, NumSimulations);
+      assert(Root->expanded());
 
       if (Root->transitions().empty())
         break;

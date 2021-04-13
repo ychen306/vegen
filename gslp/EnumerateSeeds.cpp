@@ -23,9 +23,9 @@ Value *followValuePath(const ValuePath &P, Instruction *I,
                        const MatchManager &MM) {
   Value *V = I;
   unsigned i = 0;
-  //errs() << "following root " << *I << '\n';
+  // errs() << "following root " << *I << '\n';
   for (MatchInput M : P) {
-    //errs() << "following input " << M.InputId 
+    // errs() << "following input " << M.InputId
     //  << " of operation " << M.Op
     //  << " at value " << *V
     //  << '\n';
@@ -65,7 +65,7 @@ public:
     unsigned SeedLane = *Labels[i];
     // Seed value is null
     if (SeedLane < Seed.size() && Seed[SeedLane]) {
-      //errs() << "ROOT IS IN CLASS " << Canon->get(Seed[SeedLane]) << '\n';
+      // errs() << "ROOT IS IN CLASS " << Canon->get(Seed[SeedLane]) << '\n';
       return followValuePath(*Values[i], Seed[SeedLane], MM);
     }
     return nullptr;
@@ -102,7 +102,7 @@ public:
       auto &L = Labels[i];
       if (L) {
         OS << *L << "  ";
-#if 0
+#if 1
         for (const MatchInput &M : *Values[i])
           OS << M.InputId << ' ';
         OS << '\n';
@@ -160,7 +160,8 @@ public:
                 float Coeff = 0.2);
   Enumerator(Packer *, Canonicalizer *, BasicBlock *);
   std::vector<AbstractSeedPack> enumerate(ArrayRef<Canonicalizer::Node *>);
-  std::vector<OperandPack> concretize(const AbstractSeedPack &, unsigned BeamWidth=32);
+  void concretize(std::vector<OperandPack> &, const AbstractSeedPack &,
+                  unsigned BeamWidth = 32);
 };
 
 bool isLeaf(ArrayRef<Value *> Operand, bool &IsFeasible) {
@@ -188,12 +189,11 @@ Enumerator::checkFeasibility(const AbstractSeedPack &Seed) {
     return *It->second;
 
   bool AllLoads = true;
-  for (const Canonicalizer::Node *N : Seed) {
+  for (const Canonicalizer::Node *N : Seed)
     if (N && !isa<LoadInst>(N->getOneMember())) {
       AllLoads = false;
       break;
     }
-  }
 
   auto &Leaves =
       *(Memo[Seed] = std::make_unique<std::vector<AbstractLeafPack>>());
@@ -223,8 +223,9 @@ Enumerator::checkFeasibility(const AbstractSeedPack &Seed) {
         break;
       Lanes.push_back(&Matches[0]);
     }
-    if (Lanes.size() != NumLanes)
+    if (Lanes.size() != NumLanes) {
       continue;
+    }
 
     const LaneBinding *LB = getBinding(Inst);
     unsigned NumInputs = LB->getNumInputs();
@@ -282,7 +283,7 @@ void Enumerator::enumerateRec(std::vector<AbstractSeedPack> &Seeds,
       enumerateRec(Seeds, LaneId + 1, Seed, Nodes);
     else {
       Seeds.push_back(Seed);
-#if 1
+#if 0
       auto Leaves = checkFeasibility(Seed);
       errs() << "==============\n";
       for (auto &L : Leaves) {
@@ -335,7 +336,7 @@ float Enumerator::computeEntropy(ArrayRef<Value *> Pack) {
       if (isa<Constant>(Pack[i]) && isa<Constant>(Pack[j]))
         continue;
       if (!Info1 || !Info2 || Info1->Leader != Info2->Leader ||
-              int(Info1->Id) - int(Info2->Id) != int(i) - int(j))
+          int(Info1->Id) - int(Info2->Id) != int(i) - int(j))
         Error += 1;
     }
   }
@@ -343,14 +344,15 @@ float Enumerator::computeEntropy(ArrayRef<Value *> Pack) {
   float Utilization = 0;
   for (auto &KV : Ranges) {
     const Range &R = KV.second;
-    Utilization = std::min<float>(1.0, float(Pack.size())/float(R.size()));
+    Utilization = std::min<float>(1.0, float(Pack.size()) / float(R.size()));
   }
 
   float N = Pack.size();
-  return Error / (N * (N - 1) / 2) + Ranges.size()-Utilization;
+  return Error / (N * (N - 1) / 2) + Ranges.size() - Utilization;
 }
 
-void Enumerator::printLeaves(const AbstractSeedPack &Seed, ArrayRef<Instruction *> SeedValues) {
+void Enumerator::printLeaves(const AbstractSeedPack &Seed,
+                             ArrayRef<Instruction *> SeedValues) {
   auto Leafs = checkFeasibility(Seed);
   errs() << "<<<<<<<<< LEAVES >>>>>>>>>>>\n";
   for (auto &Leaf : Leafs) {
@@ -363,6 +365,23 @@ void Enumerator::printLeaves(const AbstractSeedPack &Seed, ArrayRef<Instruction 
     }
     errs() << '\n';
   }
+  errs() << "<<<<< SEED >>>>\n";
+  for (auto *I : SeedValues) {
+    if (!I) {
+      errs() << "-1 ";
+      continue;
+    }
+    bool Printed = false;
+    for (User *U : I->users())
+      if (auto *SI = dyn_cast<StoreInst>(U)) {
+        errs() << Pkr->getStoreInfo(BB).get(SI).Id << ' ';
+        Printed = true;
+        break;
+      }
+    if (!Printed)
+      errs() << "-1 ";
+  }
+  errs() << "\n\n";
 }
 
 float Enumerator::getCost(const AbstractSeedPack &Seed,
@@ -375,7 +394,9 @@ float Enumerator::getCost(const AbstractSeedPack &Seed,
   using ValueList = SmallVector<Value *, 8>;
   struct ListHasher {
     static inline ValueList getEmptyKey() { return ValueList(); }
-    static inline ValueList getTombstoneKey() { return { reinterpret_cast<Value *>(~0u) }; }
+    static inline ValueList getTombstoneKey() {
+      return {reinterpret_cast<Value *>(~0u)};
+    }
     static inline bool isEqual(const ValueList &A, const ValueList &B) {
       if (A.size() != B.size())
         return false;
@@ -393,27 +414,60 @@ float Enumerator::getCost(const AbstractSeedPack &Seed,
   for (auto &Leaf : Leafs) {
     ValueList LeafValues;
     for (unsigned i = 0; i < Leaf.size(); i++) {
-      //errs() << "Getting leaf value at lane " << i << '\n';
+      // errs() << "Getting leaf value at lane " << i << '\n';
       LeafValues.push_back(Leaf.getValue(SeedValues, i, MM, Canon));
     }
     bool Inserted = Visited.insert(LeafValues).second;
     if (Inserted)
       Cost += computeEntropy(LeafValues);
   }
+
+  {
+    std::vector<StoreInst *> Stores;
+    for (auto *I : SeedValues) {
+      Stores.push_back(nullptr);
+      for (User *U : I->users())
+        if (auto *SI = dyn_cast<StoreInst>(U)) {
+          Stores.back() = SI;
+          break;
+        }
+    }
+
+    float Error = 0;
+    for (unsigned i = 0; i < Stores.size(); i++) {
+      if (!Stores[i])
+        continue;
+      auto &LayoutInfo = Pkr->getStoreInfo(BB);
+      auto Info1 = LayoutInfo.get(Stores[i]);
+      for (unsigned j = i + 1; j < Stores.size(); j++) {
+        if (!Stores[j])
+          continue;
+        auto Info2 = LayoutInfo.get(Stores[j]);
+        if (Info1.Leader != Info2.Leader ||
+            int(Info1.Id) - int(Info2.Id) != int(i) - int(j))
+          Error += 1;
+      }
+    }
+    // return Error;
+    float N = Stores.size();
+    Cost += Error * (N * (N - 1) / 2);
+  }
+
   return Cost;
 }
 
 std::vector<AbstractSeedPack>
 Enumerator::enumerate(ArrayRef<Canonicalizer::Node *> Nodes) {
   std::vector<AbstractSeedPack> Seeds;
-  for (unsigned VL : {4, 8, 16}) {
+  for (unsigned VL : {4, 8, 16, 32}) {
     AbstractSeedPack Seed(VL, nullptr);
     enumerateRec(Seeds, 0, Seed, Nodes);
   }
   return Seeds;
 }
 
-std::vector<OperandPack> Enumerator::concretize(const AbstractSeedPack &Seed, unsigned BeamWidth) {
+void Enumerator::concretize(std::vector<OperandPack> &ConcreteSeeds,
+                            const AbstractSeedPack &Seed, unsigned BeamWidth) {
   struct Candidate {
     SmallVector<Instruction *, 8> Insts;
     float Cost;
@@ -422,64 +476,65 @@ std::vector<OperandPack> Enumerator::concretize(const AbstractSeedPack &Seed, un
       return std::find(Insts.begin(), Insts.end(), I) != Insts.end();
     }
 
-    bool operator<(const Candidate Other) const {
-      return Cost < Other.Cost;
-    }
+    bool operator<(const Candidate Other) const { return Cost < Other.Cost; }
   };
 
-  std::vector<Candidate> Candidates(1);
-  for (unsigned i = 0; i < Seed.size(); i++) {
-    std::vector<Candidate> NextCandidates;
-    for (const Candidate &C : Candidates) {
-      for (Instruction *I : Seed[i]->Members)
-        if (!C.contains(I)) {
-          auto C2 = C;
-          C2.Insts.push_back(I);
-          C2.Cost = getCost(Seed, C2.Insts);
-          NextCandidates.push_back(std::move(C2));
+  // for (auto *X : Seed[0]->Members) {
+  {
+    std::vector<Candidate> Candidates(1);
+    // Candidates.front().Insts.push_back(X);
+    // for (unsigned i = 1; i < Seed.size(); i++) {
+    for (unsigned i = 0; i < Seed.size(); i++) {
+      if (i == 0)
+        errs() << "NUM MEMBERS: " << Seed[i]->Members.size() << '\n';
+      std::vector<Candidate> NextCandidates;
+      for (const Candidate &C : Candidates) {
+        for (auto *I : Seed[i]->Members) {
+          if (!C.contains(I)) {
+            auto C2 = C;
+            C2.Insts.push_back(I);
+            C2.Cost = getCost(Seed, C2.Insts);
+            NextCandidates.push_back(std::move(C2));
+          }
         }
-    }
-    std::sort(NextCandidates.begin(), NextCandidates.end());
+      }
+      std::sort(NextCandidates.begin(), NextCandidates.end());
 
-    if (NextCandidates.size() > BeamWidth)
-      NextCandidates.resize(BeamWidth);
-    Candidates.swap(NextCandidates);
-  }
+      if (NextCandidates.size() > BeamWidth)
+        NextCandidates.resize(BeamWidth);
+      Candidates.swap(NextCandidates);
+    }
 
 #if 1
-  if (!Candidates.empty()) {
-    for (auto &C : Candidates) {
-      errs() << "??? " << C.Cost << '\n';
-      printLeaves(Seed, C.Insts);
-      break;
+    if (!Candidates.empty()) {
+      for (auto &C : Candidates) {
+        errs() << "??? " << C.Cost << '\n';
+        printLeaves(Seed, C.Insts);
+        // break;
+      }
+      Candidates.resize(1);
     }
-  }
 #endif
 
-  std::vector<OperandPack> ConcreteSeeds;
-  for (auto &C : Candidates) {
-    ConcreteSeeds.emplace_back();
-    auto &S = ConcreteSeeds.back();
-    S.insert(S.end(), C.Insts.begin(), C.Insts.end());
+    for (auto &C : Candidates) {
+      ConcreteSeeds.emplace_back();
+      auto &S = ConcreteSeeds.back();
+      S.insert(S.end(), C.Insts.begin(), C.Insts.end());
+    }
   }
-  return ConcreteSeeds;
 }
 
-raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP);
-std::vector<AbstractSeedPack>
-enumerateAbstractSeeds(Packer *Pkr, Canonicalizer *Canon, BasicBlock *BB,
-                       ArrayRef<Canonicalizer::Node *> Nodes) {
+std::vector<OperandPack> enumerateSeeds(Packer *Pkr, Canonicalizer *Canon,
+                                        BasicBlock *BB,
+                                        ArrayRef<Canonicalizer::Node *> Nodes) {
   Enumerator E(Pkr, Canon, BB);
   auto AbstractSeeds = E.enumerate(Nodes);
 
   std::vector<OperandPack> Seeds;
   for (auto &AS : AbstractSeeds) {
-    for (const OperandPack &S : E.concretize(AS)) {
-      errs() << "!!! " << S << '\n';
-      break;
-      //Seeds.push_back(S);
-    }
+    // if (AS.size() != 32) continue;
+    E.concretize(Seeds, AS, 32);
   }
 
-  return AbstractSeeds;
+  return Seeds;
 }

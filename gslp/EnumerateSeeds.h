@@ -14,8 +14,10 @@ class InstBinding;
 class Packer;
 class Canonicalizer;
 
-std::vector<AbstractSeedPack>
-enumerateAbstractSeeds(Packer *, Canonicalizer *, llvm::BasicBlock *,
-                       llvm::ArrayRef<Canonicalizer::Node *>);
+class OperandPack;
+
+std::vector<OperandPack> enumerateSeeds(Packer *, Canonicalizer *,
+                                        llvm::BasicBlock *,
+                                        llvm::ArrayRef<Canonicalizer::Node *>);
 
 #endif // end ENUMERATE_SEEDS_H
