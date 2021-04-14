@@ -241,7 +241,7 @@ bool GSLP::runOnFunction(Function &F) {
   //if (!F.getName().contains("fft4"))
   //if (!F.getName().contains("fft8"))
   //return false;
-  if (!F.getName().contains("idct8"))
+  if (!F.getName().contains("idct"))
     return false;
 
   if (AggressivePacking)

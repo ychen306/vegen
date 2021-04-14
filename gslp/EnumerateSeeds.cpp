@@ -17,23 +17,28 @@ struct MatchInput {
         InputId(Input.getInputIdx()) {}
 };
 
-using ValuePath = std::vector<MatchInput>;
-
-Value *followValuePath(const ValuePath &P, Instruction *I,
-                       const MatchManager &MM) {
-  Value *V = I;
-  unsigned i = 0;
-  // errs() << "following root " << *I << '\n';
-  for (MatchInput M : P) {
-    // errs() << "following input " << M.InputId
-    //  << " of operation " << M.Op
-    //  << " at value " << *V
-    //  << '\n';
-    assert(!MM.getMatchesForOutput(M.Op, V).empty());
-    V = MM.getMatchesForOutput(M.Op, V).front().Inputs[M.InputId];
+//using ValuePath = std::vector<MatchInput>;
+class ValuePath {
+  std::vector<MatchInput> Path;
+  mutable DenseMap<Instruction *, Value*> Values;
+public:
+  ValuePath() = default;
+  ValuePath(MatchInput M) : Path({M}) {}
+  ValuePath extend(const ValuePath &Other) const {
+    ValuePath New = *this;
+    New.Path.insert(New.Path.end(), Other.Path.begin(), Other.Path.end());
+    return New;
   }
-  return V;
-}
+  Value *evaluate(Instruction *I, const MatchManager &MM) const {
+    auto &V = Values[I];
+    if (!V) {
+      V = I;
+      for (const MatchInput &M : Path)
+        V = MM.getMatchesForOutput(M.Op, V).front().Inputs[M.InputId];
+    }
+    return V;
+  }
+};
 
 class AbstractLeafPack {
   SmallVector<LaneBinding::Label, 8> Labels;
@@ -51,7 +56,7 @@ public:
     for (Optional<LaneBinding::InputRef> Ref : LB->getInput(i)) {
       Values.push_back(None);
       if (Ref)
-        Values.back() = {MatchInput(Inst, *Ref)};
+        Values.back() = MatchInput(Inst, *Ref);
     }
   }
 
@@ -66,7 +71,7 @@ public:
     // Seed value is null
     if (SeedLane < Seed.size() && Seed[SeedLane]) {
       // errs() << "ROOT IS IN CLASS " << Canon->get(Seed[SeedLane]) << '\n';
-      return followValuePath(*Values[i], Seed[SeedLane], MM);
+      return Values[i]->evaluate(Seed[SeedLane], MM);
     }
     return nullptr;
   }
@@ -83,10 +88,7 @@ public:
         New.Values[i] = None;
       } else {
         New.Labels[i] = Other.Labels[*L];
-        ValuePath P = *Other.Values[*L];
-        const ValuePath &SuffixP = *Values[i];
-        P.insert(P.end(), SuffixP.begin(), SuffixP.end());
-        New.Values[i] = std::move(P);
+        New.Values[i] = Other.Values[*L]->extend(*Values[i]);
       }
     }
     return New;
@@ -102,7 +104,7 @@ public:
       auto &L = Labels[i];
       if (L) {
         OS << *L << "  ";
-#if 1
+#if 0
         for (const MatchInput &M : *Values[i])
           OS << M.InputId << ' ';
         OS << '\n';
@@ -479,6 +481,8 @@ void Enumerator::concretize(std::vector<OperandPack> &ConcreteSeeds,
     bool operator<(const Candidate Other) const { return Cost < Other.Cost; }
   };
 
+  // FIXME: enumerate a set of packs instead of a single pack,
+  // the set of packs to be maximally disjoint
   // for (auto *X : Seed[0]->Members) {
   {
     std::vector<Candidate> Candidates(1);
