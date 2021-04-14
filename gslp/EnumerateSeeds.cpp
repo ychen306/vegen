@@ -118,6 +118,8 @@ public:
   }
 };
 
+using AbstractSeedPack = std::vector<const Canonicalizer::Node *>;
+
 struct AbstractSeedHasher {
   static inline AbstractSeedPack getEmptyKey() { return {}; }
   static inline AbstractSeedPack getTombstoneKey() {

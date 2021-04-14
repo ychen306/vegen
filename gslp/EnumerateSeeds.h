@@ -4,8 +4,6 @@
 #include "Canonicalizer.h"
 #include "llvm/ADT/ArrayRef.h"
 
-using AbstractSeedPack = std::vector<const Canonicalizer::Node *>;
-
 namespace llvm {
 class BasicBlock;
 }

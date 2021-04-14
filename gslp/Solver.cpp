@@ -424,8 +424,6 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
           Extensions.push_back(VP);
         }
       }
-        if (!Extensions.empty())
-          return Extensions;
       ///////////
       for (auto *OP : Frt.getUnresolvedPacks()) {
         //if (!Extensions.empty())
