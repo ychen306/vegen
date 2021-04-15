@@ -322,6 +322,8 @@ float Enumerator::computeEntropy(ArrayRef<Value *> Pack) {
   };
   SmallMapVector<Instruction *, Range, 4> Ranges;
 
+  Optional<unsigned> MaxId, MinId;
+
   float Error = 0;
   for (unsigned i = 0; i < Pack.size(); i++) {
     if (!Pack[i])
@@ -330,6 +332,13 @@ float Enumerator::computeEntropy(ArrayRef<Value *> Pack) {
     if (auto *LI = dyn_cast<LoadInst>(Pack[i])) {
       Info1 = LayoutInfo.get(LI);
       Ranges[Info1->Leader].update(Info1->Id);
+      if (MaxId) {
+        MaxId = std::max(*MaxId, Info1->Id);
+        MinId = std::min(*MinId, Info1->Id);
+      } else {
+        MaxId = Info1->Id;
+        MinId = Info1->Id;
+      }
     }
     for (unsigned j = i + 1; j < Pack.size(); j++) {
       if (!Pack[j])
@@ -348,11 +357,14 @@ float Enumerator::computeEntropy(ArrayRef<Value *> Pack) {
   float Utilization = 0;
   for (auto &KV : Ranges) {
     const Range &R = KV.second;
-    Utilization = std::min<float>(1.0, float(Pack.size()) / float(R.size()));
+    Utilization += std::min<float>(1.0, float(Pack.size()) / float(R.size()));
   }
 
   float N = Pack.size();
-  return Error / (N * (N - 1) / 2) + Ranges.size() - Utilization;
+  unsigned Util = 0;
+  if (MaxId)
+    Util = float(*MaxId - *MinId + 1) / float(Pack.size()) - 1;
+  return Error / (N * (N - 1) / 2) + Util;// + Ranges.size() - Utilization;
 }
 
 void Enumerator::printLeaves(const AbstractSeedPack &Seed,
@@ -473,42 +485,47 @@ Enumerator::enumerate(ArrayRef<Canonicalizer::Node *> Nodes) {
 void Enumerator::concretize(std::vector<OperandPack> &ConcreteSeeds,
                             const AbstractSeedPack &Seed, unsigned BeamWidth) {
   struct Candidate {
+    BitVector Used;
     SmallVector<Instruction *, 8> Insts;
     float Cost;
-
-    bool contains(Instruction *I) const {
-      return std::find(Insts.begin(), Insts.end(), I) != Insts.end();
-    }
-
     bool operator<(const Candidate Other) const { return Cost < Other.Cost; }
+  };
+
+  auto *VPCtx = Pkr->getContext(BB);
+
+  auto ExtendCandidate = [&](const Candidate &C, Instruction *I) -> Candidate {
+    auto C2 = C;
+    C2.Insts.push_back(I);
+    C2.Used.set(VPCtx->getScalarId(I));
+    C2.Cost = getCost(Seed, C2.Insts);
+    return C2;
+  };
+  auto EmptyCandidate = [&](BitVector Used) -> Candidate {
+    return Candidate{Used, {}, 0};
+  };
+  auto CanExtendWith = [&](const Candidate &C, Instruction *I) -> bool {
+    return !C.Used.test(VPCtx->getScalarId(I));
   };
 
   // FIXME: enumerate a set of packs instead of a single pack,
   // the set of packs to be maximally disjoint
   // for (auto *X : Seed[0]->Members) {
-  {
-    std::vector<Candidate> Candidates(1);
-    // Candidates.front().Insts.push_back(X);
-    // for (unsigned i = 1; i < Seed.size(); i++) {
+  BitVector Used(VPCtx->getNumValues());
+  for (;;) {
+    std::vector<Candidate> Candidates {EmptyCandidate(Used)};
     for (unsigned i = 0; i < Seed.size(); i++) {
-      if (i == 0)
-        errs() << "NUM MEMBERS: " << Seed[i]->Members.size() << '\n';
       std::vector<Candidate> NextCandidates;
-      for (const Candidate &C : Candidates) {
-        for (auto *I : Seed[i]->Members) {
-          if (!C.contains(I)) {
-            auto C2 = C;
-            C2.Insts.push_back(I);
-            C2.Cost = getCost(Seed, C2.Insts);
-            NextCandidates.push_back(std::move(C2));
-          }
-        }
-      }
-      std::sort(NextCandidates.begin(), NextCandidates.end());
+      for (const Candidate &C : Candidates)
+        for (auto *I : Seed[i]->Members)
+          if (CanExtendWith(C, I))
+            NextCandidates.push_back(ExtendCandidate(C, I));
 
+      std::sort(NextCandidates.begin(), NextCandidates.end());
       if (NextCandidates.size() > BeamWidth)
         NextCandidates.resize(BeamWidth);
       Candidates.swap(NextCandidates);
+      if (Candidates.empty())
+        break;
     }
 
 #if 1
@@ -516,17 +533,20 @@ void Enumerator::concretize(std::vector<OperandPack> &ConcreteSeeds,
       for (auto &C : Candidates) {
         errs() << "??? " << C.Cost << '\n';
         printLeaves(Seed, C.Insts);
-        // break;
+        break;
       }
       Candidates.resize(1);
     }
 #endif
+    if (Candidates.empty())
+      break;
 
     for (auto &C : Candidates) {
       ConcreteSeeds.emplace_back();
       auto &S = ConcreteSeeds.back();
       S.insert(S.end(), C.Insts.begin(), C.Insts.end());
     }
+    Used = Candidates.front().Used;
   }
 }
 
