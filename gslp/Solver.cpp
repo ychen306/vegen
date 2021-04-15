@@ -1120,7 +1120,7 @@ static float followHeuristic(const Frontier *Frt, const CandidatePackSet *Candid
 // Uniformly random rollout
 float RolloutEvaluator::evaluate(const Frontier *Frt,
                                  const CandidatePackSet *CandidateSet) {
-  //return H->getCost(Frt);
+  return H->getCost(Frt);
   //return followHeuristic(Frt, CandidateSet);
   //return H->getCost(Frt);
   auto *Pkr = Frt->getPacker();
@@ -1627,6 +1627,8 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       CandidateSet.Inst2Packs[i].push_back(VP);
   }
 
+  return beamSearch(&Frt, Packs, &CandidateSet, 32);
+
   auto &StoreDAG = Pkr->getStoreDAG(BB);
 
   DenseMap<Instruction *, unsigned> StoreChainLen;
@@ -1727,7 +1729,6 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     }
   }
 
-  return beamSearch(&Frt, Packs, &CandidateSet, 32);
   // try out the new heuristic
 #if 0
   {
@@ -1810,10 +1811,10 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   if (UseMCTS || true) {
     UCTNodeFactory Factory;
     RolloutEvaluator Evaluator;
-    UCTSearch MCTS(1.5 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
+    UCTSearch MCTS(0.1 /*c*/, 0.0 /*w*/, 0 /*ExpandThreshold*/, &Factory, Pkr,
                    nullptr /*Policy*/, &Evaluator, &CandidateSet, TTI);
     UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(Frt));
-    unsigned NumSimulations = 1000;
+    unsigned NumSimulations = 10000;
     float TotalCost = 0;
     Root->expand(&CandidateSet);
 

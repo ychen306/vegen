@@ -535,7 +535,8 @@ void Enumerator::concretize(std::vector<OperandPack> &ConcreteSeeds,
         printLeaves(Seed, C.Insts);
         break;
       }
-      Candidates.resize(1);
+      //Candidates.resize(1);
+      Candidates.resize(32);
     }
 #endif
     if (Candidates.empty())
