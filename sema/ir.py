@@ -5,46 +5,6 @@ Instruction = namedtuple('Instruction', ['op', 'bitwidth', 'args'])
 Constant = namedtuple('Constant', ['value', 'bitwidth'])
 FPConstant = namedtuple('FPConstant', ['value', 'bitwidth'])
 
-class DynamicSlice:
-  def __init__(self, base, idx, stride):
-    self.base = base.decl().name()
-    self.base_size = base.size()
-    self.idx = idx
-    self.stride = stride
-    self.bitwidth = stride
-    self.hash_key = self.base, idx, stride
-
-  def __hash__(self):
-    return hash(self.hash_key)
-
-  def __eq__(self, other):
-    return self.hash_key == other.hash_key
-
-  def __repr__(self):
-    return f'choose<{self.stride}>({self.base}).at({self.idx})'
-
-  def get_z3_base(self):
-    return z3.BitVec(self.base, self.base_size)
-
-  def size(self):
-    return self.stride
-
-class Mux:
-  def __init__(self, ctrl, keys, values, bitwidth):
-    self.ctrl = ctrl
-    self.kv_pairs = tuple(sorted(zip(keys, values)))
-    self.bitwidth = bitwidth
-
-  def __hash__(self):
-    return hash(self.kv_pairs)
-
-  def __eq__(self, other):
-    return self.kv_pairs == other.kv_pairs
-
-  def __repr__(self):
-    mapping = ', '.join(f'{k} -> {v}' for k, v in self.kv_pairs)
-    return f'Mux[{self.ctrl}]({mapping})'
-
 class Slice:
   def __init__(self, base, lo, hi):
     '''
@@ -89,24 +49,7 @@ class Slice:
   def __repr__(self):
     return f'{self.base}[{self.lo}:{self.hi}]'
 
-class Insert:
-  def __init__(self, src, src_size, x, idx):
-    '''
-    replace src[idx] with x
-    '''
-    self.src = src
-    self.src_size = src_size
-    self.x = x
-    self.idx = idx
-
-  @property
-  def bitwidth(self):
-    return self.src_size
-
-  def __repr__(self):
-    return f'replace {self.src} at {self.idx} with {self.x}'
-
-ir_types = (Constant, Instruction, Slice, DynamicSlice, Mux, Insert)
+ir_types = (Constant, Instruction, Slice)
 
 binary_ops = {
         'Add', 'Sub', 'Mul', 'SDiv', 'SRem',
