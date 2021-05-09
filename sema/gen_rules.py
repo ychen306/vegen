@@ -5,7 +5,6 @@ import json
 import functools
 from canonicalize import canonicalize
 
-
 SelectOnCmp = namedtuple('SelectOnCmp', ['op', 'a', 'b', 'true_val', 'false_val'])
 
 def get_const_pattern(const):
@@ -230,25 +229,6 @@ class RuleBundle:
       rules.extend(lane.rules)
     return rules
 
-  def emit_bundel_desc(self, outf):
-    pass
-
-class RuleBundleIndex:
-  '''
-  rule index is a reverse index that maps:
-    <rule> -> [<lane id>, <rule bundle>]
-  '''
-
-  def __init__(self, bundles):
-    # inst -> [bundle]
-    self.bundles = bundles
-
-  def emit_matchers(self):
-    pass
-
-  def emit_index(self):
-    pass
-
 def declare_operation(op_name, bound_operation):
   return f'''
 class : public Operation {{
@@ -274,8 +254,6 @@ def emit_sig(sig):
   has_imm8 = 'true' if any(x.is_constant for x in sig.inputs) else 'false'
   return f'InstSignature {{ {{ {input_sizes} }}, {{ {str(sig.output.bitwidth)} }}, {has_imm8} }}'
 
-op_sigs = set()
-
 def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
   '''
   bundles : mapping inst -> bundles
@@ -300,8 +278,6 @@ def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
         op_name = operation_names[op]
 
       bound_liveins = [emit_slice(bundle.sema.inputs, x) for x in op.get_bound_liveins()]
-      op_sig = tuple(x.hi - x.lo for x in op.get_bound_liveins()), op.bitwidth
-      op_sigs.add(op_sig)
       bound_ops.append(
           f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
     sig = emit_sig(bundle.sig)
@@ -316,97 +292,3 @@ std::vector<InstBinding> {binding_vector_name} {{
   {inst_bindings}
 }};
   '''
-
-if __name__ == '__main__':
-  import sys
-  import pickle
-  from semas import semas
-  from pprint import pprint
-  from sig import get_inst_sigs
-  from manual_parser import parse_specs
-
-  specs = parse_specs('data-latest.xml')
-  sigs = get_inst_sigs(semas, specs)
-
-  lifted_f, perf_f, uarch = sys.argv[1:]
-  with open(lifted_f, 'rb') as f:
-    lifted = pickle.load(f)
-
-  inst2cost = parse_perf_file(perf_f, uarch)
-  intrin2cost = {
-      inst: inst2cost.get(spec.xed, '1.0 /*default*/')
-      for inst, spec in specs.items() }
-
-  debug = '_mm_packs_epi32'
-  debug ='_mm256_cvtepu8_epi64'
-  debug = '_mm_sad_epu8'
-  debug = '_mm256_subs_epi16'
-  debug = None
-
-  if debug:
-    _, outs, dag = lifted[debug]
-    print(outs)
-    pprint(dag)
-    bo = BoundOperation(outs[-1], dag)
-    print(bo.get_matching_code())
-    rb = RuleBundle(sigs[debug], semas[debug], outs, dag)
-    print(rb.all_lanes_simple())
-    print(rb.has_nop())
-    print(len(sigs[debug][1]) != 1)
-    exit()
-
-  bundles = {}
-  for inst, (_, out_ids, dag) in iter(lifted.items()):
-    if inst == '_pext_u32':
-      continue
-    # Skip instructions with multiple outputs
-    if len(sigs[inst][1]) != 1:
-      print(inst, 'multiple output')
-      continue
-    # Also skip instructions that use `mm` registers
-    operands = specs[inst].inst_form.split(',')
-    #if operands and any(operand.strip() == 'mm'
-    #    for operand in operands):
-    #  print(inst, 'bad inst form')
-    #  continue
-    try:
-      print('Emitting pattern for', inst)
-      rb = RuleBundle(sigs[inst], semas[inst], out_ids, dag)
-      if not rb.all_lanes_simple():
-        print(inst, 'yucky lanes')
-        continue
-      if rb.has_nop():
-        print(inst, 'has noop lane')
-        continue
-      bundles[inst] = rb
-    except AssertionError as e:
-      print(inst, 'assertion error')
-      pass
-
-  print('Num instructions:', len(bundles))
-
-  inst_features = {
-      inst: spec.cpuids
-      for inst, spec in specs.items()}
-
-  with open('InstSema.cpp', 'w') as f:
-    f.write('''
-#include "InstSema.h"
-#include "MatchingUtil.h"
-
-using namespace llvm;
-using namespace PatternMatch;
-    ''')
-    f.write(codegen(bundles, inst_features, intrin2cost))
-
-  print(op_sigs)
-
-  exit()
-
-
-  _, outs, dag = lifted['_mm_dp_ps']
-  br = BoundOperation(outs[0], dag)
-  print(br.get_matching_code())
-  print(list(zip(br.get_bound_liveins(), br.get_operation_liveins())))
-  print(list(zip(br.get_operation_liveins(),
-    (dag[x] for x in br.get_bound_liveins()))))
