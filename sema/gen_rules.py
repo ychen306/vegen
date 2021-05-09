@@ -270,16 +270,11 @@ def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
 
       bound_liveins = [emit_slice(bundle.sema.inputs, x) for x in op.get_bound_liveins()]
       bound_ops.append(
-          f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
+          f'\n    BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
     sig = emit_sig(bundle.sig)
     cost = costs[inst]
-    inst_defs[inst] = f'InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }}, {cost})'
+    inst_defs[inst] = f'  InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }}, {cost})'
 
   op_decls = '\n'.join(op_decl for op_decl in operation_defs.values())
   inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values())
-  return f'''
-{op_decls}
-std::vector<InstBinding> {binding_vector_name} {{
-  {inst_bindings}
-}};
-  '''
+  return f'{op_decls}\nstd::vector<InstBinding> {binding_vector_name} {{\n{inst_bindings}\n}};'
