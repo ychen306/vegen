@@ -79,107 +79,6 @@ def assert_pred(pred):
   if not pred:
     raise MatchFailure
 
-def elim_dead_branches(f):
-  '''
-  remove provably dead branches in z3.If
-  '''
-  s = z3.Solver()
-
-  cache = {}
-  def memoize(elim):
-    def wrapped(f):
-      key = z3_utils.askey(f)
-      if key in cache:
-        return cache[key]
-      new_f = elim(f)
-      cache[key] = new_f
-      return new_f
-    return wrapped
-
-  @memoize
-  def elim(f):
-    if z3.is_app_of(f, z3.Z3_OP_ITE):
-      cond, a, b = f.children()
-      always_true = s.check(z3.Not(cond)) == z3.unsat
-      if always_true:
-        return elim(a)
-      always_false = s.check(cond) == z3.unsat
-      if always_false:
-        return elim(b)
-
-      cond2 = elim(cond)
-
-      # can't statically determine which branch, follow both!
-      # 1) follow the true branch
-      s.push()
-      s.add(cond)
-      a2 = elim(a)
-      s.pop()
-
-      # 2) follow the false branch
-      s.push()
-      s.add(z3.Not(cond))
-      b2 = elim(b)
-      s.pop()
-
-      return z3.simplify(z3.If(cond2, a2, b2))
-    else:
-      args = f.children()
-      new_args = [elim(arg) for arg in args]
-      return z3.simplify(z3.substitute(f, *zip(args, new_args)))
-
-  return elim(f)
-  
-
-def elim_redundant_branches(f):
-  '''
-  remove redundant branches
-  '''
-  s = z3.Solver()
-
-  cache = {}
-  def memoize(elim):
-    def wrapped(f):
-      key = z3_utils.askey(f)
-      if key in cache:
-        return cache[key]
-      new_f = elim(f)
-      cache[key] = new_f
-      return new_f
-    return wrapped
-
-  @memoize
-  def elim(f):
-    if z3.is_app_of(f, z3.Z3_OP_ITE):
-      cond, a, b = [elim(x) for x in f.children()]
-
-      # guess we can put a in both side
-      s.push()
-      s.add(z3.Not(cond))
-      use_a = s.check(a != b) == z3.unsat
-      s.pop()
-
-      if use_a:
-        return a
-
-      # guess we can put b in both side
-      s.push()
-      s.add(cond)
-      use_b = s.check(a != b) == z3.unsat
-      s.pop()
-
-      if use_b:
-        return b
-
-      # a and b are different...
-      return z3.simplify(z3.If(cond, a, b))
-    else:
-      args = f.children()
-      new_args = [elim(arg) for arg in args]
-      return z3.simplify(z3.substitute(f, *zip(args, new_args)))
-
-  return elim(f)
-
 def reduce_bitwidth(f):
   '''
   for a formula that looks like `f = op concat(0, a), concat(0, b)`
@@ -455,6 +354,7 @@ def recover_sub(f):
 
 class Translator:
   def __init__(self):
+    self.solver = z3.Solver()
     self.extraction_history = ExtractionHistory()
     self.z3op_translators = {
         z3.Z3_OP_TRUE: self.translate_true,
@@ -615,10 +515,9 @@ class Translator:
     don't even bother trying to pattern match this...
     just prove it
     '''
-    s = z3.Solver()
     x = concat.children()[-1]
     sext = z3.SignExt(concat.size()-x.size(), x)
-    is_sext = s.check(concat != sext) == z3.unsat
+    is_sext = self.solver.check(concat != sext) == z3.unsat
     if is_sext:
       return Instruction(
           op='SExt',
