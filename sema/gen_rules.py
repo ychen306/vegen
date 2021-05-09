@@ -1,8 +1,5 @@
 from ir import *
-from manual_parser import parse_specs
 from collections import namedtuple, defaultdict
-from manual_parser import get_spec_from_xml
-from sig import get_inst_sigs
 import io
 import json
 import functools
@@ -26,26 +23,6 @@ def match_select_on_cmp(node_id, dag):
 
   a, b = cond.args
   return SelectOnCmp(cond.op, a, b, true_val, false_val)
-
-def parse_perf_file(fname, uarch):
-  costs = {}
-  with open(fname) as f:
-    perf = json.load(f)
-    for inst, data in perf.items():
-      # data looks something like this [
-      #      {"Broadwell":{l:"1",t:"1",}},
-      #      {"Haswell":{l:"1",t:"1",}},
-      #      {"Ivy Bridge":{l:"1",t:"1",}},
-      #  ]
-      for entry in data:
-        if uarch not in entry:
-          continue
-        # throughput
-        tp = entry[uarch]['t']
-        if tp == '':
-          continue
-        costs[inst] = float(tp) / 0.5
-  return costs
 
 class VarGenerator:
   def __init__(self):
@@ -293,11 +270,9 @@ def emit_slice(liveins, s):
 
 # FIXME: assert that we only have a single output
 def emit_sig(sig):
-  xs, ys = sig
-  input_sizes = ', '.join(str(x.bitwidth) for x in xs)
-  output_sizes = ', '.join(str(y_size) for y_size in ys)
-  has_imm8 = 'true' if any(x.is_constant for x in xs) else 'false'
-  return f'InstSignature {{ {{ {input_sizes} }}, {{ {output_sizes} }}, {has_imm8} }}'
+  input_sizes = ', '.join(str(x.bitwidth) for x in sig.inputs)
+  has_imm8 = 'true' if any(x.is_constant for x in sig.inputs) else 'false'
+  return f'InstSignature {{ {{ {input_sizes} }}, {{ {str(sig.output.bitwidth)} }}, {has_imm8} }}'
 
 op_sigs = set()
 
@@ -311,7 +286,6 @@ def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
   for inst, bundle in bundles.items():
     features = inst_features[inst]
     feature_list = ', '.join(f'"{f}"' for f in features)
-    liveins, _ = bundle.sema
     # BoundOperation for each lane
     bound_ops = []
     for lane in bundle.lanes:
@@ -325,7 +299,7 @@ def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
       else:
         op_name = operation_names[op]
 
-      bound_liveins = [emit_slice(liveins, x) for x in op.get_bound_liveins()]
+      bound_liveins = [emit_slice(bundle.sema.inputs, x) for x in op.get_bound_liveins()]
       op_sig = tuple(x.hi - x.lo for x in op.get_bound_liveins()), op.bitwidth
       op_sigs.add(op_sig)
       bound_ops.append(
@@ -348,6 +322,8 @@ if __name__ == '__main__':
   import pickle
   from semas import semas
   from pprint import pprint
+  from sig import get_inst_sigs
+  from manual_parser import parse_specs
 
   specs = parse_specs('data-latest.xml')
   sigs = get_inst_sigs(semas, specs)

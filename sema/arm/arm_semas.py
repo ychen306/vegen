@@ -3,7 +3,7 @@ import sys
 from collections import namedtuple
 import re
 import operator
-import arm_simd
+from . import arm_simd
 from z3_utils import *
 
 VectorType = namedtuple('VectorType', ['elem_size', 'num_elems', 'is_signed', 'is_float'])

@@ -1,3 +1,8 @@
+import os, sys
+currentdir = os.path.dirname(os.path.realpath(__file__))
+parentdir = os.path.dirname(currentdir)
+sys.path.append(parentdir)
+
 import operator
 import functools
 from intrinsic_types import (
@@ -7,18 +12,11 @@ from intrinsic_types import (
 from sema_ast import *
 from fp_sema import *
 import z3
+import math
 import z3_utils
 from z3_utils import fix_bitwidth
-import math
-
-'''
-TODO: convert z3.If into masking???
-'''
 
 max_unroll_factor = max_vl * 2
-
-def unreachable():
-  assert False
 
 class Environment:
   def __init__(self, expand_builtins, func_defs=None):
@@ -920,9 +918,6 @@ def compile_call(call, env, pred):
       return retval
     compile_stmt(stmt, new_env, pred)
 
-  # user defined function should return explicitly
-  unreachable()
-
 def compile_func_def(func_def, env, _):
   env.def_func(func_def.name, func_def)
 
@@ -1031,7 +1026,6 @@ compilers = {
     }
 
 if __name__ == '__main__':
-
   from manual_parser import get_spec_from_xml
 
   import xml.etree.ElementTree as ET

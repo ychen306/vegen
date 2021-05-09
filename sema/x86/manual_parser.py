@@ -1,5 +1,5 @@
 from sema_ast import Parameter, Spec
-from parser import parse
+from pseudocode_parser import parse
 import xml.etree.ElementTree as ET
 
 std_funcs = '''
