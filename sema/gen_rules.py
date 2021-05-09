@@ -91,15 +91,6 @@ class BoundOperation:
         return f'{pattern_ctor}\n{ctor_args})'
       elif node_ty == Constant:
         return get_const_pattern(node)
-      elif node_ty == Mux:
-        # only support 2-way Mux
-        assert len(node.kv_pairs) == 2
-        false_branch, true_branch = node.kv_pairs
-        assert true_branch[0] == 1
-        ctrl_val = build_pattern(node.ctrl, depth+1)
-        true_val = build_pattern(true_branch[1], depth+1)
-        false_val = build_pattern(false_branch[1], depth+1)
-        return f'm_Select({ctrl_val}, {true_val}, {false_val})'
       else:
         assert node_ty == Slice
         x = var_generator.new_var()
@@ -111,7 +102,7 @@ class BoundOperation:
         livein2vars[node_id].append(x)
         return f'm_Value({x})'
 
-    self.is_nop = type(dag[root]) not in (Instruction, Mux, Constant)
+    self.is_nop = type(dag[root]) not in (Instruction, Constant)
     pattern = build_pattern(root)
     root_bitwidth = dag[root].bitwidth
     conds = [
