@@ -65,6 +65,10 @@ with open(Path(__file__).parent / 'intrinsics.all.sema') as sema_f:
 
     xs, ys = load_spec(next(sema_f))
 
+    # skip PDEP and PEXT
+    if '_pdep_' in intrin or '_pext_' in intrin:
+      continue
+
     # skip over instructions with multiple outputs
     if len(ys) != 1:
       continue
@@ -86,5 +90,3 @@ with open(Path(__file__).parent / 'intrinsics.all.sema') as sema_f:
         features=spec.cpuids
       )
     x86_insts.append(inst)
-    if len(x86_insts) > 8:
-      break

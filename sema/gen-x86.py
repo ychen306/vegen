@@ -2,7 +2,7 @@ import codegen
 from x86.insts import x86_insts
 
 with open('InstSema.x86.cpp', 'w') as f:
-  codegen.emit_instruction_bindings(x86_insts[:10], 'X86Insts', f)
+  codegen.emit_instruction_bindings(x86_insts, 'X86Insts', f)
 
 with open('InstWrappers.x86.c', 'w') as f:
   f.write('''#include <immintrin.h>

@@ -170,10 +170,6 @@ class RuleCollection:
   def just_one(rule):
     return RuleCollection([rule])
 
-  @staticmethod
-  def many(rules, mux_keys, mux_control):
-    return RuleCollection(rules, mux_keys, mux_control)
-
   def num_rules(self):
     return len(self.rules)
 
