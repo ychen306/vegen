@@ -1,9 +1,10 @@
 import gen_rules
 import description as desc
 from typing import List
-from lift_sema import Translator, reduce_bitwidth, elim_dead_branches, elim_redundant_branches
+from lift_sema import Translator, reduce_bitwidth, elim_dead_branches, elim_redundant_branches, typecheck
 import gen_rules
 from tqdm import tqdm
+import ir
 
 def preprocess(y):
   return reduce_bitwidth(elim_redundant_branches(elim_dead_branches(y)))
@@ -17,6 +18,10 @@ def emit_instruction_bindings(insts : List[desc.Instruction], binding_vector_nam
     pbar.set_description('processing '+inst.name)
     try:
       out_ids, dag = translator.translate_formula(preprocess(inst.sema.output), inst.element_size)
+      if not any(isinstance(v, ir.Instruction) for v in dag.values()):
+        continue
+      if not typecheck(dag):
+        continue
     except:
       print('failed to lift', inst.name)
       continue
