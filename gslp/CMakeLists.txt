@@ -3,6 +3,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # The main "lib packing"
 set(LIB_PACKING_SRC
   target-sema/x86.cpp target-sema/arm.cpp
+
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   Heuristic.cpp
   Packer.cpp
@@ -25,8 +26,9 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irrea
 #target_link_libraries(Packing ${LLVM_LIBRARIES})
 target_link_libraries(GSLP Packing)
 
-SET_SOURCE_FILES_PROPERTIES(InstSema.x86.cpp PROPERTIES COMPILE_FLAGS -O0)
-SET_SOURCE_FILES_PROPERTIES(InstSema.arm.cpp PROPERTIES COMPILE_FLAGS -O0)
+SET_SOURCE_FILES_PROPERTIES(
+  target-sema/x86.cpp target-sema/arm.cpp 
+  PROPERTIES COMPILE_FLAGS -O0)
 
 set_target_properties(GSLP PROPERTIES COMPILE_FLAGS "-fno-rtti")
 
