@@ -13685,7 +13685,7 @@ hasBitWidth(tmp12, 32);
   }
 } Operation369;
   
-std::vector<InstBinding> Insts {
+std::vector<InstBinding> X86Insts {
   InstBinding("_mm256_cvtepu8_epi64", { "avx2" }, InstSignature { { 128 }, { 256 }, false }, { BoundOperation(&Operation0, { InputSlice { 0, 0, 8 } }), BoundOperation(&Operation0, { InputSlice { 0, 8, 16 } }), BoundOperation(&Operation0, { InputSlice { 0, 16, 24 } }), BoundOperation(&Operation0, { InputSlice { 0, 24, 32 } }) }, 2.0),
 InstBinding("_mm256_cvtepi32_epi64", { "avx2" }, InstSignature { { 128 }, { 256 }, false }, { BoundOperation(&Operation1, { InputSlice { 0, 0, 32 } }), BoundOperation(&Operation1, { InputSlice { 0, 32, 64 } }), BoundOperation(&Operation1, { InputSlice { 0, 64, 96 } }), BoundOperation(&Operation1, { InputSlice { 0, 96, 128 } }) }, 2.0),
 InstBinding("_mm256_div_pd", { "avx" }, InstSignature { { 256, 256 }, { 256 }, false }, { BoundOperation(&Operation2, { InputSlice { 0, 0, 64 }, InputSlice { 1, 0, 64 } }), BoundOperation(&Operation2, { InputSlice { 0, 64, 128 }, InputSlice { 1, 64, 128 } }), BoundOperation(&Operation2, { InputSlice { 0, 128, 192 }, InputSlice { 1, 128, 192 } }), BoundOperation(&Operation2, { InputSlice { 0, 192, 256 }, InputSlice { 1, 192, 256 } }) }, 16.0),

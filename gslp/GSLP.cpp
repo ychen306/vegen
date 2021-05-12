@@ -11,6 +11,7 @@
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/MemoryLocation.h"
@@ -45,8 +46,7 @@ cl::opt<bool> AggressivePacking("aggressive", cl::desc("Turn on aggressive packi
     cl::init(false));
 
 static cl::opt<std::string>
-    InstWrappersPath("inst-wrappers", cl::desc("Path to InstWrappers.bc"),
-                     cl::Required);
+    WrappersDir("wrappers-dir", cl::desc("Path to the directory containing InstWrappers.*.bc"), cl::Required);
 
 static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                                     cl::init(false));
@@ -89,6 +89,15 @@ namespace {
 
 class GSLP : public FunctionPass {
   std::unique_ptr<Module> InstWrappers;
+  Triple::ArchType Arch;
+
+  std::vector<InstBinding> &getInsts() const {
+    switch (Arch) {
+      case Triple::x86_64: return X86Insts;
+      case Triple::aarch64: return ArmInsts;
+    }
+    llvm_unreachable("unsupported target architecture");
+  }
 
 public:
   static char ID; // Pass identification, replacement for typeid
@@ -106,9 +115,17 @@ public:
   bool runOnFunction(llvm::Function &) override;
 
   virtual bool doInitialization(Module &M) override {
+    Arch = Triple(M.getTargetTriple()).getArch();
     SMDiagnostic Err;
+    std::string Wrapper;
+    switch (Arch) {
+      case Triple::x86_64: Wrapper = "/InstWrappers.x86.bc"; break;
+      case Triple::aarch64: Wrapper = "/InstWrappers.arm.bc"; break;
+
+      default: llvm_unreachable("architecture not supported");
+    }
     errs() << "LOADING WRAPPERS\n";
-    InstWrappers = parseIRFile(InstWrappersPath, Err, M.getContext());
+    InstWrappers = parseIRFile(WrappersDir + Wrapper, Err, M.getContext());
     assert(InstWrappers && "Failed to parse Inst Wrappers");
     errs() << "WRAPPERS LOADED\n";
 
@@ -255,7 +272,7 @@ bool GSLP::runOnFunction(Function &F) {
   auto *DL = &F.getParent()->getDataLayout();
 
   std::vector<InstBinding *> SupportedIntrinsics;
-  for (auto &Inst : Insts) {
+  for (InstBinding &Inst : getInsts()) {
     //if (Inst.getName().contains("hadd"))
     //  continue;
     if (Inst.getName().contains("hadd_ps"))

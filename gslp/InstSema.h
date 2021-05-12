@@ -180,7 +180,7 @@ static inline bool hasBitWidth(const llvm::Value *V, unsigned BitWidth) {
   return false;
 }
 
-extern std::vector<InstBinding> Insts;
+extern std::vector<InstBinding> X86Insts;
 extern std::vector<InstBinding> ArmInsts;
 
 #endif // end INST_SEMA_H
