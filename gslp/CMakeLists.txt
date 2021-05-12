@@ -35,7 +35,7 @@ set(INST_WRAPPERS "${CMAKE_BINARY_DIR}/InstWrappers.x86.bc")
 set(ALL_FLAGS -mssse3 -msse -mavx512bw -msse3 -msse4.1 -msse4.2 -mfma -msse2 -mavx2 -mavx512vnni -mavx512vl -mavx512dq -mgfni -mavx512vbmi2 -mavx512vbmi -mavx512cd -mavx -mavx512f -mbmi2)
 add_custom_command(OUTPUT ${INST_WRAPPERS}
   COMMAND clang -O3 -emit-llvm ${ALL_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/InstWrappers.c -c -Wno-argument-outside-range -o ${INST_WRAPPERS}
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/InstWrappers.c
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/InstWrappers.x86.c
   VERBATIM
 )
 
