@@ -141,7 +141,6 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
-  //std::stable_sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
@@ -279,7 +278,6 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
   }
 
   remove(UnresolvedPacks, ResolvedPackIds);
-  //std::stable_sort(UnresolvedPacks.begin(), UnresolvedPacks.end());
   return Cost;
 }
 
@@ -325,7 +323,6 @@ Frontier::advance(const VectorPack *VP, float &Cost,
   assert(Hash == computeHash(this));
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(VP, TTI);
-  //std::stable_sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
   assert(Next->Hash == computeHash(Next.get()));
   return Next;
 }
@@ -336,7 +333,6 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   assert(Hash == computeHash(this));
   auto Next = std::make_unique<Frontier>(*this);
   Cost = Next->advanceInplace(I, TTI);
-  //std::stable_sort(Next->UnresolvedPacks.begin(), Next->UnresolvedPacks.end());
   assert(Next->Hash == computeHash(Next.get()));
   return Next;
 }
@@ -831,8 +827,6 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
         });
     if (Beam.size() > BeamWidth)
       Beam.resize(BeamWidth);
-    if (!Beam.empty())
-     errs() << *Beam.front()->TreeNode->getFrontier() << '\n';
   }
 
   assert(Best);
