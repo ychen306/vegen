@@ -384,9 +384,9 @@ void VectorPack::computeReplacedInsts() {
         ReplacedInsts.push_back(I);
     }
   }
-  std::sort(ReplacedInsts.begin(), ReplacedInsts.end());
+  std::stable_sort(ReplacedInsts.begin(), ReplacedInsts.end());
   auto It = std::unique(ReplacedInsts.begin(), ReplacedInsts.end());
   ReplacedInsts.resize(std::distance(ReplacedInsts.begin(), It));
-  std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
+  std::stable_sort(ReplacedInsts.begin(), ReplacedInsts.end(),
             [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
 }

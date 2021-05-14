@@ -42,44 +42,11 @@
 using namespace llvm;
 using namespace PatternMatch;
 
-cl::opt<bool> AggressivePacking("aggressive", cl::desc("Turn on aggressive packing decisions"),
-    cl::init(false));
-
 static cl::opt<std::string>
     WrappersDir("wrappers-dir", cl::desc("Path to the directory containing InstWrappers.*.bc"), cl::Required);
 
 static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                                     cl::init(false));
-
-///////// MCTS configs ///////////
-
-static cl::opt<float> ParamC("c",
-                             cl::desc("Specify the exploration factor (C)"),
-                             cl::value_desc("C"), cl::init(0.25));
-
-static cl::opt<float>
-    ParamW("w", cl::desc("Specify the bias factor for the policy network (W)"),
-                   cl::value_desc("W"), cl::init(100));
-
-static cl::opt<unsigned>
-    NumSimulations("simulations", cl::value_desc("Number of MCTS simulations"),
-                   cl::init(10000));
-//////////////////////////////////
-
-static cl::opt<unsigned> EnumCap(
-    "enum-cap",
-    cl::desc("Cap the maximum number of packs enumerate for a instruction"),
-    cl::value_desc("Enumeration cap"), cl::init(1000));
-
-static cl::opt<unsigned> ExpandThreshold("expand-after",
-                                         cl::value_desc("Expandsion threshold"),
-                                         cl::init(9));
-
-static cl::opt<unsigned> MaxNumLanes(
-    "max-num-lanes",
-    cl::desc(
-        "Specify maximum number of lanes the vectorizer is allowed to pack"),
-    cl::value_desc("Maximum number of lanes"), cl::init(8));
 
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
@@ -258,9 +225,10 @@ bool GSLP::runOnFunction(Function &F) {
   //if (!F.getName().contains("fft4"))
   //if (!F.getName().contains("fft8"))
   //return false;
+  if (!F.getName().contains("idct4"))
+    return false;
 
-  if (AggressivePacking)
-    balanceReductionTree(F);
+  balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;

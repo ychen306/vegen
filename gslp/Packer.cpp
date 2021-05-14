@@ -344,6 +344,8 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
     return OP->OPI;
   OP->OPIValid = true;
   auto &OPI = OP->OPI;
+  OPI.Producers.clear();
+  OPI.LoadProducers.clear();
 
   auto *BB = VPCtx->getBasicBlock();
   auto &LDA = *LDAs[BB];

@@ -346,7 +346,7 @@ float VectorPackSet::getCostSaving(TargetTransformInfo *TTI,
     }
   }
 
-  std::sort(Extractions.begin(), Extractions.end());
+  std::stable_sort(Extractions.begin(), Extractions.end());
 
   VectorPackIndex *Prev = nullptr;
 

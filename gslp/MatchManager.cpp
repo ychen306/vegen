@@ -74,7 +74,7 @@ MatchManager::MatchManager(llvm::ArrayRef<InstBinding *> Insts,
     errs() << " REMOVING " << ToRemove.size() << '\n';
 #endif
 
-    std::sort(Matches.begin(), Matches.end(), sortByOutput);
+    std::stable_sort(Matches.begin(), Matches.end(), sortByOutput);
   }
 }
 
