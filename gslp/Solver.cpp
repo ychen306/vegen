@@ -295,10 +295,6 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   return OS;
 }
 
-static std::vector<const VectorPack *>
-findExtensionPacks(const Frontier &Frt,
-                   const CandidatePackSet *CandidateSet = nullptr);
-
 raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
   OS << "============== FRONTIER STATE ==========\n";
   OS << "UNRESOLVED VECTOR OPERANDS: <<<<<<<<<<<<<<<<<<<<<<\n";
@@ -335,21 +331,6 @@ Frontier::advance(llvm::Instruction *I, float &Cost,
   Cost = Next->advanceInplace(I, TTI);
   assert(Next->Hash == computeHash(Next.get()));
   return Next;
-}
-
-// If we already have a UCTNode for the same frontier, reuse that node.
-UCTNode *UCTNodeFactory::getNode(std::unique_ptr<Frontier> Frt) {
-  decltype(FrontierToNodeMap)::iterator It;
-  bool Inserted;
-  std::tie(It, Inserted) = FrontierToNodeMap.try_emplace(Frt.get(), nullptr);
-  if (Inserted) {
-    It->first = Frt.get();
-    auto *NewNode = new UCTNode(Frt.get());
-    Nodes.push_back(std::unique_ptr<UCTNode>(NewNode));
-    It->second = NewNode;
-    Frontiers.push_back(std::move(Frt));
-  }
-  return It->second;
 }
 
 // Remove duplicate elements in OP
@@ -769,47 +750,122 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   return Packs;
 }
 
+struct State;
+struct Transition {
+  const State *Src = nullptr;
+  const State *Dst = nullptr;
+  Instruction *I = nullptr;
+  const VectorPack *VP = nullptr;
+
+  Transition(const State *Src, Instruction *I) : Src(Src), I(I) {}
+  Transition(const State *Src, const VectorPack *VP) : Src(Src), VP(VP) {}
+};
+
+struct State {
+  const Transition *Incoming = nullptr;
+  Frontier Frt;
+  std::vector<Transition> Transitions;
+  float Cost = 0; // Cost so far
+  float Est = 0; // estimate of the cost from now on
+
+  bool expanded() const { return !Transitions.empty() || isTerminal(); }
+  bool isTerminal() const {
+    return Frt.getFreeInsts().count() == 0;
+  }
+  void expand(const CandidatePackSet *);
+
+  State(const Frontier &Frt) : Incoming(nullptr), Frt(Frt), Cost(0), Est(0) {}
+  State(const State &) = default;
+  State &operator=(const State &) = default;
+};
+
+// Fill out the children node
+void State::expand(const CandidatePackSet *CandidateSet) {
+  
+  assert(Transitions.empty() && "expanded already");
+  auto *BB = Frt.getBasicBlock();
+
+  BitVector UnusableIds = Frt.usableInstIds();
+  UnusableIds.flip();
+  bool CanExpandWithStore = false;
+
+  for (auto *V : Frt.usableInsts()) {
+    // Consider seed packs
+    if (auto *SI = dyn_cast<StoreInst>(V)) {
+      // for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+      for (unsigned VL : {2, 4, 8, 16}) {
+        if (auto *VP = getSeedStorePack(Frt, SI, VL)) {
+          if (VP->getElements().anyCommon(UnusableIds))
+            continue;
+          CanExpandWithStore = true;
+          Transitions.emplace_back(this, VP);
+        }
+      }
+
+      if (CanExpandWithStore) {
+        Transitions.emplace_back(this, SI);
+        break;
+      }
+    }
+  }
+
+  if (CanExpandWithStore)
+    return;
+
+  auto Extensions = findExtensionPacks(Frt, CandidateSet);
+  // Also consider the extension packs
+  for (auto *VP : Extensions)
+    Transitions.emplace_back(this, VP);
+
+  if (Transitions.empty()) {
+    for (auto *V : Frt.usableInsts()) {
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        continue;
+
+      // Consider scalars
+      Transitions.emplace_back(this, I);
+    }
+  }
+}
+
 float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
     const CandidatePackSet *CandidateSet, unsigned BeamWidth=500) {
-  struct State {
-    const State *Prev;
-    const UCTNode::Transition *Incoming;
-    UCTNode *TreeNode;
-    float Cost; // Cost so far
-    float Est;
-  };
 
-  UCTNodeFactory Factory;
-  UCTNode *Root = Factory.getNode(std::make_unique<Frontier>(*Frt));
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
 
   Heuristic H(Pkr, Frt->getContext(), CandidateSet);
 
   std::vector<std::unique_ptr<State>> States;
-  auto GetNext = [&](State *S, UCTNode::Transition *T) -> State * {
+  auto GetNext = [&](State *S, Transition *T) -> State * {
     States.push_back(std::make_unique<State>(*S));
     auto S2 = States.back().get();
-    S2->Prev = S;
+    S2->Transitions.clear();
     S2->Incoming = T;
-    S2->TreeNode = T->getNext(S->TreeNode, &Factory, TTI);
-    S2->Cost += T->Cost;
-    S2->Est = H.getCost(S2->TreeNode->getFrontier());
+    T->Dst = S2;
+    float Cost;
+    if (T->I)
+      Cost = S2->Frt.advanceInplace(T->I, TTI);
+    else
+      Cost = S2->Frt.advanceInplace(T->VP, TTI);
+    S2->Cost += Cost;
+    S2->Est = H.getCost(&S2->Frt);
     return S2;
   };
 
   State *Best = nullptr;
 
-  State Start { nullptr, nullptr, Root, 0 };
+  State Start(*Frt);
   std::vector<State *> Beam { &Start };
   while (!Beam.empty()) {
     std::vector<State *> NextBeam;
     for (auto *S : Beam) {
-      if (!S->TreeNode->expanded())
-        S->TreeNode->expand(CandidateSet);
-      for (auto &T : S->TreeNode->transitions()) {
+      if (!S->expanded())
+        S->expand(CandidateSet);
+      for (auto &T : S->Transitions) {
         auto *S2 = GetNext(S, &T);
-        if (S2->TreeNode->isTerminal()) {
+        if (S2->isTerminal()) {
           if (!Best || Best->Cost > S2->Cost) {
             errs() << "new best cost: " << S2->Cost;
             Best = S2;
@@ -837,60 +893,9 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
       errs() << "GOING WITH " << *VP << '\n';
       Packs.tryAdd(VP);
     }
-    S = S->Prev;
+    S = S->Incoming->Src;
   }
   return BestCost;
-}
-
-// Fill out the children node
-void UCTNode::expand(const CandidatePackSet *CandidateSet) {
-  assert(Transitions.empty() && "expanded already");
-  auto *Pkr = getPacker();
-
-  auto *BB = Frt->getBasicBlock();
-
-  BitVector UnusableIds = Frt->usableInstIds();
-  UnusableIds.flip();
-  bool CanExpandWithStore = false;
-
-  for (auto *V : Frt->usableInsts()) {
-    // Consider seed packs
-    if (auto *SI = dyn_cast<StoreInst>(V)) {
-      // for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
-      for (unsigned VL : {2, 4, 8, 16}) {
-        if (auto *VP = getSeedStorePack(*Frt, SI, VL)) {
-          if (VP->getElements().anyCommon(UnusableIds))
-            continue;
-          CanExpandWithStore = true;
-          Transitions.emplace_back(VP);
-        }
-      }
-
-      if (CanExpandWithStore) {
-        Transitions.emplace_back(SI);
-        break;
-      }
-    }
-  }
-
-  if (CanExpandWithStore)
-    return;
-
-  auto Extensions = findExtensionPacks(*Frt, CandidateSet);
-  // Also consider the extension packs
-  for (auto *VP : Extensions)
-    Transitions.emplace_back(VP);
-
-  if (Transitions.empty()) {
-    for (auto *V : Frt->usableInsts()) {
-      auto *I = dyn_cast<Instruction>(V);
-      if (!I)
-        continue;
-
-      // Consider scalars
-      Transitions.emplace_back(I);
-    }
-  }
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
