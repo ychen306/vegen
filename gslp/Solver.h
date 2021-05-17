@@ -9,29 +9,6 @@
 #include "llvm/ADT/Hashing.h"
 #include <bitset>
 
-class PackEnumerationCache {
-  // Mapping a focus instruction to the set of packs it can involve in,
-  // Assumming every instruction before it is free and below not.
-  llvm::DenseMap<llvm::Instruction *, std::vector<const VectorPack *>>
-      FocusToPacksMap;
-
-public:
-  llvm::ArrayRef<const VectorPack *> getPacks(llvm::Instruction *I,
-                                              bool &InCache) const {
-    auto It = FocusToPacksMap.find(I);
-    if (It != FocusToPacksMap.end()) {
-      InCache = true;
-      return It->second;
-    }
-    InCache = false;
-    return {};
-  }
-
-  void insert(llvm::Instruction *I, std::vector<const VectorPack *> &&Packs) {
-    FocusToPacksMap[I] = Packs;
-  }
-};
-
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class MatchManager;
@@ -290,73 +267,6 @@ class UCTNode {
       const UCTNode::Transition &B) {
     return A.visitCount() < B.visitCount();
   }
-};
-
-// Interface for state evaluation
-struct FrontierEvaluator {
-  virtual float evaluate(const Frontier *Frt, const CandidatePackSet *) = 0;
-};
-
-struct DummyEvaluator : public FrontierEvaluator {
-  float evaluate(const Frontier *, const CandidatePackSet *) override { return 0; }
-};
-
-class RolloutEvaluator : public FrontierEvaluator {
-  llvm::DenseMap<const Frontier *, float, FrontierHashInfo>
-    EvalCache;
-  std::vector<std::unique_ptr<Frontier>> Frontiers;
-
-  public:
-  float evaluate(const Frontier *, const CandidatePackSet *) override;
-};
-
-// Interface for asynchronous policy prediction.
-class PackingPolicy {
-  unsigned MaxNumLanes;
-
-  public:
-  PackingPolicy() = delete;
-  PackingPolicy(unsigned MaxNumLanes) : MaxNumLanes(MaxNumLanes) {}
-  virtual ~PackingPolicy() {}
-  unsigned getMaxNumLanes() const { return MaxNumLanes; }
-  // Predict transition probability *asynchronously*.
-  // Result if is update asynchronously via `UCTNode::updateTransitionWeight`.
-  virtual void predictAsync(UCTNode *) = 0;
-  // Predict transition probability *synchronously*.
-  virtual void predict(UCTNode *, std::vector<float> &) = 0;
-  // Cancel prediction requests we made asynchronously.
-  virtual void cancel() = 0;
-};
-
-class UCTSearch {
-  // Controlling how much we explore.
-  float C;
-  // Controlling how much we trust the policy bias.
-  float W;
-
-  unsigned ExpandThreshold;
-
-  UCTNodeFactory *Factory;
-  Packer *Pkr;
-
-  PackingPolicy *Policy;
-
-  // How we evaluate a leaf UCTNode (e.g., w/ a value network or rollout)
-  FrontierEvaluator *Evaluator;
-  const CandidatePackSet *CandidateSet;
-  llvm::TargetTransformInfo *TTI;
-
-  public:
-  UCTSearch(float C, float W, unsigned ExpandThreshold, UCTNodeFactory *Factory,
-      Packer *Pkr, PackingPolicy *Policy, FrontierEvaluator *Evaluator,
-      const CandidatePackSet *CandidateSet,
-      llvm::TargetTransformInfo *TTI)
-    : C(C), W(W), ExpandThreshold(ExpandThreshold), Factory(Factory),
-    Pkr(Pkr), Policy(Policy), Evaluator(Evaluator), CandidateSet(CandidateSet),
-    TTI(TTI) {}
-
-  void run(UCTNode *Root, unsigned Iter);
-  float evalLeafNode(UCTNode *N);
 };
 
 class VectorPackSet;

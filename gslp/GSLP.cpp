@@ -113,8 +113,7 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
   return true;
 }
 
-void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr,
-                         PackingPolicy *Policy) {
+void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr) {
   VectorPackSet PacksScratch = Packs;
   float BottomUpCost = optimizeBottomUp(PacksScratch, &Pkr, &BB);
   errs() << "Bottom-up cost: " << BottomUpCost << '\n';
@@ -259,7 +258,7 @@ bool GSLP::runOnFunction(Function &F) {
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
     errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';
-    vectorizeBasicBlock(BB, Packs, Pkr, nullptr);
+    vectorizeBasicBlock(BB, Packs, Pkr);
   }
 
   IntrinsicBuilder Builder(*InstWrappers);
