@@ -2,11 +2,12 @@
 #include "Heuristic.h"
 #include "MatchManager.h"
 #include "VectorPackSet.h"
-#include "Embedding.h"
 #include "llvm/Support/CommandLine.h"
-#include <queue>
+#include "llvm/Support/Timer.h"
 
 using namespace llvm;
+
+static cl::opt<bool> UseTimer("use-timer", cl::desc("use timer"), cl::init(true));
 
 static unsigned computeHash(const Frontier *Frt) {
   unsigned Hash = 0;
@@ -93,6 +94,7 @@ bool Frontier::resolved(const OperandPack &OP) const {
 }
 
 float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
+  NamedRegionTimer Timer("advance/i", "advance with instruction ", "pack selection", "", UseTimer);
   //float Cost = 0;
   float Cost = Pkr->getScalarCost(I);
   freezeOneInst(I);
@@ -203,6 +205,7 @@ static unsigned getGatherCost(const OperandPack &OP,
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
 float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
+  NamedRegionTimer Timer("advance/pack", "advance with pack", "pack selection", "", UseTimer);
   //float Cost = VP->getCost();
   float Cost = VP->getProducingCost();
 
@@ -356,6 +359,7 @@ extern VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
 
 static std::vector<const VectorPack *>
 findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
+  NamedRegionTimer Timer("find-extensions", "find extensions", "pack selection", "", UseTimer);
   if (Frt.usableInstIds().count() == 0)
     return {};
 
@@ -645,7 +649,6 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto &LDA = Pkr->getLDA(BB);
   auto *VPCtx = Pkr->getContext(BB);
   Aligner A(BB, Pkr);
-  Metricizer<AffineEmbedder> Metric(AffineEmbedder(BB, Pkr->getDataLayout()));
   auto &LayoutInfo = Pkr->getStoreInfo(BB);
 
   AlignmentGraph AG;
@@ -679,9 +682,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       if (!Independent.test(VPCtx->getScalarId(&J)))
         continue;
-      //bool Close = Metric.getDistance(&I, &J) < 1;
       bool Close = A.align(&I, &J) < 0;
-      //bool Close = false;
       if (Close) {
         errs() << "ALIGNED " << I << ", " << J << ", COST = " << A.align(&I, &J) << '\n';
         AG[&I].push_back({&J, A.align(&I, &J)});
@@ -781,6 +782,7 @@ struct State {
 
 // Fill out the children node
 void State::expand(const CandidatePackSet *CandidateSet) {
+  NamedRegionTimer Timer("expand-state", "expand search state", "pack selection", "", UseTimer);
   
   assert(Transitions.empty() && "expanded already");
   auto *BB = Frt.getBasicBlock();
@@ -825,12 +827,14 @@ void State::expand(const CandidatePackSet *CandidateSet) {
 
       // Consider scalars
       Transitions.emplace_back(this, I);
+      break;
     }
   }
 }
 
 float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
     const CandidatePackSet *CandidateSet, unsigned BeamWidth=500) {
+  NamedRegionTimer Timer("beam-search", "beam search main loop", "pack selection", "", UseTimer);
 
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
@@ -839,9 +843,9 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
 
   std::vector<std::unique_ptr<State>> States;
   auto GetNext = [&](State *S, Transition *T) -> State * {
-    States.push_back(std::make_unique<State>(*S));
+    NamedRegionTimer Timer("next-state", "creating the next state", "pack selection", "", UseTimer);
+    States.push_back(std::make_unique<State>(S->Frt));
     auto S2 = States.back().get();
-    S2->Transitions.clear();
     S2->Incoming = T;
     T->Dst = S2;
     float Cost;
@@ -849,7 +853,7 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
       Cost = S2->Frt.advanceInplace(T->I, TTI);
     else
       Cost = S2->Frt.advanceInplace(T->VP, TTI);
-    S2->Cost += Cost;
+    S2->Cost = S->Cost + Cost;
     S2->Est = H.getCost(&S2->Frt);
     return S2;
   };
@@ -858,11 +862,12 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
 
   State Start(*Frt);
   std::vector<State *> Beam { &Start };
+  std::vector<State *> NextBeam;
   while (!Beam.empty()) {
-    std::vector<State *> NextBeam;
+    NextBeam.clear();
     for (auto *S : Beam) {
-      if (!S->expanded())
-        S->expand(CandidateSet);
+      //if (!S->expanded())
+      S->expand(CandidateSet);
       for (auto &T : S->Transitions) {
         auto *S2 = GetNext(S, &T);
         if (S2->isTerminal()) {
