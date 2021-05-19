@@ -74,7 +74,7 @@ bool Frontier::resolved(const OperandPack &OP) const {
   return !Pkr->getProducerInfo(VPCtx, &OP).Elements.anyCommon(FreeInsts);
 }
 
-float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
+float Frontier::advance(Instruction *I, TargetTransformInfo *TTI) {
   NamedRegionTimer Timer("advance/i", "advance with instruction ",
                          "pack selection", "", UseTimer);
   // float Cost = 0;
@@ -183,7 +183,7 @@ static unsigned getGatherCost(const OperandPack &OP,
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
-float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
+float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI) {
   NamedRegionTimer Timer("advance/pack", "advance with pack", "pack selection",
                          "", UseTimer);
   // float Cost = VP->getCost();
@@ -765,7 +765,15 @@ struct State {
   void expand(const CandidatePackSet *);
 
   State(const Frontier &Frt) : Incoming(nullptr), Frt(Frt), Cost(0), Est(0) {}
-  State(const State &) = default;
+  // Create a state from transition T
+  State(Transition &T, TargetTransformInfo *TTI) : Incoming(&T), Frt(T.Src->Frt) {
+    T.Dst = this;
+    Cost = T.Src->Cost;
+    if (T.I)
+      Cost += Frt.advance(T.I, TTI);
+    else
+      Cost += Frt.advance(T.VP, TTI);
+  }
   State &operator=(const State &) = default;
 };
 
@@ -834,35 +842,18 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
   Heuristic H(Pkr, Frt->getContext(), CandidateSet);
 
   std::vector<std::unique_ptr<State>> States;
-  auto GetNext = [&](State *S, Transition *T) -> State * {
-    NamedRegionTimer Timer("next-state", "creating the next state",
-                           "pack selection", "", UseTimer);
-    States.push_back(std::make_unique<State>(S->Frt));
-    auto S2 = States.back().get();
-    S2->Incoming = T;
-    T->Dst = S2;
-    float Cost;
-    if (T->I)
-      Cost = S2->Frt.advanceInplace(T->I, TTI);
-    else
-      Cost = S2->Frt.advanceInplace(T->VP, TTI);
-    S2->Cost = S->Cost + Cost;
-    S2->Est = H.getCost(&S2->Frt);
-    return S2;
-  };
-
   State *Best = nullptr;
-
   State Start(*Frt);
   std::vector<State *> Beam{&Start};
   std::vector<State *> NextBeam;
   while (!Beam.empty()) {
     NextBeam.clear();
     for (auto *S : Beam) {
-      // if (!S->expanded())
       S->expand(CandidateSet);
       for (auto &T : S->Transitions) {
-        auto *S2 = GetNext(S, &T);
+        States.push_back(std::make_unique<State>(T, TTI));
+        State *S2 = States.back().get();
+        S2->Est = H.getCost(&S2->Frt);
         if (S2->isTerminal()) {
           if (!Best || Best->Cost > S2->Cost) {
             errs() << "new best cost: " << S2->Cost;

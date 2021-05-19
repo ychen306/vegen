@@ -33,8 +33,8 @@ public:
   Frontier(llvm::BasicBlock *BB, Packer *Pkr);
   void shrinkFor(llvm::BitVector R);
   llvm::BasicBlock *getBasicBlock() const { return BB; }
-  float advanceInplace(llvm::Instruction *, llvm::TargetTransformInfo *);
-  float advanceInplace(const VectorPack *, llvm::TargetTransformInfo *);
+  float advance(llvm::Instruction *, llvm::TargetTransformInfo *);
+  float advance(const VectorPack *, llvm::TargetTransformInfo *);
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
