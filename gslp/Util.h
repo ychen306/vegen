@@ -18,9 +18,6 @@ using ConsecutiveAccessDAG =
     llvm::DenseMap<llvm::Instruction *,
                    llvm::SmallPtrSet<llvm::Instruction *, 4>>;
 
-// Sample an integer between 0 and N.
-static inline unsigned rand_int(int N) { return std::rand() % N; }
-
 // Remove elements indexed by `ToRemove`, which is sorted in increasing order.
 template <typename T>
 void remove(std::vector<T> &X, llvm::ArrayRef<unsigned> ToRemove) {

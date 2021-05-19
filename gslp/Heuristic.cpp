@@ -46,7 +46,6 @@ static const OperandPack *dedup(const VectorPackContext *VPCtx,
   return VPCtx->getCanonicalOperandPack(Deduped);
 }
 
-
 float Heuristic::getCost(const VectorPack *VP) {
   float Cost = VP->getProducingCost();
   for (auto *OP : VP->getOperandPacks())
@@ -62,22 +61,19 @@ float Heuristic::getCost(Instruction *I) {
   return Cost;
 }
 
-float Heuristic::getCost(const OperandPack *OP, const Frontier *Frt) {
-  // Check the cache if this is a context-independent query
-  if (!Frt) {
-    auto It = OrderedCosts.find(OP);
-    if (It != OrderedCosts.end())
-      return It->second;
+float Heuristic::getCost(const OperandPack *OP) {
+  auto It = OrderedCosts.find(OP);
+  if (It != OrderedCosts.end())
+    return It->second;
 
-    OrderedCosts[OP] = 0;
-  }
+  OrderedCosts[OP] = 0;
 
   // Build by explicit insertion
   float Cost = 0;
   for (auto *V : *OP) {
     if (!V || isa<Constant>(V))
       continue;
-    Cost += getCost(V)/*/getNumUsers(V)*/ + C_Insert;
+    Cost += getCost(V) /*/getNumUsers(V)*/ + C_Insert;
   }
   if (Cost == 0)
     return 0;
@@ -88,21 +84,10 @@ float Heuristic::getCost(const OperandPack *OP, const Frontier *Frt) {
     Cost = std::min(Cost, getCost(V) / getNumUsers(V) + C_Splat);
   }
 
-  BitVector Frozen(VPCtx->getNumValues());
-  if (Frt) {
-    Frozen = Frt->getFreeInsts();
-    Frozen.flip();
-  }
-  
-  // Build by producer
   auto OPI = Pkr->getProducerInfo(VPCtx, OP);
-  if (!OPI.Elements.anyCommon(Frozen)) {
-    for (auto *VP : OPI.getProducers()) {
-      Cost = std::min(Cost, getCost(VP));
-    }
-  }
+  for (auto *VP : OPI.getProducers())
+    Cost = std::min(Cost, getCost(VP));
 
-#if 1
   // Build by composing with other vectors
   // FIXME: deal with don't care.
   std::set<Value *> OPVals(OP->begin(), OP->end());
@@ -110,105 +95,23 @@ float Heuristic::getCost(const OperandPack *OP, const Frontier *Frt) {
     for (auto *VP : Candidates->Packs) {
       if (!VP->getElements().anyCommon(OPI.Elements))
         continue;
-      if (VP->getElements().anyCommon(Frozen))
-        continue;
       ArrayRef<Value *> Vals = VP->getOrderedValues();
       // FIXME: consider don't care
       if (Vals.size() == OP->size() &&
           std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
-        Cost = std::min(Cost, getCost(VP)/getNumUsers(VP) + C_Perm);
+        Cost = std::min(Cost, getCost(VP) / getNumUsers(VP) + C_Perm);
       } else {
-#if 1
         BitVector Intersection = OPI.Elements;
         Intersection &= VP->getElements();
         Cost = std::min(Cost, getCost(VP) / float(Intersection.count()) *
-            float(OPI.Elements.count()) / getNumUsers(VP) + C_Shuffle);
-#else
-        std::set<Value *> Leftover = OPVals;
-        for (auto *V : VP->elementValues())
-          Leftover.erase(V);
-        float LeftoverCost =
-          getCost(std::vector<Value *>(Leftover.begin(), Leftover.end()));
-        Cost =
-          std::min(Cost, getCost(VP)/getNumUsers(VP) + LeftoverCost + C_Shuffle);
-#endif
-      }
-    }
-  }
-#endif
-
-  if (!Frt)
-    OrderedCosts[OP] = Cost;
-  return Cost;
-}
-
-// Vals should be sorted
-float Heuristic::getCost(std::vector<Value *> Vals) {
-  if (Vals.empty())
-    return 0;
-
-  auto It = UnorderedCosts.find(Vals);
-  if (It != UnorderedCosts.end())
-    return It->second;
-  UnorderedCosts[Vals] = 0;
-
-  float NumUsers = getNumUsers(Vals);
-  assert(NumUsers > 0);
-
-  // Build by explicit insertion
-  float Cost = 0;
-  for (auto *V : Vals) {
-    Cost += getCost(V) + C_Insert / NumUsers;
-  }
-
-  // Build by broadcast
-  if (is_splat(Vals)) {
-    Cost = std::min(Cost, getCost(*Vals.begin()) + C_Splat / NumUsers);
-  }
-
-  //// Build by producer
-  // auto OPI = Pkr->getProducerInfo(VPCtx, OP);
-  // for (auto *VP : OPI.Producers)
-  //  Cost = std::min(Cost, getCost(VP));
-
-  // Build by composing with other vectors
-  std::set<Value *> ValSet(Vals.begin(), Vals.end());
-  if (Candidates) {
-    BitVector Elements(VPCtx->getNumValues());
-    for (auto *V : Vals) {
-      if (!V)
-        continue;
-      auto *I = dyn_cast<Instruction>(V);
-      if (I && I->getParent() == VPCtx->getBasicBlock())
-        Elements.set(VPCtx->getScalarId(I));
-    }
-    for (auto *VP : Candidates->Packs) {
-      if (!VP->getElements().anyCommon(Elements))
-        continue;
-      // BitVector Intersection = Elements;
-      // Intersection &= VP->getElements();
-      // Cost = std::min(Cost,
-      //    getCost(VP) / float(Intersection.count()) * float(Elements.count())
-      //  + (Intersection.count() == Elements.count() ? : 0 +
-      //  C_Shuffle/NumUsers));
-      ArrayRef<Value *> Outputs = VP->getOrderedValues();
-      // FIXME: consider don't care
-      if (Outputs.size() == Vals.size() &&
-          std::is_permutation(Outputs.begin(), Outputs.end(), Vals.begin())) {
-        Cost = std::min(Cost, getCost(VP));
-      } else {
-        std::set<Value *> Leftover = ValSet;
-        for (auto *V : VP->elementValues())
-          Leftover.erase(V);
-        float LeftoverCost =
-            getCost(std::vector<Value *>(Leftover.begin(), Leftover.end()));
-        Cost =
-            std::min(Cost, getCost(VP) + LeftoverCost + C_Shuffle / NumUsers);
+                                      float(OPI.Elements.count()) /
+                                      getNumUsers(VP) +
+                                  C_Shuffle);
       }
     }
   }
 
-  return UnorderedCosts[Vals] = Cost;
+  return OrderedCosts[OP] = Cost;
 }
 
 float Heuristic::getCost(Value *V) {
@@ -244,7 +147,6 @@ float Heuristic::getCost(const Frontier *Frt) {
   NamedRegionTimer Timer("heuristic", "heuristic", "pack selection", "", false);
   float Cost = 0;
   for (const OperandPack *OP : Frt->getUnresolvedPacks())
-    //Cost += getCost(OP, Frt);
     Cost += getCost(OP);
   for (Value *V : Frt->getUnresolvedScalars()) {
     Cost += getCost(V);
@@ -254,11 +156,4 @@ float Heuristic::getCost(const Frontier *Frt) {
       Cost += getCost(SI);
   }
   return Cost;
-}
-
-float Heuristic::getSaving(const VectorPack *VP) {
-  float ScalarCost = 0;
-  for (auto *V : VP->elementValues())
-    ScalarCost += getCost(V);
-  return ScalarCost - getCost(VP);
 }

@@ -12,8 +12,6 @@ class LocalDependenceAnalysis;
 class Packer;
 
 class VectorPackSet {
-protected:
-  unsigned NumPacks;
   llvm::Function *F;
   std::vector<const VectorPack *> AllPacks;
   // FIXME : rename Packs to BB2Packs;
@@ -44,24 +42,12 @@ protected:
                                         const ValueIndexTy &ValueIndex,
                                         const PackToValueTy &MaterializedPacks,
                                         IntrinsicBuilder &Builder);
-
-  // Clear auxiliary data structure storing a vector pack
-  void removeAux(const VectorPack *);
-
   void add(const VectorPack *VP);
 
-  // Similar to adding a vector pack...
-  // We do this to basically assert that this scalar should never be packed.
-  void addScalar(llvm::Instruction *, const VectorPackContext &);
-
 public:
-  VectorPackSet(llvm::Function *F) : NumPacks(0), F(F) {}
+  VectorPackSet(llvm::Function *F) : F(F) {}
   VectorPackSet(const VectorPackSet &Other) = default;
   VectorPackSet &operator=(const VectorPackSet &Other) = default;
-
-  unsigned getNumPacks() const { return NumPacks; }
-
-  bool contains(llvm::Instruction *, const VectorPackContext &) const;
 
   bool isCompatibleWith(const VectorPack &VP) const;
 
@@ -69,20 +55,8 @@ public:
   // return if successful
   bool tryAdd(const VectorPack *VP);
 
-  // Remove the one we just add
-  void pop();
-
-  // Estimate cost of this pack
-  float getCostSaving(llvm::TargetTransformInfo *TTI,
-                      llvm::BlockFrequencyInfo *BFI) const;
-
   // Generate vector code from the packs
   void codegen(IntrinsicBuilder &Builder, Packer &Pkr);
-
-  const VectorPack &getPack(unsigned i) const {
-    assert(i < NumPacks);
-    return *AllPacks[i];
-  }
 };
 
 #endif // end VECTOR_PACK_SET_H

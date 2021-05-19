@@ -22,15 +22,14 @@ class Heuristic {
 
   float getCost(const VectorPack *VP);
   float getCost(llvm::Instruction *);
+  float getCost(const OperandPack *OP);
+  float getCost(llvm::Value *);
+
 public:
   Heuristic(Packer *Pkr, const VectorPackContext *VPCtx,
-                const CandidatePackSet *Candidates)
-    : Pkr(Pkr), VPCtx(VPCtx), Candidates(Candidates) {}
-  float getCost(const OperandPack *OP, const Frontier *Frt = nullptr);
-  float getCost(llvm::Value *);
-  float getCost(std::vector<llvm::Value *> Vals);
+            const CandidatePackSet *Candidates)
+      : Pkr(Pkr), VPCtx(VPCtx), Candidates(Candidates) {}
   float getCost(const Frontier *);
-  float getSaving(const VectorPack *);
 };
 
 #endif // HEURISTIC_H

@@ -1,3 +1,4 @@
+#include "IRVec.h"
 #include "InstSema.h"
 #include "LocalDependenceAnalysis.h"
 #include "MatchManager.h"
@@ -5,7 +6,6 @@
 #include "Solver.h"
 #include "Util.h"
 #include "VectorPack.h"
-#include "IRVec.h"
 #include "VectorPackContext.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/BitVector.h"
@@ -43,7 +43,9 @@ using namespace llvm;
 using namespace PatternMatch;
 
 static cl::opt<std::string>
-    WrappersDir("wrappers-dir", cl::desc("Path to the directory containing InstWrappers.*.bc"), cl::Required);
+    WrappersDir("wrappers-dir",
+                cl::desc("Path to the directory containing InstWrappers.*.bc"),
+                cl::Required);
 
 static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                                     cl::init(false));
@@ -60,8 +62,10 @@ class GSLP : public FunctionPass {
 
   std::vector<InstBinding> &getInsts() const {
     switch (Arch) {
-      case Triple::x86_64: return X86Insts;
-      case Triple::aarch64: return ArmInsts;
+    case Triple::x86_64:
+      return X86Insts;
+    case Triple::aarch64:
+      return ArmInsts;
     }
     llvm_unreachable("unsupported target architecture");
   }
@@ -86,10 +90,15 @@ public:
     SMDiagnostic Err;
     std::string Wrapper;
     switch (Arch) {
-      case Triple::x86_64: Wrapper = "/InstWrappers.x86.bc"; break;
-      case Triple::aarch64: Wrapper = "/InstWrappers.arm.bc"; break;
+    case Triple::x86_64:
+      Wrapper = "/InstWrappers.x86.bc";
+      break;
+    case Triple::aarch64:
+      Wrapper = "/InstWrappers.arm.bc";
+      break;
 
-      default: llvm_unreachable("architecture not supported");
+    default:
+      llvm_unreachable("architecture not supported");
     }
     errs() << "LOADING WRAPPERS\n";
     InstWrappers = parseIRFile(WrappersDir + Wrapper, Err, M.getContext());
@@ -125,11 +134,12 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr) {
 
 char GSLP::ID = 0;
 
-static SmallVector<Value *, 4> collectReductionElements(Instruction *I,
-    std::vector<Instruction *> &Intermediates) {
+static SmallVector<Value *, 4>
+collectReductionElements(Instruction *I,
+                         std::vector<Instruction *> &Intermediates) {
   SmallVector<Value *, 4> Elems;
 
-  std::vector<Value *> Worklist {I};
+  std::vector<Value *> Worklist{I};
   DenseSet<Value *> Seen;
 
   while (!Worklist.empty()) {
@@ -163,8 +173,9 @@ static Value *buildBalancedTree(IRBuilderBase &IRB, ArrayRef<Value *> Leaves) {
   if (Leaves.size() == 1)
     return Leaves[0];
   unsigned N = Leaves.size();
-  auto *A = buildBalancedTree(IRB, Leaves.drop_back(N/2/*num drop*/));
-  auto *B = buildBalancedTree(IRB, Leaves.slice(N-N/2/*num drop*/, N/2/*num keep*/));
+  auto *A = buildBalancedTree(IRB, Leaves.drop_back(N / 2 /*num drop*/));
+  auto *B = buildBalancedTree(
+      IRB, Leaves.slice(N - N / 2 /*num drop*/, N / 2 /*num keep*/));
   return IRB.CreateAdd(A, B);
 }
 
@@ -199,32 +210,32 @@ static void balanceReductionTree(Function &F) {
           I2->eraseFromParent();
         }
 
-        //errs() << "MATCHED AND BALANCED REDUCTION : (\n";
-        //for (auto *V : Elems)
+        // errs() << "MATCHED AND BALANCED REDUCTION : (\n";
+        // for (auto *V : Elems)
         //  errs() << *V << '\n';
-        //errs() << ")\n";
+        // errs() << ")\n";
       }
     }
   }
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  //if (!F.getName().contains("dot"))
+  // if (!F.getName().contains("dot"))
   //  return false;
-  //if (!F.getName().contains("_Z5idct8PKsPs"))
+  // if (!F.getName().contains("_Z5idct8PKsPs"))
   //  return false;
-  ///if (!F.getName().contains("sbc"))
-  //if (!F.getName().contains("fft8"))
+  /// if (!F.getName().contains("sbc"))
+  // if (!F.getName().contains("fft8"))
   //  return false;
-  //if (!F.getName().contains("interp"))
-  //if (!F.getName().contains("idct8"))
-  //if (!F.getName().contains("_Z5idct8PKsPs"))
-  //if (!F.getName().contains("_Z5idct8PKsPs"))
-  //if (!F.getName().contains("fft4"))
-  //if (!F.getName().contains("fft4"))
-  //if (!F.getName().contains("fft8"))
-  //return false;
-  //if (!F.getName().contains("idct4"))
+  // if (!F.getName().contains("interp"))
+  // if (!F.getName().contains("idct8"))
+  // if (!F.getName().contains("_Z5idct8PKsPs"))
+  // if (!F.getName().contains("_Z5idct8PKsPs"))
+  // if (!F.getName().contains("fft4"))
+  // if (!F.getName().contains("fft4"))
+  // if (!F.getName().contains("fft8"))
+  // return false;
+  // if (!F.getName().contains("idct4"))
   //  return false;
 
   balanceReductionTree(F);
@@ -240,7 +251,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   std::vector<InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts()) {
-    //if (Inst.getName().contains("hadd"))
+    // if (Inst.getName().contains("hadd"))
     //  continue;
     if (Inst.getName().contains("hadd_ps"))
       continue;
@@ -253,7 +264,8 @@ bool GSLP::runOnFunction(Function &F) {
   for (auto *Inst : VecBindingTable.getBindings())
     SupportedIntrinsics.push_back(Inst);
 
-  errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size() << '\n';
+  errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
+         << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {

@@ -7,7 +7,7 @@
 
 using namespace llvm;
 
-static cl::opt<bool> UseTimer("use-timer", cl::desc("use timer"), cl::init(true));
+static cl::opt<bool> UseTimer("use-timer", cl::desc("use timer"));
 
 static unsigned computeHash(const Frontier *Frt) {
   unsigned Hash = 0;
@@ -94,8 +94,9 @@ bool Frontier::resolved(const OperandPack &OP) const {
 }
 
 float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
-  NamedRegionTimer Timer("advance/i", "advance with instruction ", "pack selection", "", UseTimer);
-  //float Cost = 0;
+  NamedRegionTimer Timer("advance/i", "advance with instruction ",
+                         "pack selection", "", UseTimer);
+  // float Cost = 0;
   float Cost = Pkr->getScalarCost(I);
   freezeOneInst(I);
 
@@ -187,7 +188,7 @@ static float getGatherCost(VectorType *VecTy, ArrayRef<Value *> Vals,
                                  VecTy);
   }
 
-  return 2;//0.5;
+  return 2; // 0.5;
 }
 
 // Return the cost of gathering from `VP` to `OpndPack`
@@ -205,8 +206,9 @@ static unsigned getGatherCost(const OperandPack &OP,
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
 float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
-  NamedRegionTimer Timer("advance/pack", "advance with pack", "pack selection", "", UseTimer);
-  //float Cost = VP->getCost();
+  NamedRegionTimer Timer("advance/pack", "advance with pack", "pack selection",
+                         "", UseTimer);
+  // float Cost = VP->getCost();
   float Cost = VP->getProducingCost();
 
   Type *VecTy;
@@ -305,7 +307,9 @@ raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
     OS << *OP << '\n';
     errs() << '\t';
     for (auto *V : *OP)
-      errs() << (!V || (isa<Instruction>(V) && Frt.isFree(cast<Instruction>(V)))) << ' ';
+      errs() << (!V ||
+                 (isa<Instruction>(V) && Frt.isFree(cast<Instruction>(V))))
+             << ' ';
     errs() << '\n';
   }
   OS << ">>>>>>>>>>>>>>>\n";
@@ -359,7 +363,8 @@ extern VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
 
 static std::vector<const VectorPack *>
 findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
-  NamedRegionTimer Timer("find-extensions", "find extensions", "pack selection", "", UseTimer);
+  NamedRegionTimer Timer("find-extensions", "find extensions", "pack selection",
+                         "", UseTimer);
   if (Frt.usableInstIds().count() == 0)
     return {};
 
@@ -376,7 +381,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   std::vector<const VectorPack *> Extensions;
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    //if (!Extensions.empty())
+    // if (!Extensions.empty())
     //  return Extensions;
     OP = dedup(VPCtx, OP);
     const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
@@ -396,7 +401,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
 
   if (!LoadExtensions.empty()) {
     auto *LoadVP = LoadExtensions.front();
-     if (auto *Coalesced = tryCoalesceLoads(
+    if (auto *Coalesced = tryCoalesceLoads(
             LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1),
             Pkr)) {
       return {Coalesced, LoadVP};
@@ -409,7 +414,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     CandidateMembers &= Frt.usableInstIds();
     if (CandidateMembers.count()) {
       unsigned InstId = *CandidateMembers.set_bits_begin();
-      //for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
+      // for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
       for (auto *VP : CandidateSet->Packs) {
         auto &Elements = VP->getElements();
         if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds))
@@ -417,7 +422,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
       }
       ///////////
       for (auto *OP : Frt.getUnresolvedPacks()) {
-        //if (!Extensions.empty())
+        // if (!Extensions.empty())
         //  return Extensions;
         OP = dedup(VPCtx, OP);
         const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
@@ -425,7 +430,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
           if (!VP->getElements().anyCommon(UnusableIds) /*&&
               VP->getElements().test(InstId)*/)
             Extensions.push_back(VP);
-        //for (auto *VP : OPI.LoadProducers)
+        // for (auto *VP : OPI.LoadProducers)
         //  if (!VP->getElements().anyCommon(UnusableIds) &&
         //      VP->getElements().test(InstId))
         //    LoadExtensions.push_back(VP);
@@ -435,7 +440,6 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     if (!Extensions.empty())
       return Extensions;
   }
-
 
   return {};
 }
@@ -684,7 +688,8 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       bool Close = A.align(&I, &J) < 0;
       if (Close) {
-        errs() << "ALIGNED " << I << ", " << J << ", COST = " << A.align(&I, &J) << '\n';
+        errs() << "ALIGNED " << I << ", " << J << ", COST = " << A.align(&I, &J)
+               << '\n';
         AG[&I].push_back({&J, A.align(&I, &J)});
       }
     }
@@ -696,14 +701,14 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
     if (!usedByStore(&I))
       continue;
     unsigned OldSize = Enumerated.size();
-    //if (UseMCTS) {
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 2 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 4 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 8 /*VL*/);
-      enumerateImpl(Enumerated, &I, VPCtx, AG, 64/*beam width*/, 16 /*VL*/);
+    // if (UseMCTS) {
+    enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 2 /*VL*/);
+    enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 4 /*VL*/);
+    enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 8 /*VL*/);
+    enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 16 /*VL*/);
     //}
     for (unsigned i = OldSize; i < Enumerated.size(); i++)
-     errs() << "!!! candidate: " << *Enumerated[i] << '\n';
+      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
 #if 0
   {
@@ -736,12 +741,12 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16/*, 32, 64*/})
+      for (unsigned VL : {2, 4, 8, 16 /*, 32, 64*/})
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           Packs.push_back(VP);
     }
   }
-  //for (auto &I : *BB) {
+  // for (auto &I : *BB) {
   //  if (auto *LI = dyn_cast<StoreInst>(&I)) {
   //    for (unsigned VL : {2, 4, 8, 16, 32, 64})
   //      for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
@@ -767,12 +772,10 @@ struct State {
   Frontier Frt;
   std::vector<Transition> Transitions;
   float Cost = 0; // Cost so far
-  float Est = 0; // estimate of the cost from now on
+  float Est = 0;  // estimate of the cost from now on
 
   bool expanded() const { return !Transitions.empty() || isTerminal(); }
-  bool isTerminal() const {
-    return Frt.getFreeInsts().count() == 0;
-  }
+  bool isTerminal() const { return Frt.getFreeInsts().count() == 0; }
   void expand(const CandidatePackSet *);
 
   State(const Frontier &Frt) : Incoming(nullptr), Frt(Frt), Cost(0), Est(0) {}
@@ -782,8 +785,9 @@ struct State {
 
 // Fill out the children node
 void State::expand(const CandidatePackSet *CandidateSet) {
-  NamedRegionTimer Timer("expand-state", "expand search state", "pack selection", "", UseTimer);
-  
+  NamedRegionTimer Timer("expand-state", "expand search state",
+                         "pack selection", "", UseTimer);
+
   assert(Transitions.empty() && "expanded already");
   auto *BB = Frt.getBasicBlock();
 
@@ -833,8 +837,10 @@ void State::expand(const CandidatePackSet *CandidateSet) {
 }
 
 float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
-    const CandidatePackSet *CandidateSet, unsigned BeamWidth=500) {
-  NamedRegionTimer Timer("beam-search", "beam search main loop", "pack selection", "", UseTimer);
+                 const CandidatePackSet *CandidateSet,
+                 unsigned BeamWidth = 500) {
+  NamedRegionTimer Timer("beam-search", "beam search main loop",
+                         "pack selection", "", UseTimer);
 
   auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
@@ -843,7 +849,8 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
 
   std::vector<std::unique_ptr<State>> States;
   auto GetNext = [&](State *S, Transition *T) -> State * {
-    NamedRegionTimer Timer("next-state", "creating the next state", "pack selection", "", UseTimer);
+    NamedRegionTimer Timer("next-state", "creating the next state",
+                           "pack selection", "", UseTimer);
     States.push_back(std::make_unique<State>(S->Frt));
     auto S2 = States.back().get();
     S2->Incoming = T;
@@ -861,12 +868,12 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
   State *Best = nullptr;
 
   State Start(*Frt);
-  std::vector<State *> Beam { &Start };
+  std::vector<State *> Beam{&Start};
   std::vector<State *> NextBeam;
   while (!Beam.empty()) {
     NextBeam.clear();
     for (auto *S : Beam) {
-      //if (!S->expanded())
+      // if (!S->expanded())
       S->expand(CandidateSet);
       for (auto &T : S->Transitions) {
         auto *S2 = GetNext(S, &T);
@@ -883,9 +890,10 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
     Beam.swap(NextBeam);
     errs() << "BEAM SIZE = " << Beam.size() << '\n';
 
-    std::stable_sort(Beam.begin(), Beam.end(), [](const State *S, const State *S2) {
-          return S->Cost + S->Est < S2->Cost + S2->Est;
-        });
+    std::stable_sort(Beam.begin(), Beam.end(),
+                     [](const State *S, const State *S2) {
+                       return S->Cost + S->Est < S2->Cost + S2->Est;
+                     });
     if (Beam.size() > BeamWidth)
       Beam.resize(BeamWidth);
   }
