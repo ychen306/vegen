@@ -29,27 +29,10 @@ static unsigned getNumUsers(const VectorPack *VP) {
   return getNumUsers(VP->getOrderedValues());
 }
 
-// Remove duplicate elements in OP
-static const OperandPack *dedup(const VectorPackContext *VPCtx,
-                                const OperandPack *OP) {
-  SmallPtrSet<Value *, 4> Seen;
-  OperandPack Deduped;
-  for (auto *V : *OP) {
-    bool Inserted = Seen.insert(V).second;
-    if (!Inserted)
-      continue;
-    Deduped.push_back(V);
-  }
-  // Fast path for when we've removed nothing
-  if (Deduped.size() == OP->size())
-    return OP;
-  return VPCtx->getCanonicalOperandPack(Deduped);
-}
-
 float Heuristic::getCost(const VectorPack *VP) {
   float Cost = VP->getProducingCost();
   for (auto *OP : VP->getOperandPacks())
-    Cost += getCost(dedup(VPCtx, OP));
+    Cost += getCost(VPCtx->dedup(OP));
   return Cost;
 }
 

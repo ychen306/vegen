@@ -21,6 +21,7 @@ struct OperandProducerInfo {
   }
 };
 
+
 // Use this to model input operands
 struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
   mutable bool OPIValid = false;
@@ -78,6 +79,9 @@ public:
     auto NewOP = std::make_unique<OperandPack>(OP);
     return (OperandCache[*NewOP] = std::move(NewOP)).get();
   }
+
+  // Remove duplicate elements in OP
+  const OperandPack *dedup(const OperandPack *) const;
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());

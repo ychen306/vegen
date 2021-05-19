@@ -296,23 +296,6 @@ raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
   return OS;
 }
 
-// Remove duplicate elements in OP
-static const OperandPack *dedup(const VectorPackContext *VPCtx,
-                                const OperandPack *OP) {
-  SmallPtrSet<Value *, 4> Seen;
-  OperandPack Deduped;
-  for (auto *V : *OP) {
-    bool Inserted = Seen.insert(V).second;
-    if (!Inserted)
-      continue;
-    Deduped.push_back(V);
-  }
-  // Fast path for when we've removed nothing
-  if (Deduped.size() == OP->size())
-    return OP;
-  return VPCtx->getCanonicalOperandPack(Deduped);
-}
-
 class SlotSet {
   std::vector<LoadInst *> Slots;
   unsigned MinId, MaxId;
@@ -439,8 +422,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   };
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    OP = dedup(VPCtx, OP);
-    const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, VPCtx->dedup(OP));
     if (!OPI.Feasible)
       continue;
     for (auto *VP : OPI.Producers)
