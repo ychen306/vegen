@@ -9,30 +9,16 @@ using namespace llvm;
 
 static cl::opt<bool> UseTimer("use-timer", cl::desc("use timer"));
 
-static unsigned computeHash(const Frontier *Frt) {
-  unsigned Hash = 0;
-  for (auto *OP : Frt->getUnresolvedPacks())
-    Hash ^= OP->Hash;
-  auto *VPCtx = Frt->getContext();
-  for (auto *V : Frt->getUnresolvedScalars())
-    Hash ^= VPCtx->getHashValue2(V);
-  for (unsigned i : Frt->getFreeInsts().set_bits())
-    Hash ^= VPCtx->getHashValue(i);
-  return Hash;
-}
-
 Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)),
       UnresolvedScalars(VPCtx->getNumValues(), false),
       FreeInsts(VPCtx->getNumValues(), true),
       UsableInsts(VPCtx->getNumValues(), false) {
-  Hash = 0;
   // Find external uses of any instruction `I` in `BB`
   // and mark `I` as an unresolved scalar.
   for (auto &I : *BB) {
     bool AllUsersResolved = true;
     unsigned InstId = VPCtx->getScalarId(&I);
-    Hash ^= VPCtx->getHashValue(InstId);
     for (User *U : I.users()) {
       auto UserInst = dyn_cast<Instruction>(U);
       if (UserInst) {
@@ -40,7 +26,6 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
           // Mark that `I` has a scalar use.
           if (UnresolvedScalars.test(InstId)) {
             UnresolvedScalars.set(InstId);
-            Hash ^= VPCtx->getHashValue2(InstId);
           }
         } else
           // `I` is used by some other instruction in `BB`
@@ -51,7 +36,6 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
     if (AllUsersResolved || isa<PHINode>(&I))
       UsableInsts.set(InstId);
   }
-  assert(Hash == computeHash(this));
 }
 
 void Frontier::freezeOneInst(Instruction *I) {
@@ -59,9 +43,6 @@ void Frontier::freezeOneInst(Instruction *I) {
   // assert(FreeInsts.test(InstId));
   if (!FreeInsts.test(InstId))
     return;
-  Hash ^= VPCtx->getHashValue(InstId);
-  if (UnresolvedScalars.test(InstId))
-    Hash ^= VPCtx->getHashValue2(InstId);
   FreeInsts.reset(InstId);
   UnresolvedScalars.reset(InstId);
   UsableInsts.reset(InstId);
@@ -110,7 +91,6 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     // Special case: we can build OP by broadcasting `I`.
     if ((*OP)[0] == I && is_splat(*OP)) {
       Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
-      Hash ^= OP->Hash;
       ResolvedPackIds.push_back(i);
       continue;
     }
@@ -125,7 +105,6 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
             2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
     if (resolved(*OP)) {
-      Hash ^= OP->Hash;
       ResolvedPackIds.push_back(i);
     }
   }
@@ -139,7 +118,6 @@ float Frontier::advanceInplace(Instruction *I, TargetTransformInfo *TTI) {
     unsigned InstId = VPCtx->getScalarId(I2);
     if (FreeInsts.test(InstId) && !UnresolvedScalars.test(InstId)) {
       UnresolvedScalars.set(InstId);
-      Hash ^= VPCtx->getHashValue2(InstId);
     }
   }
 
@@ -248,7 +226,6 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
       if (OPI.Elements.anyCommon(VP->getElements())) {
         Cost += getGatherCost(*VP, *OP, TTI);
         if (resolved(*OP)) {
-          Hash ^= OP->Hash;
           ResolvedPackIds.push_back(i);
         }
       }
@@ -276,7 +253,6 @@ float Frontier::advanceInplace(const VectorPack *VP, TargetTransformInfo *TTI) {
     if (!resolved(*OpndPack)) {
       bool Inserted = UnresolvedSet.insert(OpndPack).second;
       if (Inserted) {
-        Hash ^= OpndPack->Hash;
         UnresolvedPacks.push_back(OpndPack);
       }
     }
@@ -318,26 +294,6 @@ raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
     OS << V->getName() << ", ";
   OS << ">>>>>>>>>>>>>>>\n";
   return OS;
-}
-
-std::unique_ptr<Frontier>
-Frontier::advance(const VectorPack *VP, float &Cost,
-                  llvm::TargetTransformInfo *TTI) const {
-  assert(Hash == computeHash(this));
-  auto Next = std::make_unique<Frontier>(*this);
-  Cost = Next->advanceInplace(VP, TTI);
-  assert(Next->Hash == computeHash(Next.get()));
-  return Next;
-}
-
-std::unique_ptr<Frontier>
-Frontier::advance(llvm::Instruction *I, float &Cost,
-                  llvm::TargetTransformInfo *TTI) const {
-  assert(Hash == computeHash(this));
-  auto Next = std::make_unique<Frontier>(*this);
-  Cost = Next->advanceInplace(I, TTI);
-  assert(Next->Hash == computeHash(Next.get()));
-  return Next;
 }
 
 // Remove duplicate elements in OP
