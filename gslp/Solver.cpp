@@ -465,78 +465,37 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
 
   auto *Pkr = Frt.getPacker();
   auto *VPCtx = Frt.getContext();
-  // Put load extensions in a separate category.
-  // We don't extend with a load pack if we can extend with other arithmetic
-  // packs
-  std::vector<const VectorPack *> LoadExtensions;
 
   BitVector UnusableIds = Frt.usableInstIds();
   UnusableIds.flip();
 
+  BitVector Covered(VPCtx->getNumValues());
   std::vector<const VectorPack *> Extensions;
+  // Consider VP as an extension
+  auto Consider = [&](const VectorPack *VP) {
+    auto &Elements = VP->getElements();
+    if (Elements.anyCommon(UnusableIds))
+      return;
+    if (!Covered.count() || Elements.anyCommon(Covered)) {
+      Extensions.push_back(VP);
+      Covered |= Elements;
+    }
+  };
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    // if (!Extensions.empty())
-    //  return Extensions;
     OP = dedup(VPCtx, OP);
     const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
     if (!OPI.Feasible)
       continue;
     for (auto *VP : OPI.Producers)
-      if (!VP->getElements().anyCommon(UnusableIds))
-        Extensions.push_back(VP);
-    for (auto *VP : OPI.LoadProducers)
-      if (!VP->getElements().anyCommon(UnusableIds))
-        LoadExtensions.push_back(VP);
+      Consider(VP);
   }
 
-  // Delay extending with loads to create opportunity for coalescing loads
-  if (!Extensions.empty())
-    return Extensions;
-
-  if (!LoadExtensions.empty()) {
-    auto *LoadVP = LoadExtensions.front();
-    if (auto *Coalesced = tryCoalesceLoads(
-            LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1),
-            Pkr)) {
-      return {Coalesced, LoadVP};
-    }
-    return {LoadVP};
-  }
-
-  if (CandidateSet) {
-    BitVector CandidateMembers = CandidateSet->Members;
-    CandidateMembers &= Frt.usableInstIds();
-    if (CandidateMembers.count()) {
-      unsigned InstId = *CandidateMembers.set_bits_begin();
-      // for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
-      for (auto *VP : CandidateSet->Packs) {
-        auto &Elements = VP->getElements();
-        if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds))
-          Extensions.push_back(VP);
-      }
-      ///////////
-      for (auto *OP : Frt.getUnresolvedPacks()) {
-        // if (!Extensions.empty())
-        //  return Extensions;
-        OP = dedup(VPCtx, OP);
-        const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
-        for (auto *VP : OPI.Producers)
-          if (!VP->getElements().anyCommon(UnusableIds) /*&&
-              VP->getElements().test(InstId)*/)
-            Extensions.push_back(VP);
-        // for (auto *VP : OPI.LoadProducers)
-        //  if (!VP->getElements().anyCommon(UnusableIds) &&
-        //      VP->getElements().test(InstId))
-        //    LoadExtensions.push_back(VP);
-      }
-      //////////
-    }
-    if (!Extensions.empty())
-      return Extensions;
-  }
-
-  return {};
+  BitVector CandidateMembers = CandidateSet->Members;
+  CandidateMembers &= Frt.usableInstIds();
+  for (auto *VP : CandidateSet->Packs)
+    Consider(VP);
+  return Extensions;
 }
 
 template <typename AccessType>
@@ -563,9 +522,6 @@ VectorPack *createMemPack(VectorPackContext *VPCtx, ArrayRef<LoadInst *> Loads,
 template <typename AccessType>
 std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
                                           AccessType *Access, unsigned VL) {
-  // if (!Frt.isUsable(Access)) {
-  //  return {};
-  //}
   auto &LDA = Pkr->getLDA(BB);
   auto *VPCtx = Pkr->getContext(BB);
   auto *TTI = Pkr->getTTI();
@@ -589,9 +545,6 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
         }
         for (auto *Next : It->second) {
           auto *NextAccess = cast<AccessType>(Next);
-          // if (!Frt.isUsable(NextAccess)) {
-          //  continue;
-          //}
           if (!checkIndependence(LDA, *VPCtx, NextAccess, Elements, Depended)) {
             continue;
           }
