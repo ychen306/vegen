@@ -357,9 +357,104 @@ static const OperandPack *dedup(const VectorPackContext *VPCtx,
   return VPCtx->getCanonicalOperandPack(Deduped);
 }
 
-extern VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
-                                    ArrayRef<const VectorPack *> OtherPacks,
-                                    Packer *Pkr);
+class SlotSet {
+  std::vector<LoadInst *> Slots;
+  unsigned MinId, MaxId;
+  unsigned NumElems = 0;
+  unsigned HasValue = false;
+
+public:
+  LoadInst *operator[](unsigned i) const { return Slots[i]; }
+  bool try_insert(unsigned i, LoadInst *LI) {
+    if (i >= Slots.size())
+      Slots.resize(i + 1);
+    if (!Slots[i] || Slots[i] == LI) {
+      Slots[i] = LI;
+      if (HasValue) {
+        MinId = std::min(i, MinId);
+        MaxId = std::max(i, MaxId);
+      } else {
+        MinId = MaxId = i;
+        HasValue = true;
+      }
+      NumElems++;
+      return true;
+    }
+    return false;
+  }
+
+  double utilization() const { return (double)NumElems / (MaxId - MinId + 1); }
+
+  unsigned num_elems() const { return NumElems; }
+
+  unsigned minId() const { return MinId; }
+
+  unsigned maxId() const { return MaxId; }
+};
+
+// Try to coalesce main pack with some other packs
+static VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
+                             ArrayRef<const VectorPack *> OtherPacks, Packer *Pkr) {
+  auto *BB = MainPack->getBasicBlock();
+  auto &LayoutInfo = Pkr->getLoadInfo(BB);
+#if 0
+  // Full, can't coalesce
+  if (MainPack->getOrderedValues().size() == MainPack->getElements().count())
+    return nullptr;
+#endif
+
+  auto *SomeLoad = *MainPack->elementValues().begin();
+  auto *Leader = LayoutInfo.get(cast<Instruction>(SomeLoad)).Leader;
+  BitVector Elements = MainPack->getElements();
+  BitVector Depended = MainPack->getDepended();
+  SlotSet Slots;
+  for (auto *V : MainPack->elementValues()) {
+    auto *LI = cast<LoadInst>(V);
+    unsigned SlotId = LayoutInfo.get(LI).Id;
+    Slots.try_insert(SlotId, LI);
+  }
+
+  for (auto *Other : OtherPacks) {
+    auto Info =
+        LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
+    // Cannot coalesce with loads accessing a different object
+    if (Info.Leader != Leader)
+      continue;
+    // Cannot coalesce if not independent
+    if (Depended.anyCommon(Other->getElements()) ||
+        Other->getDepended().anyCommon(Elements))
+      continue;
+
+    auto Temp = Slots;
+    bool Coalesced = true;
+    for (auto *V : Other->elementValues()) {
+      auto *LI = cast<LoadInst>(V);
+      unsigned SlotId = LayoutInfo.get(LI).Id;
+      // Can only coalesce if the slot if empty
+      bool Ok = Temp.try_insert(SlotId, LI);
+      if (!Ok) {
+        Coalesced = false;
+        break;
+      }
+    }
+    if (Coalesced && Temp.utilization() >= Slots.utilization()) {
+      Slots = Temp;
+      Depended |= Other->getDepended();
+      Elements |= Other->getElements();
+    }
+  }
+
+  if (Elements == MainPack->getElements())
+    return nullptr;
+
+  std::vector<LoadInst *> Loads;
+  for (unsigned i = Slots.minId(), e = Slots.maxId(); i <= e; i++) {
+    Loads.push_back(Slots[i]);
+  }
+
+  return Pkr->getContext(BB)->createLoadPack(Loads, Elements, Depended,
+                                             Pkr->getTTI());
+}
 
 static std::vector<const VectorPack *>
 findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
