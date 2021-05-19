@@ -613,7 +613,7 @@ void enumerateImpl(std::vector<const OperandPack *> &Enumerated, Instruction *I,
   Candidates.front().OP.push_back(I);
 
   for (unsigned i = 0; i < VL - 1; i++) {
-    auto NextCandidates = Candidates;
+    std::vector<Candidate> NextCandidates;
     for (const auto &Cand : Candidates) {
       auto *LastI = cast<Instruction>(Cand.OP.back());
       auto It = AG.find(LastI);
@@ -630,9 +630,8 @@ void enumerateImpl(std::vector<const OperandPack *> &Enumerated, Instruction *I,
   }
 
   for (auto &Cand : Candidates)
-    if (Cand.OP.size() == VL) {
+    if (Cand.OP.size() == VL)
       Enumerated.push_back(VPCtx->getCanonicalOperandPack(Cand.OP));
-    }
 }
 
 std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
@@ -643,25 +642,6 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   AlignmentGraph AG;
   for (auto &I : *BB) {
-#if 0
-    if (auto *SI = dyn_cast<StoreInst>(&I)) {
-      auto Info = LayoutInfo.get(SI);
-      if (Info.Id == 0) {
-        for (auto *VP : getSeedMemPacks(Pkr, BB, SI, 16)) {
-          auto *OP = VP->getOperandPacks()[0];
-          errs() << "SIMILARITY MATRIX:\n";
-          for (auto *V1 : *OP) {
-            for (auto *V2 : *OP) {
-              errs() << (A.align(cast<Instruction>(V1), cast<Instruction>(V2)) /*< 10*/) << ' ';
-            }
-            errs() << '\n';
-          }
-          abort();
-        }
-      }
-    }
-#endif
-
     if (!usedByStore(&I))
       continue;
     auto Independent = LDA.getIndependent(&I);
@@ -672,12 +652,8 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
         continue;
       if (!Independent.test(VPCtx->getScalarId(&J)))
         continue;
-      bool Close = A.align(&I, &J) < 0;
-      if (Close) {
-        errs() << "ALIGNED " << I << ", " << J << ", COST = " << A.align(&I, &J)
-               << '\n';
+      if (A.align(&I, &J) < 0)
         AG[&I].push_back({&J, A.align(&I, &J)});
-      }
     }
   }
 
@@ -686,36 +662,11 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   for (auto &I : *BB) {
     if (!usedByStore(&I))
       continue;
-    unsigned OldSize = Enumerated.size();
-    // if (UseMCTS) {
     enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 2 /*VL*/);
     enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 4 /*VL*/);
     enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 8 /*VL*/);
     enumerateImpl(Enumerated, &I, VPCtx, AG, 64 /*beam width*/, 16 /*VL*/);
-    //}
-    for (unsigned i = OldSize; i < Enumerated.size(); i++)
-      errs() << "!!! candidate: " << *Enumerated[i] << '\n';
   }
-#if 0
-  {
-      auto X = Enumerated;
-      for (auto *OP : Enumerated) {
-        for (auto *OP2 : Enumerated) {
-          if (OP == OP2)
-            continue;
-          if (OP->size() != 8 || OP2->size() != 8)
-            continue;
-          OperandPack Concat = *OP;
-          for (auto *V : *OP2)
-            Concat.push_back(V);
-          X.push_back(VPCtx->getCanonicalOperandPack(Concat));
-        }
-      }
-      Enumerated = X;
-  }
-#endif
-
-  // errs() << "!!! num candidates: " << Enumerated.size() << '\n';
 
   std::vector<const VectorPack *> Packs;
   for (auto *OP : Enumerated) {
@@ -732,13 +683,6 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
           Packs.push_back(VP);
     }
   }
-  // for (auto &I : *BB) {
-  //  if (auto *LI = dyn_cast<StoreInst>(&I)) {
-  //    for (unsigned VL : {2, 4, 8, 16, 32, 64})
-  //      for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
-  //        Packs.push_back(VP);
-  //  }
-  //}
   return Packs;
 }
 
@@ -879,10 +823,8 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
   float BestCost = Best->Cost;
   const auto *S = Best;
   while (S->Incoming) {
-    if (auto *VP = S->Incoming->VP) {
-      errs() << "GOING WITH " << *VP << '\n';
+    if (auto *VP = S->Incoming->VP)
       Packs.tryAdd(VP);
-    }
     S = S->Incoming->Src;
   }
   return BestCost;
