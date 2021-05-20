@@ -61,9 +61,9 @@ float Heuristic::getCost(const OperandPack *OP) {
       } else {
         BitVector Intersection = OPI.Elements;
         Intersection &= VP->getElements();
-        Cost = std::min(Cost, (getCost(VP) + C_Shuffle + ExtraCost) /
-                                  float(Intersection.count()) *
-                                  float(OPI.Elements.count()));
+        float Discount =
+            (float)OPI.Elements.count() / (float)Intersection.count();
+        Cost = std::min(Cost, getCost(VP) * Discount + C_Shuffle + ExtraCost);
       }
     }
   }
