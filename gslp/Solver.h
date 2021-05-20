@@ -27,7 +27,6 @@ class Frontier {
 public:
   // Create the initial frontier, which surrounds the whole basic block
   Frontier(llvm::BasicBlock *BB, Packer *Pkr);
-  void shrinkFor(llvm::BitVector R);
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   float advance(llvm::Instruction *, llvm::TargetTransformInfo *);
   float advance(const VectorPack *, llvm::TargetTransformInfo *);
