@@ -10,29 +10,10 @@ static constexpr float C_Perm = 0.5;
 static constexpr float C_Shuffle = 0.5;
 static constexpr float C_Extract = 1.0;
 
-static unsigned getNumUsers(Value *V) {
-  return 1;
-  if (!V)
-    return 0;
-  return std::distance(V->user_begin(), V->user_end());
-}
-
-static unsigned getNumUsers(ArrayRef<Value *> Vals) {
-  return 1;
-  unsigned NumUsers = Vals.size();
-  for (auto *V : Vals)
-    NumUsers = std::max<unsigned>(NumUsers, getNumUsers(V));
-  return NumUsers;
-}
-
-static unsigned getNumUsers(const VectorPack *VP) {
-  return getNumUsers(VP->getOrderedValues());
-}
-
 float Heuristic::getCost(const VectorPack *VP) {
   float Cost = VP->getProducingCost();
   for (auto *OP : VP->getOperandPacks())
-    Cost += getCost(VPCtx->dedup(OP));
+    Cost += getCost(OP);
   return Cost;
 }
 
@@ -53,43 +34,39 @@ float Heuristic::getCost(const OperandPack *OP) {
 
   // Build by explicit insertion
   float Cost = 0;
+  SmallPtrSet<Value *, 8> Visited;
   for (auto *V : *OP) {
-    if (!V || isa<Constant>(V))
+    if (!V || isa<Constant>(V) || !Visited.insert(V).second)
       continue;
-    Cost += getCost(V) /*/getNumUsers(V)*/ + C_Insert;
+    Cost += getCost(V) + C_Insert;
   }
   if (Cost == 0)
     return 0;
 
   // Build by broadcast
-  if (is_splat(*OP)) {
-    auto *V = (*OP)[0];
-    Cost = std::min(Cost, getCost(V) / getNumUsers(V) + C_Splat);
-  }
+  if (is_splat(*OP))
+    Cost = std::min(Cost, getCost(OP->front()) + C_Splat);
 
-  auto OPI = Pkr->getProducerInfo(VPCtx, OP);
+  const OperandPack *Deduped = VPCtx->dedup(OP);
+  float ExtraCost = Deduped != OP ? C_Shuffle : 0;
+  auto OPI = Pkr->getProducerInfo(VPCtx, Deduped);
   for (auto *VP : OPI.getProducers())
-    Cost = std::min(Cost, getCost(VP));
+    Cost = std::min(Cost, getCost(VP) + ExtraCost);
 
-  // Build by composing with other vectors
-  // FIXME: deal with don't care.
-  std::set<Value *> OPVals(OP->begin(), OP->end());
   if (Candidates) {
     for (auto *VP : Candidates->Packs) {
       if (!VP->getElements().anyCommon(OPI.Elements))
         continue;
       ArrayRef<Value *> Vals = VP->getOrderedValues();
       // FIXME: consider don't care
-      if (Vals.size() == OP->size() &&
+      if (Vals.size() == OPI.Elements.count() &&
           std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
-        Cost = std::min(Cost, getCost(VP) / getNumUsers(VP) + C_Perm);
+        Cost = std::min(Cost, getCost(VP) + C_Perm + ExtraCost);
       } else {
         BitVector Intersection = OPI.Elements;
         Intersection &= VP->getElements();
-        Cost = std::min(Cost, getCost(VP) / float(Intersection.count()) *
-                                      float(OPI.Elements.count()) /
-                                      getNumUsers(VP) +
-                                  C_Shuffle);
+        Cost = std::min(Cost, (getCost(VP) + C_Shuffle + ExtraCost) / float(Intersection.count()) *
+                                      float(OPI.Elements.count()));
       }
     }
   }
@@ -111,16 +88,6 @@ float Heuristic::getCost(Value *V) {
   ScalarCosts[I] = 0;
 
   float Cost = getCost(I);
-
-  float NumUsers = getNumUsers(I);
-
-#if 0
-  if (Candidates) {
-    for (auto *VP : Candidates->Inst2Packs[VPCtx->getScalarId(I)]) {
-      Cost = std::min(Cost, getCost(VP)/getNumUsers(VP) + C_Extract);
-    }
-  }
-#endif
 
   return ScalarCosts[I] = Cost;
 }
