@@ -1,35 +1,22 @@
 #include "IRVec.h"
 #include "InstSema.h"
-#include "LocalDependenceAnalysis.h"
-#include "MatchManager.h"
 #include "Packer.h"
 #include "Solver.h"
-#include "Util.h"
-#include "VectorPack.h"
-#include "VectorPackContext.h"
 #include "VectorPackSet.h"
-#include "llvm/ADT/BitVector.h"
-#include "llvm/ADT/PostOrderIterator.h"
-#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
-#include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 // For pass building
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -220,23 +207,6 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  // if (!F.getName().contains("dot"))
-  //  return false;
-  // if (!F.getName().contains("_Z5idct8PKsPs"))
-  //  return false;
-  /// if (!F.getName().contains("sbc"))
-  // if (!F.getName().contains("fft8"))
-  //  return false;
-  // if (!F.getName().contains("interp"))
-  // if (!F.getName().contains("idct8"))
-  // if (!F.getName().contains("_Z5idct8PKsPs"))
-  // if (!F.getName().contains("_Z5idct8PKsPs"))
-  // if (!F.getName().contains("fft4"))
-  // if (!F.getName().contains("fft4"))
-  // if (!F.getName().contains("fft8"))
-  // return false;
-  // if (!F.getName().contains("idct4"))
-  //  return false;
 
   balanceReductionTree(F);
   errs() << F << '\n';

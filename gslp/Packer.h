@@ -12,7 +12,6 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Function.h"
-#include "llvm/InitializePasses.h"
 
 namespace llvm {
 class ScalarEvolution;

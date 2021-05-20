@@ -17,14 +17,6 @@ float Heuristic::getCost(const VectorPack *VP) {
   return Cost;
 }
 
-float Heuristic::getCost(Instruction *I) {
-  float Cost = Pkr->getScalarCost(I);
-  for (Value *V : I->operands()) {
-    Cost += getCost(V);
-  }
-  return Cost;
-}
-
 float Heuristic::getCost(const OperandPack *OP) {
   auto It = OrderedCosts.find(OP);
   if (It != OrderedCosts.end())
@@ -85,10 +77,9 @@ float Heuristic::getCost(Value *V) {
   if (It != ScalarCosts.end())
     return It->second;
 
-  ScalarCosts[I] = 0;
-
-  float Cost = getCost(I);
-
+  float Cost = Pkr->getScalarCost(I);
+  for (Value *V : I->operands())
+    Cost += getCost(V);
   return ScalarCosts[I] = Cost;
 }
 
@@ -98,12 +89,10 @@ float Heuristic::getCost(const Frontier *Frt) {
   float Cost = 0;
   for (const OperandPack *OP : Frt->getUnresolvedPacks())
     Cost += getCost(OP);
-  for (Value *V : Frt->getUnresolvedScalars()) {
+  for (Value *V : Frt->getUnresolvedScalars())
     Cost += getCost(V);
-  }
-  for (Value *V : VPCtx->iter_values(Frt->getFreeInsts())) {
+  for (Value *V : VPCtx->iter_values(Frt->getFreeInsts()))
     if (auto *SI = dyn_cast<StoreInst>(V))
       Cost += getCost(SI);
-  }
   return Cost;
 }

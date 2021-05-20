@@ -21,7 +21,6 @@ class Heuristic {
   const CandidatePackSet *Candidates;
 
   float getCost(const VectorPack *VP);
-  float getCost(llvm::Instruction *);
   float getCost(const OperandPack *OP);
   float getCost(llvm::Value *);
 
