@@ -25,7 +25,7 @@ static bool isSimple(Instruction *I) {
 }
 
 static bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
-               Instruction *Inst2, AliasAnalysis *AA) {
+                      Instruction *Inst2, AliasAnalysis *AA) {
   MemoryLocation Loc2 = getLocation(Inst2, AA);
   bool Aliased = true;
   if (Loc1.Ptr && Loc2.Ptr && isSimple(Inst1) && isSimple(Inst2)) {
@@ -46,13 +46,11 @@ LocalDependenceAnalysis::LocalDependenceAnalysis(llvm::AliasAnalysis *AA,
     if (isa<PHINode>(&I))
       continue;
 
-    for (Value *Operand : I.operands()) {
-      if (auto *I2 = dyn_cast<Instruction>(Operand)) {
-        if (!isa<PHINode>(I2) && I2->getParent() == BB) {
+    for (Value *Operand : I.operands())
+      if (auto *I2 = dyn_cast<Instruction>(Operand))
+        if (!isa<PHINode>(I2) && I2->getParent() == BB)
           Dependencies[&I].push_back(I2);
-        }
-      }
-    }
+
     if (I.mayReadOrWriteMemory()) {
       MemoryLocation Loc = getLocation(&I, AA);
       // check dependence with preceding loads and stores

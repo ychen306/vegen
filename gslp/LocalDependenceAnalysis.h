@@ -1,9 +1,14 @@
 #ifndef LOCAL_DEPENDENCE_ANALYSIS_H
 #define LOCAL_DEPENDENCE_ANALYSIS_H
-#include "LocalDependenceAnalysis.h"
-#include "VectorPackContext.h"
+
+#include "llvm/ADT/BitVector.h"
 #include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/IR/Function.h"
+
+class VectorPackContext;
+
+namespace llvm {
+class BasicBlock;
+}
 
 // Utility class to track dependency within a basic block
 class LocalDependenceAnalysis {
