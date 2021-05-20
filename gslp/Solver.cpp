@@ -125,24 +125,6 @@ float Frontier::advance(Instruction *I, TargetTransformInfo *TTI) {
   return Cost;
 }
 
-// Check whether there are lanes in `OpndPack` that are produced by `VP`.
-// Also resolve such lanes.
-bool Frontier::resolveOperandPack(const VectorPack &VP, const OperandPack &OP) {
-  bool Produced = false;
-  for (unsigned LaneId = 0; LaneId < OP.size(); LaneId++) {
-    auto *V = OP[LaneId];
-    if (!V)
-      continue;
-    auto *I = dyn_cast<Instruction>(V);
-    if (!I || I->getParent() != BB)
-      continue;
-    if (VP.getElements().test(VPCtx->getScalarId(I))) {
-      Produced = true;
-    }
-  }
-  return Produced;
-}
-
 static float getGatherCost(VectorType *VecTy, ArrayRef<Value *> Vals,
                            const OperandPack &OpndPack,
                            TargetTransformInfo *TTI) {

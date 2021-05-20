@@ -23,7 +23,6 @@ class Frontier {
   llvm::BitVector UsableInsts;
 
   void freezeOneInst(llvm::Instruction *);
-  bool resolveOperandPack(const VectorPack &VP, const OperandPack &UP);
 
   // Check if `OP` has been resolved.
   bool resolved(const OperandPack &OP) const;
