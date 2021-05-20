@@ -1,6 +1,6 @@
 #include "Heuristic.h"
-#include "Solver.h"
 #include "Packer.h"
+#include "Solver.h"
 #include "llvm/Support/Timer.h"
 
 using namespace llvm;
@@ -27,12 +27,11 @@ float Heuristic::getCost(const OperandPack *OP) {
 
   // Build by explicit insertion
   float Cost = 0;
-  SmallPtrSet<Value *, 8> Visited;
-  for (auto *V : *OP) {
-    if (!V || isa<Constant>(V) || !Visited.insert(V).second)
-      continue;
-    Cost += getCost(V) + C_Insert;
-  }
+  SmallPtrSet<Value *, 8> Inserted;
+  for (auto *V : *OP)
+    if (V && !isa<Constant>(V) && Inserted.insert(V).second)
+      Cost += getCost(V) + C_Insert;
+
   if (Cost == 0)
     return 0;
 
@@ -46,24 +45,25 @@ float Heuristic::getCost(const OperandPack *OP) {
   for (auto *VP : OPI.getProducers())
     Cost = std::min(Cost, getCost(VP) + ExtraCost);
 
-  if (Candidates) {
-    DenseSet<const VectorPack *> Visited;
-    for (unsigned InstId : OPI.Elements.set_bits()) {
-      for (auto *VP : Candidates->Inst2Packs[InstId]) {
-        if (!Visited.insert(VP).second)
-          continue;
-        ArrayRef<Value *> Vals = VP->getOrderedValues();
-        // FIXME: consider don't care
-        if (Vals.size() == OPI.Elements.count() &&
-            std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
-          Cost = std::min(Cost, getCost(VP) + C_Perm + ExtraCost);
-        } else {
-          BitVector Intersection = OPI.Elements;
-          Intersection &= VP->getElements();
-          Cost = std::min(Cost, (getCost(VP) + C_Shuffle + ExtraCost) /
-                                    float(Intersection.count()) *
-                                    float(OPI.Elements.count()));
-        }
+  if (!Candidates)
+    return OrderedCosts[OP] = Cost;
+
+  DenseSet<const VectorPack *> Visited;
+  for (unsigned InstId : OPI.Elements.set_bits()) {
+    for (auto *VP : Candidates->Inst2Packs[InstId]) {
+      if (!Visited.insert(VP).second)
+        continue;
+      ArrayRef<Value *> Vals = VP->getOrderedValues();
+      // FIXME: consider don't care
+      if (Vals.size() == OPI.Elements.count() &&
+          std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
+        Cost = std::min(Cost, getCost(VP) + C_Perm + ExtraCost);
+      } else {
+        BitVector Intersection = OPI.Elements;
+        Intersection &= VP->getElements();
+        Cost = std::min(Cost, (getCost(VP) + C_Shuffle + ExtraCost) /
+                                  float(Intersection.count()) *
+                                  float(OPI.Elements.count()));
       }
     }
   }
