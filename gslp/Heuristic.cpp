@@ -1,5 +1,6 @@
 #include "Heuristic.h"
 #include "Solver.h"
+#include "Packer.h"
 #include "llvm/Support/Timer.h"
 
 using namespace llvm;
@@ -46,19 +47,23 @@ float Heuristic::getCost(const OperandPack *OP) {
     Cost = std::min(Cost, getCost(VP) + ExtraCost);
 
   if (Candidates) {
-    for (auto *VP : Candidates->Packs) {
-      if (!VP->getElements().anyCommon(OPI.Elements))
-        continue;
-      ArrayRef<Value *> Vals = VP->getOrderedValues();
-      // FIXME: consider don't care
-      if (Vals.size() == OPI.Elements.count() &&
-          std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
-        Cost = std::min(Cost, getCost(VP) + C_Perm + ExtraCost);
-      } else {
-        BitVector Intersection = OPI.Elements;
-        Intersection &= VP->getElements();
-        Cost = std::min(Cost, (getCost(VP) + C_Shuffle + ExtraCost) / float(Intersection.count()) *
-                                      float(OPI.Elements.count()));
+    DenseSet<const VectorPack *> Visited;
+    for (unsigned InstId : OPI.Elements.set_bits()) {
+      for (auto *VP : Candidates->Inst2Packs[InstId]) {
+        if (!Visited.insert(VP).second)
+          continue;
+        ArrayRef<Value *> Vals = VP->getOrderedValues();
+        // FIXME: consider don't care
+        if (Vals.size() == OPI.Elements.count() &&
+            std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
+          Cost = std::min(Cost, getCost(VP) + C_Perm + ExtraCost);
+        } else {
+          BitVector Intersection = OPI.Elements;
+          Intersection &= VP->getElements();
+          Cost = std::min(Cost, (getCost(VP) + C_Shuffle + ExtraCost) /
+                                    float(Intersection.count()) *
+                                    float(OPI.Elements.count()));
+        }
       }
     }
   }

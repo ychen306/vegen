@@ -1,16 +1,13 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
-#include "CandidatePackSet.h"
-#include "Packer.h"
 #include "VectorPackContext.h"
-#include "VectorPackSet.h"
 #include "llvm/ADT/ArrayRef.h"
-#include <bitset>
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
-class MatchManager;
+class Packer;
+
 class Frontier {
   Packer *Pkr;
   llvm::BasicBlock *BB;
@@ -61,6 +58,11 @@ public:
 
   unsigned numUsableInsts() const { return UsableInsts.count(); }
   const VectorPackContext *getContext() const { return VPCtx; }
+};
+
+struct CandidatePackSet {
+  std::vector<const VectorPack *> Packs;
+  std::vector<std::vector<const VectorPack *>> Inst2Packs;
 };
 
 class VectorPackSet;

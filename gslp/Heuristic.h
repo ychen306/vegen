@@ -1,19 +1,22 @@
 #ifndef HEURISTIC_H
 #define HEURISTIC_H
 
-#include "CandidatePackSet.h"
-#include "Packer.h"
-#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseMapInfo.h"
 
+class Packer;
 class Frontier;
+class VectorPack;
+class VectorPackContext;
+class OperandPack;
+class CandidatePackSet;
+
+namespace llvm {
+class Value;
+class Instruction;
+}
 
 class Heuristic {
   llvm::DenseMap<const OperandPack *, float> OrderedCosts;
-  llvm::DenseMap<std::vector<llvm::Value *>, float,
-                 llvm::DenseMapInfo<llvm::ArrayRef<llvm::Value *>>>
-      UnorderedCosts;
   llvm::DenseMap<llvm::Instruction *, float> ScalarCosts;
 
   Packer *Pkr;

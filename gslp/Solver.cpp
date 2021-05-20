@@ -2,6 +2,7 @@
 #include "Heuristic.h"
 #include "MatchManager.h"
 #include "VectorPackSet.h"
+#include "Packer.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Timer.h"
 
@@ -312,8 +313,6 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
       Consider(VP);
   }
 
-  BitVector CandidateMembers = CandidateSet->Members;
-  CandidateMembers &= Frt.usableInstIds();
   for (auto *VP : CandidateSet->Packs)
     Consider(VP);
   return Extensions;
@@ -719,13 +718,10 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   CandidatePackSet CandidateSet;
   CandidateSet.Packs = enumerate(BB, Pkr);
   auto *VPCtx = Frt.getContext();
-  CandidateSet.Members = BitVector(VPCtx->getNumValues());
   CandidateSet.Inst2Packs.resize(VPCtx->getNumValues());
-  for (auto *VP : CandidateSet.Packs) {
-    CandidateSet.Members |= VP->getElements();
+  for (auto *VP : CandidateSet.Packs)
     for (unsigned i : VP->getElements().set_bits())
       CandidateSet.Inst2Packs[i].push_back(VP);
-  }
 
   return beamSearch(&Frt, Packs, &CandidateSet, 128);
 }
