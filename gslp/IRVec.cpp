@@ -1,9 +1,9 @@
 #include "IRVec.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 
 using namespace llvm;
 
-static bool isFloat(llvm::Instruction::BinaryOps Opcode) {
-  using namespace llvm;
+static bool isFloat(Instruction::BinaryOps Opcode) {
   switch (Opcode) {
   case Instruction::FAdd:
   case Instruction::FSub:
@@ -16,7 +16,8 @@ static bool isFloat(llvm::Instruction::BinaryOps Opcode) {
   }
 }
 
-float IRVectorBinding::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
+float IRVectorBinding::getCost(TargetTransformInfo *TTI,
+                               LLVMContext &Ctx) const {
   Type *ScalarTy;
   unsigned ElemWidth = Op->getBitwidth();
   auto Opcode = Op->getOpcode();

@@ -1,9 +1,12 @@
 #ifndef IR_VEC_H
 #define IR_VEC_H
 
+// This file defines a pool of target-independent SIMD vector instructions
 #include "InstSema.h"
-#include "Util.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
+
+namespace llvm {
+class TargetTransformInfo;
+}
 
 using namespace llvm;
 
