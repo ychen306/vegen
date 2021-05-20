@@ -16,6 +16,18 @@ static bool isFloat(Instruction::BinaryOps Opcode) {
   }
 }
 
+bool BinaryIROperation::match(Value *V, std::vector<Match> &Matches) const {
+  auto *BinOp = dyn_cast<BinaryOperator>(V);
+  bool Matched =
+      BinOp && BinOp->getOpcode() == Opcode && hasBitWidth(BinOp, Bitwidth);
+  if (Matched)
+    Matches.push_back({// live ins of this operation
+                       false,
+                       {BinOp->getOperand(0), BinOp->getOperand(1)},
+                       V});
+  return Matched;
+}
+
 float IRVectorBinding::getCost(TargetTransformInfo *TTI,
                                LLVMContext &Ctx) const {
   Type *ScalarTy;

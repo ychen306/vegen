@@ -8,40 +8,19 @@ namespace llvm {
 class TargetTransformInfo;
 }
 
-using namespace llvm;
-
 class BinaryIROperation : public Operation {
-  const Instruction::BinaryOps Opcode;
+  const llvm::Instruction::BinaryOps Opcode;
   unsigned Bitwidth;
 
-  static bool isCommutative(unsigned Opcode) {
-    switch (Opcode) {
-      case Instruction::Add: case Instruction::FAdd:
-      case Instruction::Mul: case Instruction::FMul:
-      case Instruction::And: case Instruction::Or: case Instruction::Xor:
-        return true;
-      default:
-        return false;
-    }
-  }
-
 public:
-  BinaryIROperation(Instruction::BinaryOps Opcode, unsigned Bitwidth)
+  BinaryIROperation(decltype(Opcode) Opcode, unsigned Bitwidth)
       : Opcode(Opcode), Bitwidth(Bitwidth) {}
-  std::string getName() const { return Instruction::getOpcodeName(Opcode); }
-  unsigned getBitwidth() const { return Bitwidth; }
-  Instruction::BinaryOps getOpcode() const { return Opcode; }
-  bool match(llvm::Value *V, std::vector<Match> &Matches) const override {
-    auto *BinOp = dyn_cast<BinaryOperator>(V);
-    bool Matched =
-        BinOp && BinOp->getOpcode() == Opcode && hasBitWidth(BinOp, Bitwidth);
-    if (Matched)
-      Matches.push_back({// live ins of this operation
-                         isCommutative(Opcode),
-                         {BinOp->getOperand(0), BinOp->getOperand(1)},
-                         V});
-    return Matched;
+  std::string getName() const {
+    return llvm::Instruction::getOpcodeName(Opcode);
   }
+  unsigned getBitwidth() const { return Bitwidth; }
+  llvm::Instruction::BinaryOps getOpcode() const { return Opcode; }
+  bool match(llvm::Value *V, std::vector<Match> &Matches) const override;
 };
 
 class IRVectorBinding : public InstBinding {
@@ -55,9 +34,10 @@ class IRVectorBinding : public InstBinding {
 public:
   static IRVectorBinding Create(const BinaryIROperation *Op,
                                 unsigned VectorWidth);
-  virtual Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
-                      IntrinsicBuilder &Builder) const override;
-  float getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const override;
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
 };
 
 // Aux class enumerating vector ir that we can emit

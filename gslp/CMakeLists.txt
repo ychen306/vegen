@@ -5,6 +5,7 @@ set(LIB_PACKING_SRC
   target-sema/x86.cpp target-sema/arm.cpp
 
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
+  IntrinsicBuilder.cpp
   Heuristic.cpp
   Packer.cpp
   Solver.cpp
