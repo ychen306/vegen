@@ -10,11 +10,13 @@ using namespace llvm;
 
 static cl::opt<bool> UseTimer("use-timer", cl::desc("use timer"));
 
-Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
+Frontier::Frontier(BasicBlock *BB, Packer *Pkr, Heuristic *H)
     : Pkr(Pkr), BB(BB), VPCtx(Pkr->getContext(BB)),
       UnresolvedScalars(VPCtx->getNumValues(), false),
       FreeInsts(VPCtx->getNumValues(), true),
       UsableInsts(VPCtx->getNumValues(), false) {
+
+  Est = 0;
   // Find external uses of any instruction `I` in `BB`
   // and mark `I` as an unresolved scalar.
   for (auto &I : *BB) {
@@ -33,18 +35,21 @@ Frontier::Frontier(BasicBlock *BB, Packer *Pkr)
           AllUsersResolved = false;
       }
     }
-
+    if (UnresolvedScalars.test(InstId) || isa<StoreInst>(I))
+      Est += H->getCost(&I);
     if (AllUsersResolved || isa<PHINode>(&I))
       UsableInsts.set(InstId);
   }
 }
 
-void Frontier::freezeOneInst(Instruction *I) {
+void Frontier::freezeOneInst(Instruction *I, Heuristic *H) {
   unsigned InstId = VPCtx->getScalarId(I);
   // assert(FreeInsts.test(InstId));
   if (!FreeInsts.test(InstId))
     return;
   FreeInsts.reset(InstId);
+  if (UnresolvedScalars.test(InstId) || isa<StoreInst>(I))
+    Est -= H->getCost(I);
   UnresolvedScalars.reset(InstId);
   UsableInsts.reset(InstId);
 
@@ -75,12 +80,12 @@ bool Frontier::resolved(const OperandPack &OP) const {
   return !Pkr->getProducerInfo(VPCtx, &OP).Elements.anyCommon(FreeInsts);
 }
 
-float Frontier::advance(Instruction *I, TargetTransformInfo *TTI) {
+float Frontier::advance(Instruction *I, TargetTransformInfo *TTI, Heuristic *H) {
   NamedRegionTimer Timer("advance/i", "advance with instruction ",
                          "pack selection", "", UseTimer);
   // float Cost = 0;
   float Cost = Pkr->getScalarCost(I);
-  freezeOneInst(I);
+  freezeOneInst(I, H);
 
   // Go over unresolved packs and see if we've resolved any lanes
   SmallVector<unsigned, 2> ResolvedPackIds;
@@ -92,6 +97,7 @@ float Frontier::advance(Instruction *I, TargetTransformInfo *TTI) {
     // Special case: we can build OP by broadcasting `I`.
     if ((*OP)[0] == I && is_splat(*OP)) {
       Cost += TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
+      Est -= H->getCost(OP);
       ResolvedPackIds.push_back(i);
       continue;
     }
@@ -106,6 +112,7 @@ float Frontier::advance(Instruction *I, TargetTransformInfo *TTI) {
             2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
     if (resolved(*OP)) {
+      Est -= H->getCost(OP);
       ResolvedPackIds.push_back(i);
     }
   }
@@ -118,6 +125,7 @@ float Frontier::advance(Instruction *I, TargetTransformInfo *TTI) {
       continue;
     unsigned InstId = VPCtx->getScalarId(I2);
     if (FreeInsts.test(InstId) && !UnresolvedScalars.test(InstId)) {
+      Est += H->getCost(I2);
       UnresolvedScalars.set(InstId);
     }
   }
@@ -166,10 +174,9 @@ static unsigned getGatherCost(const OperandPack &OP,
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
-float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI) {
+float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI, Heuristic *H) {
   NamedRegionTimer Timer("advance/pack", "advance with pack", "pack selection",
                          "", UseTimer);
-  // float Cost = VP->getCost();
   float Cost = VP->getProducingCost();
 
   Type *VecTy;
@@ -198,7 +205,7 @@ float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI) {
   // have external user, directly subtract cost of dead instructions. We have
   // enough information to check if a value is dead.
   for (auto *I : VP->getReplacedInsts())
-    freezeOneInst(I);
+    freezeOneInst(I, H);
 
   SmallVector<unsigned, 2> ResolvedPackIds;
   if (!VP->isStore()) {
@@ -209,6 +216,7 @@ float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI) {
       if (OPI.Elements.anyCommon(VP->getElements())) {
         Cost += getGatherCost(*VP, *OP, TTI);
         if (resolved(*OP)) {
+          Est -= H->getCost(OP);
           ResolvedPackIds.push_back(i);
         }
       }
@@ -236,6 +244,7 @@ float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI) {
     if (!resolved(*OpndPack)) {
       bool Inserted = UnresolvedSet.insert(OpndPack).second;
       if (Inserted) {
+        Est += H->getCost(OpndPack);
         UnresolvedPacks.push_back(OpndPack);
       }
     }
@@ -592,13 +601,13 @@ struct State {
 
   State(const Frontier &Frt) : Incoming(nullptr), Frt(Frt), Cost(0), Est(0) {}
   // Create a state from transition T
-  State(Transition &T, TargetTransformInfo *TTI) : Incoming(&T), Frt(T.Src->Frt) {
+  State(Transition &T, TargetTransformInfo *TTI, Heuristic *H) : Incoming(&T), Frt(T.Src->Frt) {
     T.Dst = this;
     Cost = T.Src->Cost;
     if (T.I)
-      Cost += Frt.advance(T.I, TTI);
+      Cost += Frt.advance(T.I, TTI, H);
     else
-      Cost += Frt.advance(T.VP, TTI);
+      Cost += Frt.advance(T.VP, TTI, H);
   }
   State &operator=(const State &) = default;
 };
@@ -656,20 +665,20 @@ void State::expand(const CandidatePackSet *CandidateSet) {
   }
 }
 
-float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
+static float beamSearch(BasicBlock *BB,
+    Packer *Pkr,
+    VectorPackSet &Packs,
                  const CandidatePackSet *CandidateSet,
                  unsigned BeamWidth = 500) {
   NamedRegionTimer Timer("beam-search", "beam search main loop",
                          "pack selection", "", UseTimer);
-
-  auto *Pkr = Frt->getPacker();
   auto *TTI = Pkr->getTTI();
 
-  Heuristic H(Pkr, Frt->getContext(), CandidateSet);
+  Heuristic H(Pkr, Pkr->getContext(BB), CandidateSet);
 
   std::vector<std::unique_ptr<State>> States;
   State *Best = nullptr;
-  State Start(*Frt);
+  State Start(Frontier(BB, Pkr, &H));
   std::vector<State *> Beam{&Start};
   std::vector<State *> NextBeam;
   while (!Beam.empty()) {
@@ -677,9 +686,9 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
     for (auto *S : Beam) {
       S->expand(CandidateSet);
       for (auto &T : S->Transitions) {
-        States.push_back(std::make_unique<State>(T, TTI));
+        States.push_back(std::make_unique<State>(T, TTI, &H));
         State *S2 = States.back().get();
-        S2->Est = H.getCost(&S2->Frt);
+        S2->Est = S2->Frt.getEstimatedCost();
         if (S2->isTerminal()) {
           if (!Best || Best->Cost > S2->Cost) {
             errs() << "new best cost: " << S2->Cost;
@@ -713,15 +722,13 @@ float beamSearch(const Frontier *Frt, VectorPackSet &Packs,
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
-  Frontier Frt(BB, Pkr);
-
   CandidatePackSet CandidateSet;
   CandidateSet.Packs = enumerate(BB, Pkr);
-  auto *VPCtx = Frt.getContext();
+  auto *VPCtx = Pkr->getContext(BB);
   CandidateSet.Inst2Packs.resize(VPCtx->getNumValues());
   for (auto *VP : CandidateSet.Packs)
     for (unsigned i : VP->getElements().set_bits())
       CandidateSet.Inst2Packs[i].push_back(VP);
 
-  return beamSearch(&Frt, Packs, &CandidateSet, 128);
+  return beamSearch(BB, Pkr, Packs, &CandidateSet, 128);
 }

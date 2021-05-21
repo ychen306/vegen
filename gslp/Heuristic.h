@@ -4,7 +4,6 @@
 #include "llvm/ADT/DenseMap.h"
 
 class Packer;
-class Frontier;
 class VectorPack;
 class VectorPackContext;
 class OperandPack;
@@ -24,14 +23,13 @@ class Heuristic {
   const CandidatePackSet *Candidates;
 
   float getCost(const VectorPack *VP);
-  float getCost(const OperandPack *OP);
-  float getCost(llvm::Value *);
-
 public:
   Heuristic(Packer *Pkr, const VectorPackContext *VPCtx,
             const CandidatePackSet *Candidates)
       : Pkr(Pkr), VPCtx(VPCtx), Candidates(Candidates) {}
-  float getCost(const Frontier *);
+  //float getCost(const Frontier *);
+  float getCost(const OperandPack *OP);
+  float getCost(llvm::Value *);
 };
 
 #endif // HEURISTIC_H

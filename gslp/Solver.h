@@ -7,6 +7,7 @@
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 class Packer;
+class Heuristic;
 
 class Frontier {
   Packer *Pkr;
@@ -18,18 +19,20 @@ class Frontier {
   llvm::BitVector FreeInsts;
   // Free insts without free users
   llvm::BitVector UsableInsts;
+  float Est;
 
-  void freezeOneInst(llvm::Instruction *);
+  void freezeOneInst(llvm::Instruction *, Heuristic *);
 
   // Check if `OP` has been resolved.
   bool resolved(const OperandPack &OP) const;
 
 public:
+  float getEstimatedCost() const { return Est; }
   // Create the initial frontier, which surrounds the whole basic block
-  Frontier(llvm::BasicBlock *BB, Packer *Pkr);
+  Frontier(llvm::BasicBlock *BB, Packer *Pkr, Heuristic *);
   llvm::BasicBlock *getBasicBlock() const { return BB; }
-  float advance(llvm::Instruction *, llvm::TargetTransformInfo *);
-  float advance(const VectorPack *, llvm::TargetTransformInfo *);
+  float advance(llvm::Instruction *, llvm::TargetTransformInfo *, Heuristic *);
+  float advance(const VectorPack *, llvm::TargetTransformInfo *, Heuristic *);
   const llvm::BitVector &getFreeInsts() const { return FreeInsts; }
   bool isFree(llvm::Instruction *I) const {
     return FreeInsts.test(VPCtx->getScalarId(I));
