@@ -593,13 +593,12 @@ struct State {
   Frontier Frt;
   std::vector<Transition> Transitions;
   float Cost = 0; // Cost so far
-  float Est = 0;  // estimate of the cost from now on
 
   bool expanded() const { return !Transitions.empty() || isTerminal(); }
   bool isTerminal() const { return Frt.getFreeInsts().count() == 0; }
   void expand(const CandidatePackSet *);
 
-  State(const Frontier &Frt) : Incoming(nullptr), Frt(Frt), Cost(0), Est(0) {}
+  State(const Frontier &Frt) : Incoming(nullptr), Frt(Frt), Cost(0) {}
   // Create a state from transition T
   State(Transition &T, TargetTransformInfo *TTI, Heuristic *H) : Incoming(&T), Frt(T.Src->Frt) {
     T.Dst = this;
@@ -688,7 +687,6 @@ static float beamSearch(BasicBlock *BB,
       for (auto &T : S->Transitions) {
         States.push_back(std::make_unique<State>(T, TTI, &H));
         State *S2 = States.back().get();
-        S2->Est = S2->Frt.getEstimatedCost();
         if (S2->isTerminal()) {
           if (!Best || Best->Cost > S2->Cost) {
             errs() << "new best cost: " << S2->Cost;
@@ -704,7 +702,7 @@ static float beamSearch(BasicBlock *BB,
 
     std::stable_sort(Beam.begin(), Beam.end(),
                      [](const State *S, const State *S2) {
-                       return S->Cost + S->Est < S2->Cost + S2->Est;
+                       return S->Cost + S->Frt.getEstimatedCost() < S2->Cost + S2->Frt.getEstimatedCost();
                      });
     if (Beam.size() > BeamWidth)
       Beam.resize(BeamWidth);
