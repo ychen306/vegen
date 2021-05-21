@@ -1,8 +1,8 @@
 #include "Solver.h"
 #include "Heuristic.h"
 #include "MatchManager.h"
-#include "VectorPackSet.h"
 #include "Packer.h"
+#include "VectorPackSet.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Timer.h"
 
@@ -80,7 +80,8 @@ bool Frontier::resolved(const OperandPack &OP) const {
   return !Pkr->getProducerInfo(VPCtx, &OP).Elements.anyCommon(FreeInsts);
 }
 
-float Frontier::advance(Instruction *I, TargetTransformInfo *TTI, Heuristic *H) {
+float Frontier::advance(Instruction *I, TargetTransformInfo *TTI,
+                        Heuristic *H) {
   NamedRegionTimer Timer("advance/i", "advance with instruction ",
                          "pack selection", "", UseTimer);
   // float Cost = 0;
@@ -174,7 +175,8 @@ static unsigned getGatherCost(const OperandPack &OP,
 
 // FIXME: this doesn't work when there are lanes in VP that cover multiple
 // instructions.
-float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI, Heuristic *H) {
+float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI,
+                        Heuristic *H) {
   NamedRegionTimer Timer("advance/pack", "advance with pack", "pack selection",
                          "", UseTimer);
   float Cost = VP->getProducingCost();
@@ -315,7 +317,8 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   };
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, VPCtx->dedup(OP));
+    const OperandProducerInfo &OPI =
+        Pkr->getProducerInfo(VPCtx, VPCtx->dedup(OP));
     if (!OPI.Feasible)
       continue;
     for (auto *VP : OPI.Producers)
@@ -600,7 +603,8 @@ struct State {
 
   State(const Frontier &Frt) : Incoming(nullptr), Frt(Frt), Cost(0) {}
   // Create a state from transition T
-  State(Transition &T, TargetTransformInfo *TTI, Heuristic *H) : Incoming(&T), Frt(T.Src->Frt) {
+  State(Transition &T, TargetTransformInfo *TTI, Heuristic *H)
+      : Incoming(&T), Frt(T.Src->Frt) {
     T.Dst = this;
     Cost = T.Src->Cost;
     if (T.I)
@@ -664,11 +668,9 @@ void State::expand(const CandidatePackSet *CandidateSet) {
   }
 }
 
-static float beamSearch(BasicBlock *BB,
-    Packer *Pkr,
-    VectorPackSet &Packs,
-                 const CandidatePackSet *CandidateSet,
-                 unsigned BeamWidth = 500) {
+static float beamSearch(BasicBlock *BB, Packer *Pkr, VectorPackSet &Packs,
+                        const CandidatePackSet *CandidateSet,
+                        unsigned BeamWidth = 500) {
   NamedRegionTimer Timer("beam-search", "beam search main loop",
                          "pack selection", "", UseTimer);
   auto *TTI = Pkr->getTTI();
@@ -702,7 +704,8 @@ static float beamSearch(BasicBlock *BB,
 
     std::stable_sort(Beam.begin(), Beam.end(),
                      [](const State *S, const State *S2) {
-                       return S->Cost + S->Frt.getEstimatedCost() < S2->Cost + S2->Frt.getEstimatedCost();
+                       return S->Cost + S->Frt.getEstimatedCost() <
+                              S2->Cost + S2->Frt.getEstimatedCost();
                      });
     if (Beam.size() > BeamWidth)
       Beam.resize(BeamWidth);
