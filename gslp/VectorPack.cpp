@@ -213,36 +213,6 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   }
 
   ProducingCost = Cost;
-
-  // 2) Then figure out savings from removing scalar instructions
-  int Saving = 0;
-  if (Kind != General) {
-    for (Value *V : elementValues()) {
-      auto *I = cast<Instruction>(V);
-      if (auto *LI = dyn_cast<LoadInst>(I)) {
-        Saving += TTI->getMemoryOpCost(Instruction::Load, LI->getType(),
-            MaybeAlign(LI->getAlignment()), 0, LI);
-      } else if (auto *SI = dyn_cast<StoreInst>(I))
-        Saving += TTI->getMemoryOpCost(Instruction::Store,
-            SI->getValueOperand()->getType(),
-            MaybeAlign(SI->getAlignment()), 0, SI);
-      // no saving from packing phinode
-    }
-  } else {
-    for (auto *M : Matches) {
-      SmallPtrSet<Instruction *, 2> Insts;
-      getIntermediateInsts(*M, Insts);
-      for (auto *I : Insts) {
-        SmallVector<const Value *, 4> Operands(I->operand_values());
-        Saving += TTI->getArithmeticInstrCost(
-            I->getOpcode(), I->getType(), TargetTransformInfo::OK_AnyValue,
-            TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None,
-            TargetTransformInfo::OP_None, Operands, I);
-      }
-    }
-  }
-
-  Cost -= Saving;
 }
 
 void VectorPack::computeOrderedValues() {
@@ -337,9 +307,9 @@ void VectorPack::computeReplacedInsts() {
         ReplacedInsts.push_back(I);
     }
   }
-  std::sort(ReplacedInsts.begin(), ReplacedInsts.end());
+  std::stable_sort(ReplacedInsts.begin(), ReplacedInsts.end());
   auto It = std::unique(ReplacedInsts.begin(), ReplacedInsts.end());
   ReplacedInsts.resize(std::distance(ReplacedInsts.begin(), It));
-  std::sort(ReplacedInsts.begin(), ReplacedInsts.end(),
+  std::stable_sort(ReplacedInsts.begin(), ReplacedInsts.end(),
             [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
 }

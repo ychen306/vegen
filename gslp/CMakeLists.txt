@@ -2,14 +2,15 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # The main "lib packing"
 set(LIB_PACKING_SRC
-  InstSema.cpp InstSema.arm.cpp
+  target-sema/x86.cpp target-sema/arm.cpp
+
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
+  IntrinsicBuilder.cpp
   Heuristic.cpp
   Packer.cpp
   Solver.cpp
   IRVec.cpp
   LaneBinding.cpp
-  Embedding.cpp
   Canonicalizer.cpp
   EnumerateSeeds.cpp
   MatchManager.cpp
@@ -28,16 +29,18 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irrea
 #target_link_libraries(Packing ${LLVM_LIBRARIES})
 target_link_libraries(GSLP Packing)
 
-SET_SOURCE_FILES_PROPERTIES(InstSema.cpp PROPERTIES COMPILE_FLAGS -O0)
+SET_SOURCE_FILES_PROPERTIES(
+  target-sema/x86.cpp target-sema/arm.cpp 
+  PROPERTIES COMPILE_FLAGS -O0)
 
 set_target_properties(GSLP PROPERTIES COMPILE_FLAGS "-fno-rtti")
 
 # THANKS AJAY!
-set(INST_WRAPPERS "${CMAKE_BINARY_DIR}/InstWrappers.bc")
+set(INST_WRAPPERS "${CMAKE_BINARY_DIR}/x86.bc")
 set(ALL_FLAGS -mssse3 -msse -mavx512bw -msse3 -msse4.1 -msse4.2 -mfma -msse2 -mavx2 -mavx512vnni -mavx512vl -mavx512dq -mgfni -mavx512vbmi2 -mavx512vbmi -mavx512cd -mavx -mavx512f -mbmi2)
 add_custom_command(OUTPUT ${INST_WRAPPERS}
-  COMMAND clang -O3 -emit-llvm ${ALL_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/InstWrappers.c -c -Wno-argument-outside-range -o ${INST_WRAPPERS}
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/InstWrappers.c
+  COMMAND clang -O3 -emit-llvm ${ALL_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/target-wrappers/x86.c -c -Wno-argument-outside-range -o ${INST_WRAPPERS}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/target-wrappers/x86.c
   VERBATIM
 )
 

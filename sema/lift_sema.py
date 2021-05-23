@@ -57,82 +57,9 @@ def trunc_zero(x):
 
   return x
 
-def get_ctrl_key(f, ctrl):
-  '''
-  check if f is an `if` matching on ctrl
-  return the constant being matched if yes
-  return None otherwise
-  '''
-  if not z3.is_app_of(f, z3.Z3_OP_ITE):
-    return None
-
-  cond, _, _ = f.children()
-  if not z3.is_app_of(cond, z3.Z3_OP_EQ):
-    return None
-
-  ctrl2, key = cond.children()
-  if z3_utils.askey(ctrl2) != z3_utils.askey(ctrl):
-    return None
-
-  if not z3.is_bv_value(key):
-    return None
-
-  return key.as_long()
-
 def is_var(x):
   return (z3.is_app_of(x, z3.Z3_OP_UNINTERPRETED) and
       len(x.children()) == 0)
-
-def match_mux(f):
-  '''
-  turn (if x==0 ... else (if x == 1 ... else (if x == 2  ...))) into a mux
-  '''
-  if not z3.is_app_of(f, z3.Z3_OP_ITE):
-    return None
-
-  cond, _, _ = f.children()
-  if not z3.is_app_of(cond, z3.Z3_OP_EQ):
-    return None
-
-  ctrl, _ = cond.children()
-  if not is_var(ctrl) and not (
-      z3.is_app_of(ctrl, z3.Z3_OP_EXTRACT) and is_simple_extraction(ctrl)):
-    return None
-
-  mux = {}
-  s = z3.Solver()
-  while True:
-    key = get_ctrl_key(f, ctrl)
-    if key is None:
-      if s.check() == z3.unsat:
-        # this is a dead branch => we have exhaustively matched everything!
-        break
-
-      # try to prove that this is a implicit branch
-      # (i.e., when we get here the key has to be a certain value)
-      implicit_key = z3.BitVec('implicit_key', ctrl.size())
-      solver_stat = s.check(ctrl == implicit_key)
-      if solver_stat == z3.sat:
-        # see if there's another key not matched
-        key = s.model().eval(implicit_key).as_long()
-        s.add(implicit_key != key)
-        if s.check(ctrl == implicit_key) != z3.unsat:
-          # got to the end of the trail but still didn't exhaust,
-          # bail!
-          return None
-        mux[key] = f
-        break
-
-      return None
-
-    cond, a, b = f.children()
-    mux[key] = a
-    # follow the else branch
-    f = b
-    s.add(z3.Not(cond))
-
-  return mux, ctrl
-
 class MatchFailure(Exception):
   pass
 
@@ -151,72 +78,6 @@ def assert_const(f, const):
 def assert_pred(pred):
   if not pred:
     raise MatchFailure
-
-def match_insert(f):
-  '''
-  z3 canonicalizes vector insertion (`src[i] = x`) into the following form:
-    keep | update
-  where
-    keep = ~(~<src> | <mask of x_size> << <offset>)
-    update = x << <offset>
-  where
-    offset = (<x_size> * <idx>)
-  '''
-  try:
-    s = z3.Solver()
-    [keep, update] = match_with(f, z3.Z3_OP_BOR, 2)
-
-    [x, offset1] = match_with(update, z3.Z3_OP_BSHL, 2)
-    offset1 = trunc_zero(offset1)
-    x = trunc_zero(x)
-
-    [keep] = match_with(keep, z3.Z3_OP_BNOT, 1)
-    [not_of_src, mask] = match_with(keep, z3.Z3_OP_BOR, 2)
-    [src] = match_with(not_of_src, z3.Z3_OP_BNOT, 1)
-    [ones, offset2] = match_with(mask, z3.Z3_OP_BSHL, 2)
-    offset2 = trunc_zero(offset2)
-    assert_const(ones, (1 << x.size())-1)
-
-    assert_pred(s.check(offset1 != offset2) == z3.unsat)
-    [x_size, idx] = match_with(offset1, z3.Z3_OP_BMUL, 2)
-    idx = trunc_zero(idx)
-    assert_const(x_size, x.size())
-    return src, x, idx
-  except MatchFailure:
-    return None
-
-def match_dynamic_slice(f):
-  '''
-  z3 doesn't support Extract with dynamic parameters,
-  so we compile the semantics of `a[i*stride:(i+1)*stride]` into `trunc(a >> (stride*i))`
-  '''
-  if not z3.is_app_of(f, z3.Z3_OP_EXTRACT):
-    return None
-
-  hi, lo = f.params()
-  if lo != 0:
-    return None
-
-  [x] = f.children()
-  if not z3.is_app_of(x, z3.Z3_OP_BLSHR):
-    return None
-
-  base, offset = x.children()
-  offset = trunc_zero(offset)
-  if not z3.is_app_of(offset, z3.Z3_OP_BMUL):
-    return None
-  if not is_var(base):
-    return None
-
-  stride, idx = offset.children()
-  idx = trunc_zero(idx)
-  if not z3.is_bv_value(stride):
-    return None
-
-  if stride.as_long() != hi + 1:
-    return None
-
-  return base, idx, stride.as_long()
 
 def elim_dead_branches(f):
   '''
@@ -268,7 +129,6 @@ def elim_dead_branches(f):
       return z3.simplify(z3.substitute(f, *zip(args, new_args)))
 
   return elim(f)
-  
 
 def elim_redundant_branches(f):
   '''
@@ -318,6 +178,7 @@ def elim_redundant_branches(f):
       return z3.simplify(z3.substitute(f, *zip(args, new_args)))
 
   return elim(f)
+
 
 def reduce_bitwidth(f):
   '''
@@ -408,8 +269,6 @@ def typecheck(dag):
         assert value.op in ['ZExt', 'SExt', 'Trunc']
         ok = True
       if not ok:
-        #pprint(value)
-        #pprint(dag)
         return False
   return True
 
@@ -592,24 +451,9 @@ def recover_sub(f):
     return a - b2
   return f
 
-def count_reachable_vars(ir, root):
-  vars = set()
-  visited = set()
-  def visit(v):
-    if v in visited:
-      return
-    visited.add(v)
-    if isinstance(ir[v], Slice):
-      vars.add(ir[v])
-      return
-    if isinstance(ir[v], Instruction):
-      for w in ir[v].args:
-        visit(w)
-  visit(root)
-  return len(vars)
-
 class Translator:
   def __init__(self):
+    self.solver = z3.Solver()
     self.extraction_history = ExtractionHistory()
     self.z3op_translators = {
         z3.Z3_OP_TRUE: self.translate_true,
@@ -699,26 +543,7 @@ class Translator:
     node_id = self.new_id()
     z3op = z3_utils.get_z3_app(f)
 
-    # try to match this to a mux
-    insert = match_insert(f)
-    # try to match this to a vector insertion
-    mux = match_mux(f)
-
-    if insert:
-      src, x, idx = insert
-      node = Insert(self.translate(src), src.size(),
-          self.translate(x), self.translate(idx))
-    elif mux is not None:
-      mux, ctrl = mux
-      keys = list(mux.keys())
-      values = [self.translate(mux[k]) for k in keys]
-      bitwidth = mux[keys[0]].size()
-      assert all(v.size() == bitwidth for v in mux.values())
-      node = Mux(
-          self.translate(ctrl),
-          keys=keys, values=values,
-          bitwidth=bitwidth)
-    elif z3op in self.z3op_translators:
+    if z3op in self.z3op_translators:
       # see if there's a specialized translator
       node = self.z3op_translators[z3op](f)
     else:
@@ -768,14 +593,6 @@ class Translator:
       s = self.extraction_history.record(ext)
       return s
 
-    s = match_dynamic_slice(ext)
-    if s is not None:
-      base, idx, stride = s
-      assert (z3.is_app_of(idx, z3.Z3_OP_UNINTERPRETED) and
-          len(idx.children()) == 0) or (
-          z3.is_app_of(idx, z3.Z3_OP_EXTRACT) and is_simple_extraction(idx))
-      return DynamicSlice(base, idx=self.translate(idx), stride=stride)
-
     [x] = ext.children()
     assert x.size() <= 64,\
         "extraction too complex to model in scalar code"
@@ -797,10 +614,9 @@ class Translator:
     don't even bother trying to pattern match this...
     just prove it
     '''
-    s = z3.Solver()
     x = concat.children()[-1]
     sext = z3.SignExt(concat.size()-x.size(), x)
-    is_sext = s.check(concat != sext) == z3.unsat
+    is_sext = self.solver.check(concat != sext) == z3.unsat
     if is_sext:
       return Instruction(
           op='SExt',
@@ -894,100 +710,3 @@ class Translator:
     return Instruction(
         op=float_ops[op], bitwidth=bitwidth,
         args=[self.translate(arg) for arg in f.children()])
-
-def is_alu_op(dag):
-  return any(isinstance(v, Instruction) for v in dag.values())
-
-def get_elem_size(spec):
-  return int(spec.elem_type[2:])
-
-if __name__ == '__main__':
-  from semas import semas
-  from manual_parser import parse_specs
-  from pprint import pprint
-  from tqdm import tqdm
-  import traceback
-  import math
-  import functools
-  import pickle
-
-  specs = parse_specs('data-latest.xml')
-
-  debug = '_mm_dpwssds_epi32'
-  debug = '_mm256_andnot_pd'
-  debug = '_mm_packs_epi32'
-  debug = '_mm256_min_epu16'
-  debug = '_mm256_mulhi_epi16'
-  debug = '_mm_sad_epu8'
-  debug = '_mm256_cvtepu8_epi64'
-  debug = None
-  if debug:
-    translator = Translator()
-    y = semas[debug][1][0]
-    print('!!1', y)
-    y = elim_dead_branches(y)
-    y = elim_redundant_branches(y)
-    y_reduced = reduce_bitwidth(y)
-    z3.prove(y_reduced == y)
-    y = y_reduced
-    outs, dag = translator.translate_formula(y, get_elem_size(specs[debug]))
-    print('typechecked:', typecheck(dag))
-    print(outs)
-    pprint(dag)
-    exit()
-
-  var_counts = []
-
-  log_alu = open('alu.lifted.log', 'w')
-  log_shuf = open('shuf.lifted.log', 'w')
-
-  lifted_alu = {}
-  lifted_shuf = {}
-
-  s = z3.Solver()
-
-  pbar = tqdm(iter(semas.items()), total=len(semas))
-  num_tried = 0
-  num_translated = 0
-  for inst, sema in pbar:
-    num_tried += 1
-
-    translator = Translator()
-    xs, ys = sema
-    liveins = [x.decl().name() for x in xs]
-    y = ys[0]
-    y = elim_dead_branches(y)
-    y = elim_redundant_branches(y)
-    y_reduced = reduce_bitwidth(y)
-    y = y_reduced
-
-    # compute stat. for average number of variables
-    try:
-      outs, dag = translator.translate_formula(y, get_elem_size(specs[inst]))
-      assert typecheck(dag)
-      num_translated += 1
-      sizes = {get_size(dag[y]) for y in outs}
-      if len(sizes) != 1:
-        gcd = functools.reduce(math.gcd, sizes)
-        print(inst, gcd, gcd in sizes)
-      if is_alu_op(dag):
-        log_alu.write(inst+'\n')
-        lifted_alu[inst] = liveins, outs, dag
-      else:
-        log_shuf.write(inst+'\n')
-        lifted_shuf[inst] = liveins, outs, dag
-    except Exception as e:
-      #if not isinstance(e, AssertionError):
-      #  print('Error processing', inst)
-      #  traceback.print_exc()
-      #  exit()
-      print(inst)
-      #print('ERROR PROCESSING:', inst)
-      #traceback.print_exc()
-    pbar.set_description('translated/tried: %d/%d' % (
-      num_translated, num_tried))
-
-  with open('alu.lifted', 'wb') as f:
-    pickle.dump(lifted_alu, f)
-  with open('shuf.lifted', 'wb') as f:
-    pickle.dump(lifted_shuf, f)

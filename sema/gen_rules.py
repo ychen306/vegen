@@ -1,13 +1,9 @@
 from ir import *
-from manual_parser import parse_specs
 from collections import namedtuple, defaultdict
-from manual_parser import get_spec_from_xml
-from sig import get_inst_sigs
 import io
 import json
 import functools
 from canonicalize import canonicalize
-
 
 SelectOnCmp = namedtuple('SelectOnCmp', ['op', 'a', 'b', 'true_val', 'false_val'])
 
@@ -26,26 +22,6 @@ def match_select_on_cmp(node_id, dag):
 
   a, b = cond.args
   return SelectOnCmp(cond.op, a, b, true_val, false_val)
-
-def parse_perf_file(fname, uarch):
-  costs = {}
-  with open(fname) as f:
-    perf = json.load(f)
-    for inst, data in perf.items():
-      # data looks something like this [
-      #      {"Broadwell":{l:"1",t:"1",}},
-      #      {"Haswell":{l:"1",t:"1",}},
-      #      {"Ivy Bridge":{l:"1",t:"1",}},
-      #  ]
-      for entry in data:
-        if uarch not in entry:
-          continue
-        # throughput
-        tp = entry[uarch]['t']
-        if tp == '':
-          continue
-        costs[inst] = float(tp) / 0.5
-  return costs
 
 class VarGenerator:
   def __init__(self):
@@ -115,15 +91,6 @@ class BoundOperation:
         return f'{pattern_ctor}\n{ctor_args})'
       elif node_ty == Constant:
         return get_const_pattern(node)
-      elif node_ty == Mux:
-        # only support 2-way Mux
-        assert len(node.kv_pairs) == 2
-        false_branch, true_branch = node.kv_pairs
-        assert true_branch[0] == 1
-        ctrl_val = build_pattern(node.ctrl, depth+1)
-        true_val = build_pattern(true_branch[1], depth+1)
-        false_val = build_pattern(false_branch[1], depth+1)
-        return f'm_Select({ctrl_val}, {true_val}, {false_val})'
       else:
         assert node_ty == Slice
         x = var_generator.new_var()
@@ -135,7 +102,7 @@ class BoundOperation:
         livein2vars[node_id].append(x)
         return f'm_Value({x})'
 
-    self.is_nop = type(dag[root]) not in (Instruction, Mux, Constant)
+    self.is_nop = type(dag[root]) not in (Instruction, Constant)
     pattern = build_pattern(root)
     root_bitwidth = dag[root].bitwidth
     conds = [
@@ -203,10 +170,6 @@ class RuleCollection:
   def just_one(rule):
     return RuleCollection([rule])
 
-  @staticmethod
-  def many(rules, mux_keys, mux_control):
-    return RuleCollection(rules, mux_keys, mux_control)
-
   def num_rules(self):
     return len(self.rules)
 
@@ -253,25 +216,6 @@ class RuleBundle:
       rules.extend(lane.rules)
     return rules
 
-  def emit_bundel_desc(self, outf):
-    pass
-
-class RuleBundleIndex:
-  '''
-  rule index is a reverse index that maps:
-    <rule> -> [<lane id>, <rule bundle>]
-  '''
-
-  def __init__(self, bundles):
-    # inst -> [bundle]
-    self.bundles = bundles
-
-  def emit_matchers(self):
-    pass
-
-  def emit_index(self):
-    pass
-
 def declare_operation(op_name, bound_operation):
   return f'''
 class : public Operation {{
@@ -293,13 +237,9 @@ def emit_slice(liveins, s):
 
 # FIXME: assert that we only have a single output
 def emit_sig(sig):
-  xs, ys = sig
-  input_sizes = ', '.join(str(x.bitwidth) for x in xs)
-  output_sizes = ', '.join(str(y_size) for y_size in ys)
-  has_imm8 = 'true' if any(x.is_constant for x in xs) else 'false'
-  return f'InstSignature {{ {{ {input_sizes} }}, {{ {output_sizes} }}, {has_imm8} }}'
-
-op_sigs = set()
+  input_sizes = ', '.join(str(x.bitwidth) for x in sig.inputs)
+  has_imm8 = 'true' if any(x.is_constant for x in sig.inputs) else 'false'
+  return f'InstSignature {{ {{ {input_sizes} }}, {{ {str(sig.output.bitwidth)} }}, {has_imm8} }}'
 
 def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
   '''
@@ -311,7 +251,6 @@ def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
   for inst, bundle in bundles.items():
     features = inst_features[inst]
     feature_list = ', '.join(f'"{f}"' for f in features)
-    liveins, _ = bundle.sema
     # BoundOperation for each lane
     bound_ops = []
     for lane in bundle.lanes:
@@ -325,112 +264,13 @@ def codegen(bundles, inst_features, costs, binding_vector_name='Insts'):
       else:
         op_name = operation_names[op]
 
-      bound_liveins = [emit_slice(liveins, x) for x in op.get_bound_liveins()]
-      op_sig = tuple(x.hi - x.lo for x in op.get_bound_liveins()), op.bitwidth
-      op_sigs.add(op_sig)
+      bound_liveins = [emit_slice(bundle.sema.inputs, x) for x in op.get_bound_liveins()]
       bound_ops.append(
-          f'BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
+          f'\n    BoundOperation(&{op_name}, {{ { ", ".join(bound_liveins) } }})')
     sig = emit_sig(bundle.sig)
     cost = costs[inst]
-    inst_defs[inst] = f'InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }}, {cost})'
+    inst_defs[inst] = f'  InstBinding("{inst}", {{ {feature_list} }}, {sig}, {{ {", ".join(bound_ops)} }}, {cost})'
 
   op_decls = '\n'.join(op_decl for op_decl in operation_defs.values())
   inst_bindings = ',\n'.join(inst_def for inst_def in inst_defs.values())
-  return f'''
-{op_decls}
-std::vector<InstBinding> {binding_vector_name} {{
-  {inst_bindings}
-}};
-  '''
-
-if __name__ == '__main__':
-  import sys
-  import pickle
-  from semas import semas
-  from pprint import pprint
-
-  specs = parse_specs('data-latest.xml')
-  sigs = get_inst_sigs(semas, specs)
-
-  lifted_f, perf_f, uarch = sys.argv[1:]
-  with open(lifted_f, 'rb') as f:
-    lifted = pickle.load(f)
-
-  inst2cost = parse_perf_file(perf_f, uarch)
-  intrin2cost = {
-      inst: inst2cost.get(spec.xed, '1.0 /*default*/')
-      for inst, spec in specs.items() }
-
-  debug = '_mm_packs_epi32'
-  debug ='_mm256_cvtepu8_epi64'
-  debug = '_mm_sad_epu8'
-  debug = '_mm256_subs_epi16'
-  debug = None
-
-  if debug:
-    _, outs, dag = lifted[debug]
-    print(outs)
-    pprint(dag)
-    bo = BoundOperation(outs[-1], dag)
-    print(bo.get_matching_code())
-    rb = RuleBundle(sigs[debug], semas[debug], outs, dag)
-    print(rb.all_lanes_simple())
-    print(rb.has_nop())
-    print(len(sigs[debug][1]) != 1)
-    exit()
-
-  bundles = {}
-  for inst, (_, out_ids, dag) in iter(lifted.items()):
-    if inst == '_pext_u32':
-      continue
-    # Skip instructions with multiple outputs
-    if len(sigs[inst][1]) != 1:
-      print(inst, 'multiple output')
-      continue
-    # Also skip instructions that use `mm` registers
-    operands = specs[inst].inst_form.split(',')
-    #if operands and any(operand.strip() == 'mm'
-    #    for operand in operands):
-    #  print(inst, 'bad inst form')
-    #  continue
-    try:
-      print('Emitting pattern for', inst)
-      rb = RuleBundle(sigs[inst], semas[inst], out_ids, dag)
-      if not rb.all_lanes_simple():
-        print(inst, 'yucky lanes')
-        continue
-      if rb.has_nop():
-        print(inst, 'has noop lane')
-        continue
-      bundles[inst] = rb
-    except AssertionError as e:
-      print(inst, 'assertion error')
-      pass
-
-  print('Num instructions:', len(bundles))
-
-  inst_features = {
-      inst: spec.cpuids
-      for inst, spec in specs.items()}
-
-  with open('InstSema.cpp', 'w') as f:
-    f.write('''
-#include "InstSema.h"
-#include "MatchingUtil.h"
-
-using namespace llvm;
-using namespace PatternMatch;
-    ''')
-    f.write(codegen(bundles, inst_features, intrin2cost))
-
-  print(op_sigs)
-
-  exit()
-
-
-  _, outs, dag = lifted['_mm_dp_ps']
-  br = BoundOperation(outs[0], dag)
-  print(br.get_matching_code())
-  print(list(zip(br.get_bound_liveins(), br.get_operation_liveins())))
-  print(list(zip(br.get_operation_liveins(),
-    (dag[x] for x in br.get_bound_liveins()))))
+  return f'{op_decls}\nstd::vector<InstBinding> {binding_vector_name} {{\n{inst_bindings}\n}};'

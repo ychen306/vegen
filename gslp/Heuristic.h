@@ -1,19 +1,21 @@
 #ifndef HEURISTIC_H
 #define HEURISTIC_H
 
-#include "CandidatePackSet.h"
-#include "Packer.h"
-#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseMapInfo.h"
 
-class Frontier;
+class Packer;
+class VectorPack;
+class VectorPackContext;
+class OperandPack;
+class CandidatePackSet;
+
+namespace llvm {
+class Value;
+class Instruction;
+}
 
 class Heuristic {
   llvm::DenseMap<const OperandPack *, float> OrderedCosts;
-  llvm::DenseMap<std::vector<llvm::Value *>, float,
-                 llvm::DenseMapInfo<llvm::ArrayRef<llvm::Value *>>>
-      UnorderedCosts;
   llvm::DenseMap<llvm::Instruction *, float> ScalarCosts;
 
   Packer *Pkr;
@@ -21,16 +23,13 @@ class Heuristic {
   const CandidatePackSet *Candidates;
 
   float getCost(const VectorPack *VP);
-  float getCost(llvm::Instruction *);
 public:
   Heuristic(Packer *Pkr, const VectorPackContext *VPCtx,
-                const CandidatePackSet *Candidates)
-    : Pkr(Pkr), VPCtx(VPCtx), Candidates(Candidates) {}
-  float getCost(const OperandPack *OP, const Frontier *Frt = nullptr);
+            const CandidatePackSet *Candidates)
+      : Pkr(Pkr), VPCtx(VPCtx), Candidates(Candidates) {}
+  //float getCost(const Frontier *);
+  float getCost(const OperandPack *OP);
   float getCost(llvm::Value *);
-  float getCost(std::vector<llvm::Value *> Vals);
-  float getCost(const Frontier *);
-  float getSaving(const VectorPack *);
 };
 
 #endif // HEURISTIC_H

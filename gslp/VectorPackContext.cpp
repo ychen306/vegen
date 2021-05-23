@@ -24,8 +24,6 @@ VectorPackContext::VectorPackContext(BasicBlock *BB)
   for (auto &I : *BB) {
     ScalarToIdMap[&I] = i++;
     Scalars.push_back(&I);
-    HashValues.push_back(std::rand());
-    HashValues2.push_back(std::rand());
   }
 }
 
@@ -78,4 +76,19 @@ VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
   VP.reset(
       new VectorPack(this, PHIs, Elements, BitVector(getNumValues()), TTI));
   return VP.get();
+}
+
+const OperandPack *VectorPackContext::dedup(const OperandPack *OP) const {
+  SmallPtrSet<Value *, 4> Seen;
+  OperandPack Deduped;
+  for (auto *V : *OP) {
+    bool Inserted = Seen.insert(V).second;
+    if (!Inserted)
+      continue;
+    Deduped.push_back(V);
+  }
+  // Fast path for when we've removed nothing
+  if (Deduped.size() == OP->size())
+    return OP;
+  return getCanonicalOperandPack(Deduped);
 }

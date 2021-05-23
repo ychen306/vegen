@@ -21,11 +21,11 @@ struct OperandProducerInfo {
   }
 };
 
+
 // Use this to model input operands
 struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
   mutable bool OPIValid = false;
   mutable OperandProducerInfo OPI;
-  unsigned Hash;
   mutable llvm::VectorType *Ty = nullptr;
 };
 
@@ -38,8 +38,6 @@ struct OperandPackCache;
 class VectorPackContext {
   llvm::BasicBlock *BB;
   std::vector<llvm::Value *> Scalars;
-  std::vector<unsigned> HashValues;
-  std::vector<unsigned> HashValues2;
   llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
 
   std::unique_ptr<VectorPackCache> PackCache;
@@ -79,10 +77,11 @@ public:
     if (It != OperandCache.end())
       return It->second.get();
     auto NewOP = std::make_unique<OperandPack>(OP);
-    // Use this for tabulation hashing
-    NewOP->Hash = std::rand();
     return (OperandCache[*NewOP] = std::move(NewOP)).get();
   }
+
+  // Remove duplicate elements in OP
+  const OperandPack *dedup(const OperandPack *) const;
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());
@@ -98,22 +97,6 @@ public:
     auto It = ScalarToIdMap.find(V);
     assert(It != ScalarToIdMap.end());
     return It->second;
-  }
-
-  unsigned getHashValue(const llvm::Value *V) const {
-    return HashValues[getScalarId(V)];
-  }
-
-  unsigned getHashValue(unsigned InstId) const {
-    return HashValues[InstId];
-  }
-
-  unsigned getHashValue2(const llvm::Value *V) const {
-    return HashValues2[getScalarId(V)];
-  }
-
-  unsigned getHashValue2(unsigned InstId) const {
-    return HashValues2[InstId];
   }
 
   unsigned getNumValues() const { return Scalars.size(); }

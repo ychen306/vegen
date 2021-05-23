@@ -29,9 +29,6 @@ def get_ordered_liveins(dag, root):
     if isinstance(node, Instruction):
       for arg in node.args:
         visit(arg)
-    elif isinstance(node, Mux):
-      for _, val in node.kv_pairs:
-        visit(val)
     elif isinstance(node, Slice):
       live_ins.append(node)
 
@@ -222,17 +219,6 @@ def canonicalize(dag, root):
       # FIXME: what happens when there's float constant?
       ty = llir.IntType(node.bitwidth)
       ir_val = llir.Constant(ty, node.value)
-    elif isinstance(node, Mux):
-      # we only support two-way mux, which maps to select
-      if len(node.kv_pairs) != 2:
-        raise BuildError("only support two-way mux")
-
-      false_branch, true_branch = node.kv_pairs
-      assert true_branch[0] == 1
-      ctrl_val = emit(node.ctrl)
-      true_val = emit(true_branch[1])
-      false_val = emit(false_branch[1])
-      ir_val = builder.select(ctrl_val, true_val, false_val)
     else:
       assert isinstance(node, Slice)
       ir_val = ir_args[node]
@@ -283,11 +269,11 @@ if __name__ == '__main__':
 
   debug = '_mm_avg_epu16'
   debug = '_mm256_and_pd'
-  debug = '_mm_adds_epi16'
-  debug = '_mm_packs_epi32'
   debug = '_mm256_min_ps'
   debug = '_mm256_cvtepu8_epi64'
   debug = '_mm_sad_epu8'
+  debug = '_mm_adds_epi16'
+  debug = '_mm_packs_epi32'
   with open('alu.lifted', 'rb') as f:
     lifted = pickle.load(f)
   _, outs, dag = lifted[debug]
