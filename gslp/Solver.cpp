@@ -724,7 +724,6 @@ static float beamSearch(BasicBlock *BB, Packer *Pkr, VectorPackSet &Packs,
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
-  Frontier Frt(BB, Pkr);
   auto *M = BB->getModule();
   Canonicalizer Canon;
   llvm::DenseSet<Canonicalizer::Node *> NodeSet;
@@ -739,29 +738,22 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   for (auto *N : NodeSet)
     Nodes.push_back(N);
 
+  auto *VPCtx = Pkr->getContext(BB);
   CandidatePackSet CandidateSet;
   auto Enumerated = enumerateSeeds(Pkr, &Canon, BB, Nodes);
-  {
-    auto *VPCtx = Pkr->getContext(BB);
-
-    for (auto &OP : Enumerated) {
-      auto &OPI = Pkr->getProducerInfo(VPCtx, &OP);
-      for (auto *VP : OPI.Producers) {
-        CandidateSet.Packs.push_back(VP);
-      }
-    }
-
-    for (auto &I : *BB) {
-      if (auto *LI = dyn_cast<LoadInst>(&I)) {
-        for (unsigned VL : {2, 4, 8, 16/*, 32, 64*/})
-          for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
-            CandidateSet.Packs.push_back(VP);
-      }
+  for (auto &OP : Enumerated) {
+    auto &OPI = Pkr->getProducerInfo(VPCtx, &OP);
+    for (auto *VP : OPI.Producers) {
+      CandidateSet.Packs.push_back(VP);
     }
   }
-
-  //CandidateSet.Packs = enumerate(BB, Pkr);
-  auto *VPCtx = Frt.getContext();
+  for (auto &I : *BB) {
+    if (auto *LI = dyn_cast<LoadInst>(&I)) {
+      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+        for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
+          CandidateSet.Packs.push_back(VP);
+    }
+  }
   CandidateSet.Inst2Packs.resize(VPCtx->getNumValues());
   for (auto *VP : CandidateSet.Packs)
     for (unsigned i : VP->getElements().set_bits())
