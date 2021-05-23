@@ -219,10 +219,12 @@ float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI,
 
       if (OPI.Elements.anyCommon(VP->getElements())) {
         Cost += getGatherCost(*VP, *OP, TTI);
-        if (resolved(*OP)) {
-          Est -= H->getCost(OP);
+
+        auto Intersection = OPI.Elements;
+        Intersection &= VP->getElements();
+        Est -= H->getCost(OP) * (float)Intersection.count() / (float)OPI.Elements.count();
+        if (resolved(*OP))
           ResolvedPackIds.push_back(i);
-        }
       }
     }
   }
@@ -331,6 +333,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     Consider(VP);
   return Extensions;
 }
+
 
 template <typename AccessType>
 VectorPack *createMemPack(VectorPackContext *VPCtx,
@@ -632,7 +635,7 @@ void State::expand(const CandidatePackSet *CandidateSet) {
   for (auto *V : Frt.usableInsts()) {
     // Consider seed packs
     if (auto *SI = dyn_cast<StoreInst>(V)) {
-      for (unsigned VL : {2, 4, 8, 16}) {
+      for (unsigned VL : {2, 4, 8, 16, 32}) {
         if (auto *VP = getSeedStorePack(Frt, SI, VL)) {
           if (VP->getElements().anyCommon(UnusableIds))
             continue;
@@ -749,7 +752,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+      for (unsigned VL : {2, 4, 8, 16, 32})
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           CandidateSet.Packs.push_back(VP);
     }
