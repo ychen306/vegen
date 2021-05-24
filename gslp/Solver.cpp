@@ -114,8 +114,8 @@ float Frontier::advance(Instruction *I, TargetTransformInfo *TTI,
         Cost +=
             2 * TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
     }
+    Est -= H->getCost(OP) / (float)OP->size();
     if (resolved(*OP)) {
-      Est -= H->getCost(OP);
       ResolvedPackIds.push_back(i);
     }
   }
@@ -635,7 +635,7 @@ void State::expand(const CandidatePackSet *CandidateSet) {
   for (auto *V : Frt.usableInsts()) {
     // Consider seed packs
     if (auto *SI = dyn_cast<StoreInst>(V)) {
-      for (unsigned VL : {2, 4, 8, 16, 32}) {
+      for (unsigned VL : {2, 4, 8, 16}) {
         if (auto *VP = getSeedStorePack(Frt, SI, VL)) {
           if (VP->getElements().anyCommon(UnusableIds))
             continue;
@@ -752,7 +752,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   }
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16, 32})
+      for (unsigned VL : {2, 4, 8, 16})
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           CandidateSet.Packs.push_back(VP);
     }
