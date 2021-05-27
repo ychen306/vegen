@@ -20,7 +20,7 @@ clang $CLANG_FLAGS something.c -c -O3 -ffast-math
 ```
 
 # Directory structure
-`/gslp` (`gslp` used stand for Generalized SLP) 
+`/gslp` (`gslp` stands for Generalized SLP) 
   contains the vectorization heuristic and the code generation implementation.
 `/sema` contains the semantics handling logic.
 `/gslp/target-sema` and `gslp/target-wrappers` contains the code generated from `/sema`.
