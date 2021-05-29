@@ -104,7 +104,8 @@ Value *VectorPack::emitVectorGeneral(ArrayRef<Value *> Operands,
                                      IntrinsicBuilder &Builder) const {
   auto *VecInst = Producer->emit(Operands, Builder);
   // Fix the output type
-  auto *VecType = VectorType::get(getScalarTy(Matches), Matches.size());
+  auto *VecType =
+      VectorType::get(getScalarTy(Matches), Matches.size(), false /*scalable*/);
   return Builder.CreateBitCast(VecInst, VecType);
 }
 
@@ -118,7 +119,7 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
   // Figure out type of the vector that we are loading
   auto *ScalarPtr = FirstLoad->getPointerOperand();
   auto *ScalarTy = cast<PointerType>(ScalarPtr->getType())->getElementType();
-  auto *VecTy = VectorType::get(ScalarTy, Loads.size());
+  auto *VecTy = VectorType::get(ScalarTy, Loads.size(), false /*scalable*/);
 
   // Cast the scalar pointer to a vector pointer
   unsigned AS = FirstLoad->getPointerAddressSpace();
@@ -131,11 +132,12 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
   MaybeAlign Alignment = MaybeAlign(FirstLoad->getAlignment());
   if (!Alignment)
     Alignment = MaybeAlign(DL.getABITypeAlignment(ScalarLoadTy));
-  VecLoad->setAlignment(Alignment);
+  VecLoad->setAlignment(Alignment.valueOrOne());
 
   std::vector<Value *> Values;
   for (auto *LI : Loads)
-    if (LI) Values.push_back(LI);
+    if (LI)
+      Values.push_back(LI);
   return propagateMetadata(VecLoad, Values);
 }
 
@@ -177,7 +179,8 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
   auto *FirstPHI = PHIs[0];
   unsigned NumIncomings = FirstPHI->getNumIncomingValues();
 
-  auto *VecTy = VectorType::get(FirstPHI->getType(), PHIs.size());
+  auto *VecTy =
+      VectorType::get(FirstPHI->getType(), PHIs.size(), false /*scalable*/);
   auto *VecPHI = Builder.CreatePHI(VecTy, NumIncomings);
 
   std::set<BasicBlock *> Visited;
@@ -242,17 +245,20 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     break;
   case Load: {
     auto *LI = Loads[0];
-    MaybeAlign Alignment(LI->getAlignment());
-    auto *VecTy = VectorType::get(LI->getType(), Loads.size());
-    Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, Alignment, 0, LI);
+    auto *VecTy =
+        VectorType::get(LI->getType(), Loads.size(), false /*scalable*/);
+    Cost =
+        TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(),
+                             0, TTI::TCK_RecipThroughput, LI);
     break;
   }
   case Store: {
     auto *SI = Stores[0];
-    MaybeAlign Alignment(SI->getAlignment());
-    auto *VecTy =
-        VectorType::get(SI->getValueOperand()->getType(), Stores.size());
-    Cost = TTI->getMemoryOpCost(Instruction::Store, VecTy, Alignment, 0, SI);
+    auto *VecTy = VectorType::get(SI->getValueOperand()->getType(),
+                                  Stores.size(), false /*scalable*/);
+    Cost =
+        TTI->getMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(),
+                             0, TTI::TCK_RecipThroughput, SI);
     break;
   }
   case Phi:
@@ -324,13 +330,14 @@ VectorType *getVectorType(const OperandPack &OpndPack) {
       break;
     }
   assert(ScalarTy && "Operand pack can't be all empty");
-  return OpndPack.Ty = VectorType::get(ScalarTy, OpndPack.size());
+  return OpndPack.Ty =
+             VectorType::get(ScalarTy, OpndPack.size(), false /*scalable*/);
 }
 
 VectorType *getVectorType(const VectorPack &VP) {
   unsigned NumLanes = VP.getElements().count();
   auto *FirstLane = *VP.elementValues().begin();
-  return VectorType::get(FirstLane->getType(), NumLanes);
+  return VectorType::get(FirstLane->getType(), NumLanes, false /*scalable*/);
 }
 
 bool isConstantPack(const OperandPack &OpndPack) {
@@ -357,6 +364,7 @@ void VectorPack::computeReplacedInsts() {
   std::stable_sort(ReplacedInsts.begin(), ReplacedInsts.end());
   auto It = std::unique(ReplacedInsts.begin(), ReplacedInsts.end());
   ReplacedInsts.resize(std::distance(ReplacedInsts.begin(), It));
-  std::stable_sort(ReplacedInsts.begin(), ReplacedInsts.end(),
-            [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
+  std::stable_sort(
+      ReplacedInsts.begin(), ReplacedInsts.end(),
+      [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
 }

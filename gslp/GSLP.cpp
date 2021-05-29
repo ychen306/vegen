@@ -78,19 +78,20 @@ public:
     std::string Wrapper;
     switch (Arch) {
     case Triple::x86_64:
-      Wrapper = "/InstWrappers.x86.bc";
+      Wrapper = "/x86.bc";
       break;
     case Triple::aarch64:
-      Wrapper = "/InstWrappers.arm.bc";
+      Wrapper = "/arm.bc";
       break;
 
     default:
       llvm_unreachable("architecture not supported");
     }
-    errs() << "LOADING WRAPPERS\n";
+    errs() << "Loading inst wrappers: " << WrappersDir + Wrapper << '\n';
     InstWrappers = parseIRFile(WrappersDir + Wrapper, Err, M.getContext());
-    assert(InstWrappers && "Failed to parse Inst Wrappers");
-    errs() << "WRAPPERS LOADED\n";
+    if (!InstWrappers) {
+      report_fatal_error(std::string("Error parsing Inst Wrappers") + Err.getMessage());
+    }
 
     return false;
   }
@@ -264,6 +265,7 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 // http://adriansampson.net/blog/clangpass.html
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
+  errs() << "????????????????\n";
   MPM.add(createSROAPass());
   MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
   if (UseMainlineSLP) {

@@ -43,7 +43,7 @@ float IRVectorBinding::getCost(TargetTransformInfo *TTI,
     ScalarTy = IntegerType::get(Ctx, ElemWidth);
   }
   unsigned NumElems = getLaneOps().size();
-  auto *VecTy = VectorType::get(ScalarTy, NumElems);
+  auto *VecTy = VectorType::get(ScalarTy, NumElems, false/*scalable*/);
   return TTI->getArithmeticInstrCost(Opcode, VecTy);
 }
 
