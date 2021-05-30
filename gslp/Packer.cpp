@@ -99,8 +99,9 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
 }
 
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
-static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB, Packer *Pkr,
-                            SmallVectorImpl<VectorPack *> &Extensions) {
+static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
+                                   Packer *Pkr,
+                                   SmallVectorImpl<VectorPack *> &Extensions) {
   auto *VPCtx = Pkr->getContext(BB);
   auto &LoadDAG = Pkr->getLoadDAG(BB);
   auto &LDA = Pkr->getLDA(BB);
@@ -255,22 +256,21 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
 float Packer::getScalarCost(Instruction *I) {
   if (auto *LI = dyn_cast<LoadInst>(I)) {
     return TTI->getMemoryOpCost(Instruction::Load, LI->getType(),
-        MaybeAlign(LI->getAlignment()), 0, LI);
-  } 
+                                LI->getAlign(), 0, TTI::TCK_RecipThroughput,
+                                LI);
+  }
   if (auto *SI = dyn_cast<StoreInst>(I))
-    return TTI->getMemoryOpCost(Instruction::Store,
-        SI->getValueOperand()->getType(),
-        MaybeAlign(SI->getAlignment()), 0, SI);
+    return TTI->getMemoryOpCost(
+        Instruction::Store, SI->getValueOperand()->getType(), SI->getAlign(), 0,
+        TTI::TCK_RecipThroughput, SI);
   if (isa<GetElementPtrInst>(I))
     return 0;
-  if (isa<PHINode>(I) ||
-      isa<CallInst>(I) || isa<ReturnInst>(I) || I->isTerminator() ||
-      isa<AllocaInst>(I))
+  if (isa<PHINode>(I) || isa<CallInst>(I) || isa<ReturnInst>(I) ||
+      I->isTerminator() || isa<AllocaInst>(I))
     return 1;
-  //return TTI->getInstructionCost(I, TargetTransformInfo::TCK_RecipThroughput);
   SmallVector<const Value *, 4> Operands(I->operand_values());
   return TTI->getArithmeticInstrCost(
-      I->getOpcode(), I->getType(), TargetTransformInfo::OK_AnyValue,
-      TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None,
-      TargetTransformInfo::OP_None, Operands, I);
+      I->getOpcode(), I->getType(), TTI::TCK_RecipThroughput,
+      TTI::OK_AnyValue, TTI::OK_AnyValue,
+      TTI::OP_None, TTI::OP_None, Operands, I);
 }
