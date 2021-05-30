@@ -265,7 +265,6 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 // http://adriansampson.net/blog/clangpass.html
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
-  errs() << "????????????????\n";
   MPM.add(createSROAPass());
   MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
   if (UseMainlineSLP) {

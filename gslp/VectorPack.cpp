@@ -105,7 +105,7 @@ Value *VectorPack::emitVectorGeneral(ArrayRef<Value *> Operands,
   auto *VecInst = Producer->emit(Operands, Builder);
   // Fix the output type
   auto *VecType =
-      VectorType::get(getScalarTy(Matches), Matches.size(), false /*scalable*/);
+      FixedVectorType::get(getScalarTy(Matches), Matches.size());
   return Builder.CreateBitCast(VecInst, VecType);
 }
 
@@ -119,20 +119,14 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
   // Figure out type of the vector that we are loading
   auto *ScalarPtr = FirstLoad->getPointerOperand();
   auto *ScalarTy = cast<PointerType>(ScalarPtr->getType())->getElementType();
-  auto *VecTy = VectorType::get(ScalarTy, Loads.size(), false /*scalable*/);
+  auto *VecTy = FixedVectorType::get(ScalarTy, Loads.size());
 
   // Cast the scalar pointer to a vector pointer
   unsigned AS = FirstLoad->getPointerAddressSpace();
   Value *VecPtr = Builder.CreateBitCast(ScalarPtr, VecTy->getPointerTo(AS));
 
   // Emit the load
-  auto *VecLoad = Builder.CreateLoad(VecTy, VecPtr);
-
-  // Set alignment data
-  MaybeAlign Alignment = MaybeAlign(FirstLoad->getAlignment());
-  if (!Alignment)
-    Alignment = MaybeAlign(DL.getABITypeAlignment(ScalarLoadTy));
-  VecLoad->setAlignment(Alignment.valueOrOne());
+  auto *VecLoad = Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
 
   std::vector<Value *> Values;
   for (auto *LI : Loads)
@@ -180,7 +174,7 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
   unsigned NumIncomings = FirstPHI->getNumIncomingValues();
 
   auto *VecTy =
-      VectorType::get(FirstPHI->getType(), PHIs.size(), false /*scalable*/);
+      FixedVectorType::get(FirstPHI->getType(), PHIs.size());
   auto *VecPHI = Builder.CreatePHI(VecTy, NumIncomings);
 
   std::set<BasicBlock *> Visited;
@@ -246,7 +240,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   case Load: {
     auto *LI = Loads[0];
     auto *VecTy =
-        VectorType::get(LI->getType(), Loads.size(), false /*scalable*/);
+        FixedVectorType::get(LI->getType(), Loads.size());
     Cost =
         TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(),
                              0, TTI::TCK_RecipThroughput, LI);
@@ -254,8 +248,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   }
   case Store: {
     auto *SI = Stores[0];
-    auto *VecTy = VectorType::get(SI->getValueOperand()->getType(),
-                                  Stores.size(), false /*scalable*/);
+    auto *VecTy = FixedVectorType::get(SI->getValueOperand()->getType(), Stores.size());
     Cost =
         TTI->getMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(),
                              0, TTI::TCK_RecipThroughput, SI);
@@ -331,13 +324,13 @@ VectorType *getVectorType(const OperandPack &OpndPack) {
     }
   assert(ScalarTy && "Operand pack can't be all empty");
   return OpndPack.Ty =
-             VectorType::get(ScalarTy, OpndPack.size(), false /*scalable*/);
+             FixedVectorType::get(ScalarTy, OpndPack.size());
 }
 
 VectorType *getVectorType(const VectorPack &VP) {
   unsigned NumLanes = VP.getElements().count();
   auto *FirstLane = *VP.elementValues().begin();
-  return VectorType::get(FirstLane->getType(), NumLanes, false /*scalable*/);
+  return FixedVectorType::get(FirstLane->getType(), NumLanes);
 }
 
 bool isConstantPack(const OperandPack &OpndPack) {
