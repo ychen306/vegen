@@ -87,10 +87,11 @@ public:
     default:
       llvm_unreachable("architecture not supported");
     }
-    errs() << "LOADING WRAPPERS\n";
+    errs() << "Loading inst wrappers: " << WrappersDir + Wrapper << '\n';
     InstWrappers = parseIRFile(WrappersDir + Wrapper, Err, M.getContext());
-    assert(InstWrappers && "Failed to parse Inst Wrappers");
-    errs() << "WRAPPERS LOADED\n";
+    if (!InstWrappers) {
+      report_fatal_error(std::string("Error parsing Inst Wrappers") + Err.getMessage());
+    }
 
     return false;
   }
