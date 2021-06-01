@@ -78,10 +78,10 @@ public:
     std::string Wrapper;
     switch (Arch) {
     case Triple::x86_64:
-      Wrapper = "/InstWrappers.x86.bc";
+      Wrapper = "/x86.bc";
       break;
     case Triple::aarch64:
-      Wrapper = "/InstWrappers.arm.bc";
+      Wrapper = "/arm.bc";
       break;
 
     default:
