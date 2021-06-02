@@ -39,15 +39,23 @@ target_link_libraries(GSLP Packing)
 set_target_properties(GSLP PROPERTIES COMPILE_FLAGS "-fno-rtti")
 
 # THANKS AJAY!
-set(INST_WRAPPERS "${CMAKE_BINARY_DIR}/x86.bc")
-set(ALL_FLAGS -mssse3 -msse -mavx512bw -msse3 -msse4.1 -msse4.2 -mfma -msse2 -mavx2 -mavx512vnni -mavx512vl -mavx512dq -mgfni -mavx512vbmi2 -mavx512vbmi -mavx512cd -mavx -mavx512f -mbmi2)
-add_custom_command(OUTPUT ${INST_WRAPPERS}
-  COMMAND clang -D__MM_MALLOC_H -target x86_64-unknown-none-gnu -O3 -emit-llvm ${ALL_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/target-wrappers/x86.c -c -Wno-argument-outside-range -o ${INST_WRAPPERS}
+set(X86_WRAPPERS "${CMAKE_BINARY_DIR}/x86.bc")
+set(X86_FLAGS -mssse3 -msse -mavx512bw -msse3 -msse4.1 -msse4.2 -mfma -msse2 -mavx2 -mavx512vnni -mavx512vl -mavx512dq -mgfni -mavx512vbmi2 -mavx512vbmi -mavx512cd -mavx -mavx512f -mbmi2)
+add_custom_command(OUTPUT ${X86_WRAPPERS}
+  COMMAND clang -D__MM_MALLOC_H -target x86_64-unknown-none-gnu -O3 -emit-llvm ${X86_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/target-wrappers/x86.c -c -Wno-argument-outside-range -o ${X86_WRAPPERS}
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/target-wrappers/x86.c
   VERBATIM
 )
 
-add_custom_target(intrinsic_defs ALL DEPENDS ${INST_WRAPPERS})
+set(ARM_WRAPPERS "${CMAKE_BINARY_DIR}/arm.bc")
+set(ARM_FLAGS -Xclang -target-feature -Xclang +neon -Xclang -target-feature -Xclang +dotprod) 
+add_custom_command(OUTPUT ${ARM_WRAPPERS}
+  COMMAND clang -D__MM_MALLOC_H -target aarch64-unknown-linux-gnu -O3 -emit-llvm ${ARM_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/target-wrappers/arm.c -c -Wno-argument-outside-range -o ${ARM_WRAPPERS}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/target-wrappers/arm.c
+  VERBATIM
+)
+
+add_custom_target(intrinsic_defs ALL DEPENDS ${X86_WRAPPERS} ${ARM_WRAPPERS})
 
 if(APPLE)
   set_target_properties(GSLP PROPERTIES
