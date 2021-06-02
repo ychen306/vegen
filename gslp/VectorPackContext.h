@@ -26,7 +26,7 @@ struct OperandProducerInfo {
 struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
   mutable bool OPIValid = false;
   mutable OperandProducerInfo OPI;
-  mutable llvm::VectorType *Ty = nullptr;
+  mutable llvm::FixedVectorType *Ty = nullptr;
 };
 
 // VectorPackContext captures various meta data we use to create and manage

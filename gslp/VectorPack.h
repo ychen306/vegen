@@ -172,9 +172,9 @@ public:
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
 
-llvm::VectorType *getVectorType(const OperandPack &OpndPack);
+llvm::FixedVectorType *getVectorType(const OperandPack &OpndPack);
 
-llvm::VectorType *getVectorType(const VectorPack &VP);
+llvm::FixedVectorType *getVectorType(const VectorPack &VP);
 
 bool isConstantPack(const OperandPack &OpndPack);
 

@@ -313,7 +313,7 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   return OS;
 }
 
-VectorType *getVectorType(const OperandPack &OpndPack) {
+FixedVectorType *getVectorType(const OperandPack &OpndPack) {
   if (OpndPack.Ty)
     return OpndPack.Ty;
   Type *ScalarTy = nullptr;
@@ -327,7 +327,7 @@ VectorType *getVectorType(const OperandPack &OpndPack) {
              FixedVectorType::get(ScalarTy, OpndPack.size());
 }
 
-VectorType *getVectorType(const VectorPack &VP) {
+FixedVectorType *getVectorType(const VectorPack &VP) {
   unsigned NumLanes = VP.getElements().count();
   auto *FirstLane = *VP.elementValues().begin();
   return FixedVectorType::get(FirstLane->getType(), NumLanes);
