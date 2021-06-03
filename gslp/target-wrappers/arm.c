@@ -840,6 +840,24 @@ uint16x4_t intrinsic_wrapper_vqmovun_s32_0(int32x4_t tmp0 ) {
 uint32x2_t intrinsic_wrapper_vqmovun_s64_0(int64x2_t tmp0 ) {
   return vqmovun_s64(tmp0);
 }
+int16x8_t intrinsic_wrapper_vmovl_s8_0(int8x8_t tmp0 ) {
+  return vmovl_s8(tmp0);
+}
+int32x4_t intrinsic_wrapper_vmovl_s16_0(int16x4_t tmp0 ) {
+  return vmovl_s16(tmp0);
+}
+int64x2_t intrinsic_wrapper_vmovl_s32_0(int32x2_t tmp0 ) {
+  return vmovl_s32(tmp0);
+}
+uint16x8_t intrinsic_wrapper_vmovl_u8_0(uint8x8_t tmp0 ) {
+  return vmovl_u8(tmp0);
+}
+uint32x4_t intrinsic_wrapper_vmovl_u16_0(uint16x4_t tmp0 ) {
+  return vmovl_u16(tmp0);
+}
+uint64x2_t intrinsic_wrapper_vmovl_u32_0(uint32x2_t tmp0 ) {
+  return vmovl_u32(tmp0);
+}
 int8x8_t intrinsic_wrapper_vpadd_s8_0(int8x8_t tmp0 , int8x8_t tmp1 ) {
   return vpadd_s8(tmp0, tmp1);
 }

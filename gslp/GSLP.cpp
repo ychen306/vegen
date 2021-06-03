@@ -208,6 +208,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  if (!F.getName().contains("sbc"))
+    return false;
 
   balanceReductionTree(F);
   errs() << F << '\n';

@@ -307,12 +307,12 @@ simds = {
         "uint32x4_t  vminq_u32(uint32x4_t a, uint32x4_t b);   // VMIN.U32 q0,q0,q0",
         "float32x4_t vminq_f32(float32x4_t a, float32x4_t b); // VMIN.F32 q0,q0,q0"
         ],
-    "mov": [
+    "movn": [
         "uint8x8_t vmovn_u16 (uint16x8_t a)",
         "uint16x4_t vmovn_u32 (uint32x4_t a)",
         "uint32x2_t vmovn_u64 (uint64x2_t a)"
         ],
-    "qmov": [
+    "qmovn": [
         "int8x8_t vqmovn_s16 (int16x8_t a)",
         "int16x4_t vqmovn_s32 (int32x4_t a)",
         "int32x2_t vqmovn_s64 (int64x2_t a)",
@@ -322,5 +322,13 @@ simds = {
         "uint8x8_t vqmovun_s16 (int16x8_t a)",
         "uint16x4_t vqmovun_s32 (int32x4_t a)",
         "uint32x2_t vqmovun_s64 (int64x2_t a)",
+        ],
+    "movl": [
+        "int16x8_t vmovl_s8 (int8x8_t a)",
+        "int32x4_t vmovl_s16 (int16x4_t a)",
+        "int64x2_t vmovl_s32 (int32x2_t a)",
+        "uint16x8_t vmovl_u8 (uint8x8_t a)",
+        "uint32x4_t vmovl_u16 (uint16x4_t a)",
+        "uint64x2_t vmovl_u32 (uint32x2_t a)",
         ]
     }

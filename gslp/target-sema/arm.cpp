@@ -4674,6 +4674,144 @@ class : public Operation {
   bool match(
     Value *V, std::vector<Match> &Matches) const override {
     
+    Value *tmp0;
+    bool Matched = hasBitWidth(V, 16) &&
+PatternMatch::match(V, m_SExt(
+      m_Value(tmp0))) &&
+hasBitWidth(tmp0, 8);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation146;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0;
+    bool Matched = hasBitWidth(V, 32) &&
+PatternMatch::match(V, m_SExt(
+      m_Value(tmp0))) &&
+hasBitWidth(tmp0, 16);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation147;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0;
+    bool Matched = hasBitWidth(V, 64) &&
+PatternMatch::match(V, m_SExt(
+      m_Value(tmp0))) &&
+hasBitWidth(tmp0, 32);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation148;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0;
+    bool Matched = hasBitWidth(V, 16) &&
+PatternMatch::match(V, m_ZExt(
+      m_Value(tmp0))) &&
+hasBitWidth(tmp0, 8);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation149;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0;
+    bool Matched = hasBitWidth(V, 32) &&
+PatternMatch::match(V, m_ZExt(
+      m_Value(tmp0))) &&
+hasBitWidth(tmp0, 16);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation150;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0;
+    bool Matched = hasBitWidth(V, 64) &&
+PatternMatch::match(V, m_ZExt(
+      m_Value(tmp0))) &&
+hasBitWidth(tmp0, 32);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation151;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
 PatternMatch::match(V, m_c_Add(
@@ -4692,7 +4830,7 @@ hasBitWidth(tmp1, 8);
     return Matched;
     
   }
-} Operation146;
+} Operation152;
   
 
 class : public Operation {
@@ -4717,7 +4855,7 @@ hasBitWidth(tmp1, 16);
     return Matched;
     
   }
-} Operation147;
+} Operation153;
   
 
 class : public Operation {
@@ -4742,7 +4880,7 @@ hasBitWidth(tmp1, 32);
     return Matched;
     
   }
-} Operation148;
+} Operation154;
   
 
 class : public Operation {
@@ -4767,186 +4905,6 @@ hasBitWidth(tmp1, 32);
     return Matched;
     
   }
-} Operation149;
-  
-
-class : public Operation {
-  bool match(
-    Value *V, std::vector<Match> &Matches) const override {
-    
-    Value *tmp0; Value *tmp1; Value *tmp2;
-    bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_c_Add(
-      m_c_Add(
-        m_SExt(
-          m_Value(tmp0)),
-        m_Value(tmp1)),
-      m_SExt(
-        m_Value(tmp2)))) &&
-hasBitWidth(tmp0, 8) &&
-hasBitWidth(tmp1, 16) &&
-hasBitWidth(tmp2, 8);
-    if (Matched)
-      Matches.push_back({
-      false,
-      // matched live ins
-      { tmp0, tmp1, tmp2 },
-      // the matched value itself
-      V
-      });
-    return Matched;
-    
-  }
-} Operation150;
-  
-
-class : public Operation {
-  bool match(
-    Value *V, std::vector<Match> &Matches) const override {
-    
-    Value *tmp0; Value *tmp1; Value *tmp2;
-    bool Matched = hasBitWidth(V, 32) &&
-PatternMatch::match(V, m_c_Add(
-      m_c_Add(
-        m_SExt(
-          m_Value(tmp0)),
-        m_Value(tmp1)),
-      m_SExt(
-        m_Value(tmp2)))) &&
-hasBitWidth(tmp0, 16) &&
-hasBitWidth(tmp1, 32) &&
-hasBitWidth(tmp2, 16);
-    if (Matched)
-      Matches.push_back({
-      false,
-      // matched live ins
-      { tmp0, tmp1, tmp2 },
-      // the matched value itself
-      V
-      });
-    return Matched;
-    
-  }
-} Operation151;
-  
-
-class : public Operation {
-  bool match(
-    Value *V, std::vector<Match> &Matches) const override {
-    
-    Value *tmp0; Value *tmp1; Value *tmp2;
-    bool Matched = hasBitWidth(V, 64) &&
-PatternMatch::match(V, m_c_Add(
-      m_c_Add(
-        m_SExt(
-          m_Value(tmp0)),
-        m_Value(tmp1)),
-      m_SExt(
-        m_Value(tmp2)))) &&
-hasBitWidth(tmp0, 32) &&
-hasBitWidth(tmp1, 64) &&
-hasBitWidth(tmp2, 32);
-    if (Matched)
-      Matches.push_back({
-      false,
-      // matched live ins
-      { tmp0, tmp1, tmp2 },
-      // the matched value itself
-      V
-      });
-    return Matched;
-    
-  }
-} Operation152;
-  
-
-class : public Operation {
-  bool match(
-    Value *V, std::vector<Match> &Matches) const override {
-    
-    Value *tmp0; Value *tmp1; Value *tmp2;
-    bool Matched = hasBitWidth(V, 16) &&
-PatternMatch::match(V, m_c_Add(
-      m_c_Add(
-        m_ZExt(
-          m_Value(tmp0)),
-        m_Value(tmp1)),
-      m_ZExt(
-        m_Value(tmp2)))) &&
-hasBitWidth(tmp0, 8) &&
-hasBitWidth(tmp1, 16) &&
-hasBitWidth(tmp2, 8);
-    if (Matched)
-      Matches.push_back({
-      false,
-      // matched live ins
-      { tmp0, tmp1, tmp2 },
-      // the matched value itself
-      V
-      });
-    return Matched;
-    
-  }
-} Operation153;
-  
-
-class : public Operation {
-  bool match(
-    Value *V, std::vector<Match> &Matches) const override {
-    
-    Value *tmp0; Value *tmp1; Value *tmp2;
-    bool Matched = hasBitWidth(V, 32) &&
-PatternMatch::match(V, m_c_Add(
-      m_c_Add(
-        m_ZExt(
-          m_Value(tmp0)),
-        m_Value(tmp1)),
-      m_ZExt(
-        m_Value(tmp2)))) &&
-hasBitWidth(tmp0, 16) &&
-hasBitWidth(tmp1, 32) &&
-hasBitWidth(tmp2, 16);
-    if (Matched)
-      Matches.push_back({
-      false,
-      // matched live ins
-      { tmp0, tmp1, tmp2 },
-      // the matched value itself
-      V
-      });
-    return Matched;
-    
-  }
-} Operation154;
-  
-
-class : public Operation {
-  bool match(
-    Value *V, std::vector<Match> &Matches) const override {
-    
-    Value *tmp0; Value *tmp1; Value *tmp2;
-    bool Matched = hasBitWidth(V, 64) &&
-PatternMatch::match(V, m_c_Add(
-      m_c_Add(
-        m_ZExt(
-          m_Value(tmp0)),
-        m_Value(tmp1)),
-      m_ZExt(
-        m_Value(tmp2)))) &&
-hasBitWidth(tmp0, 32) &&
-hasBitWidth(tmp1, 64) &&
-hasBitWidth(tmp2, 32);
-    if (Matched)
-      Matches.push_back({
-      false,
-      // matched live ins
-      { tmp0, tmp1, tmp2 },
-      // the matched value itself
-      V
-      });
-    return Matched;
-    
-  }
 } Operation155;
   
 
@@ -4954,47 +4912,23 @@ class : public Operation {
   bool match(
     Value *V, std::vector<Match> &Matches) const override {
     
-    Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8;
-    bool Matched = hasBitWidth(V, 32) &&
+    Value *tmp0; Value *tmp1; Value *tmp2;
+    bool Matched = hasBitWidth(V, 16) &&
 PatternMatch::match(V, m_c_Add(
       m_c_Add(
-        m_c_Add(
-          m_c_Add(
-            m_c_Mul(
-              m_ZExt(
-                m_Value(tmp0)),
-              m_ZExt(
-                m_Value(tmp1))),
-            m_Value(tmp2)),
-          m_c_Mul(
-            m_ZExt(
-              m_Value(tmp3)),
-            m_ZExt(
-              m_Value(tmp4)))),
-        m_c_Mul(
-          m_ZExt(
-            m_Value(tmp5)),
-          m_ZExt(
-            m_Value(tmp6)))),
-      m_c_Mul(
-        m_ZExt(
-          m_Value(tmp7)),
-        m_ZExt(
-          m_Value(tmp8))))) &&
+        m_SExt(
+          m_Value(tmp0)),
+        m_Value(tmp1)),
+      m_SExt(
+        m_Value(tmp2)))) &&
 hasBitWidth(tmp0, 8) &&
-hasBitWidth(tmp1, 8) &&
-hasBitWidth(tmp2, 32) &&
-hasBitWidth(tmp3, 8) &&
-hasBitWidth(tmp4, 8) &&
-hasBitWidth(tmp5, 8) &&
-hasBitWidth(tmp6, 8) &&
-hasBitWidth(tmp7, 8) &&
-hasBitWidth(tmp8, 8);
+hasBitWidth(tmp1, 16) &&
+hasBitWidth(tmp2, 8);
     if (Matched)
       Matches.push_back({
       false,
       // matched live ins
-      { tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8 },
+      { tmp0, tmp1, tmp2 },
       // the matched value itself
       V
       });
@@ -5008,6 +4942,210 @@ class : public Operation {
   bool match(
     Value *V, std::vector<Match> &Matches) const override {
     
+    Value *tmp0; Value *tmp1; Value *tmp2;
+    bool Matched = hasBitWidth(V, 32) &&
+PatternMatch::match(V, m_c_Add(
+      m_c_Add(
+        m_SExt(
+          m_Value(tmp0)),
+        m_Value(tmp1)),
+      m_SExt(
+        m_Value(tmp2)))) &&
+hasBitWidth(tmp0, 16) &&
+hasBitWidth(tmp1, 32) &&
+hasBitWidth(tmp2, 16);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0, tmp1, tmp2 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation157;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0; Value *tmp1; Value *tmp2;
+    bool Matched = hasBitWidth(V, 64) &&
+PatternMatch::match(V, m_c_Add(
+      m_c_Add(
+        m_SExt(
+          m_Value(tmp0)),
+        m_Value(tmp1)),
+      m_SExt(
+        m_Value(tmp2)))) &&
+hasBitWidth(tmp0, 32) &&
+hasBitWidth(tmp1, 64) &&
+hasBitWidth(tmp2, 32);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0, tmp1, tmp2 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation158;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0; Value *tmp1; Value *tmp2;
+    bool Matched = hasBitWidth(V, 16) &&
+PatternMatch::match(V, m_c_Add(
+      m_c_Add(
+        m_ZExt(
+          m_Value(tmp0)),
+        m_Value(tmp1)),
+      m_ZExt(
+        m_Value(tmp2)))) &&
+hasBitWidth(tmp0, 8) &&
+hasBitWidth(tmp1, 16) &&
+hasBitWidth(tmp2, 8);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0, tmp1, tmp2 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation159;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0; Value *tmp1; Value *tmp2;
+    bool Matched = hasBitWidth(V, 32) &&
+PatternMatch::match(V, m_c_Add(
+      m_c_Add(
+        m_ZExt(
+          m_Value(tmp0)),
+        m_Value(tmp1)),
+      m_ZExt(
+        m_Value(tmp2)))) &&
+hasBitWidth(tmp0, 16) &&
+hasBitWidth(tmp1, 32) &&
+hasBitWidth(tmp2, 16);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0, tmp1, tmp2 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation160;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0; Value *tmp1; Value *tmp2;
+    bool Matched = hasBitWidth(V, 64) &&
+PatternMatch::match(V, m_c_Add(
+      m_c_Add(
+        m_ZExt(
+          m_Value(tmp0)),
+        m_Value(tmp1)),
+      m_ZExt(
+        m_Value(tmp2)))) &&
+hasBitWidth(tmp0, 32) &&
+hasBitWidth(tmp1, 64) &&
+hasBitWidth(tmp2, 32);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0, tmp1, tmp2 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation161;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
+    Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8;
+    bool Matched = hasBitWidth(V, 32) &&
+PatternMatch::match(V, m_c_Add(
+      m_c_Add(
+        m_c_Add(
+          m_c_Add(
+            m_c_Mul(
+              m_ZExt(
+                m_Value(tmp0)),
+              m_ZExt(
+                m_Value(tmp1))),
+            m_Value(tmp2)),
+          m_c_Mul(
+            m_ZExt(
+              m_Value(tmp3)),
+            m_ZExt(
+              m_Value(tmp4)))),
+        m_c_Mul(
+          m_ZExt(
+            m_Value(tmp5)),
+          m_ZExt(
+            m_Value(tmp6)))),
+      m_c_Mul(
+        m_ZExt(
+          m_Value(tmp7)),
+        m_ZExt(
+          m_Value(tmp8))))) &&
+hasBitWidth(tmp0, 8) &&
+hasBitWidth(tmp1, 8) &&
+hasBitWidth(tmp2, 32) &&
+hasBitWidth(tmp3, 8) &&
+hasBitWidth(tmp4, 8) &&
+hasBitWidth(tmp5, 8) &&
+hasBitWidth(tmp6, 8) &&
+hasBitWidth(tmp7, 8) &&
+hasBitWidth(tmp8, 8);
+    if (Matched)
+      Matches.push_back({
+      false,
+      // matched live ins
+      { tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8 },
+      // the matched value itself
+      V
+      });
+    return Matched;
+    
+  }
+} Operation162;
+  
+
+class : public Operation {
+  bool match(
+    Value *V, std::vector<Match> &Matches) const override {
+    
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8;
     bool Matched = hasBitWidth(V, 32) &&
 PatternMatch::match(V, m_c_Add(
@@ -5055,7 +5193,7 @@ hasBitWidth(tmp8, 8);
     return Matched;
     
   }
-} Operation157;
+} Operation163;
   
 std::vector<InstBinding> ArmInsts {
   InstBinding("vaddl_s8", {  }, InstSignature { { 64, 64 }, { 128 }, false }, { 
@@ -6885,43 +7023,77 @@ std::vector<InstBinding> ArmInsts {
   InstBinding("vqmovun_s64", {  }, InstSignature { { 128 }, { 64 }, false }, { 
     BoundOperation(&Operation145, { InputSlice { 0, 0, 64 } }), 
     BoundOperation(&Operation145, { InputSlice { 0, 64, 128 } }) }, 1),
+  InstBinding("vmovl_s8", {  }, InstSignature { { 64 }, { 128 }, false }, { 
+    BoundOperation(&Operation146, { InputSlice { 0, 0, 8 } }), 
+    BoundOperation(&Operation146, { InputSlice { 0, 8, 16 } }), 
+    BoundOperation(&Operation146, { InputSlice { 0, 16, 24 } }), 
+    BoundOperation(&Operation146, { InputSlice { 0, 24, 32 } }), 
+    BoundOperation(&Operation146, { InputSlice { 0, 32, 40 } }), 
+    BoundOperation(&Operation146, { InputSlice { 0, 40, 48 } }), 
+    BoundOperation(&Operation146, { InputSlice { 0, 48, 56 } }), 
+    BoundOperation(&Operation146, { InputSlice { 0, 56, 64 } }) }, 1),
+  InstBinding("vmovl_s16", {  }, InstSignature { { 64 }, { 128 }, false }, { 
+    BoundOperation(&Operation147, { InputSlice { 0, 0, 16 } }), 
+    BoundOperation(&Operation147, { InputSlice { 0, 16, 32 } }), 
+    BoundOperation(&Operation147, { InputSlice { 0, 32, 48 } }), 
+    BoundOperation(&Operation147, { InputSlice { 0, 48, 64 } }) }, 1),
+  InstBinding("vmovl_s32", {  }, InstSignature { { 64 }, { 128 }, false }, { 
+    BoundOperation(&Operation148, { InputSlice { 0, 0, 32 } }), 
+    BoundOperation(&Operation148, { InputSlice { 0, 32, 64 } }) }, 1),
+  InstBinding("vmovl_u8", {  }, InstSignature { { 64 }, { 128 }, false }, { 
+    BoundOperation(&Operation149, { InputSlice { 0, 0, 8 } }), 
+    BoundOperation(&Operation149, { InputSlice { 0, 8, 16 } }), 
+    BoundOperation(&Operation149, { InputSlice { 0, 16, 24 } }), 
+    BoundOperation(&Operation149, { InputSlice { 0, 24, 32 } }), 
+    BoundOperation(&Operation149, { InputSlice { 0, 32, 40 } }), 
+    BoundOperation(&Operation149, { InputSlice { 0, 40, 48 } }), 
+    BoundOperation(&Operation149, { InputSlice { 0, 48, 56 } }), 
+    BoundOperation(&Operation149, { InputSlice { 0, 56, 64 } }) }, 1),
+  InstBinding("vmovl_u16", {  }, InstSignature { { 64 }, { 128 }, false }, { 
+    BoundOperation(&Operation150, { InputSlice { 0, 0, 16 } }), 
+    BoundOperation(&Operation150, { InputSlice { 0, 16, 32 } }), 
+    BoundOperation(&Operation150, { InputSlice { 0, 32, 48 } }), 
+    BoundOperation(&Operation150, { InputSlice { 0, 48, 64 } }) }, 1),
+  InstBinding("vmovl_u32", {  }, InstSignature { { 64 }, { 128 }, false }, { 
+    BoundOperation(&Operation151, { InputSlice { 0, 0, 32 } }), 
+    BoundOperation(&Operation151, { InputSlice { 0, 32, 64 } }) }, 1),
   InstBinding("vpadd_s8", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation146, { InputSlice { 0, 8, 16 }, InputSlice { 0, 0, 8 } }), 
-    BoundOperation(&Operation146, { InputSlice { 0, 24, 32 }, InputSlice { 0, 16, 24 } }), 
-    BoundOperation(&Operation146, { InputSlice { 0, 40, 48 }, InputSlice { 0, 32, 40 } }), 
-    BoundOperation(&Operation146, { InputSlice { 0, 56, 64 }, InputSlice { 0, 48, 56 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 8, 16 }, InputSlice { 1, 0, 8 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 24, 32 }, InputSlice { 1, 16, 24 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 40, 48 }, InputSlice { 1, 32, 40 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 56, 64 }, InputSlice { 1, 48, 56 } }) }, 1),
+    BoundOperation(&Operation152, { InputSlice { 0, 8, 16 }, InputSlice { 0, 0, 8 } }), 
+    BoundOperation(&Operation152, { InputSlice { 0, 24, 32 }, InputSlice { 0, 16, 24 } }), 
+    BoundOperation(&Operation152, { InputSlice { 0, 40, 48 }, InputSlice { 0, 32, 40 } }), 
+    BoundOperation(&Operation152, { InputSlice { 0, 56, 64 }, InputSlice { 0, 48, 56 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 8, 16 }, InputSlice { 1, 0, 8 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 24, 32 }, InputSlice { 1, 16, 24 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 40, 48 }, InputSlice { 1, 32, 40 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 56, 64 }, InputSlice { 1, 48, 56 } }) }, 1),
   InstBinding("vpadd_s16", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation147, { InputSlice { 0, 16, 32 }, InputSlice { 0, 0, 16 } }), 
-    BoundOperation(&Operation147, { InputSlice { 0, 48, 64 }, InputSlice { 0, 32, 48 } }), 
-    BoundOperation(&Operation147, { InputSlice { 1, 16, 32 }, InputSlice { 1, 0, 16 } }), 
-    BoundOperation(&Operation147, { InputSlice { 1, 48, 64 }, InputSlice { 1, 32, 48 } }) }, 1),
+    BoundOperation(&Operation153, { InputSlice { 0, 16, 32 }, InputSlice { 0, 0, 16 } }), 
+    BoundOperation(&Operation153, { InputSlice { 0, 48, 64 }, InputSlice { 0, 32, 48 } }), 
+    BoundOperation(&Operation153, { InputSlice { 1, 16, 32 }, InputSlice { 1, 0, 16 } }), 
+    BoundOperation(&Operation153, { InputSlice { 1, 48, 64 }, InputSlice { 1, 32, 48 } }) }, 1),
   InstBinding("vpadd_s32", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation148, { InputSlice { 0, 32, 64 }, InputSlice { 0, 0, 32 } }), 
-    BoundOperation(&Operation148, { InputSlice { 1, 32, 64 }, InputSlice { 1, 0, 32 } }) }, 1),
+    BoundOperation(&Operation154, { InputSlice { 0, 32, 64 }, InputSlice { 0, 0, 32 } }), 
+    BoundOperation(&Operation154, { InputSlice { 1, 32, 64 }, InputSlice { 1, 0, 32 } }) }, 1),
   InstBinding("vpadd_u8", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation146, { InputSlice { 0, 8, 16 }, InputSlice { 0, 0, 8 } }), 
-    BoundOperation(&Operation146, { InputSlice { 0, 24, 32 }, InputSlice { 0, 16, 24 } }), 
-    BoundOperation(&Operation146, { InputSlice { 0, 40, 48 }, InputSlice { 0, 32, 40 } }), 
-    BoundOperation(&Operation146, { InputSlice { 0, 56, 64 }, InputSlice { 0, 48, 56 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 8, 16 }, InputSlice { 1, 0, 8 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 24, 32 }, InputSlice { 1, 16, 24 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 40, 48 }, InputSlice { 1, 32, 40 } }), 
-    BoundOperation(&Operation146, { InputSlice { 1, 56, 64 }, InputSlice { 1, 48, 56 } }) }, 1),
+    BoundOperation(&Operation152, { InputSlice { 0, 8, 16 }, InputSlice { 0, 0, 8 } }), 
+    BoundOperation(&Operation152, { InputSlice { 0, 24, 32 }, InputSlice { 0, 16, 24 } }), 
+    BoundOperation(&Operation152, { InputSlice { 0, 40, 48 }, InputSlice { 0, 32, 40 } }), 
+    BoundOperation(&Operation152, { InputSlice { 0, 56, 64 }, InputSlice { 0, 48, 56 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 8, 16 }, InputSlice { 1, 0, 8 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 24, 32 }, InputSlice { 1, 16, 24 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 40, 48 }, InputSlice { 1, 32, 40 } }), 
+    BoundOperation(&Operation152, { InputSlice { 1, 56, 64 }, InputSlice { 1, 48, 56 } }) }, 1),
   InstBinding("vpadd_u16", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation147, { InputSlice { 0, 16, 32 }, InputSlice { 0, 0, 16 } }), 
-    BoundOperation(&Operation147, { InputSlice { 0, 48, 64 }, InputSlice { 0, 32, 48 } }), 
-    BoundOperation(&Operation147, { InputSlice { 1, 16, 32 }, InputSlice { 1, 0, 16 } }), 
-    BoundOperation(&Operation147, { InputSlice { 1, 48, 64 }, InputSlice { 1, 32, 48 } }) }, 1),
+    BoundOperation(&Operation153, { InputSlice { 0, 16, 32 }, InputSlice { 0, 0, 16 } }), 
+    BoundOperation(&Operation153, { InputSlice { 0, 48, 64 }, InputSlice { 0, 32, 48 } }), 
+    BoundOperation(&Operation153, { InputSlice { 1, 16, 32 }, InputSlice { 1, 0, 16 } }), 
+    BoundOperation(&Operation153, { InputSlice { 1, 48, 64 }, InputSlice { 1, 32, 48 } }) }, 1),
   InstBinding("vpadd_u32", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation148, { InputSlice { 0, 32, 64 }, InputSlice { 0, 0, 32 } }), 
-    BoundOperation(&Operation148, { InputSlice { 1, 32, 64 }, InputSlice { 1, 0, 32 } }) }, 1),
+    BoundOperation(&Operation154, { InputSlice { 0, 32, 64 }, InputSlice { 0, 0, 32 } }), 
+    BoundOperation(&Operation154, { InputSlice { 1, 32, 64 }, InputSlice { 1, 0, 32 } }) }, 1),
   InstBinding("vpadd_f32", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation149, { InputSlice { 0, 0, 32 }, InputSlice { 0, 32, 64 } }), 
-    BoundOperation(&Operation149, { InputSlice { 1, 0, 32 }, InputSlice { 1, 32, 64 } }) }, 1),
+    BoundOperation(&Operation155, { InputSlice { 0, 0, 32 }, InputSlice { 0, 32, 64 } }), 
+    BoundOperation(&Operation155, { InputSlice { 1, 0, 32 }, InputSlice { 1, 32, 64 } }) }, 1),
   InstBinding("vpaddl_s8", {  }, InstSignature { { 64 }, { 64 }, false }, { 
     BoundOperation(&Operation0, { InputSlice { 0, 8, 16 }, InputSlice { 0, 0, 8 } }), 
     BoundOperation(&Operation0, { InputSlice { 0, 24, 32 }, InputSlice { 0, 16, 24 } }), 
@@ -6977,59 +7149,59 @@ std::vector<InstBinding> ArmInsts {
     BoundOperation(&Operation5, { InputSlice { 0, 32, 64 }, InputSlice { 0, 0, 32 } }), 
     BoundOperation(&Operation5, { InputSlice { 0, 96, 128 }, InputSlice { 0, 64, 96 } }) }, 1),
   InstBinding("vpadal_s8", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation150, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
+    BoundOperation(&Operation156, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
   InstBinding("vpadal_s16", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation151, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
-    BoundOperation(&Operation151, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }) }, 1),
+    BoundOperation(&Operation157, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
+    BoundOperation(&Operation157, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }) }, 1),
   InstBinding("vpadal_s32", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation152, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }) }, 1),
+    BoundOperation(&Operation158, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }) }, 1),
   InstBinding("vpadal_u8", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation153, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
+    BoundOperation(&Operation159, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
   InstBinding("vpadal_u16", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation154, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
-    BoundOperation(&Operation154, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }) }, 1),
+    BoundOperation(&Operation160, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
+    BoundOperation(&Operation160, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }) }, 1),
   InstBinding("vpadal_u32", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation155, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }) }, 1),
+    BoundOperation(&Operation161, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }) }, 1),
   InstBinding("vpadalq_s8", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation150, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 72, 80 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 80, 88 }, InputSlice { 0, 80, 96 }, InputSlice { 1, 88, 96 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 104, 112 } }), 
-    BoundOperation(&Operation150, { InputSlice { 1, 112, 120 }, InputSlice { 0, 112, 128 }, InputSlice { 1, 120, 128 } }) }, 1),
+    BoundOperation(&Operation156, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 72, 80 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 80, 88 }, InputSlice { 0, 80, 96 }, InputSlice { 1, 88, 96 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 104, 112 } }), 
+    BoundOperation(&Operation156, { InputSlice { 1, 112, 120 }, InputSlice { 0, 112, 128 }, InputSlice { 1, 120, 128 } }) }, 1),
   InstBinding("vpadalq_s16", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation151, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
-    BoundOperation(&Operation151, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }), 
-    BoundOperation(&Operation151, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 80, 96 } }), 
-    BoundOperation(&Operation151, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 112, 128 } }) }, 1),
+    BoundOperation(&Operation157, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
+    BoundOperation(&Operation157, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }), 
+    BoundOperation(&Operation157, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 80, 96 } }), 
+    BoundOperation(&Operation157, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 112, 128 } }) }, 1),
   InstBinding("vpadalq_s32", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation152, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }), 
-    BoundOperation(&Operation152, { InputSlice { 1, 64, 96 }, InputSlice { 0, 64, 128 }, InputSlice { 1, 96, 128 } }) }, 1),
+    BoundOperation(&Operation158, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }), 
+    BoundOperation(&Operation158, { InputSlice { 1, 64, 96 }, InputSlice { 0, 64, 128 }, InputSlice { 1, 96, 128 } }) }, 1),
   InstBinding("vpadalq_u8", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation153, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 72, 80 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 80, 88 }, InputSlice { 0, 80, 96 }, InputSlice { 1, 88, 96 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 104, 112 } }), 
-    BoundOperation(&Operation153, { InputSlice { 1, 112, 120 }, InputSlice { 0, 112, 128 }, InputSlice { 1, 120, 128 } }) }, 1),
+    BoundOperation(&Operation159, { InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 16 }, InputSlice { 1, 8, 16 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 16, 24 }, InputSlice { 0, 16, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 48 }, InputSlice { 1, 40, 48 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 48, 56 }, InputSlice { 0, 48, 64 }, InputSlice { 1, 56, 64 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 80 }, InputSlice { 1, 72, 80 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 80, 88 }, InputSlice { 0, 80, 96 }, InputSlice { 1, 88, 96 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 112 }, InputSlice { 1, 104, 112 } }), 
+    BoundOperation(&Operation159, { InputSlice { 1, 112, 120 }, InputSlice { 0, 112, 128 }, InputSlice { 1, 120, 128 } }) }, 1),
   InstBinding("vpadalq_u16", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation154, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
-    BoundOperation(&Operation154, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }), 
-    BoundOperation(&Operation154, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 80, 96 } }), 
-    BoundOperation(&Operation154, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 112, 128 } }) }, 1),
+    BoundOperation(&Operation160, { InputSlice { 1, 0, 16 }, InputSlice { 0, 0, 32 }, InputSlice { 1, 16, 32 } }), 
+    BoundOperation(&Operation160, { InputSlice { 1, 32, 48 }, InputSlice { 0, 32, 64 }, InputSlice { 1, 48, 64 } }), 
+    BoundOperation(&Operation160, { InputSlice { 1, 64, 80 }, InputSlice { 0, 64, 96 }, InputSlice { 1, 80, 96 } }), 
+    BoundOperation(&Operation160, { InputSlice { 1, 96, 112 }, InputSlice { 0, 96, 128 }, InputSlice { 1, 112, 128 } }) }, 1),
   InstBinding("vpadalq_u32", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation155, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }), 
-    BoundOperation(&Operation155, { InputSlice { 1, 64, 96 }, InputSlice { 0, 64, 128 }, InputSlice { 1, 96, 128 } }) }, 1),
+    BoundOperation(&Operation161, { InputSlice { 1, 0, 32 }, InputSlice { 0, 0, 64 }, InputSlice { 1, 32, 64 } }), 
+    BoundOperation(&Operation161, { InputSlice { 1, 64, 96 }, InputSlice { 0, 64, 128 }, InputSlice { 1, 96, 128 } }) }, 1),
   InstBinding("vpmax_s8", {  }, InstSignature { { 64, 64 }, { 64 }, false }, { 
     BoundOperation(&Operation126, { InputSlice { 0, 8, 16 }, InputSlice { 0, 0, 8 } }), 
     BoundOperation(&Operation126, { InputSlice { 0, 24, 32 }, InputSlice { 0, 16, 24 } }), 
@@ -7105,19 +7277,19 @@ std::vector<InstBinding> ArmInsts {
     BoundOperation(&Operation139, { InputSlice { 0, 0, 32 }, InputSlice { 0, 32, 64 } }), 
     BoundOperation(&Operation139, { InputSlice { 1, 0, 32 }, InputSlice { 1, 32, 64 } }) }, 1),
   InstBinding("vdot_u32", {  }, InstSignature { { 64, 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation156, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation156, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
+    BoundOperation(&Operation162, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation162, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
   InstBinding("vdot_s32", {  }, InstSignature { { 64, 64, 64 }, { 64 }, false }, { 
-    BoundOperation(&Operation157, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation157, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
+    BoundOperation(&Operation163, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation163, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }) }, 1),
   InstBinding("vdotq_u32", {  }, InstSignature { { 128, 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation156, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation156, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }), 
-    BoundOperation(&Operation156, { InputSlice { 2, 64, 72 }, InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 96 }, InputSlice { 2, 72, 80 }, InputSlice { 1, 72, 80 }, InputSlice { 2, 80, 88 }, InputSlice { 1, 80, 88 }, InputSlice { 2, 88, 96 }, InputSlice { 1, 88, 96 } }), 
-    BoundOperation(&Operation156, { InputSlice { 2, 96, 104 }, InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 128 }, InputSlice { 2, 104, 112 }, InputSlice { 1, 104, 112 }, InputSlice { 2, 112, 120 }, InputSlice { 1, 112, 120 }, InputSlice { 2, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1),
+    BoundOperation(&Operation162, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation162, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }), 
+    BoundOperation(&Operation162, { InputSlice { 2, 64, 72 }, InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 96 }, InputSlice { 2, 72, 80 }, InputSlice { 1, 72, 80 }, InputSlice { 2, 80, 88 }, InputSlice { 1, 80, 88 }, InputSlice { 2, 88, 96 }, InputSlice { 1, 88, 96 } }), 
+    BoundOperation(&Operation162, { InputSlice { 2, 96, 104 }, InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 128 }, InputSlice { 2, 104, 112 }, InputSlice { 1, 104, 112 }, InputSlice { 2, 112, 120 }, InputSlice { 1, 112, 120 }, InputSlice { 2, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1),
   InstBinding("vdotq_s32", {  }, InstSignature { { 128, 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation157, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
-    BoundOperation(&Operation157, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }), 
-    BoundOperation(&Operation157, { InputSlice { 2, 64, 72 }, InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 96 }, InputSlice { 2, 72, 80 }, InputSlice { 1, 72, 80 }, InputSlice { 2, 80, 88 }, InputSlice { 1, 80, 88 }, InputSlice { 2, 88, 96 }, InputSlice { 1, 88, 96 } }), 
-    BoundOperation(&Operation157, { InputSlice { 2, 96, 104 }, InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 128 }, InputSlice { 2, 104, 112 }, InputSlice { 1, 104, 112 }, InputSlice { 2, 112, 120 }, InputSlice { 1, 112, 120 }, InputSlice { 2, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1)
+    BoundOperation(&Operation163, { InputSlice { 2, 0, 8 }, InputSlice { 1, 0, 8 }, InputSlice { 0, 0, 32 }, InputSlice { 2, 8, 16 }, InputSlice { 1, 8, 16 }, InputSlice { 2, 16, 24 }, InputSlice { 1, 16, 24 }, InputSlice { 2, 24, 32 }, InputSlice { 1, 24, 32 } }), 
+    BoundOperation(&Operation163, { InputSlice { 2, 32, 40 }, InputSlice { 1, 32, 40 }, InputSlice { 0, 32, 64 }, InputSlice { 2, 40, 48 }, InputSlice { 1, 40, 48 }, InputSlice { 2, 48, 56 }, InputSlice { 1, 48, 56 }, InputSlice { 2, 56, 64 }, InputSlice { 1, 56, 64 } }), 
+    BoundOperation(&Operation163, { InputSlice { 2, 64, 72 }, InputSlice { 1, 64, 72 }, InputSlice { 0, 64, 96 }, InputSlice { 2, 72, 80 }, InputSlice { 1, 72, 80 }, InputSlice { 2, 80, 88 }, InputSlice { 1, 80, 88 }, InputSlice { 2, 88, 96 }, InputSlice { 1, 88, 96 } }), 
+    BoundOperation(&Operation163, { InputSlice { 2, 96, 104 }, InputSlice { 1, 96, 104 }, InputSlice { 0, 96, 128 }, InputSlice { 2, 104, 112 }, InputSlice { 1, 104, 112 }, InputSlice { 2, 112, 120 }, InputSlice { 1, 112, 120 }, InputSlice { 2, 120, 128 }, InputSlice { 1, 120, 128 } }) }, 1)
 };

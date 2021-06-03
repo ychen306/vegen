@@ -252,6 +252,13 @@ class Narrow(Evaluator):
     bw = x.size()
     return z3.Extract(bw//2-1, 0, x)
 
+class Widen(Evaluator):
+  def run(self, args):
+    [x] = args
+    bw = x.size()
+    ext = z3.SignExt if self.is_signed else z3.ZeroExt
+    return ext(bw, x)
+
 class SaturatingNarrow(Evaluator):
   def run(self, args):
     [x] = args
@@ -279,8 +286,9 @@ evaluators = {
     'aba': AbsoluteDifferenceAccumulate,
     'max': Max,
     'min': Min,
-    'mov': Narrow,
-    'qmov': SaturatingNarrow,
+    'movn': Narrow,
+    'qmovn': SaturatingNarrow,
+    'movl': Widen,
     }
 
 def gen_dot(sig):
@@ -316,28 +324,6 @@ def gen_matmul(sig):
         y[2*i+j] = s
     return y
   return gen_non_simd(run, sig)
-
-#print(gen_simd(Add, 'int8x8_t    vadd_s8(int8x8_t a, int8x8_t b);         // VADD.I8 d0,d0,d0'))
-#print(gen_simd(Add, 'float32x4_t vaddq_f32(float32x4_t a, float32x4_t b); // VADD.F32 q0,q0,q0'))
-#print(gen_simd(HalvingAdd, 'int8x8_t   vhadd_s8(int8x8_t a, int8x8_t b);       // VHADD.S8 d0,d0,d0'))
-#print(gen_simd(HalvingAdd, 'uint8x8_t   vhadd_u8(uint8x8_t a, uint8x8_t b);       // VHADD.S8 d0,d0,d0'))
-#print(gen_simd(SaturatingAdd, 'int16x8_t  vaddw_s8(int16x8_t a, int8x8_t b);     // VADDW.S8 q0,q0,d0'))
-#print(gen_simd(SaturatingAdd, 'uint8x16_t vqaddq_u8(uint8x16_t a, uint8x16_t b);  // VQADD.U8 q0,q0,q0 '))
-#print(gen_simd(AddHighHalf, "uint8x8_t  vaddhn_u16(uint16x8_t a, uint16x8_t b); // VADDHN.I16 d0,q0,q0"))
-#print(gen_simd(RoundingAddHighHalf, "uint8x8_t  vraddhn_u16(uint16x8_t a, uint16x8_t b); // VRADDHN.I16 d0,q0,q0"))
-#print(gen_simd(Mul, "float32x2_t vmul_f32(float32x2_t a, float32x2_t b);  // VMUL.F32 d0,d0,d0"))
-#print(gen_simd(Mul, "uint8x8_t   vmul_u8(uint8x8_t a, uint8x8_t b);       // VMUL.I8 d0,d0,d0 "))
-#print(gen_simd(MultiplyAccumulate, "int8x8_t    vmla_s8(int8x8_t a, int8x8_t b, int8x8_t c);        // VMLA.I8 d0,d0,d0 "))
-#print(gen_simd(MultiplyAccumulate, "uint16x8_t vmlal_u8(uint16x8_t a, uint8x8_t b, uint8x8_t c);    // VMLAL.U8 q0,d0,d0 "))
-#print(gen_simd(AbsoluteDifference, 'int8x8_t    vabd_s8(int8x8_t a, int8x8_t b);         // VABD.S8 d0,d0,d0 '))
-#print(gen_simd(AbsoluteDifference, 'float32x4_t vabdq_f32(float32x4_t a, float32x4_t b); // VABD.F32 q0,q0,q0'))
-#print(gen_simd(AbsoluteDifference, 'uint64x2_t vabdl_u32(uint32x2_t a, uint32x2_t b);'))
-#print(gen_simd(AbsoluteDifferenceAccumulate, 'int8x8_t   vaba_s8(int8x8_t a, int8x8_t b, int8x8_t c);'))
-#print(gen_simd(AbsoluteDifferenceAccumulate, 'uint64x2_t vabal_u32(uint64x2_t a, uint32x2_t b, uint32x2_t c);'))
-#print(gen_dot('uint32x2_t vdot_u32 (uint32x2_t r, uint8x8_t a, uint8x8_t b)'))
-#print(gen_matmul('int32x4_t vusmmlaq_s32 (int32x4_t r, uint8x16_t a, int8x16_t b)'))
-#print(gen_matmul('uint32x4_t vmmlaq_u32 (uint32x4_t r, uint8x16_t a, uint8x16_t b)'))
-#exit()
 
 padds = [
     "int8x8_t    vpadd_s8(int8x8_t a, int8x8_t b);        // VPADD.I8 d0,d0,d0 ",

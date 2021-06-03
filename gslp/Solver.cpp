@@ -709,6 +709,8 @@ static float beamSearch(BasicBlock *BB, Packer *Pkr, VectorPackSet &Packs,
                      });
     if (Beam.size() > BeamWidth)
       Beam.resize(BeamWidth);
+    if (Beam.size())
+      errs() << Beam.front()->Frt << '\n';
   }
 
   assert(Best);
