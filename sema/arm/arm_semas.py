@@ -246,6 +246,18 @@ class Min(Evaluator):
     a, b = args
     return z3.If(self.cmp_lt(a, b), a, b)
 
+class Narrow(Evaluator):
+  def run(self, args):
+    [x] = args
+    bw = x.size()
+    return z3.Extract(bw//2-1, 0, x)
+
+class SaturatingNarrow(Evaluator):
+  def run(self, args):
+    [x] = args
+    bw = x.size()
+    return get_saturator(bw, bw//2, self.is_signed)(x)
+
 evaluators = {
     'add': Add,
     'hadd': HalvingAdd,
@@ -267,6 +279,8 @@ evaluators = {
     'aba': AbsoluteDifferenceAccumulate,
     'max': Max,
     'min': Min,
+    'mov': Narrow,
+    'qmov': SaturatingNarrow,
     }
 
 def gen_dot(sig):
