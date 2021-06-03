@@ -319,17 +319,8 @@ simds = {
         "uint8x8_t vqmovn_u16 (uint16x8_t a)",
         "uint16x4_t vqmovn_u32 (uint32x4_t a)",
         "uint32x2_t vqmovn_u64 (uint64x2_t a)",
-        "int8_t vqmovnh_s16 (int16_t a)",
-        "int16_t vqmovns_s32 (int32_t a)",
-        "int32_t vqmovnd_s64 (int64_t a)",
-        "uint8_t vqmovnh_u16 (uint16_t a)",
-        "uint16_t vqmovns_u32 (uint32_t a)",
-        "uint32_t vqmovnd_u64 (uint64_t a)",
         "uint8x8_t vqmovun_s16 (int16x8_t a)",
         "uint16x4_t vqmovun_s32 (int32x4_t a)",
         "uint32x2_t vqmovun_s64 (int64x2_t a)",
-        "uint8_t vqmovunh_s16 (int16_t a)",
-        "uint16_t vqmovuns_s32 (int32_t a)",
-        "uint32_t vqmovund_s64 (int64_t a)",
         ]
     }
