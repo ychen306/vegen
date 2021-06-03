@@ -66,7 +66,7 @@ def gen_pairwise(binop_ty, sig):
     for x, x_ty in zip(vecs, vec_types):
       for i in range(x_ty.num_elems//2):
         y.append(z3.Extract(ty.elem_size-1, 0,
-          evaluator.run(args=(select(x, x_ty, 2*i), select(x, x_ty, 2*i+1)))))
+          evaluator.run(args=(select(x, x_ty, 2*i+1), select(x, x_ty, 2*i)))))
     return y
   return gen_non_simd(run, sig)
 
@@ -345,6 +345,16 @@ padds = [
     "uint16x8_t vpaddlq_u8(uint8x16_t a);   // VPADDL.U8 q0,q0 ",
     "uint32x4_t vpaddlq_u16(uint16x8_t a);  // VPADDL.U16 q0,q0",
     "uint64x2_t vpaddlq_u32(uint32x4_t a);  // VPADDL.U32 q0,q0",
+    "int8x16_t vpaddq_s8 (int8x16_t a, int8x16_t b)",
+    "int16x8_t vpaddq_s16 (int16x8_t a, int16x8_t b)",
+    "int32x4_t vpaddq_s32 (int32x4_t a, int32x4_t b)",
+    "int64x2_t vpaddq_s64 (int64x2_t a, int64x2_t b)",
+    "uint8x16_t vpaddq_u8 (uint8x16_t a, uint8x16_t b)",
+    "uint16x8_t vpaddq_u16 (uint16x8_t a, uint16x8_t b)",
+    "uint32x4_t vpaddq_u32 (uint32x4_t a, uint32x4_t b)",
+    "uint64x2_t vpaddq_u64 (uint64x2_t a, uint64x2_t b)",
+    "float32x4_t vpaddq_f32 (float32x4_t a, float32x4_t b)",
+    "float64x2_t vpaddq_f64 (float64x2_t a, float64x2_t b)",
     ]
 
 # long pairwise add and accumulate

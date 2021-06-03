@@ -290,6 +290,183 @@ raw_ostream &operator<<(raw_ostream &OS, const Frontier &Frt) {
   return OS;
 }
 
+class SlotSet {
+  std::vector<LoadInst *> Slots;
+  unsigned MinId, MaxId;
+  unsigned NumElems = 0;
+  unsigned HasValue = false;
+
+public:
+  LoadInst *operator[](unsigned i) const { return Slots[i]; }
+  bool try_insert(unsigned i, LoadInst *LI) {
+    if (i >= Slots.size())
+      Slots.resize(i + 1);
+    if (!Slots[i] || Slots[i] == LI) {
+      Slots[i] = LI;
+      if (HasValue) {
+        MinId = std::min(i, MinId);
+        MaxId = std::max(i, MaxId);
+      } else {
+        MinId = MaxId = i;
+        HasValue = true;
+      }
+      NumElems++;
+      return true;
+    }
+    return false;
+  }
+
+  double utilization() const { return (double)NumElems / (MaxId - MinId + 1); }
+
+  unsigned num_elems() const { return NumElems; }
+
+  unsigned minId() const { return MinId; }
+
+  unsigned maxId() const { return MaxId; }
+};
+
+// Try to coalesce main pack with some other packs
+VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
+                             ArrayRef<const VectorPack *> OtherPacks,
+                             Packer *Pkr) {
+  auto *BB = MainPack->getBasicBlock();
+  auto &LayoutInfo = Pkr->getLoadInfo(BB);
+#if 0
+  // Full, can't coalesce
+  if (MainPack->getOrderedValues().size() == MainPack->getElements().count())
+    return nullptr;
+#endif
+
+  auto *SomeLoad = *MainPack->elementValues().begin();
+  auto *Leader = LayoutInfo.get(cast<Instruction>(SomeLoad)).Leader;
+  BitVector Elements = MainPack->getElements();
+  BitVector Depended = MainPack->getDepended();
+  SlotSet Slots;
+  for (auto *V : MainPack->elementValues()) {
+    auto *LI = cast<LoadInst>(V);
+    unsigned SlotId = LayoutInfo.get(LI).Id;
+    Slots.try_insert(SlotId, LI);
+  }
+
+  for (auto *Other : OtherPacks) {
+    auto Info = LayoutInfo.get(cast<Instruction>(Other->getOrderedValues()[0]));
+    // Cannot coalesce with loads accessing a different object
+    if (Info.Leader != Leader)
+      continue;
+    // Cannot coalesce if not independent
+    if (Depended.anyCommon(Other->getElements()) ||
+        Other->getDepended().anyCommon(Elements))
+      continue;
+
+    auto Temp = Slots;
+    bool Coalesced = true;
+    for (auto *V : Other->elementValues()) {
+      auto *LI = cast<LoadInst>(V);
+      unsigned SlotId = LayoutInfo.get(LI).Id;
+      // Can only coalesce if the slot if empty
+      bool Ok = Temp.try_insert(SlotId, LI);
+      if (!Ok) {
+        Coalesced = false;
+        break;
+      }
+    }
+    if (Coalesced && Temp.utilization() >= Slots.utilization()) {
+      Slots = Temp;
+      Depended |= Other->getDepended();
+      Elements |= Other->getElements();
+    }
+  }
+
+  if (Elements == MainPack->getElements())
+    return nullptr;
+
+  std::vector<LoadInst *> Loads;
+  for (unsigned i = Slots.minId(), e = Slots.maxId(); i <= e; i++) {
+    Loads.push_back(Slots[i]);
+  }
+
+  return Pkr->getContext(BB)->createLoadPack(Loads, Elements, Depended,
+                                             Pkr->getTTI());
+}
+
+#if 1
+static std::vector<const VectorPack *>
+findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
+  if (Frt.usableInstIds().count() == 0)
+    return {};
+
+  auto *Pkr = Frt.getPacker();
+  auto *VPCtx = Frt.getContext();
+  // Put load extensions in a separate category.
+  // We don't extend with a load pack if we can extend with other arithmetic
+  // packs
+  std::vector<const VectorPack *> LoadExtensions;
+
+  BitVector UnusableIds = Frt.usableInstIds();
+  UnusableIds.flip();
+
+  std::vector<const VectorPack *> Extensions;
+
+  if (CandidateSet) {
+    //for (auto *VP : CandidateSet->Inst2Packs[InstId]) {
+    for (auto *VP : CandidateSet->Packs) {
+      auto &Elements = VP->getElements();
+      if (/*Elements.test(InstId) &&*/ !Elements.anyCommon(UnusableIds))
+        Extensions.push_back(VP);
+    }
+    ///////////
+    for (auto *OP : Frt.getUnresolvedPacks()) {
+      //if (!Extensions.empty())
+      //  return Extensions;
+      OP = VPCtx->dedup(OP);
+      const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
+      for (auto *VP : OPI.Producers)
+        if (!VP->getElements().anyCommon(UnusableIds) /*&&
+                                                        VP->getElements().test(InstId)*/)
+          Extensions.push_back(VP);
+      //for (auto *VP : OPI.LoadProducers)
+      //  if (!VP->getElements().anyCommon(UnusableIds) &&
+      //      VP->getElements().test(InstId))
+      //    LoadExtensions.push_back(VP);
+    }
+    //////////
+    if (!Extensions.empty())
+      return Extensions;
+  }
+
+  for (auto *OP : Frt.getUnresolvedPacks()) {
+    //if (!Extensions.empty())
+    //  return Extensions;
+    OP = VPCtx->dedup(OP);
+    const OperandProducerInfo &OPI = Pkr->getProducerInfo(VPCtx, OP);
+    if (!OPI.Feasible)
+      continue;
+    for (auto *VP : OPI.Producers)
+      if (!VP->getElements().anyCommon(UnusableIds))
+        Extensions.push_back(VP);
+    for (auto *VP : OPI.LoadProducers)
+      if (!VP->getElements().anyCommon(UnusableIds))
+        LoadExtensions.push_back(VP);
+  }
+
+  // Delay extending with loads to create opportunity for coalescing loads
+  if (!Extensions.empty())
+    return Extensions;
+
+  if (!LoadExtensions.empty()) {
+    auto *LoadVP = LoadExtensions.front();
+    if (auto *Coalesced = tryCoalesceLoads(
+          LoadVP, ArrayRef<const VectorPack *>(LoadExtensions).slice(1),
+          Pkr)) {
+      return {Coalesced, LoadVP};
+    }
+    return {LoadVP};
+  }
+
+
+  return {};
+  }
+#else
 static std::vector<const VectorPack *>
 findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   NamedRegionTimer Timer("find-extensions", "find extensions", "pack selection",
@@ -329,6 +506,7 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
     Consider(VP);
   return Extensions;
 }
+#endif
 
 template <typename AccessType>
 VectorPack *createMemPack(VectorPackContext *VPCtx,
@@ -572,7 +750,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16 /*, 32, 64*/})
+      for (unsigned VL : {2, 4, 8/*, 16 , 32, 64*/})
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           Packs.push_back(VP);
     }
@@ -631,7 +809,7 @@ void State::expand(const CandidatePackSet *CandidateSet) {
     // Consider seed packs
     if (auto *SI = dyn_cast<StoreInst>(V)) {
       // for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
-      for (unsigned VL : {2, 4, 8, 16}) {
+      for (unsigned VL : {2, 4, 8/*, 16*/}) {
         if (auto *VP = getSeedStorePack(Frt, SI, VL)) {
           if (VP->getElements().anyCommon(UnusableIds))
             continue;

@@ -100,7 +100,7 @@ IRInstTable::IRInstTable() {
     }
 
   // enumerate vector insts
-  std::vector<unsigned> VectorBitwidths = {64, 128, 256, 512};
+  std::vector<unsigned> VectorBitwidths = {64, 128/*, 256, 512*/};
   for (auto &Op : VectorizableOps) {
     for (unsigned VB : VectorBitwidths) {
       // Skip singleton pack

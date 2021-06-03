@@ -19,7 +19,7 @@ def create_description(intrin, sema):
       name=intrin,
       sig=sig,
       sema=desc.Semantics(xs, y),
-      cost=1, # TODO
+      cost=2, # TODO
       element_size=out_ty.elem_size,
       features=[] # TODO
       )

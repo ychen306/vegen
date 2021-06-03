@@ -8,7 +8,7 @@ using namespace llvm;
 static constexpr float C_Splat = 1.0;
 static constexpr float C_Insert = 2;
 static constexpr float C_Perm = 0.5;
-static constexpr float C_Shuffle = 0.5;
+static constexpr float C_Shuffle = 4;
 static constexpr float C_Extract = 1.0;
 
 float Heuristic::getCost(const VectorPack *VP) {

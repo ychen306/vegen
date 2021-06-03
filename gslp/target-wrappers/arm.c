@@ -915,6 +915,36 @@ uint32x4_t intrinsic_wrapper_vpaddlq_u16_0(uint16x8_t tmp0 ) {
 uint64x2_t intrinsic_wrapper_vpaddlq_u32_0(uint32x4_t tmp0 ) {
   return vpaddlq_u32(tmp0);
 }
+int8x16_t intrinsic_wrapper_vpaddq_s8_0(int8x16_t tmp0 , int8x16_t tmp1 ) {
+  return vpaddq_s8(tmp0, tmp1);
+}
+int16x8_t intrinsic_wrapper_vpaddq_s16_0(int16x8_t tmp0 , int16x8_t tmp1 ) {
+  return vpaddq_s16(tmp0, tmp1);
+}
+int32x4_t intrinsic_wrapper_vpaddq_s32_0(int32x4_t tmp0 , int32x4_t tmp1 ) {
+  return vpaddq_s32(tmp0, tmp1);
+}
+int64x2_t intrinsic_wrapper_vpaddq_s64_0(int64x2_t tmp0 , int64x2_t tmp1 ) {
+  return vpaddq_s64(tmp0, tmp1);
+}
+uint8x16_t intrinsic_wrapper_vpaddq_u8_0(uint8x16_t tmp0 , uint8x16_t tmp1 ) {
+  return vpaddq_u8(tmp0, tmp1);
+}
+uint16x8_t intrinsic_wrapper_vpaddq_u16_0(uint16x8_t tmp0 , uint16x8_t tmp1 ) {
+  return vpaddq_u16(tmp0, tmp1);
+}
+uint32x4_t intrinsic_wrapper_vpaddq_u32_0(uint32x4_t tmp0 , uint32x4_t tmp1 ) {
+  return vpaddq_u32(tmp0, tmp1);
+}
+uint64x2_t intrinsic_wrapper_vpaddq_u64_0(uint64x2_t tmp0 , uint64x2_t tmp1 ) {
+  return vpaddq_u64(tmp0, tmp1);
+}
+float32x4_t intrinsic_wrapper_vpaddq_f32_0(float32x4_t tmp0 , float32x4_t tmp1 ) {
+  return vpaddq_f32(tmp0, tmp1);
+}
+float64x2_t intrinsic_wrapper_vpaddq_f64_0(float64x2_t tmp0 , float64x2_t tmp1 ) {
+  return vpaddq_f64(tmp0, tmp1);
+}
 int16x4_t intrinsic_wrapper_vpadal_s8_0(int16x4_t tmp0 , int8x8_t tmp1 ) {
   return vpadal_s8(tmp0, tmp1);
 }
