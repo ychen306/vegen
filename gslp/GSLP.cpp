@@ -230,6 +230,10 @@ bool GSLP::runOnFunction(Function &F) {
       continue;
     if (Inst.getName().contains("hsub_ps"))
       continue;
+    //if (Inst.getName().contains("vmull_s"))
+    //  continue;
+    if (Inst.getName().contains("mla"))
+      continue;
     if (isSupported(&Inst, F)) {
       SupportedIntrinsics.push_back(&Inst);
     }

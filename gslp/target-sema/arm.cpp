@@ -7225,10 +7225,10 @@ std::vector<InstBinding> ArmInsts {
     BoundOperation(&Operation153, { InputSlice { 1, 64, 80 }, InputSlice { 1, 80, 96 } }), 
     BoundOperation(&Operation153, { InputSlice { 1, 96, 112 }, InputSlice { 1, 112, 128 } }) }, 2),
   InstBinding("vpaddq_s32", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
-    BoundOperation(&Operation154, { InputSlice { 0, 0, 32 }, InputSlice { 0, 32, 64 } }), 
-    BoundOperation(&Operation154, { InputSlice { 0, 64, 96 }, InputSlice { 0, 96, 128 } }), 
-    BoundOperation(&Operation154, { InputSlice { 1, 0, 32 }, InputSlice { 1, 32, 64 } }), 
-    BoundOperation(&Operation154, { InputSlice { 1, 64, 96 }, InputSlice { 1, 96, 128 } }) }, 2),
+    BoundOperation(&Operation154, {  InputSlice { 0, 32, 64 }  ,InputSlice { 0, 0, 32 },  }), 
+    BoundOperation(&Operation154, {  InputSlice { 0, 96, 128 } ,InputSlice { 0, 64, 96 }, }), 
+    BoundOperation(&Operation154, {  InputSlice { 1, 32, 64 }  ,InputSlice { 1, 0, 32 },  }), 
+    BoundOperation(&Operation154, {  InputSlice { 1, 96, 128 } ,InputSlice { 1, 64, 96 }, }) }, 2),
   InstBinding("vpaddq_s64", {  }, InstSignature { { 128, 128 }, { 128 }, false }, { 
     BoundOperation(&Operation156, { InputSlice { 0, 0, 64 }, InputSlice { 0, 64, 128 } }), 
     BoundOperation(&Operation156, { InputSlice { 1, 0, 64 }, InputSlice { 1, 64, 128 } }) }, 2),

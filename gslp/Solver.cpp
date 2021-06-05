@@ -389,7 +389,7 @@ VectorPack *tryCoalesceLoads(const VectorPack *MainPack,
                                              Pkr->getTTI());
 }
 
-#if 1
+#if 0
 static std::vector<const VectorPack *>
 findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   if (Frt.usableInstIds().count() == 0)
@@ -741,12 +741,12 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   }
 
   std::vector<const VectorPack *> Packs;
-  for (auto *OP : Enumerated) {
-    OP->OPIValid = false;
-    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-    for (auto *VP : OPI.Producers)
-      Packs.push_back(VP);
-  }
+  //for (auto *OP : Enumerated) {
+  //  OP->OPIValid = false;
+  //  auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+  //  for (auto *VP : OPI.Producers)
+  //    Packs.push_back(VP);
+  //}
 
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
@@ -887,16 +887,17 @@ static float beamSearch(BasicBlock *BB, Packer *Pkr, VectorPackSet &Packs,
                      });
     if (Beam.size() > BeamWidth)
       Beam.resize(BeamWidth);
-    if (Beam.size())
-      errs() << Beam.front()->Frt << '\n';
   }
 
   assert(Best);
   float BestCost = Best->Cost;
   const auto *S = Best;
   while (S->Incoming) {
-    if (auto *VP = S->Incoming->VP)
+    errs() << S->Frt << '\n';
+    if (auto *VP = S->Incoming->VP) {
+      errs() << "~~ came from " << *VP << "\n\n";
       Packs.tryAdd(VP);
+    }
     S = S->Incoming->Src;
   }
   return BestCost;
