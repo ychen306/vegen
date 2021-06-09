@@ -317,12 +317,24 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   };
 
   for (auto *OP : Frt.getUnresolvedPacks()) {
-    const OperandProducerInfo &OPI =
+    {
+      const OperandProducerInfo &OPI =
         Pkr->getProducerInfo(VPCtx, VPCtx->dedup(OP));
-    if (!OPI.Feasible)
-      continue;
-    for (auto *VP : OPI.Producers)
-      Consider(VP);
+      for (auto *VP : OPI.Producers)
+        Consider(VP);
+    }
+    {
+      const OperandProducerInfo &OPI =
+        Pkr->getProducerInfo(VPCtx, VPCtx->odd(OP));
+      for (auto *VP : OPI.Producers)
+        Consider(VP);
+    }
+    {
+      const OperandProducerInfo &OPI =
+        Pkr->getProducerInfo(VPCtx, VPCtx->even(OP));
+      for (auto *VP : OPI.Producers)
+        Consider(VP);
+    }
   }
 
   for (auto *VP : CandidateSet->Packs)

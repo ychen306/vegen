@@ -92,3 +92,21 @@ const OperandPack *VectorPackContext::dedup(const OperandPack *OP) const {
     return OP;
   return getCanonicalOperandPack(Deduped);
 }
+
+const OperandPack *VectorPackContext::even(const OperandPack *OP) const {
+  OperandPack Even;
+  unsigned i = 0;
+  for (auto *V : *OP)
+    if (i++ % 2)
+      Even.push_back(V);
+  return getCanonicalOperandPack(Even);
+}
+
+const OperandPack *VectorPackContext::odd(const OperandPack *OP) const {
+  OperandPack Odd;
+  unsigned i = 0;
+  for (auto *V : *OP)
+    if (i++ % 2 == 0)
+      Odd.push_back(V);
+  return getCanonicalOperandPack(Odd);
+}
