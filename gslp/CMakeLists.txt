@@ -4,6 +4,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set(LIB_PACKING_SRC
   target-sema/x86.cpp target-sema/arm.cpp
 
+  Plan.cpp
+
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IntrinsicBuilder.cpp
   Heuristic.cpp

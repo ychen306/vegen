@@ -3,6 +3,7 @@
 #include "MatchManager.h"
 #include "Packer.h"
 #include "VectorPackSet.h"
+#include "Plan.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Timer.h"
 
@@ -575,12 +576,12 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   }
 
   std::vector<const VectorPack *> Packs;
-  for (auto *OP : Enumerated) {
-    OP->OPIValid = false;
-    auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
-    for (auto *VP : OPI.Producers)
-      Packs.push_back(VP);
-  }
+  //for (auto *OP : Enumerated) {
+  //  OP->OPIValid = false;
+  //  auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
+  //  for (auto *VP : OPI.Producers)
+  //    Packs.push_back(VP);
+  //}
 
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
@@ -734,6 +735,106 @@ static float beamSearch(BasicBlock *BB, Packer *Pkr, VectorPackSet &Packs,
   return BestCost;
 }
 
+// Run the bottom-up heuristic starting from `OP`
+void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
+                       const VectorPackContext *VPCtx, Heuristic &H) {
+  std::vector<const OperandPack *> Worklist{OP};
+  while (!Worklist.empty()) {
+    auto *OP = Worklist.back();
+    Worklist.pop_back();
+
+    // The packs we are adding
+    SmallVector<const VectorPack *, 4> NewPacks = H.solve(OP).Packs;
+    // Union of the values covered by this solution
+    BitVector Elements(VPCtx->getNumValues());
+    // The packs we are replacing
+    SmallPtrSet<const VectorPack *, 4> OldPacks;
+
+    for (const VectorPack *VP : NewPacks) {
+      Elements |= VP->getElements();
+      for (auto *V : VP->elementValues())
+        if (auto *VP2 = P.getProducer(dyn_cast<Instruction>(V)))
+          OldPacks.insert(VP2);
+    }
+
+    // We only consider this solution if
+    // the values we are packing is a superset of the
+    // values packed in the original plan
+    bool Feasible = true;
+    unsigned N = Elements.count();
+    for (auto *VP2 : OldPacks)
+      if ((Elements |= VP2->getElements()).count() > N) {
+        Feasible = false;
+        break;
+      }
+    if (!Feasible)
+      continue;
+
+    for (auto *VP2 : OldPacks)
+      P.remove(VP2);
+    for (const VectorPack *VP : NewPacks) {
+      P.add(VP);
+      ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
+      Worklist.insert(Worklist.end(), Operands.begin(), Operands.end());
+    }
+  }
+}
+
+void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
+  std::vector<const VectorPack *> Seeds;
+  auto *BB = P.getBasicBlock();
+  for (auto &I : *BB)
+    if (auto *SI = dyn_cast<StoreInst>(&I))
+      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+        for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
+          Seeds.push_back(VP);
+
+  auto *VPCtx = Pkr->getContext(P.getBasicBlock());
+  Heuristic H(Pkr, VPCtx, CandidateSet);
+  bool Optimized;
+  do {
+    errs() << "COST: " << P.cost() << '\n';
+    Optimized = false;
+    for (auto *VP : Seeds) {
+      Plan P2 = P;
+      for (auto *V : VP->elementValues())
+        if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
+          P2.remove(VP2);
+      P2.add(VP);
+      runBottomUpFromOperand(VP->getOperandPacks().front(), P2, VPCtx, H);
+      if (P2.cost() < P.cost()) {
+        P = P2;
+        Optimized = true;
+      }
+    }
+
+    if (Optimized)
+      continue;
+
+    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+      const OperandPack *OP = I->first;
+      Plan P2 = P;
+      runBottomUpFromOperand(OP, P2, VPCtx, H);
+      if (P2.cost() < P.cost()) {
+        P = P2;
+        Optimized = true;
+        break;
+      }
+
+      P2 = P;
+      auto *Odd = VPCtx->odd(VPCtx->dedup(OP));
+      auto *Even = VPCtx->even(VPCtx->dedup(OP));
+      runBottomUpFromOperand(Odd, P2, VPCtx, H);
+      runBottomUpFromOperand(Even, P2, VPCtx, H);
+      if (P2.cost() < P.cost()) {
+        P = P2;
+        Optimized = true;
+        break;
+      }
+    }
+  } while (Optimized);
+}
+
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
   CandidatePackSet CandidateSet;
   CandidateSet.Packs = enumerate(BB, Pkr);
@@ -743,5 +844,10 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
     for (unsigned i : VP->getElements().set_bits())
       CandidateSet.Inst2Packs[i].push_back(VP);
 
-  return beamSearch(BB, Pkr, Packs, &CandidateSet, 128);
+  Plan P(Pkr, BB);
+  improvePlan(Pkr, P, &CandidateSet);
+  for (auto *VP : P) {
+    Packs.tryAdd(VP);
+  }
+  return P.cost();
 }

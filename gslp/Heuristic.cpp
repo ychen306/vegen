@@ -18,12 +18,10 @@ float Heuristic::getCost(const VectorPack *VP) {
   return Cost;
 }
 
-float Heuristic::getCost(const OperandPack *OP) {
-  auto It = OrderedCosts.find(OP);
-  if (It != OrderedCosts.end())
+Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
+  auto It = Solutions.find(OP);
+  if (It != Solutions.end())
     return It->second;
-
-  OrderedCosts[OP] = 0;
 
   // Build by explicit insertion
   float Cost = 0;
@@ -32,30 +30,45 @@ float Heuristic::getCost(const OperandPack *OP) {
     if (V && !isa<Constant>(V) && Inserted.insert(V).second)
       Cost += getCost(V) + C_Insert;
 
-  if (Cost == 0)
-    return 0;
+  // The baseline solution is building the vector by implicit insertion
+  Solution Sol(Cost);
+
+  if (Cost == 0) {
+    Solutions[OP] = Sol;
+    return Sol;
+  }
 
   // Build by broadcast
-  if (is_splat(*OP))
-    Cost = std::min(Cost, getCost(OP->front()) + C_Splat);
+  float BroadcastCast = getCost(OP->front()) + C_Splat;
+  if (is_splat(*OP) && Cost > BroadcastCast)
+    Sol = Solution(BroadcastCast);
 
   const OperandPack *Deduped = VPCtx->dedup(OP);
   float ExtraCost = Deduped != OP ? C_Shuffle : 0;
   auto OPI = Pkr->getProducerInfo(VPCtx, Deduped);
-  for (auto *VP : OPI.getProducers())
-    Cost = std::min(Cost, getCost(VP) + ExtraCost);
-  {
-    float EvenCost = 1000;
-    for (auto *VP : Pkr->getProducerInfo(VPCtx, VPCtx->even(OP)).getProducers())
-      EvenCost = std::min(EvenCost, getCost(VP));
-    float OddCost = 1000;
-    for (auto *VP : Pkr->getProducerInfo(VPCtx, VPCtx->odd(OP)).getProducers())
-      OddCost = std::min(OddCost, getCost(VP));
-    Cost = std::min(EvenCost + OddCost + C_Shuffle, Cost);
+  for (auto *VP : OPI.getProducers()) {
+    Sol.update(Solution(getCost(VP) + ExtraCost, VP));
   }
 
+#if 0
+  auto OddInfo = Pkr->getProducerInfo(VPCtx, VPCtx->even(OP));
+  auto EvenInfo = Pkr->getProducerInfo(VPCtx, VPCtx->odd(OP));
+  if (!OddInfo.Elements.anyCommon(EvenInfo.Elements)) {
+    Solution EvenSol;
+    for (auto *VP : EvenInfo.getProducers())
+      EvenSol.update(Solution(getCost(VP), VP));
+    Solution OddSol;
+    for (auto *VP : OddInfo.getProducers())
+      OddSol.update(Solution(getCost(VP), VP));
+    auto Packs = EvenSol.Packs;
+    Packs.append(OddSol.Packs);
+    Sol.update(Solution(EvenSol.Cost + OddSol.Cost + C_Shuffle, Packs));
+    //Cost = std::min(EvenCost + OddCost + C_Shuffle, Cost);
+  }
+#endif
+
   if (!Candidates)
-    return OrderedCosts[OP] = Cost;
+    return Solutions[OP] = Sol;
 
   DenseSet<const VectorPack *> Visited;
   for (unsigned InstId : OPI.Elements.set_bits()) {
@@ -66,18 +79,18 @@ float Heuristic::getCost(const OperandPack *OP) {
       // FIXME: consider don't care
       if (Vals.size() == OPI.Elements.count() &&
           std::is_permutation(Vals.begin(), Vals.end(), OP->begin())) {
-        Cost = std::min(Cost, getCost(VP) + C_Perm + ExtraCost);
+        Sol.update(Solution(getCost(VP) + C_Perm + ExtraCost, VP));
       } else {
         BitVector Intersection = OPI.Elements;
         Intersection &= VP->getElements();
         float Discount =
             (float)OPI.Elements.count() / (float)Intersection.count();
-        Cost = std::min(Cost, getCost(VP) * Discount + C_Shuffle + ExtraCost);
+        Sol.update(Solution(getCost(VP) * Discount + C_Shuffle + ExtraCost, VP));
       }
     }
   }
 
-  return OrderedCosts[OP] = Cost;
+  return Solutions[OP] = Sol;
 }
 
 float Heuristic::getCost(Value *V) {
