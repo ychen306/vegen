@@ -70,17 +70,20 @@ void Plan::decUses(Instruction *I) {
 
 float Plan::computeShuffleCost(const OperandPack *OP) const {
   constexpr float C_Shuffle = 2;
+  auto *VecTy = getVectorType(*OP);
+  auto *TTI = Pkr->getTTI();
 
   // Fast path: OP is produced exactly
   if (ValuesToPackMap.count(*OP))
     return 0;
 
+  // Second fastest path: OP is a broadcast
+  if (is_splat(*OP))
+    return TTI->getShuffleCost(TargetTransformInfo::SK_Broadcast, VecTy, 0);
+
   float ShuffleCost = 0;
 
-  auto *TTI = Pkr->getTTI();
-
   SmallPtrSet<const VectorPack *, 4> Gathered;
-  auto *VecTy = getVectorType(*OP);
   for (unsigned i = 0, N = OP->size(); i < N; i++) {
     Value *V = (*OP)[i];
     if (auto *I = asInternalInst(V)) {

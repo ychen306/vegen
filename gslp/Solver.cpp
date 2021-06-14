@@ -258,16 +258,13 @@ float Frontier::advance(const VectorPack *VP, TargetTransformInfo *TTI,
 }
 
 raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
-  OS << "[";
+  OS << "[\n";
   for (auto *V : OP)
     if (V) {
-      if (V->getName().size() == 0)
-        errs() << *V << ", ";
-      else
-        errs() << V->getName() << ", ";
+      errs() << *V << "\n";
     } else
       errs() << "undef\n";
-  OS << "]";
+  OS << "\n]";
   return OS;
 }
 
@@ -833,6 +830,28 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       }
     }
   } while (Optimized);
+
+  for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+    const OperandPack *OP = I->first;
+    bool Foo = false;
+    for (auto *V : *OP) {
+      auto *I = dyn_cast_or_null<Instruction>(V);
+      if (I && !P.getProducer(I)) {
+        Foo = true;
+        break;
+      }
+    }
+    if (!Foo) continue;
+    errs() << "op without producer: "<< *OP << "\n\t[";
+    for (auto *V : *OP) {
+      auto *I = dyn_cast_or_null<Instruction>(V);
+      if (I && !P.getProducer(I)) {
+        errs() << " 0";
+      } else 
+        errs() << " 1";
+    }
+    errs() << "]\n";
+  }
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
