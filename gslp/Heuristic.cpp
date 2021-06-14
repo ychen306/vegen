@@ -44,6 +44,15 @@ float Heuristic::getCost(const OperandPack *OP) {
   auto OPI = Pkr->getProducerInfo(VPCtx, Deduped);
   for (auto *VP : OPI.getProducers())
     Cost = std::min(Cost, getCost(VP) + ExtraCost);
+  {
+    float EvenCost = 1000;
+    for (auto *VP : Pkr->getProducerInfo(VPCtx, VPCtx->even(OP)).getProducers())
+      EvenCost = std::min(EvenCost, getCost(VP));
+    float OddCost = 1000;
+    for (auto *VP : Pkr->getProducerInfo(VPCtx, VPCtx->odd(OP)).getProducers())
+      OddCost = std::min(OddCost, getCost(VP));
+    Cost = std::min(EvenCost + OddCost + C_Shuffle, Cost);
+  }
 
   if (!Candidates)
     return OrderedCosts[OP] = Cost;
@@ -51,7 +60,7 @@ float Heuristic::getCost(const OperandPack *OP) {
   DenseSet<const VectorPack *> Visited;
   for (unsigned InstId : OPI.Elements.set_bits()) {
     for (auto *VP : Candidates->Inst2Packs[InstId]) {
-      if (!Visited.insert(VP).second)
+      if (!Visited.insert(VP).second || !VP->isLoad())
         continue;
       ArrayRef<Value *> Vals = VP->getOrderedValues();
       // FIXME: consider don't care

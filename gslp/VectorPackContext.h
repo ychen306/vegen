@@ -82,6 +82,8 @@ public:
 
   // Remove duplicate elements in OP
   const OperandPack *dedup(const OperandPack *) const;
+  const OperandPack *even(const OperandPack *) const;
+  const OperandPack *odd(const OperandPack *) const;
 
   llvm::Value *getScalar(unsigned Id) const {
     assert(Id < Scalars.size());
