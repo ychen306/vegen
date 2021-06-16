@@ -29,20 +29,6 @@ Instruction *Plan::asInternalInst(Value *V) const {
   return nullptr;
 }
 
-// void Plan::incUses(Instruction *I) {
-//  if (NumUses[I]++ > 0)
-//    return;
-//
-//  if (InstToPackMap.lookup(I))
-//    return;
-//
-//  // reviving a dead instruction as scalar
-//  Cost += Pkr->getScalarCost(I);
-//  for (Value *O : I->operands())
-//    if (auto *I2 = asInternalInst(O))
-//      incUses(I2);
-//}
-
 void Plan::incScalarUses(Instruction *I) {
   auto It = InstToPackMap.find(I);
   if (!NumScalarUses[I] && It != InstToPackMap.end()) {
@@ -58,31 +44,6 @@ void Plan::incScalarUses(Instruction *I) {
   if (WasDead && isAlive(I))
     revive(I);
 }
-
-// void Plan::decUses(Instruction *I) {
-//  assert(NumUses[I] > 0);
-//  if (--NumUses[I] > 0)
-//    return;
-//
-//  // `I` is now dead
-//  if (auto *VP = InstToPackMap.lookup(I)) {
-//    bool AllDead = true;
-//    for (auto *V : VP->elementValues()) {
-//      auto *I2 = dyn_cast<Instruction>(V);
-//      if (I2 && NumUses[I2]) {
-//        AllDead = false;
-//        break;
-//      }
-//    }
-//    if (AllDead)
-//      remove(VP);
-//  } else {
-//    Cost -= Pkr->getScalarCost(I);
-//    for (Value *O : I->operands())
-//      if (auto *I2 = asInternalInst(O))
-//        decUses(I2);
-//  }
-//}
 
 float Plan::computeShuffleCost(const OperandPack *OP) const {
   constexpr float C_Shuffle = 2;
@@ -120,16 +81,6 @@ float Plan::computeShuffleCost(const OperandPack *OP) const {
   }
   return ShuffleCost;
 }
-
-// bool Plan::hasScalarUser(Instruction *I) const {
-//  for (User *U : I->users()) {
-//    auto *I2 = asInternalInst(U);
-//    if (!I2 || (NumUses.lookup(I2) && !InstToPackMap.count(I2))) {
-//      return true;
-//    }
-//  }
-//  return false;
-//}
 
 void Plan::updateCostOfVectorUses(ArrayRef<Value *> Values) {
   SmallPtrSet<const OperandPack *, 4> Uses;
