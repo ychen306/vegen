@@ -6,17 +6,6 @@
 
 using namespace llvm;
 
-raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
-  OS << "[\n";
-  for (auto *V : OP)
-    if (V) {
-      errs() << *V << "\n";
-    } else
-      errs() << "undef\n";
-  OS << "\n]";
-  return OS;
-}
-
 template <typename AccessType>
 VectorPack *createMemPack(VectorPackContext *VPCtx,
                           ArrayRef<AccessType *> Accesses,
