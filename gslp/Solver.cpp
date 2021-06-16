@@ -2,8 +2,8 @@
 #include "Heuristic.h"
 #include "MatchManager.h"
 #include "Packer.h"
-#include "VectorPackSet.h"
 #include "Plan.h"
+#include "VectorPackSet.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Timer.h"
 
@@ -317,19 +317,19 @@ findExtensionPacks(const Frontier &Frt, const CandidatePackSet *CandidateSet) {
   for (auto *OP : Frt.getUnresolvedPacks()) {
     {
       const OperandProducerInfo &OPI =
-        Pkr->getProducerInfo(VPCtx, VPCtx->dedup(OP));
+          Pkr->getProducerInfo(VPCtx, VPCtx->dedup(OP));
       for (auto *VP : OPI.Producers)
         Consider(VP);
     }
     {
       const OperandProducerInfo &OPI =
-        Pkr->getProducerInfo(VPCtx, VPCtx->odd(OP));
+          Pkr->getProducerInfo(VPCtx, VPCtx->odd(OP));
       for (auto *VP : OPI.Producers)
         Consider(VP);
     }
     {
       const OperandProducerInfo &OPI =
-        Pkr->getProducerInfo(VPCtx, VPCtx->even(OP));
+          Pkr->getProducerInfo(VPCtx, VPCtx->even(OP));
       for (auto *VP : OPI.Producers)
         Consider(VP);
     }
@@ -573,7 +573,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   }
 
   std::vector<const VectorPack *> Packs;
-  //for (auto *OP : Enumerated) {
+  // for (auto *OP : Enumerated) {
   //  OP->OPIValid = false;
   //  auto &OPI = Pkr->getProducerInfo(VPCtx, OP);
   //  for (auto *VP : OPI.Producers)
@@ -734,9 +734,11 @@ static float beamSearch(BasicBlock *BB, Packer *Pkr, VectorPackSet &Packs,
 
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
-                       const VectorPackContext *VPCtx, Heuristic &H) {
+                            const VectorPackContext *VPCtx, Heuristic &H,
+                            bool OverridePacked = false) {
   std::vector<const OperandPack *> Worklist{OP};
   while (!Worklist.empty()) {
+    assert(P.verifyCost());
     auto *OP = Worklist.back();
     Worklist.pop_back();
 
@@ -754,16 +756,18 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
           OldPacks.insert(VP2);
     }
 
-    // We only consider this solution if
-    // the values we are packing is a superset of the
-    // values packed in the original plan
     bool Feasible = true;
-    unsigned N = Elements.count();
-    for (auto *VP2 : OldPacks)
-      if ((Elements |= VP2->getElements()).count() > N) {
-        Feasible = false;
-        break;
-      }
+    if (!OverridePacked) {
+      // We only consider this solution if
+      // the values we are packing is a superset of the
+      // values packed in the original plan
+      unsigned N = Elements.count();
+      for (auto *VP2 : OldPacks)
+        if ((Elements |= VP2->getElements()).count() > N) {
+          Feasible = false;
+          break;
+        }
+    }
     if (!Feasible)
       continue;
 
@@ -782,12 +786,24 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   auto *BB = P.getBasicBlock();
   for (auto &I : *BB)
     if (auto *SI = dyn_cast<StoreInst>(&I))
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+      for (unsigned VL : {2, 4, 8, 16, 32})
         for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
           Seeds.push_back(VP);
 
   auto *VPCtx = Pkr->getContext(P.getBasicBlock());
   Heuristic H(Pkr, VPCtx, CandidateSet);
+
+  auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs,
+                     bool Override) -> bool {
+    for (auto *OP : OPs)
+      runBottomUpFromOperand(OP, P2, VPCtx, H, Override);
+    if (P2.cost() < P.cost()) {
+      P = P2;
+      return true;
+    }
+    return false;
+  };
+
   bool Optimized;
   do {
     errs() << "COST: " << P.cost() << '\n';
@@ -798,38 +814,35 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
           P2.remove(VP2);
       P2.add(VP);
-      runBottomUpFromOperand(VP->getOperandPacks().front(), P2, VPCtx, H);
-      if (P2.cost() < P.cost()) {
-        P = P2;
-        Optimized = true;
-      }
-    }
-
-    if (Optimized)
-      continue;
-
-    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
-      const OperandPack *OP = I->first;
-      Plan P2 = P;
-      runBottomUpFromOperand(OP, P2, VPCtx, H);
-      if (P2.cost() < P.cost()) {
-        P = P2;
+      auto *OP = VP->getOperandPacks().front();
+      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false)) {
         Optimized = true;
         break;
       }
-
-      P2 = P;
-      auto *Odd = VPCtx->odd(VPCtx->dedup(OP));
-      auto *Even = VPCtx->even(VPCtx->dedup(OP));
-      runBottomUpFromOperand(Odd, P2, VPCtx, H);
-      runBottomUpFromOperand(Even, P2, VPCtx, H);
-      if (P2.cost() < P.cost()) {
-        P = P2;
+    }
+    if (Optimized)
+      continue;
+    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+      const OperandPack *OP = I->first;
+      Plan P2 = P;
+      auto *Odd = VPCtx->odd(OP);
+      auto *Even = VPCtx->even(OP);
+      if (Improve(P2, {OP}, false) || Improve(P2, {OP}, true) ||
+          Improve(P2, {Even, Odd}, false) || Improve(P2, {Even, Odd}, true)) {
         Optimized = true;
         break;
       }
     }
   } while (Optimized);
+
+#ifndef NDEBUG
+  Plan P2(Pkr, BB);
+  for (auto *VP : P)
+    P2.add(VP);
+  if (P2.cost() != P.cost())
+    errs() << "!!! " << P2.cost() << ", " << P.cost() << '\n';
+  assert(P2.cost() == P.cost());
+#endif
 
   for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
     const OperandPack *OP = I->first;
@@ -841,13 +854,14 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         break;
       }
     }
-    if (!Foo) continue;
-    errs() << "op without producer: "<< *OP << "\n\t[";
+    if (!Foo)
+      continue;
+    errs() << "op without producer: " << *OP << "\n\t[";
     for (auto *V : *OP) {
       auto *I = dyn_cast_or_null<Instruction>(V);
       if (I && !P.getProducer(I)) {
         errs() << " 0";
-      } else 
+      } else
         errs() << " 1";
     }
     errs() << "]\n";

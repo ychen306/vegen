@@ -22,23 +22,33 @@ class Plan {
   float Cost;
 
   llvm::DenseSet<const VectorPack *> Packs;
+  struct VectorPackSlot { const VectorPack *VP; unsigned i; };
   // mapping inst -> the pack that contains the inst
-  llvm::DenseMap<llvm::Instruction *, const VectorPack *> InstToPackMap;
+  llvm::DenseMap<llvm::Instruction *, VectorPackSlot> InstToPackMap;
   using OperandPackSet = llvm::SmallPtrSet<const OperandPack *, 2>;
   // mapping inst -> operands that contains the instruction
   llvm::DenseMap<llvm::Instruction *, OperandPackSet> InstToOperandsMap;
   llvm::DenseMap<llvm::ArrayRef<llvm::Value *>, const VectorPack *>
       ValuesToPackMap;
-  llvm::DenseMap<llvm::Instruction *, int> NumUses;
-  llvm::DenseMap<const OperandPack *, int> NumOperandUses;
+  // Num scalar + vector uses
+  llvm::DenseMap<const OperandPack *, int> NumVectorUses;
+  llvm::DenseMap<llvm::Instruction *, int> NumScalarUses;
   llvm::DenseMap<const OperandPack *, float> ShuffleCosts;
+  llvm::DenseMap<llvm::Instruction *, float> ExtractCosts;
   
   llvm::Instruction *asInternalInst(llvm::Value *) const;
-  bool hasScalarUser(llvm::Instruction *) const;
   float computeShuffleCost(const OperandPack *) const;
 
-  void decUses(llvm::Instruction *);
-  void incUses(llvm::Instruction *);
+  bool isAlive(llvm::Instruction *I) const;
+  void kill(llvm::Instruction *);
+  void revive(llvm::Instruction *);
+
+  void incVectorUses(const OperandPack *);
+  void decVectorUses(const OperandPack *);
+
+  void decScalarUses(llvm::Instruction *);
+  void incScalarUses(llvm::Instruction *);
+
   void updateCostOfVectorUses(llvm::ArrayRef<llvm::Value *>);
 
 public:
@@ -52,16 +62,20 @@ public:
   PackIterator begin() const { return Packs.begin(); }
   PackIterator end() const { return Packs.end(); }
 
-  using OperandIterator = decltype(NumOperandUses)::const_iterator;
-  OperandIterator operands_begin() const { return NumOperandUses.begin(); }
-  OperandIterator operands_end() const { return NumOperandUses.end(); }
+  using OperandIterator = decltype(NumVectorUses)::const_iterator;
+  OperandIterator operands_begin() const { return NumVectorUses.begin(); }
+  OperandIterator operands_end() const { return NumVectorUses.end(); }
 
   llvm::BasicBlock *getBasicBlock() const { return BB; }
   void add(const VectorPack *);
   void remove(const VectorPack *);
   float cost() const { return Cost; }
+  bool verifyCost() const;
   const VectorPack *getProducer(llvm::Instruction *I) const {
-    return InstToPackMap.lookup(I);
+    auto It = InstToPackMap.find(I);
+    if (It != InstToPackMap.end())
+      return It->second.VP;
+    return nullptr;
   }
 };
 
