@@ -7,14 +7,6 @@
 
 using namespace llvm;
 
-static const OperandPack *toOperandPack(const VectorPackContext *VPCtx,
-                                        ArrayRef<Value *> Values) {
-  OperandPack OP;
-  for (auto *V : Values)
-    OP.push_back(V);
-  return VPCtx->getCanonicalOperandPack(OP);
-}
-
 Plan::Plan(Packer *Pkr, BasicBlock *BB) : Pkr(Pkr), BB(BB), Cost(0) {
   for (auto &I : *BB) {
     Cost += Pkr->getScalarCost(&I);
