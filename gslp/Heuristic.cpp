@@ -50,23 +50,6 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
   }
 
-#if 0
-  auto OddInfo = Pkr->getProducerInfo(VPCtx, VPCtx->even(OP));
-  auto EvenInfo = Pkr->getProducerInfo(VPCtx, VPCtx->odd(OP));
-  if (!OddInfo.Elements.anyCommon(EvenInfo.Elements)) {
-    Solution EvenSol;
-    for (auto *VP : EvenInfo.getProducers())
-      EvenSol.update(Solution(getCost(VP), VP));
-    Solution OddSol;
-    for (auto *VP : OddInfo.getProducers())
-      OddSol.update(Solution(getCost(VP), VP));
-    auto Packs = EvenSol.Packs;
-    Packs.append(OddSol.Packs);
-    Sol.update(Solution(EvenSol.Cost + OddSol.Cost + C_Shuffle, Packs));
-    //Cost = std::min(EvenCost + OddCost + C_Shuffle, Cost);
-  }
-#endif
-
   if (!Candidates)
     return Solutions[OP] = Sol;
 
