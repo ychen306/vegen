@@ -92,17 +92,3 @@ float Heuristic::getCost(Value *V) {
     Cost += getCost(V);
   return ScalarCosts[I] = Cost;
 }
-//
-//// FIXME: need to estimate cost of stores, which are not explicitly live-outs
-//float Heuristic::getCost(const Frontier *Frt) {
-//  NamedRegionTimer Timer("heuristic", "heuristic", "pack selection", "", false);
-//  float Cost = 0;
-//  for (const OperandPack *OP : Frt->getUnresolvedPacks())
-//    Cost += getCost(OP);
-//  for (Value *V : Frt->getUnresolvedScalars())
-//    Cost += getCost(V);
-//  for (Value *V : VPCtx->iter_values(Frt->getFreeInsts()))
-//    if (auto *SI = dyn_cast<StoreInst>(V))
-//      Cost += getCost(SI);
-//  return Cost;
-//}
