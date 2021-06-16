@@ -313,6 +313,18 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   return OS;
 }
 
+raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
+  OS << "[\n";
+  for (auto *V : OP)
+    if (V) {
+      errs() << *V << "\n";
+    } else
+      errs() << "undef\n";
+  OS << "\n]";
+  return OS;
+}
+
+
 FixedVectorType *getVectorType(const OperandPack &OpndPack) {
   if (OpndPack.Ty)
     return OpndPack.Ty;

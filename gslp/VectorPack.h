@@ -171,6 +171,7 @@ public:
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 llvm::FixedVectorType *getVectorType(const OperandPack &OpndPack);
 
