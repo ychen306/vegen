@@ -86,7 +86,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   std::vector<const VectorPack *> Packs;
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8/*, 16 , 32, 64*/})
+      for (unsigned VL : {2, 4, 8, 16 , 32/*, 64*/})
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           Packs.push_back(VP);
     }
