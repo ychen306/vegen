@@ -177,7 +177,15 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
           P2.remove(VP2);
       P2.add(VP);
       auto *OP = VP->getOperandPacks().front();
-      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false)) {
+      auto *Odd = VPCtx->odd(OP);
+      auto *Even = VPCtx->even(OP);
+      auto *OO = VPCtx->odd(Odd);
+      auto *OE = VPCtx->even(Odd);
+      auto *EO = VPCtx->odd(Even);
+      auto *EE = VPCtx->even(Even);
+      if (Improve(P2, {OP}, false) || Improve(P2, {OP}, true) ||
+          Improve(P2, {Even, Odd}, false) || Improve(P2, {Even, Odd}, true) ||
+          Improve(P2, {OO, OE, EO, EE}, false) || Improve(P2, {OO, OE, EO, EE}, true)) {
         Optimized = true;
         break;
       }
@@ -189,11 +197,43 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       Plan P2 = P;
       auto *Odd = VPCtx->odd(OP);
       auto *Even = VPCtx->even(OP);
+      auto *OO = VPCtx->odd(Odd);
+      auto *OE = VPCtx->even(Odd);
+      auto *EO = VPCtx->odd(Even);
+      auto *EE = VPCtx->even(Even);
       if (Improve(P2, {OP}, false) || Improve(P2, {OP}, true) ||
-          Improve(P2, {Even, Odd}, false) || Improve(P2, {Even, Odd}, true)) {
+          Improve(P2, {Even, Odd}, false) || Improve(P2, {Even, Odd}, true) ||
+          Improve(P2, {OO, OE, EO, EE}, false) || Improve(P2, {OO, OE, EO, EE}, true)) {
         Optimized = true;
         break;
       }
+    }
+    if (Optimized)
+      continue;
+    for (auto *VP : P) {
+      for (auto *VP2 : P) {
+        if (VP == VP2 ||
+            VP2->getDepended().anyCommon(VP->getElements()) ||
+            VP->getDepended().anyCommon(VP2->getElements()))
+          continue;
+        OperandPack Concat;
+        for (auto *V : VP->getOrderedValues())
+          Concat.push_back(V);
+        for (auto *V : VP2->getOrderedValues())
+          Concat.push_back(V);
+        auto *OP = VPCtx->getCanonicalOperandPack(Concat);
+        auto OPI = Pkr->getProducerInfo(VPCtx, OP);
+        if (!OPI.Feasible)
+          continue;
+        Plan P2 = P;
+        P2.remove(VP);
+        P2.remove(VP2);
+        if (Improve(P2, {OP}, false) || Improve(P2, {OP}, true)) {
+          Optimized = true;
+          break;
+        }
+      }
+      if (Optimized) break;
     }
   } while (Optimized);
 
