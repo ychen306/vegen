@@ -268,7 +268,6 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   if (P2.cost() != P.cost())
     errs() << "!!! " << P2.cost() << ", " << P.cost() << '\n';
   assert(P2.cost() == P.cost());
-#endif
 
   for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
     const OperandPack *OP = I->first;
@@ -292,6 +291,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     }
     errs() << "]\n";
   }
+#endif
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
