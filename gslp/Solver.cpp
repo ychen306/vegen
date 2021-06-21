@@ -82,7 +82,6 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto *VPCtx = Pkr->getContext(BB);
   auto &LayoutInfo = Pkr->getStoreInfo(BB);
 
-
   std::vector<const VectorPack *> Packs;
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
@@ -143,12 +142,43 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
   }
 }
 
+SmallVector<const OperandPack *>
+deinterleave(VectorPackContext *VPCtx, const OperandPack *OP, unsigned Stride) {
+  SmallVector<const OperandPack *> Results;
+  for (unsigned i = 0; i < Stride; i++) {
+    OperandPack OP2;
+    for (unsigned j = i; j < OP->size(); j += Stride)
+      OP2.push_back((*OP)[j]);
+    Results.push_back(VPCtx->getCanonicalOperandPack(OP2));
+  }
+  return Results;
+}
+
+const OperandPack *concat(VectorPackContext *VPCtx, ArrayRef<Value *> A, ArrayRef<Value *> B) {
+  OperandPack Concat;
+  for (auto *V : A)
+    Concat.push_back(V);
+  for (auto *V : B)
+    Concat.push_back(V);
+  return VPCtx->getCanonicalOperandPack(Concat);
+}
+
+const OperandPack *interleave(VectorPackContext *VPCtx, ArrayRef<Value *> A, ArrayRef<Value *> B) {
+  OperandPack Interleaved;
+  assert(A.size() == B.size());
+  for (unsigned i = 0; i < A.size(); i++) {
+    Interleaved.push_back(A[i]);
+    Interleaved.push_back(B[i]);
+  }
+  return VPCtx->getCanonicalOperandPack(Interleaved);
+}
+
 void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   std::vector<const VectorPack *> Seeds;
   auto *BB = P.getBasicBlock();
   for (auto &I : *BB)
     if (auto *SI = dyn_cast<StoreInst>(&I))
-      for (unsigned VL : {2, 4, 8, 16, 32})
+      for (unsigned VL : {2, 4, 8, 16, 32, 64})
         for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
           Seeds.push_back(VP);
 
@@ -177,15 +207,13 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
           P2.remove(VP2);
       P2.add(VP);
       auto *OP = VP->getOperandPacks().front();
-      auto *Odd = VPCtx->odd(OP);
-      auto *Even = VPCtx->even(OP);
-      auto *OO = VPCtx->odd(Odd);
-      auto *OE = VPCtx->even(Odd);
-      auto *EO = VPCtx->odd(Even);
-      auto *EE = VPCtx->even(Even);
-      if (Improve(P2, {OP}, false) || Improve(P2, {OP}, true) ||
-          Improve(P2, {Even, Odd}, false) || Improve(P2, {Even, Odd}, true) ||
-          Improve(P2, {OO, OE, EO, EE}, false) || Improve(P2, {OO, OE, EO, EE}, true)) {
+      auto OP_2 = deinterleave(VPCtx, OP, 2);
+      auto OP_4 = deinterleave(VPCtx, OP, 4);
+      auto OP_8 = deinterleave(VPCtx, OP, 8);
+      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) ||
+          Improve(P2, OP_2, true) || Improve(P2, OP_2, false) ||
+          Improve(P2, OP_4, true) || Improve(P2, OP_4, false) ||
+          Improve(P2, OP_8, true) || Improve(P2, OP_8, false)) {
         Optimized = true;
         break;
       }
@@ -194,16 +222,14 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       continue;
     for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
       const OperandPack *OP = I->first;
+      auto OP_2 = deinterleave(VPCtx, OP, 2);
+      auto OP_4 = deinterleave(VPCtx, OP, 4);
+      auto OP_8 = deinterleave(VPCtx, OP, 8);
       Plan P2 = P;
-      auto *Odd = VPCtx->odd(OP);
-      auto *Even = VPCtx->even(OP);
-      auto *OO = VPCtx->odd(Odd);
-      auto *OE = VPCtx->even(Odd);
-      auto *EO = VPCtx->odd(Even);
-      auto *EE = VPCtx->even(Even);
-      if (Improve(P2, {OP}, false) || Improve(P2, {OP}, true) ||
-          Improve(P2, {Even, Odd}, false) || Improve(P2, {Even, Odd}, true) ||
-          Improve(P2, {OO, OE, EO, EE}, false) || Improve(P2, {OO, OE, EO, EE}, true)) {
+      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) ||
+          Improve(P2, OP_2, true) || Improve(P2, OP_2, false) ||
+          Improve(P2, OP_4, true) || Improve(P2, OP_4, false) ||
+          Improve(P2, OP_8, true) || Improve(P2, OP_8, false)) {
         Optimized = true;
         break;
       }
@@ -212,28 +238,23 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       continue;
     for (auto *VP : P) {
       for (auto *VP2 : P) {
-        if (VP == VP2 ||
-            VP2->getDepended().anyCommon(VP->getElements()) ||
+        if (VP == VP2 || VP2->getDepended().anyCommon(VP->getElements()) ||
+            VP->numElements() != VP2->numElements() ||
             VP->getDepended().anyCommon(VP2->getElements()))
           continue;
-        OperandPack Concat;
-        for (auto *V : VP->getOrderedValues())
-          Concat.push_back(V);
-        for (auto *V : VP2->getOrderedValues())
-          Concat.push_back(V);
-        auto *OP = VPCtx->getCanonicalOperandPack(Concat);
-        auto OPI = Pkr->getProducerInfo(VPCtx, OP);
-        if (!OPI.Feasible)
-          continue;
+        auto *Concat = concat(VPCtx, VP->getOrderedValues(), VP2->getOrderedValues());
+        auto *Interleaved = interleave(VPCtx, VP->getOrderedValues(), VP2->getOrderedValues());
         Plan P2 = P;
         P2.remove(VP);
         P2.remove(VP2);
-        if (Improve(P2, {OP}, false) || Improve(P2, {OP}, true)) {
+        if (Improve(P2, {Interleaved}, false) || Improve(P2, {Interleaved}, true) ||
+            Improve(P2, {Concat}, false) || Improve(P2, {Concat}, true)) {
           Optimized = true;
           break;
         }
       }
-      if (Optimized) break;
+      if (Optimized)
+        break;
     }
   } while (Optimized);
 
