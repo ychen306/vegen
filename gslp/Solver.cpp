@@ -154,16 +154,16 @@ deinterleave(VectorPackContext *VPCtx, const OperandPack *OP, unsigned Stride) {
   return Results;
 }
 
-const OperandPack *concat(VectorPackContext *VPCtx, ArrayRef<Value *> A, ArrayRef<Value *> B) {
+static const OperandPack *concat(VectorPackContext *VPCtx, ArrayRef<Value *> A,
+                                 ArrayRef<Value *> B) {
   OperandPack Concat;
-  for (auto *V : A)
-    Concat.push_back(V);
-  for (auto *V : B)
-    Concat.push_back(V);
+  Concat.append(A.begin(), A.end());
+  Concat.append(B.begin(), B.end());
   return VPCtx->getCanonicalOperandPack(Concat);
 }
 
-const OperandPack *interleave(VectorPackContext *VPCtx, ArrayRef<Value *> A, ArrayRef<Value *> B) {
+static const OperandPack *interleave(VectorPackContext *VPCtx,
+                                     ArrayRef<Value *> A, ArrayRef<Value *> B) {
   OperandPack Interleaved;
   assert(A.size() == B.size());
   for (unsigned i = 0; i < A.size(); i++) {
@@ -178,7 +178,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   auto *BB = P.getBasicBlock();
   for (auto &I : *BB)
     if (auto *SI = dyn_cast<StoreInst>(&I))
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+      for (unsigned VL : {2, 4, 8, 16, 32})
         for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
           Seeds.push_back(VP);
 
@@ -240,8 +240,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       for (auto *VP2 : P) {
         auto Vals1 = VP->getOrderedValues();
         auto Vals2 = VP2->getOrderedValues();
-        if (VP == VP2 ||
-            Vals1.size() != Vals2.size() ||
+        if (VP == VP2 || Vals1.size() != Vals2.size() ||
             VP2->getDepended().anyCommon(VP->getElements()) ||
             VP->getDepended().anyCommon(VP2->getElements()))
           continue;
@@ -250,8 +249,9 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         Plan P2 = P;
         P2.remove(VP);
         P2.remove(VP2);
-        if (Improve(P2, {Interleaved}, false) || Improve(P2, {Interleaved}, true) ||
-            Improve(P2, {Concat}, false) || Improve(P2, {Concat}, true)) {
+        if (Improve(P2, {Interleaved}, false) ||
+            Improve(P2, {Interleaved}, true) || Improve(P2, {Concat}, false) ||
+            Improve(P2, {Concat}, true)) {
           Optimized = true;
           break;
         }
