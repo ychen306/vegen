@@ -238,12 +238,15 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       continue;
     for (auto *VP : P) {
       for (auto *VP2 : P) {
-        if (VP == VP2 || VP2->getDepended().anyCommon(VP->getElements()) ||
-            VP->numElements() != VP2->numElements() ||
+        auto Vals1 = VP->getOrderedValues();
+        auto Vals2 = VP2->getOrderedValues();
+        if (VP == VP2 ||
+            Vals1.size() != Vals2.size() ||
+            VP2->getDepended().anyCommon(VP->getElements()) ||
             VP->getDepended().anyCommon(VP2->getElements()))
           continue;
-        auto *Concat = concat(VPCtx, VP->getOrderedValues(), VP2->getOrderedValues());
-        auto *Interleaved = interleave(VPCtx, VP->getOrderedValues(), VP2->getOrderedValues());
+        auto *Concat = concat(VPCtx, Vals1, Vals2);
+        auto *Interleaved = interleave(VPCtx, Vals1, Vals2);
         Plan P2 = P;
         P2.remove(VP);
         P2.remove(VP2);
