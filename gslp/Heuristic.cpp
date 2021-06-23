@@ -18,6 +18,8 @@ float Heuristic::getCost(const VectorPack *VP) {
   return Cost;
 }
 
+SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx, const OperandPack *OP, unsigned Stride);
+
 Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   auto It = Solutions.find(OP);
   if (It != Solutions.end())
@@ -48,6 +50,21 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   auto OPI = Pkr->getProducerInfo(VPCtx, Deduped);
   for (auto *VP : OPI.getProducers()) {
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
+  }
+
+  // try to deinterleave the vector and produce it that way
+  for (unsigned Stride : {2, 4, 8}) {
+    if (Deduped->size() % Stride)
+      continue;
+    SmallVector<const VectorPack *> Packs;
+    auto OPs = deinterleave(VPCtx, Deduped, Stride);
+    float Cost = C_Shuffle * OPs.size();
+    for (auto OP2 : OPs) {
+      auto Sol2 = solve(OP2);
+      Packs.append(Sol2.Packs);
+      Cost += Sol2.Cost;
+    }
+    Sol.update(Solution(Cost, Packs));
   }
 
   if (!Candidates)
