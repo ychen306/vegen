@@ -207,15 +207,13 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
           P2.remove(VP2);
       P2.add(VP);
       auto *OP = VP->getOperandPacks().front();
-      //auto OP_2 = deinterleave(VPCtx, OP, 2);
-      //auto OP_4 = deinterleave(VPCtx, OP, 4);
-      //auto OP_8 = deinterleave(VPCtx, OP, 8);
-      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) 
-          //||
-          //Improve(P2, OP_2, true) || Improve(P2, OP_2, false) ||
-          //Improve(P2, OP_4, true) || Improve(P2, OP_4, false) ||
-          //Improve(P2, OP_8, true) || Improve(P2, OP_8, false)
-          ) {
+      auto OP_2 = deinterleave(VPCtx, OP, 2);
+      auto OP_4 = deinterleave(VPCtx, OP, 4);
+      auto OP_8 = deinterleave(VPCtx, OP, 8);
+      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) ||
+          Improve(P2, OP_2, true) || Improve(P2, OP_2, false) ||
+          Improve(P2, OP_4, true) || Improve(P2, OP_4, false) ||
+          Improve(P2, OP_8, true) || Improve(P2, OP_8, false)) {
         Optimized = true;
         break;
       }
@@ -228,10 +226,10 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       auto OP_4 = deinterleave(VPCtx, OP, 4);
       auto OP_8 = deinterleave(VPCtx, OP, 8);
       Plan P2 = P;
-      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) /*||
+      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) ||
           Improve(P2, OP_2, true) || Improve(P2, OP_2, false) ||
           Improve(P2, OP_4, true) || Improve(P2, OP_4, false) ||
-          Improve(P2, OP_8, true) || Improve(P2, OP_8, false)*/) {
+          Improve(P2, OP_8, true) || Improve(P2, OP_8, false)) {
         Optimized = true;
         break;
       }
