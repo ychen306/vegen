@@ -146,9 +146,8 @@ void Plan::revive(Instruction *I) {
   // reviving a dead instruction as scalar
   Cost += Pkr->getScalarCost(I);
   for (Value *O : I->operands())
-    if (auto *I2 = asInternalInst(O)) {
+    if (auto *I2 = asInternalInst(O))
       incScalarUses(I2);
-    }
 }
 
 void Plan::kill(Instruction *I) {
