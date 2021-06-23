@@ -20,6 +20,18 @@ float Heuristic::getCost(const VectorPack *VP) {
 
 SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx, const OperandPack *OP, unsigned Stride);
 
+// interpret OP as an N x M matrix and transpose it
+const OperandPack *transpose(const VectorPackContext *VPCtx, const OperandPack *OP, unsigned N) {
+  if (OP->size() % N)
+    return nullptr;
+  unsigned M = OP->size() / N;
+  OperandPack T;
+  for (unsigned i = 0; i < M; i++)
+    for (unsigned j = 0; j < N; j++)
+      T.push_back((*OP)[j * M + i]);
+  return VPCtx->getCanonicalOperandPack(T);
+}
+
 Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   auto It = Solutions.find(OP);
   if (It != Solutions.end())
@@ -51,6 +63,13 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   for (auto *VP : OPI.getProducers()) {
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
   }
+
+  for (unsigned N : {2,4,8})
+    if (auto *T = transpose(VPCtx, OP, N)) {
+      auto OPI = Pkr->getProducerInfo(VPCtx, T);
+      for (auto *VP : OPI.getProducers())
+        Sol.update(Solution(getCost(VP) + C_Perm, VP));
+    }
 
   // try to deinterleave the vector and produce it that way
   for (unsigned Stride : {2, 4, 8}) {
