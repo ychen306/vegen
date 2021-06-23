@@ -173,6 +173,32 @@ static const OperandPack *interleave(VectorPackContext *VPCtx,
   return VPCtx->getCanonicalOperandPack(Interleaved);
 }
 
+// decompose a store pack to packs that fit in native bitwidth
+static SmallVector<const VectorPack *> decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
+  assert(VP->isStore());
+  auto *VPCtx = VP->getContext();
+  SmallVector<const VectorPack *> Decomposed;
+  ArrayRef<Value *> Values = VP->getOrderedValues();
+  unsigned AS = cast<StoreInst>(Values.front())->getPointerAddressSpace();
+  auto *TTI = Pkr->getTTI();
+  unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS);
+  auto &LDA = Pkr->getLDA(VPCtx->getBasicBlock());
+  for (unsigned i = 0, N = Values.size(); i < N; i += VL) {
+    SmallVector<StoreInst *> Stores;
+    BitVector Elements(VPCtx->getNumValues());
+    BitVector Depended(VPCtx->getNumValues());
+    for (unsigned j = i; j < N; j++) {
+      auto *SI = cast<StoreInst>(Values[j]);
+      Stores.push_back(SI);
+      Elements.set(VPCtx->getScalarId(SI));
+      Depended |= LDA.getDepended(SI);
+    }
+    Decomposed.push_back(
+        VPCtx->createStorePack(Stores, Elements, Depended, TTI));
+  }
+  return Decomposed;
+}
+
 void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   std::vector<const VectorPack *> Seeds;
   auto *BB = P.getBasicBlock();
@@ -196,6 +222,10 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     return false;
   };
 
+  DenseMap<const VectorPack *, SmallVector<const VectorPack *>> DecomposedStores;
+  for (auto *VP : Seeds)
+    DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
+
   bool Optimized;
   do {
     errs() << "COST: " << P.cost() << '\n';
@@ -205,7 +235,8 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       for (auto *V : VP->elementValues())
         if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
           P2.remove(VP2);
-      P2.add(VP);
+      for (auto *VP2 : DecomposedStores[VP])
+        P2.add(VP2);
       auto *OP = VP->getOperandPacks().front();
       auto OP_2 = deinterleave(VPCtx, OP, 2);
       auto OP_4 = deinterleave(VPCtx, OP, 4);
