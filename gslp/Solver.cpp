@@ -132,13 +132,21 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
     if (!Feasible)
       continue;
 
+    assert(P.verifyCost() && "cost broken before removing\n");
     for (auto *VP2 : OldPacks)
       P.remove(VP2);
+    if (!P.verifyCost()) {
+      errs() <<" cost broken after removing: \n";
+    for (auto *VP2 : OldPacks)
+      errs() << *VP2 << '\n';
+    }
+    assert(P.verifyCost() && "cost broken after removing\n");
     for (const VectorPack *VP : NewPacks) {
       P.add(VP);
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.insert(Worklist.end(), Operands.begin(), Operands.end());
     }
+    assert(P.verifyCost() && "cost broken after adding\n");
   }
 }
 
@@ -173,21 +181,37 @@ static const OperandPack *interleave(VectorPackContext *VPCtx,
   return VPCtx->getCanonicalOperandPack(Interleaved);
 }
 
+static unsigned getBitWidth(Value *V) {
+  auto *Ty = V->getType();
+  if (Ty->isIntegerTy())
+    return Ty->getIntegerBitWidth();
+  if (Ty->isFloatTy())
+    return 32;
+  if (Ty->isDoubleTy())
+    return 64;
+  llvm_unreachable("unsupported value type");
+}
+
 // decompose a store pack to packs that fit in native bitwidth
 static SmallVector<const VectorPack *> decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   assert(VP->isStore());
   auto *VPCtx = VP->getContext();
-  SmallVector<const VectorPack *> Decomposed;
   ArrayRef<Value *> Values = VP->getOrderedValues();
-  unsigned AS = cast<StoreInst>(Values.front())->getPointerAddressSpace();
+  auto *SI = cast<StoreInst>(Values.front());
+  unsigned AS = SI->getPointerAddressSpace();
   auto *TTI = Pkr->getTTI();
-  unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS);
+  unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(SI->getValueOperand());
   auto &LDA = Pkr->getLDA(VPCtx->getBasicBlock());
+  if (Values.size() <= VL)
+    return {VP};
+  errs() << "DECOMPOSING " << *VP << " INTO : <<<<<<<<<<<<\n";
+  errs() << "?????????? = " << VL << ", " << Values.size() << '\n';
+  SmallVector<const VectorPack *> Decomposed;
   for (unsigned i = 0, N = Values.size(); i < N; i += VL) {
     SmallVector<StoreInst *> Stores;
     BitVector Elements(VPCtx->getNumValues());
     BitVector Depended(VPCtx->getNumValues());
-    for (unsigned j = i; j < N; j++) {
+    for (unsigned j = i; j < std::min(i+VL, N); j++) {
       auto *SI = cast<StoreInst>(Values[j]);
       Stores.push_back(SI);
       Elements.set(VPCtx->getScalarId(SI));
@@ -195,7 +219,9 @@ static SmallVector<const VectorPack *> decomposeStorePacks(Packer *Pkr, const Ve
     }
     Decomposed.push_back(
         VPCtx->createStorePack(Stores, Elements, Depended, TTI));
+    errs() << "\t" << *Decomposed.back();
   }
+  errs() << ">>>>>>>>>>>\n";
   return Decomposed;
 }
 
@@ -204,7 +230,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   auto *BB = P.getBasicBlock();
   for (auto &I : *BB)
     if (auto *SI = dyn_cast<StoreInst>(&I))
-      for (unsigned VL : {2, 4, 8, 16, 32})
+      for (unsigned VL : {2, 4, 8, 16, 32, 64})
         for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
           Seeds.push_back(VP);
 
