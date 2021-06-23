@@ -93,6 +93,8 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   return Packs;
 }
 
+bool Print = false;
+
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
                             const VectorPackContext *VPCtx, Heuristic &H,
@@ -204,8 +206,6 @@ static SmallVector<const VectorPack *> decomposeStorePacks(Packer *Pkr, const Ve
   auto &LDA = Pkr->getLDA(VPCtx->getBasicBlock());
   if (Values.size() <= VL)
     return {VP};
-  errs() << "DECOMPOSING " << *VP << " INTO : <<<<<<<<<<<<\n";
-  errs() << "?????????? = " << VL << ", " << Values.size() << '\n';
   SmallVector<const VectorPack *> Decomposed;
   for (unsigned i = 0, N = Values.size(); i < N; i += VL) {
     SmallVector<StoreInst *> Stores;
@@ -221,7 +221,6 @@ static SmallVector<const VectorPack *> decomposeStorePacks(Packer *Pkr, const Ve
         VPCtx->createStorePack(Stores, Elements, Depended, TTI));
     errs() << "\t" << *Decomposed.back();
   }
-  errs() << ">>>>>>>>>>>\n";
   return Decomposed;
 }
 
@@ -253,8 +252,11 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
   bool Optimized;
+  int iters = 0;
   do {
     errs() << "COST: " << P.cost() << '\n';
+    //if (iters++ == 19)
+    //  Print = true;
     Optimized = false;
     for (auto *VP : Seeds) {
       Plan P2 = P;
@@ -263,6 +265,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
           P2.remove(VP2);
       for (auto *VP2 : DecomposedStores[VP])
         P2.add(VP2);
+      //P2.add(VP);
       auto *OP = VP->getOperandPacks().front();
       auto OP_2 = deinterleave(VPCtx, OP, 2);
       auto OP_4 = deinterleave(VPCtx, OP, 4);
