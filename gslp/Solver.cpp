@@ -93,12 +93,11 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   return Packs;
 }
 
-bool Print = false;
-
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
                             const VectorPackContext *VPCtx, Heuristic &H,
                             bool OverridePacked = false) {
+  Plan Best = P;
   std::vector<const OperandPack *> Worklist{OP};
   while (!Worklist.empty()) {
     assert(P.verifyCost());
@@ -134,22 +133,17 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
     if (!Feasible)
       continue;
 
-    assert(P.verifyCost() && "cost broken before removing\n");
     for (auto *VP2 : OldPacks)
       P.remove(VP2);
-    if (!P.verifyCost()) {
-      errs() <<" cost broken after removing: \n";
-    for (auto *VP2 : OldPacks)
-      errs() << *VP2 << '\n';
-    }
-    assert(P.verifyCost() && "cost broken after removing\n");
     for (const VectorPack *VP : NewPacks) {
       P.add(VP);
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.insert(Worklist.end(), Operands.begin(), Operands.end());
     }
-    assert(P.verifyCost() && "cost broken after adding\n");
+    if (P.cost() < Best.cost())
+      Best = P;
   }
+  P = Best;
 }
 
 SmallVector<const OperandPack *>
@@ -255,8 +249,6 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   int iters = 0;
   do {
     errs() << "COST: " << P.cost() << '\n';
-    //if (iters++ == 19)
-    //  Print = true;
     Optimized = false;
     for (auto *VP : Seeds) {
       Plan P2 = P;

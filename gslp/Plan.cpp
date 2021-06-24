@@ -14,8 +14,6 @@ Plan::Plan(Packer *Pkr, BasicBlock *BB) : Pkr(Pkr), BB(BB), Cost(0) {
   }
 }
 
-extern bool Print;
-
 Instruction *Plan::asInternalInst(Value *V) const {
   auto *I = dyn_cast_or_null<Instruction>(V);
   if (I && I->getParent() == BB)
@@ -26,8 +24,6 @@ Instruction *Plan::asInternalInst(Value *V) const {
 void Plan::incScalarUses(Instruction *I) {
   auto It = InstToPackMap.find(I);
   bool NeedToExtract = !NumScalarUses[I] && It != InstToPackMap.end();
-  if (Print)
-  errs() << "need to extract for " << *I << "?: " << NeedToExtract << '\n';
   if (!NumScalarUses[I] && It != InstToPackMap.end()) {
     assert(!ExtractCosts.count(I));
     const VectorPackSlot &Slot = It->second;
@@ -145,9 +141,6 @@ void Plan::decVectorUses(const OperandPack *OP) {
   // Deduct the shuffle cost because we don't need to shuffle anymore
   float ShuffleCost = ShuffleCosts.lookup(OP);
   ShuffleCosts.erase(OP);
-  if (Print) {
-    errs() << "deducting shuffle cost (" << ShuffleCost << ") for " << *OP << '\n';
-  }
   Cost -= ShuffleCost;
 }
 
@@ -267,10 +260,6 @@ void Plan::add(const VectorPack *VP) {
 
 // FIXME: update cost
 void Plan::remove(const VectorPack *VP) {
-  if (Print)
-    errs() << "!!!! removing " << *VP
-      << ", cost before removal: " << cost()
-      << '\n';
   assert(Packs.count(VP));
   Packs.erase(VP);
   Cost -= VP->getProducingCost();
@@ -292,8 +281,6 @@ void Plan::remove(const VectorPack *VP) {
     if (auto *I = dyn_cast_or_null<Instruction>(Values[i])) {
       // If there's someone using I, we have to now produce it as a scalar
       if (isAlive(I)) {
-        if (Print)
-          errs() << "??? reviving " << *I << '\n';
         revive(I);
         if (NumScalarUses.lookup(I)) {
           assert(ExtractCosts.count(I));
