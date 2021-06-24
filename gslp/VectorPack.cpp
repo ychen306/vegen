@@ -42,22 +42,22 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
 
     unsigned CurOffset = 0;
     unsigned Stride = InputValues[0].Slice.size();
-    auto &OpndPack = OperandPacks[i];
+    auto &OP = OperandPacks[i];
     for (const BoundInput &BV : InputValues) {
       while (CurOffset < BV.Slice.Lo) {
-        OpndPack.push_back(nullptr);
+        OP.push_back(nullptr);
         CurOffset += Stride;
       }
       assert(CurOffset == BV.Slice.Lo);
-      OpndPack.push_back(BV.V);
+      OP.push_back(BV.V);
       CurOffset += Stride;
     }
     unsigned InputSize = Sig.InputBitwidths[i];
     while (CurOffset < InputSize) {
-      OpndPack.push_back(nullptr);
+      OP.push_back(nullptr);
       CurOffset += Stride;
     }
-    assert(OpndPack.size() * Stride == InputSize);
+    assert(OP.size() * Stride == InputSize);
   }
 
   return OperandPacks;
@@ -70,11 +70,11 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForLoad() {
 
 std::vector<OperandPack> VectorPack::computeOperandPacksForStore() {
   std::vector<OperandPack> OperandPacks(1);
-  auto &OpndPack = OperandPacks[0];
+  auto &OP = OperandPacks[0];
   // Don't care about the pointers,
   // only the values being stored need to be packed first
   for (auto *S : Stores)
-    OpndPack.push_back(S->getValueOperand());
+    OP.push_back(S->getValueOperand());
   return OperandPacks;
 }
 
@@ -104,8 +104,7 @@ Value *VectorPack::emitVectorGeneral(ArrayRef<Value *> Operands,
                                      IntrinsicBuilder &Builder) const {
   auto *VecInst = Producer->emit(Operands, Builder);
   // Fix the output type
-  auto *VecType =
-      FixedVectorType::get(getScalarTy(Matches), Matches.size());
+  auto *VecType = FixedVectorType::get(getScalarTy(Matches), Matches.size());
   return Builder.CreateBitCast(VecInst, VecType);
 }
 
@@ -126,7 +125,8 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
   Value *VecPtr = Builder.CreateBitCast(ScalarPtr, VecTy->getPointerTo(AS));
 
   // Emit the load
-  auto *VecLoad = Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
+  auto *VecLoad =
+      Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
 
   std::vector<Value *> Values;
   for (auto *LI : Loads)
@@ -173,8 +173,7 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
   auto *FirstPHI = PHIs[0];
   unsigned NumIncomings = FirstPHI->getNumIncomingValues();
 
-  auto *VecTy =
-      FixedVectorType::get(FirstPHI->getType(), PHIs.size());
+  auto *VecTy = FixedVectorType::get(FirstPHI->getType(), PHIs.size());
   auto *VecPHI = Builder.CreatePHI(VecTy, NumIncomings);
 
   std::set<BasicBlock *> Visited;
@@ -239,19 +238,17 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     break;
   case Load: {
     auto *LI = Loads[0];
-    auto *VecTy =
-        FixedVectorType::get(LI->getType(), Loads.size());
-    Cost =
-        TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(),
-                             0, TTI::TCK_RecipThroughput, LI);
+    auto *VecTy = FixedVectorType::get(LI->getType(), Loads.size());
+    Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
+                                TTI::TCK_RecipThroughput, LI);
     break;
   }
   case Store: {
     auto *SI = Stores[0];
-    auto *VecTy = FixedVectorType::get(SI->getValueOperand()->getType(), Stores.size());
-    Cost =
-        TTI->getMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(),
-                             0, TTI::TCK_RecipThroughput, SI);
+    auto *VecTy =
+        FixedVectorType::get(SI->getValueOperand()->getType(), Stores.size());
+    Cost = TTI->getMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(), 0,
+                                TTI::TCK_RecipThroughput, SI);
     break;
   }
   case Phi:
@@ -324,19 +321,17 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   return OS;
 }
 
-
-FixedVectorType *getVectorType(const OperandPack &OpndPack) {
-  if (OpndPack.Ty)
-    return OpndPack.Ty;
+FixedVectorType *getVectorType(const OperandPack &OP) {
+  if (OP.Ty)
+    return OP.Ty;
   Type *ScalarTy = nullptr;
-  for (auto *V : OpndPack)
+  for (auto *V : OP)
     if (V) {
       ScalarTy = V->getType();
       break;
     }
   assert(ScalarTy && "Operand pack can't be all empty");
-  return OpndPack.Ty =
-             FixedVectorType::get(ScalarTy, OpndPack.size());
+  return OP.Ty = FixedVectorType::get(ScalarTy, OP.size());
 }
 
 FixedVectorType *getVectorType(const VectorPack &VP) {
@@ -345,8 +340,8 @@ FixedVectorType *getVectorType(const VectorPack &VP) {
   return FixedVectorType::get(FirstLane->getType(), NumLanes);
 }
 
-bool isConstantPack(const OperandPack &OpndPack) {
-  for (auto *V : OpndPack)
+bool isConstantPack(const OperandPack &OP) {
+  for (auto *V : OP)
     if (V && !isa<Constant>(V))
       return false;
   return true;

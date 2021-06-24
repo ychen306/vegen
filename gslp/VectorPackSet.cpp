@@ -8,10 +8,10 @@
 
 using namespace llvm;
 
-// Get the vector value representing `OpndPack'.
-// If `OpndPack` is not directly produced by another Pack,
+// Get the vector value representing `OP'.
+// If `OP` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
-Value *VectorPackSet::gatherOperandPack(const OperandPack &OpndPack,
+Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
                                         const ValueIndexTy &ValueIndex,
                                         const PackToValueTy &MaterializedPacks,
                                         IntrinsicBuilder &Builder) {
@@ -23,10 +23,10 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OpndPack,
   DenseMap<const VectorPack *, SmallVector<GatherEdge, 4>> SrcPacks;
   DenseMap<Value *, SmallVector<unsigned, 4>> SrcScalars;
 
-  // Figure out sources of the values in `OpndPack`
-  const unsigned NumValues = OpndPack.size();
+  // Figure out sources of the values in `OP`
+  const unsigned NumValues = OP.size();
   for (unsigned i = 0; i < NumValues; i++) {
-    auto *V = OpndPack[i];
+    auto *V = OP[i];
     // Null means don't care/undef
     if (!V)
       continue;
@@ -118,7 +118,7 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OpndPack,
       DefinedBits |= PG.DefinedBits;
     }
   } else {
-    auto *VecTy = getVectorType(OpndPack);
+    auto *VecTy = getVectorType(OP);
     Acc = UndefValue::get(VecTy);
   }
 
@@ -349,10 +349,10 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
       unsigned OperandId = 0;
-      for (auto *OpndPack : VP->getOperandPacks()) {
+      for (auto *OP : VP->getOperandPacks()) {
         VP->setOperandGatherPoint(OperandId, Builder);
-        Operands.push_back(gatherOperandPack(*OpndPack, ValueIndex,
-                                             MaterializedPacks, Builder));
+        Operands.push_back(
+            gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
         OperandId++;
       }
 
