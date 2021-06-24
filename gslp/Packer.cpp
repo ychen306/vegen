@@ -214,7 +214,7 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
 
   OPI.Elements = std::move(Elements);
 
-  if (!OPI.Feasible)
+  if (!OPI.Feasible || OPI.Elements.count() < 2)
     return OPI;
 
   if (AllLoads) {
@@ -231,7 +231,7 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
 
   for (auto *Inst : getInsts()) {
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
-    if (LaneOps.size() != NumLanes)
+    if (LaneOps.size() < NumLanes)
       continue;
 
     std::vector<const Operation::Match *> Lanes;
@@ -245,6 +245,8 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
     }
 
     if (Lanes.size() == NumLanes) {
+      while (Lanes.size() < LaneOps.size())
+        Lanes.push_back(nullptr);
       OPI.Producers.push_back(
           VPCtx->createVectorPack(Lanes, OPI.Elements, Depended, Inst, TTI));
     }

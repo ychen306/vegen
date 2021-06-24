@@ -208,7 +208,6 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-
   balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
@@ -221,21 +220,9 @@ bool GSLP::runOnFunction(Function &F) {
   auto *DL = &F.getParent()->getDataLayout();
 
   std::vector<InstBinding *> SupportedIntrinsics;
-  for (InstBinding &Inst : getInsts()) {
-    // if (Inst.getName().contains("hadd"))
-    //  continue;
-    if (Inst.getName().contains("hadd_ps"))
-      continue;
-    if (Inst.getName().contains("hsub_ps"))
-      continue;
-    //if (Inst.getName().contains("vmull_s"))
-    //  continue;
-    if (Inst.getName().contains("mla"))
-      continue;
-    if (isSupported(&Inst, F)) {
+  for (InstBinding &Inst : getInsts())
+    if (isSupported(&Inst, F))
       SupportedIntrinsics.push_back(&Inst);
-    }
-  }
   for (auto *Inst : VecBindingTable.getBindings())
     SupportedIntrinsics.push_back(Inst);
 
