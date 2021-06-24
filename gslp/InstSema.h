@@ -23,7 +23,7 @@ struct InputSlice {
   unsigned InputId;
   unsigned Lo, Hi;
 
-  unsigned size() { return Hi - Lo; }
+  unsigned size() const { return Hi - Lo; }
 
   bool operator<(const InputSlice &Other) const {
     return std::tie(InputId, Lo, Hi) <

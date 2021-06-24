@@ -35,7 +35,7 @@ void Plan::incScalarUses(Instruction *I) {
   }
   bool WasDead = !isAlive(I);
   ++NumScalarUses[I];
-  if (WasDead && isAlive(I))
+  if (WasDead && isAlive(I) && !getProducer(I))
     revive(I);
 }
 
@@ -145,6 +145,7 @@ void Plan::decVectorUses(const OperandPack *OP) {
 }
 
 void Plan::revive(Instruction *I) {
+  assert(!getProducer(I));
   // reviving a dead instruction as scalar
   Cost += Pkr->getScalarCost(I);
   for (Value *O : I->operands())
@@ -248,7 +249,6 @@ void Plan::add(const VectorPack *VP) {
         Cost += ExtractCost;
         ExtractCosts[I] = ExtractCost;
       }
-
       if (isAlive(I)) {
         Cost -= Pkr->getScalarCost(I);
         for (Value *O : I->operands())

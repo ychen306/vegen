@@ -25,6 +25,8 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
   // Figure out which input packs we need
   for (unsigned i = 0; i < NumInputs; i++) {
     std::vector<BoundInput> InputValues;
+    // Size of one element in this input vector
+    unsigned ElementSize = 0;
     // Find output lanes that uses input `i` and record those uses
     for (unsigned j = 0; j < NumLanes; j++) {
       ArrayRef<InputSlice> BoundSlices = LaneOps[j].getBoundSlices();
@@ -32,10 +34,12 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
         auto &BS = BoundSlices[k];
         if (BS.InputId != i)
           continue;
+        ElementSize = BS.size();
         InputValues.push_back(
             {BS, Matches[j] ? Matches[j]->Inputs[k] : nullptr});
       }
     }
+    assert(ElementSize != 0);
 
     // Sort the input values by their slice offset
     std::sort(InputValues.begin(), InputValues.end());
@@ -58,6 +62,13 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
       CurOffset += Stride;
     }
     assert(OP.size() * Stride == InputSize);
+
+    // Compute the type of don't care vector as special cases
+    if (!OP.front() && is_splat(OP)) {
+      auto *BB = VPCtx->getBasicBlock();
+      OP.Ty = FixedVectorType::get(
+          IntegerType::get(BB->getContext(), ElementSize), OP.size());
+    }
   }
 
   return OperandPacks;

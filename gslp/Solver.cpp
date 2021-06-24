@@ -93,6 +93,8 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   return Packs;
 }
 
+bool Print = false;
+
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
                             const VectorPackContext *VPCtx, Heuristic &H,
@@ -133,13 +135,17 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
     if (!Feasible)
       continue;
 
-    for (auto *VP2 : OldPacks)
+    assert(P.verifyCost() && "cost broken before removal");
+    for (auto *VP2 : OldPacks) {
       P.remove(VP2);
+    }
+    assert(P.verifyCost() && "cost broken after removal");
     for (const VectorPack *VP : NewPacks) {
       P.add(VP);
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.insert(Worklist.end(), Operands.begin(), Operands.end());
     }
+    assert(P.verifyCost() && "cost broken after addition");
     if (P.cost() < Best.cost())
       Best = P;
   }
@@ -257,6 +263,8 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
           P2.remove(VP2);
       for (auto *VP2 : DecomposedStores[VP])
         P2.add(VP2);
+      //if (++iters == 7 && BB->getParent()->getName().contains("sbc"))
+      //  Print = true;
       //P2.add(VP);
       auto *OP = VP->getOperandPacks().front();
       auto OP_2 = deinterleave(VPCtx, OP, 2);
@@ -285,6 +293,20 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         Optimized = true;
         break;
       }
+    }
+    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+      for (auto J = P.operands_begin(); J != E; ++J) {
+        const OperandPack *OP = I->first;
+        const OperandPack *OP2 = J->first;
+        auto *Concat = concat(VPCtx, *OP, *OP2);
+        Plan P2 = P;
+        if (Improve(P2, {Concat}, true)) {
+          Optimized = true;
+          break;
+        }
+      }
+      if (Optimized)
+        break;
     }
     if (Optimized)
       continue;
