@@ -97,8 +97,7 @@ bool Print = false;
 
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
-                            const VectorPackContext *VPCtx, Heuristic &H,
-                            bool OverridePacked = false) {
+                            const VectorPackContext *VPCtx, Heuristic &H) {
   Plan Best = P;
   std::vector<const OperandPack *> Worklist{OP};
   while (!Worklist.empty()) {
@@ -120,40 +119,22 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
           OldPacks.insert(VP2);
     }
 
-    bool Feasible = true;
-    if (!OverridePacked) {
-      // We only consider this solution if
-      // the values we are packing is a superset of the
-      // values packed in the original plan
-      unsigned N = Elements.count();
-      for (auto *VP2 : OldPacks)
-        if ((Elements |= VP2->getElements()).count() > N) {
-          Feasible = false;
-          break;
-        }
-    }
-    if (!Feasible)
-      continue;
-
-    assert(P.verifyCost() && "cost broken before removal");
-    for (auto *VP2 : OldPacks) {
+    for (auto *VP2 : OldPacks)
       P.remove(VP2);
-    }
-    assert(P.verifyCost() && "cost broken after removal");
     for (const VectorPack *VP : NewPacks) {
       P.add(VP);
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.insert(Worklist.end(), Operands.begin(), Operands.end());
     }
-    assert(P.verifyCost() && "cost broken after addition");
     if (P.cost() < Best.cost())
       Best = P;
   }
   P = Best;
 }
 
-SmallVector<const OperandPack *>
-deinterleave(const VectorPackContext *VPCtx, const OperandPack *OP, unsigned Stride) {
+SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx,
+                                              const OperandPack *OP,
+                                              unsigned Stride) {
   SmallVector<const OperandPack *> Results;
   for (unsigned i = 0; i < Stride; i++) {
     OperandPack OP2;
@@ -195,14 +176,16 @@ static unsigned getBitWidth(Value *V) {
 }
 
 // decompose a store pack to packs that fit in native bitwidth
-static SmallVector<const VectorPack *> decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
+static SmallVector<const VectorPack *>
+decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   assert(VP->isStore());
   auto *VPCtx = VP->getContext();
   ArrayRef<Value *> Values = VP->getOrderedValues();
   auto *SI = cast<StoreInst>(Values.front());
   unsigned AS = SI->getPointerAddressSpace();
   auto *TTI = Pkr->getTTI();
-  unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(SI->getValueOperand());
+  unsigned VL =
+      TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(SI->getValueOperand());
   auto &LDA = Pkr->getLDA(VPCtx->getBasicBlock());
   if (Values.size() <= VL)
     return {VP};
@@ -211,7 +194,7 @@ static SmallVector<const VectorPack *> decomposeStorePacks(Packer *Pkr, const Ve
     SmallVector<StoreInst *> Stores;
     BitVector Elements(VPCtx->getNumValues());
     BitVector Depended(VPCtx->getNumValues());
-    for (unsigned j = i; j < std::min(i+VL, N); j++) {
+    for (unsigned j = i; j < std::min(i + VL, N); j++) {
       auto *SI = cast<StoreInst>(Values[j]);
       Stores.push_back(SI);
       Elements.set(VPCtx->getScalarId(SI));
@@ -236,10 +219,9 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   auto *VPCtx = Pkr->getContext(P.getBasicBlock());
   Heuristic H(Pkr, VPCtx, CandidateSet);
 
-  auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs,
-                     bool Override) -> bool {
+  auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
     for (auto *OP : OPs)
-      runBottomUpFromOperand(OP, P2, VPCtx, H, Override);
+      runBottomUpFromOperand(OP, P2, VPCtx, H);
     if (P2.cost() < P.cost()) {
       P = P2;
       return true;
@@ -247,12 +229,12 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     return false;
   };
 
-  DenseMap<const VectorPack *, SmallVector<const VectorPack *>> DecomposedStores;
+  DenseMap<const VectorPack *, SmallVector<const VectorPack *>>
+      DecomposedStores;
   for (auto *VP : Seeds)
     DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
   bool Optimized;
-  int iters = 0;
   do {
     errs() << "COST: " << P.cost() << '\n';
     Optimized = false;
@@ -263,17 +245,10 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
           P2.remove(VP2);
       for (auto *VP2 : DecomposedStores[VP])
         P2.add(VP2);
-      //if (++iters == 7 && BB->getParent()->getName().contains("sbc"))
-      //  Print = true;
-      //P2.add(VP);
       auto *OP = VP->getOperandPacks().front();
-      auto OP_2 = deinterleave(VPCtx, OP, 2);
-      auto OP_4 = deinterleave(VPCtx, OP, 4);
-      auto OP_8 = deinterleave(VPCtx, OP, 8);
-      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) ||
-          Improve(P2, OP_2, true) || Improve(P2, OP_2, false) ||
-          Improve(P2, OP_4, true) || Improve(P2, OP_4, false) ||
-          Improve(P2, OP_8, true) || Improve(P2, OP_8, false)) {
+      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 8))) {
         Optimized = true;
         break;
       }
@@ -282,14 +257,10 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
       continue;
     for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
       const OperandPack *OP = I->first;
-      auto OP_2 = deinterleave(VPCtx, OP, 2);
-      auto OP_4 = deinterleave(VPCtx, OP, 4);
-      auto OP_8 = deinterleave(VPCtx, OP, 8);
       Plan P2 = P;
-      if (Improve(P2, {OP}, true) || Improve(P2, {OP}, false) ||
-          Improve(P2, OP_2, true) || Improve(P2, OP_2, false) ||
-          Improve(P2, OP_4, true) || Improve(P2, OP_4, false) ||
-          Improve(P2, OP_8, true) || Improve(P2, OP_8, false)) {
+      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 8))) {
         Optimized = true;
         break;
       }
@@ -300,7 +271,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         const OperandPack *OP2 = J->first;
         auto *Concat = concat(VPCtx, *OP, *OP2);
         Plan P2 = P;
-        if (Improve(P2, {Concat}, true)) {
+        if (Improve(P2, {Concat})) {
           Optimized = true;
           break;
         }
@@ -323,9 +294,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         Plan P2 = P;
         P2.remove(VP);
         P2.remove(VP2);
-        if (Improve(P2, {Interleaved}, false) ||
-            Improve(P2, {Interleaved}, true) || Improve(P2, {Concat}, false) ||
-            Improve(P2, {Concat}, true)) {
+        if (Improve(P2, {Interleaved}) || Improve(P2, {Concat})) {
           Optimized = true;
           break;
         }
