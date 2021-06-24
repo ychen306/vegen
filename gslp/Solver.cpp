@@ -133,21 +133,13 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
     if (!Feasible)
       continue;
 
-    assert(P.verifyCost() && "cost broken before removing\n");
     for (auto *VP2 : OldPacks)
       P.remove(VP2);
-    if (!P.verifyCost()) {
-      errs() <<" cost broken after removing: \n";
-    for (auto *VP2 : OldPacks)
-      errs() << *VP2 << '\n';
-    }
-    assert(P.verifyCost() && "cost broken after removing\n");
     for (const VectorPack *VP : NewPacks) {
       P.add(VP);
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.insert(Worklist.end(), Operands.begin(), Operands.end());
     }
-    assert(P.verifyCost() && "cost broken after adding\n");
     if (P.cost() < Best.cost())
       Best = P;
   }
