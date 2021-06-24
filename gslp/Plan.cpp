@@ -67,7 +67,7 @@ float Plan::computeShuffleCost(const OperandPack *OP) const {
         ShuffleCost +=
             TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
       }
-    } else if (!isa_and_nonnull<Constant>(V)) {
+    } else if (V && !isa<Constant>(V)) {
       // Not an internal instruction, insert!
       ShuffleCost +=
           TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, i);
