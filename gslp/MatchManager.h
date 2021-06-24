@@ -18,7 +18,7 @@ class MatchManager {
                            const Operation::Match &B);
 
 public:
-  MatchManager(llvm::ArrayRef<InstBinding *> Insts, llvm::BasicBlock &BB);
+  MatchManager(llvm::ArrayRef<const InstBinding *> Insts, llvm::BasicBlock &BB);
 
   llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const;
 

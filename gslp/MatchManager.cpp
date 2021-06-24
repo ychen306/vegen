@@ -16,7 +16,7 @@ void MatchManager::match(llvm::Value *V) {
   }
 }
 
-MatchManager::MatchManager(llvm::ArrayRef<InstBinding *> Insts,
+MatchManager::MatchManager(llvm::ArrayRef<const InstBinding *> Insts,
                            llvm::BasicBlock &BB) {
   for (auto &Inst : Insts)
     for (auto &LaneOp : Inst->getLaneOps())

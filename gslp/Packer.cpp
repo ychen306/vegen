@@ -28,7 +28,7 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
 
 } // end anonymous namespace
 
-Packer::Packer(ArrayRef<InstBinding *> SupportedInsts, Function &F,
+Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
     : F(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {

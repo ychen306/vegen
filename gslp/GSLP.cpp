@@ -219,12 +219,14 @@ bool GSLP::runOnFunction(Function &F) {
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
   auto *DL = &F.getParent()->getDataLayout();
 
-  std::vector<InstBinding *> SupportedIntrinsics;
+  std::vector<const InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts())
     if (isSupported(&Inst, F))
       SupportedIntrinsics.push_back(&Inst);
-  for (auto *Inst : VecBindingTable.getBindings())
-    SupportedIntrinsics.push_back(Inst);
+  for (auto &Inst : VecBindingTable.getBindings()) {
+    if (Inst.isSupported(TTI))
+      SupportedIntrinsics.push_back(&Inst);
+  }
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';

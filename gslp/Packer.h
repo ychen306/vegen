@@ -76,14 +76,14 @@ class Packer {
       StoreInfo;
   llvm::DenseMap<const OperandPack *, OperandProducerInfo> Producers;
 
-  std::vector<InstBinding *> SupportedInsts;
+  std::vector<const InstBinding *> SupportedInsts;
 
   llvm::TargetTransformInfo *TTI;
   llvm::BlockFrequencyInfo *BFI;
   const llvm::DataLayout *DL;
 
 public:
-  Packer(llvm::ArrayRef<InstBinding *> SupportedInsts, llvm::Function &F,
+  Packer(llvm::ArrayRef<const InstBinding *> SupportedInsts, llvm::Function &F,
          llvm::AliasAnalysis *AA, const llvm::DataLayout *DL,
          llvm::ScalarEvolution *SE, llvm::TargetTransformInfo *TTI,
          llvm::BlockFrequencyInfo *BFI);
@@ -94,7 +94,7 @@ public:
     return It->second.get();
   }
 
-  llvm::ArrayRef<InstBinding *> getInsts() const { return SupportedInsts; }
+  llvm::ArrayRef<const InstBinding *> getInsts() const { return SupportedInsts; }
 
   MatchManager &getMatchManager(llvm::BasicBlock *BB) { return *MMs[BB]; }
   ConsecutiveAccessDAG &getLoadDAG(llvm::BasicBlock *BB) {

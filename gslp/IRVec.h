@@ -21,6 +21,7 @@ public:
   unsigned getBitwidth() const { return Bitwidth; }
   llvm::Instruction::BinaryOps getOpcode() const { return Opcode; }
   bool match(llvm::Value *V, std::vector<Match> &Matches) const override;
+  unsigned getMaximumVF(llvm::TargetTransformInfo *) const;
 };
 
 class IRVectorBinding : public InstBinding {
@@ -38,17 +39,17 @@ public:
                     IntrinsicBuilder &Builder) const override;
   float getCost(llvm::TargetTransformInfo *TTI,
                 llvm::LLVMContext &Ctx) const override;
+  bool isSupported(llvm::TargetTransformInfo *) const;
 };
 
 // Aux class enumerating vector ir that we can emit
 class IRInstTable {
   std::vector<BinaryIROperation> VectorizableOps;
   std::vector<IRVectorBinding> VectorInsts;
-  std::vector<InstBinding *> Bindings;
 
 public:
   IRInstTable();
-  llvm::ArrayRef<InstBinding *> getBindings() const { return Bindings; }
+  llvm::ArrayRef<IRVectorBinding> getBindings() const { return VectorInsts; }
 };
 
 #endif // end IR_VEC_H

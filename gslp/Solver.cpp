@@ -3,6 +3,7 @@
 #include "Packer.h"
 #include "Plan.h"
 #include "VectorPackSet.h"
+#include "Util.h"
 
 using namespace llvm;
 
@@ -82,12 +83,20 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto *VPCtx = Pkr->getContext(BB);
   auto &LayoutInfo = Pkr->getStoreInfo(BB);
 
+  auto *TTI = Pkr->getTTI();
+
   std::vector<const VectorPack *> Packs;
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
-      for (unsigned VL : {2, 4, 8, 16 , 32/*, 64*/})
+      unsigned AS = LI->getPointerAddressSpace();
+      unsigned MaxVF =
+        TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI);
+      for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+        if (VL > MaxVF)
+          continue;
         for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
           Packs.push_back(VP);
+      }
     }
   }
   return Packs;
@@ -162,17 +171,6 @@ static const OperandPack *interleave(VectorPackContext *VPCtx,
     Interleaved.push_back(B[i]);
   }
   return VPCtx->getCanonicalOperandPack(Interleaved);
-}
-
-static unsigned getBitWidth(Value *V) {
-  auto *Ty = V->getType();
-  if (Ty->isIntegerTy())
-    return Ty->getIntegerBitWidth();
-  if (Ty->isFloatTy())
-    return 32;
-  if (Ty->isDoubleTy())
-    return 64;
-  llvm_unreachable("unsupported value type");
 }
 
 // decompose a store pack to packs that fit in native bitwidth

@@ -78,6 +78,14 @@ Value *IRVectorBinding::emit(ArrayRef<Value *> Operands,
   return Builder.CreateBinOp(Opcode, Operands[0], Operands[1]);
 }
 
+unsigned BinaryIROperation::getMaximumVF(TargetTransformInfo *TTI) const {
+  return TTI->getMaximumVF(Bitwidth, Opcode);
+}
+
+bool IRVectorBinding::isSupported(TargetTransformInfo *TTI) const {
+  return Op->getMaximumVF(TTI) <= getLaneOps().size();
+}
+
 IRInstTable::IRInstTable() {
   std::vector<Instruction::BinaryOps> VectorizableOpcodes = {
       Instruction::BinaryOps::Add,  Instruction::BinaryOps::FAdd,
@@ -100,7 +108,7 @@ IRInstTable::IRInstTable() {
     }
 
   // enumerate vector insts
-  std::vector<unsigned> VectorBitwidths = {64, 128/*, 256, 512*/};
+  std::vector<unsigned> VectorBitwidths = {64, 128, 256, 512};
   for (auto &Op : VectorizableOps) {
     for (unsigned VB : VectorBitwidths) {
       // Skip singleton pack
@@ -109,7 +117,4 @@ IRInstTable::IRInstTable() {
       VectorInsts.emplace_back(IRVectorBinding::Create(&Op, VB));
     }
   }
-
-  for (auto &Binding : VectorInsts)
-    Bindings.push_back(&Binding);
 }

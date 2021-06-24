@@ -7,6 +7,7 @@
 
 namespace llvm {
 class Instruction;
+class Value;
 }
 
 // Mapping a load/store -> a set of consecutive loads/stores
@@ -18,13 +19,15 @@ using ConsecutiveAccessDAG =
     llvm::DenseMap<llvm::Instruction *,
                    llvm::SmallPtrSet<llvm::Instruction *, 4>>;
 
-// Remove elements indexed by `ToRemove`, which is sorted in increasing order.
-template <typename T>
-void remove(std::vector<T> &X, llvm::ArrayRef<unsigned> ToRemove) {
-  for (unsigned i : llvm::make_range(ToRemove.rbegin(), ToRemove.rend())) {
-    std::swap(X[i], X.back());
-    X.pop_back();
-  }
+static unsigned getBitWidth(llvm::Value *V) {
+  auto *Ty = V->getType();
+  if (Ty->isIntegerTy())
+    return Ty->getIntegerBitWidth();
+  if (Ty->isFloatTy())
+    return 32;
+  if (Ty->isDoubleTy())
+    return 64;
+  llvm_unreachable("unsupported value type");
 }
 
 #endif // UTIL_H
