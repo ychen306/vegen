@@ -94,7 +94,9 @@ public:
     return It->second.get();
   }
 
-  llvm::ArrayRef<const InstBinding *> getInsts() const { return SupportedInsts; }
+  llvm::ArrayRef<const InstBinding *> getInsts() const {
+    return SupportedInsts;
+  }
 
   MatchManager &getMatchManager(llvm::BasicBlock *BB) { return *MMs[BB]; }
   ConsecutiveAccessDAG &getLoadDAG(llvm::BasicBlock *BB) {

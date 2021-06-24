@@ -88,7 +88,7 @@ template <typename... PatTys> struct Reduction_match {
   Instruction::BinaryOps Op;
   std::tuple<PatTys...> Pats;
 
-  Reduction_match(Instruction::BinaryOps Op, const PatTys &... Pats)
+  Reduction_match(Instruction::BinaryOps Op, const PatTys &...Pats)
       : Op(Op), Pats(Pats...) {}
 
   template <typename OpTy> bool match(OpTy *Root) {
@@ -102,17 +102,20 @@ template <typename... PatTys> struct Reduction_match {
 
 template <typename... PatTys>
 Reduction_match<PatTys...> m_Reduction(Instruction::BinaryOps Op,
-                                       const PatTys &... Pats) {
+                                       const PatTys &...Pats) {
   return Reduction_match<PatTys...>(Op, Pats...);
 }
 
 // specialization for a to allow SExt to match a constant
-template <> template<typename OpTy>
+template <>
+template <typename OpTy>
 bool CastClass_match<bind_ty<Value>, Instruction::SExt>::match(OpTy *V) {
   if (auto *CI = dyn_cast<ConstantInt>(V)) {
     auto X = CI->getValue();
-    auto *TruncatedTy = IntegerType::get(V->getType()->getContext(), X.getBitWidth()/2);
-    return Op.match(ConstantInt::get(TruncatedTy, X.trunc(X.getBitWidth()/2)));
+    auto *TruncatedTy =
+        IntegerType::get(V->getType()->getContext(), X.getBitWidth() / 2);
+    return Op.match(
+        ConstantInt::get(TruncatedTy, X.trunc(X.getBitWidth() / 2)));
   }
 
   if (auto *O = dyn_cast<SExtInst>(V))

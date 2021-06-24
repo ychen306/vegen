@@ -7,7 +7,6 @@
 #include "llvm/ADT/Hashing.h"
 #include <vector>
 
-
 class VectorPack;
 struct OperandProducerInfo {
   bool Feasible; // Whether it's feasible to produce this operand pack
@@ -20,7 +19,6 @@ struct OperandProducerInfo {
     return LoadProducers;
   }
 };
-
 
 // Use this to model input operands
 struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {

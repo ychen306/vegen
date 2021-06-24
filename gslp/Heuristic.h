@@ -25,7 +25,8 @@ public:
     Solution(float Cost) : Cost(Cost), Valid(true) {}
     Solution(float Cost, llvm::ArrayRef<const VectorPack *> Packs)
         : Cost(Cost), Packs(Packs.begin(), Packs.end()), Valid(true) {}
-    Solution(float Cost, const VectorPack *VP) : Cost(Cost), Packs({VP}), Valid(true) {}
+    Solution(float Cost, const VectorPack *VP)
+        : Cost(Cost), Packs({VP}), Valid(true) {}
     Solution &operator=(const Solution &) = default;
 
     void update(const Solution &New) {

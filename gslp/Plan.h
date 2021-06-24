@@ -22,7 +22,10 @@ class Plan {
   float Cost;
 
   llvm::DenseSet<const VectorPack *> Packs;
-  struct VectorPackSlot { const VectorPack *VP; unsigned i; };
+  struct VectorPackSlot {
+    const VectorPack *VP;
+    unsigned i;
+  };
   // mapping inst -> the pack that contains the inst
   llvm::DenseMap<llvm::Instruction *, VectorPackSlot> InstToPackMap;
   using OperandPackSet = llvm::SmallPtrSet<const OperandPack *, 2>;
@@ -35,7 +38,7 @@ class Plan {
   llvm::DenseMap<llvm::Instruction *, int> NumScalarUses;
   llvm::DenseMap<const OperandPack *, float> ShuffleCosts;
   llvm::DenseMap<llvm::Instruction *, float> ExtractCosts;
-  
+
   llvm::Instruction *asInternalInst(llvm::Value *) const;
   float computeShuffleCost(const OperandPack *) const;
 

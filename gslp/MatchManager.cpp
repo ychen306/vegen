@@ -1,6 +1,6 @@
 #include "MatchManager.h"
-#include "llvm/IR/PatternMatch.h"
 #include "Util.h"
+#include "llvm/IR/PatternMatch.h"
 
 using namespace llvm;
 

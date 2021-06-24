@@ -15,7 +15,7 @@ public:
 
   llvm::Value *Create(llvm::StringRef Name,
                       llvm::ArrayRef<llvm::Value *> Operands,
-                      unsigned char Imm8 = 0); 
+                      unsigned char Imm8 = 0);
 };
 
 #endif // end INTRINSIC_BUILDER_H

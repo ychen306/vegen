@@ -28,8 +28,8 @@ void Plan::incScalarUses(Instruction *I) {
     assert(!ExtractCosts.count(I));
     const VectorPackSlot &Slot = It->second;
     auto *VecTy = getVectorType(*Slot.VP);
-    float ExtractCost =
-      Pkr->getTTI()->getVectorInstrCost(Instruction::ExtractElement, VecTy, Slot.i);
+    float ExtractCost = Pkr->getTTI()->getVectorInstrCost(
+        Instruction::ExtractElement, VecTy, Slot.i);
     ExtractCosts[I] = ExtractCost;
     Cost += ExtractCost;
   }
@@ -86,8 +86,7 @@ void Plan::updateCostOfVectorUses(ArrayRef<Value *> Values) {
     assert(NumVectorUses.lookup(OP));
     assert(ShuffleCosts.count(OP));
     float ShuffleCost = computeShuffleCost(OP);
-    Cost += ShuffleCost - ShuffleCosts[OP], 
-    ShuffleCosts[OP] = ShuffleCost;
+    Cost += ShuffleCost - ShuffleCosts[OP], ShuffleCosts[OP] = ShuffleCost;
   }
 }
 
@@ -111,13 +110,9 @@ void Plan::incVectorUses(const OperandPack *OP) {
 }
 
 bool Plan::isAlive(llvm::Instruction *I) const {
-  return
-    I->isTerminator() ||
-    isa<StoreInst>(I) ||
-    isa<CallInst>(I) ||
-    isa<InvokeInst>(I) ||
-    NumScalarUses.lookup(I) ||
-    !InstToOperandsMap.lookup(I).empty();
+  return I->isTerminator() || isa<StoreInst>(I) || isa<CallInst>(I) ||
+         isa<InvokeInst>(I) || NumScalarUses.lookup(I) ||
+         !InstToOperandsMap.lookup(I).empty();
 }
 
 void Plan::decVectorUses(const OperandPack *OP) {
@@ -208,16 +203,16 @@ bool Plan::verifyCost() const {
   float TotalVectorCost = 0;
   for (auto *VP : Packs)
     TotalVectorCost += VP->getProducingCost();
-  float Cost2 = TotalExtractCost + TotalShuffleCost + TotalScalarCost + TotalVectorCost;
+  float Cost2 =
+      TotalExtractCost + TotalShuffleCost + TotalScalarCost + TotalVectorCost;
   bool Ok = Cost2 == Cost;
   if (!Ok) {
     errs() << "Cost is broken:\n\tCost = " << Cost
-      << "\n\textract cost = " << TotalExtractCost
-      << "\n\tshuffle cost = " << TotalShuffleCost
-      << "\n\tscalar cost = " << TotalScalarCost
-      << "\n\tvector cost = " << TotalVectorCost
-      << "\n\trecalculated cost = " << Cost2
-      << '\n';
+           << "\n\textract cost = " << TotalExtractCost
+           << "\n\tshuffle cost = " << TotalShuffleCost
+           << "\n\tscalar cost = " << TotalScalarCost
+           << "\n\tvector cost = " << TotalVectorCost
+           << "\n\trecalculated cost = " << Cost2 << '\n';
   }
   return Ok;
 }
@@ -245,7 +240,7 @@ void Plan::add(const VectorPack *VP) {
     if (auto *I = dyn_cast_or_null<Instruction>(Values[i])) {
       if (NumScalarUses.lookup(I)) {
         float ExtractCost =
-          TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, i);
+            TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, i);
         Cost += ExtractCost;
         ExtractCosts[I] = ExtractCost;
       }

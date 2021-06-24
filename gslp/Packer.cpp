@@ -272,7 +272,6 @@ float Packer::getScalarCost(Instruction *I) {
     return 1;
   SmallVector<const Value *, 4> Operands(I->operand_values());
   return TTI->getArithmeticInstrCost(
-      I->getOpcode(), I->getType(), TTI::TCK_RecipThroughput,
-      TTI::OK_AnyValue, TTI::OK_AnyValue,
-      TTI::OP_None, TTI::OP_None, Operands, I);
+      I->getOpcode(), I->getType(), TTI::TCK_RecipThroughput, TTI::OK_AnyValue,
+      TTI::OK_AnyValue, TTI::OP_None, TTI::OP_None, Operands, I);
 }

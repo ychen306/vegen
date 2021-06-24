@@ -90,7 +90,8 @@ public:
     errs() << "Loading inst wrappers: " << WrappersDir + Wrapper << '\n';
     InstWrappers = parseIRFile(WrappersDir + Wrapper, Err, M.getContext());
     if (!InstWrappers) {
-      report_fatal_error(std::string("Error parsing Inst Wrappers") + Err.getMessage());
+      report_fatal_error(std::string("Error parsing Inst Wrappers") +
+                         Err.getMessage());
     }
 
     return false;
@@ -118,7 +119,7 @@ void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr) {
   return;
 }
 
-} // end anonymous namespace
+} // namespace
 
 char GSLP::ID = 0;
 

@@ -18,10 +18,13 @@ float Heuristic::getCost(const VectorPack *VP) {
   return Cost;
 }
 
-SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx, const OperandPack *OP, unsigned Stride);
+SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx,
+                                              const OperandPack *OP,
+                                              unsigned Stride);
 
 // interpret OP as an N x M matrix and transpose it
-const OperandPack *transpose(const VectorPackContext *VPCtx, const OperandPack *OP, unsigned N) {
+const OperandPack *transpose(const VectorPackContext *VPCtx,
+                             const OperandPack *OP, unsigned N) {
   if (OP->size() % N)
     return nullptr;
   unsigned M = OP->size() / N;
@@ -64,7 +67,7 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
   }
 
-  for (unsigned N : {2,4,8})
+  for (unsigned N : {2, 4, 8})
     if (auto *T = transpose(VPCtx, OP, N)) {
       auto OPI = Pkr->getProducerInfo(VPCtx, T);
       for (auto *VP : OPI.getProducers())
@@ -104,7 +107,8 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
         Intersection &= VP->getElements();
         float Discount =
             (float)OPI.Elements.count() / (float)Intersection.count();
-        Sol.update(Solution(getCost(VP) * Discount + C_Shuffle + ExtraCost, VP));
+        Sol.update(
+            Solution(getCost(VP) * Discount + C_Shuffle + ExtraCost, VP));
       }
     }
   }

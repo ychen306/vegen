@@ -8,7 +8,7 @@
 namespace llvm {
 class Instruction;
 class Value;
-}
+} // namespace llvm
 
 // Mapping a load/store -> a set of consecutive loads/stores
 //

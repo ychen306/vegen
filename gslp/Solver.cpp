@@ -2,8 +2,8 @@
 #include "Heuristic.h"
 #include "Packer.h"
 #include "Plan.h"
-#include "VectorPackSet.h"
 #include "Util.h"
+#include "VectorPackSet.h"
 
 using namespace llvm;
 
@@ -89,8 +89,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
       unsigned AS = LI->getPointerAddressSpace();
-      unsigned MaxVF =
-        TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI);
+      unsigned MaxVF = TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI);
       for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
         if (VL > MaxVF)
           continue;
