@@ -38,12 +38,10 @@ private:
 
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
   llvm::SmallVector<OperandPack *, 4> OperandPacks;
-  std::vector<llvm::Instruction *> ReplacedInsts;
 
   int Cost;
   int ProducingCost;
 
-  void computeReplacedInsts();
   void computeCost(llvm::TargetTransformInfo *TTI);
 
   // Constructor for a generic pack
@@ -57,7 +55,6 @@ private:
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);
-    computeReplacedInsts();
   }
 
   // Load Pack
@@ -69,7 +66,6 @@ private:
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);
-    computeReplacedInsts();
   }
 
   // Store Pack
@@ -81,7 +77,6 @@ private:
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);
-    computeReplacedInsts();
   }
 
   // Load Pack
@@ -93,7 +88,6 @@ private:
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);
-    computeReplacedInsts();
   }
 
   std::vector<OperandPack> computeOperandPacksForGeneral();
@@ -147,9 +141,6 @@ public:
   llvm::ArrayRef<llvm::Value *> getOrderedValues() const {
     return OrderedValues;
   }
-
-  // Get the instructions that would be replaced if we emitted this pack.
-  llvm::ArrayRef<llvm::Instruction *> getReplacedInsts() const { return ReplacedInsts; }
 
   unsigned numElements() const { return Elements.count(); }
 
