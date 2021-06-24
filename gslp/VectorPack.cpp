@@ -351,25 +351,3 @@ bool isConstantPack(const OperandPack &OpndPack) {
       return false;
   return true;
 }
-
-void VectorPack::computeReplacedInsts() {
-  ReplacedInsts.clear();
-  if (Kind != General) {
-    for (auto *V : getOrderedValues())
-      if (V)
-        ReplacedInsts.push_back(cast<Instruction>(V));
-  } else {
-    for (auto *M : Matches) {
-      SmallPtrSet<Instruction *, 4> Insts;
-      getIntermediateInsts(*M, Insts);
-      for (auto *I : Insts)
-        ReplacedInsts.push_back(I);
-    }
-  }
-  std::stable_sort(ReplacedInsts.begin(), ReplacedInsts.end());
-  auto It = std::unique(ReplacedInsts.begin(), ReplacedInsts.end());
-  ReplacedInsts.resize(std::distance(ReplacedInsts.begin(), It));
-  std::stable_sort(
-      ReplacedInsts.begin(), ReplacedInsts.end(),
-      [](Instruction *I, Instruction *J) { return J->comesBefore(I); });
-}
