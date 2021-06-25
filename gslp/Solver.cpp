@@ -7,6 +7,19 @@
 
 using namespace llvm;
 
+static unsigned getBitWidth(Value *V, const DataLayout *DL) {
+  auto *Ty = V->getType();
+  if (Ty->isIntegerTy())
+    return Ty->getIntegerBitWidth();
+  if (Ty->isFloatTy())
+    return 32;
+  if (Ty->isDoubleTy())
+    return 64;
+  auto *PtrTy = dyn_cast<PointerType>(Ty);
+  assert(PtrTy && "unsupported value type");
+  return DL->getPointerSizeInBits(PtrTy->getAddressSpace());
+}
+
 template <typename AccessType>
 VectorPack *createMemPack(VectorPackContext *VPCtx,
                           ArrayRef<AccessType *> Accesses,
@@ -85,11 +98,13 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   auto *TTI = Pkr->getTTI();
 
+  auto *DL = Pkr->getDataLayout();
   std::vector<const VectorPack *> Packs;
   for (auto &I : *BB) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
       unsigned AS = LI->getPointerAddressSpace();
-      unsigned MaxVF = TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI);
+      unsigned MaxVF =
+          TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI, DL);
       for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
         if (VL > MaxVF)
           continue;
@@ -181,8 +196,8 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   auto *SI = cast<StoreInst>(Values.front());
   unsigned AS = SI->getPointerAddressSpace();
   auto *TTI = Pkr->getTTI();
-  unsigned VL =
-      TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(SI->getValueOperand());
+  unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS) /
+                getBitWidth(SI->getValueOperand(), Pkr->getDataLayout());
   auto &LDA = Pkr->getLDA(VPCtx->getBasicBlock());
   if (Values.size() <= VL)
     return {VP};
