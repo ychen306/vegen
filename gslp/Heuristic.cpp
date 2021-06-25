@@ -1,6 +1,7 @@
 #include "Heuristic.h"
 #include "Packer.h"
 #include "Solver.h"
+#include "VectorPack.h"
 #include "llvm/Support/Timer.h"
 
 using namespace llvm;

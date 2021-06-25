@@ -1,6 +1,7 @@
 #include "VectorPack.h"
 #include "MatchManager.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/Analysis/VectorUtils.h"
 
 using namespace llvm;
 

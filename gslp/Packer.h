@@ -7,16 +7,23 @@
 #include "Util.h"
 #include "VectorPackContext.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/Function.h"
 
 namespace llvm {
 class ScalarEvolution;
 class TargetTransformInfo;
 } // namespace llvm
+
+
+using ConsecutiveAccessDAG =
+    llvm::DenseMap<llvm::Instruction *,
+                   llvm::SmallPtrSet<llvm::Instruction *, 4>>;
 
 // Auxiliary class to assign linear numbers to loads/stores
 // accessing the same object (but at different offsets).
