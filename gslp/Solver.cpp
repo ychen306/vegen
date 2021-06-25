@@ -2,7 +2,6 @@
 #include "Heuristic.h"
 #include "Packer.h"
 #include "Plan.h"
-#include "Util.h"
 #include "VectorPackSet.h"
 
 using namespace llvm;

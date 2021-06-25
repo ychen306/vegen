@@ -4,7 +4,6 @@
 #include "InstSema.h"
 #include "LocalDependenceAnalysis.h"
 #include "MatchManager.h"
-#include "Util.h"
 #include "VectorPackContext.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
