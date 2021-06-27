@@ -125,7 +125,7 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
           // Select from Left
           for (unsigned i : LeftDefined.set_bits())
             Mask[i] = ConstantInt::get(Int32Ty, i);
-          // Select from the partial gather
+          // Select from Right
           for (unsigned i : RightDefined.set_bits())
             Mask[i] = ConstantInt::get(Int32Ty, NumValues + i);
           return Builder.CreateShuffleVector(Left, Right,
