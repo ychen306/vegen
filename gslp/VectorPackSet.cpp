@@ -96,27 +96,43 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
     PartialGathers.push_back({DefinedBits, Gather});
   }
 
+  // The accumulator
   Value *Acc;
   if (!PartialGathers.empty()) {
-    // 2) Merge the partial gathers
-    BitVector DefinedBits = PartialGathers[0].DefinedBits;
-    Acc = PartialGathers[0].Gather;
-    for (auto &PG :
-         make_range(PartialGathers.begin() + 1, PartialGathers.end())) {
-      ShuffleMaskTy Mask = Undefs;
-      assert(Mask.size() == NumValues);
-      // Select from Acc
-      for (unsigned Idx : DefinedBits.set_bits())
-        Mask[Idx] = ConstantInt::get(Int32Ty, Idx);
-      // Select from the partial gather
-      for (unsigned Idx : PG.DefinedBits.set_bits())
-        Mask[Idx] = ConstantInt::get(Int32Ty, NumValues + Idx);
-      Acc = Builder.CreateShuffleVector(Acc, PG.Gather,
-                                        ConstantVector::get(Mask));
+    std::function<Value *(ArrayRef<PartialGather>, BitVector &)> Merge =
+        [&](ArrayRef<PartialGather> PGs, BitVector &DefinedBits) {
+          assert(!PGs.empty());
 
-      assert(!DefinedBits.anyCommon(PG.DefinedBits));
-      DefinedBits |= PG.DefinedBits;
-    }
+          if (PGs.size() == 1) {
+            auto &PG = PGs.front();
+            DefinedBits = PG.DefinedBits;
+            return PGs.front().Gather;
+          }
+
+          // Divide the gathers into two parts and merge them resurively
+          unsigned N = PGs.size();
+          BitVector LeftDefined(NumValues), RightDefined(NumValues);
+          auto *Left = Merge(PGs.drop_back(N / 2 /*num drop*/), LeftDefined);
+          auto *Right =
+              Merge(PGs.slice(N - N / 2 /*num drop*/, N / 2 /*num keep*/),
+                    RightDefined);
+          assert(!LeftDefined.anyCommon(RightDefined));
+          DefinedBits |= LeftDefined;
+          DefinedBits |= RightDefined;
+
+          ShuffleMaskTy Mask = Undefs;
+          assert(Mask.size() == NumValues);
+          // Select from Left
+          for (unsigned i : LeftDefined.set_bits())
+            Mask[i] = ConstantInt::get(Int32Ty, i);
+          // Select from the partial gather
+          for (unsigned i : RightDefined.set_bits())
+            Mask[i] = ConstantInt::get(Int32Ty, NumValues + i);
+          return Builder.CreateShuffleVector(Left, Right,
+                                             ConstantVector::get(Mask));
+        };
+    BitVector DefinedBits(NumValues);
+    Acc = Merge(PartialGathers, DefinedBits);
   } else {
     auto *VecTy = getVectorType(OP);
     Acc = UndefValue::get(VecTy);
