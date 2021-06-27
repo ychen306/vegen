@@ -98,7 +98,7 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
 
   Value *Acc;
   if (!PartialGathers.empty()) {
-    // 2)uMerge the partial gathers
+    // 2) Merge the partial gathers
     BitVector DefinedBits = PartialGathers[0].DefinedBits;
     Acc = PartialGathers[0].Gather;
     for (auto &PG :
@@ -229,15 +229,15 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
   // Schedule the basic block subject to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
   const VectorPackContext *VPCtx = Packs[0]->getContext();
-  using InstOrPack = PointerUnion<const Instruction *, const VectorPack *>;
+  using InstOrPack = PointerUnion<Instruction *, const VectorPack *>;
   DenseSet<void *> Reordered;
-  std::vector<const Instruction *> ReorderedInsts;
+  std::vector<Instruction *> ReorderedInsts;
   std::function<void(InstOrPack)> Schedule = [&](InstOrPack IOP) {
     bool Inserted = Reordered.insert(IOP.getOpaqueValue()).second;
     if (!Inserted)
       return;
 
-    auto *I = IOP.dyn_cast<const Instruction *>();
+    auto *I = IOP.dyn_cast<Instruction *>();
     auto *VP = IOP.dyn_cast<const VectorPack *>();
 
     if (I && !VPCtx->isKnownValue(I)) {
@@ -253,14 +253,14 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
 
     // We need to reorder a packed instruction *together* with its pack
     if (I && ValueToPackMap.count(I)) {
-      Schedule(ValueToPackMap[const_cast<Instruction *>(I)]);
+      Schedule(ValueToPackMap[I]);
       return;
     }
 
     // Figure out the dependence
     std::vector<Value *> DependedValues;
     if (I) {
-      auto Depended = LDA.getDepended(const_cast<Instruction *>(I));
+      auto Depended = LDA.getDepended(I);
       for (auto *V : VPCtx->iter_values(Depended))
         DependedValues.push_back(V);
     } else {
@@ -270,22 +270,16 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
     }
 
     // Recurse on the depended values
-    for (auto *V : DependedValues) {
-      if (auto *I = dyn_cast<Instruction>(V)) {
-        if (I->getParent() == BB) {
+    for (auto *V : DependedValues)
+      if (auto *I = dyn_cast<Instruction>(V))
+        if (I->getParent() == BB)
           Schedule(I);
-        }
-      }
-    }
 
 #ifndef NDEBUG
-    for (auto *V : DependedValues) {
-      if (auto *I2 = dyn_cast<Instruction>(V)) {
-        if (I2->getParent() == BB) {
+    for (auto *V : DependedValues)
+      if (auto *I2 = dyn_cast<Instruction>(V))
+        if (I2->getParent() == BB)
           assert(std::count(ReorderedInsts.begin(), ReorderedInsts.end(), I2));
-        }
-      }
-    }
 #endif
 
     // Now finalize ordering of this (pack of) instruction(s)
@@ -293,11 +287,9 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
       ReorderedInsts.push_back(I);
     } else {
       assert(VP);
-      for (auto *V : VP->getOrderedValues()) {
-        if (V)
-          if (auto *I = dyn_cast<Instruction>(V))
-            ReorderedInsts.push_back(I);
-      }
+      for (auto *V : VP->getOrderedValues())
+        if (auto *I = dyn_cast_or_null<Instruction>(V))
+          ReorderedInsts.push_back(I);
     }
   };
 
@@ -316,11 +308,11 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
 
   // Reorder the instruction according to the schedule
   for (auto *I : ReorderedInsts)
-    const_cast<Instruction *>(I)->removeFromParent();
+    I->removeFromParent();
   assert(BB->empty());
   auto &InstList = BB->getInstList();
   for (auto *I : ReorderedInsts)
-    InstList.push_back(const_cast<Instruction *>(I));
+    InstList.push_back(I);
   assert(BB->size() == ReorderedInsts.size());
 
   return SortedPacks;
@@ -348,12 +340,11 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     for (auto *VP : OrderedPacks) {
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
-      unsigned OperandId = 0;
-      for (auto *OP : VP->getOperandPacks()) {
-        VP->setOperandGatherPoint(OperandId, Builder);
+      ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
+      for (unsigned i = 0, e = OPs.size(); i < e; i++) {
+        VP->setOperandGatherPoint(i, Builder);
         Operands.push_back(
-            gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
-        OperandId++;
+            gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder));
       }
 
       Instruction *PackLeader = nullptr;
@@ -384,18 +375,17 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       }
 
       // Mark the packed values as dead so we can delete them later
-      for (auto *V : VP->elementValues()) {
+      for (auto *V : VP->elementValues())
         if (auto *I = dyn_cast<Instruction>(V))
           DeadInsts.push_back(I);
-      }
 
       // Update the value index
       // to track where the originally scalar values are produced
       auto OutputLanes = VP->getOrderedValues();
-      for (unsigned i = 0, e = OutputLanes.size(); i != e; i++) {
+      for (unsigned i = 0, e = OutputLanes.size(); i != e; i++)
         if (auto *V = OutputLanes[i])
           ValueIndex[V] = {VP, i};
-      }
+
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
     }
