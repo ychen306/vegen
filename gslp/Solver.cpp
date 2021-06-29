@@ -123,7 +123,7 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
   Plan Best = P;
   std::vector<const OperandPack *> Worklist{OP};
   while (!Worklist.empty()) {
-    assert(P.verifyCost());
+    //assert(P.verifyCost());
     auto *OP = Worklist.back();
     Worklist.pop_back();
 

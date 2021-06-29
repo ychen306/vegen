@@ -3,6 +3,7 @@
 #include "Packer.h"
 #include "Solver.h"
 #include "VectorPackSet.h"
+#include "ShuffleOpt.h" // mergeShuffleVectors
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -241,6 +242,28 @@ bool GSLP::runOnFunction(Function &F) {
   IntrinsicBuilder Builder(*InstWrappers);
   errs() << "Generating vector code\n";
   Packs.codegen(Builder, Pkr);
+
+  for (auto &BB : F) {
+    bool Changed;
+    do {
+      std::vector<ShuffleVectorInst *> SVs;
+      for (auto &I : BB)
+        if (auto *SV = dyn_cast<ShuffleVectorInst>(&I))
+          SVs.push_back(SV);
+
+      Changed = false;
+      for (unsigned i = 0, e = SVs.size(); i < e; i++) {
+        for (unsigned j = i+1; j < e; j++) {
+          if (mergeShuffleVectors(SVs[i], SVs[j])) {
+            Changed = true;
+            break;
+          }
+        }
+        if (Changed)
+          break;
+      }
+    } while (Changed);
+  }
 
   errs() << F << '\n';
 
