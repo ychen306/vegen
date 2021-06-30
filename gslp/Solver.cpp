@@ -240,7 +240,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
     bool Feasible = false;
     for (auto *OP : OPs)
-      Feasible |= Pkr->getProducerInfo(VPCtx, OP).Feasible;
+      Feasible |= !H.solve(OP).Packs.empty();
     if (!Feasible)
       return false;
     for (auto *OP : OPs)
