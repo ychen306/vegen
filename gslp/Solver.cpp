@@ -129,17 +129,13 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P,
 
     // The packs we are adding
     SmallVector<const VectorPack *, 4> NewPacks = H.solve(OP).Packs;
-    // Union of the values covered by this solution
-    BitVector Elements(VPCtx->getNumValues());
     // The packs we are replacing
     SmallPtrSet<const VectorPack *, 4> OldPacks;
 
-    for (const VectorPack *VP : NewPacks) {
-      Elements |= VP->getElements();
+    for (const VectorPack *VP : NewPacks)
       for (auto *V : VP->elementValues())
         if (auto *VP2 = P.getProducer(dyn_cast<Instruction>(V)))
           OldPacks.insert(VP2);
-    }
 
     for (auto *VP2 : OldPacks)
       P.remove(VP2);
@@ -227,10 +223,26 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
           Seeds.push_back(VP);
 
+  AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo(BB);
+  std::sort(Seeds.begin(), Seeds.end(),
+            [&](const VectorPack *VP1, const VectorPack *VP2) {
+              if (VP1->numElements() != VP2->numElements())
+                return VP1->numElements() > VP2->numElements();
+              auto *SI1 = cast<StoreInst>(VP1->getOrderedValues().front());
+              auto *SI2 = cast<StoreInst>(VP2->getOrderedValues().front());
+              auto Info1 = LayoutInfo.get(SI1);
+              auto Info2 = LayoutInfo.get(SI2);
+              return Info1.Id < Info2.Id;
+            });
   auto *VPCtx = Pkr->getContext(P.getBasicBlock());
   Heuristic H(Pkr, VPCtx, CandidateSet);
 
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
+    bool Feasible = false;
+    for (auto *OP : OPs)
+      Feasible |= Pkr->getProducerInfo(VPCtx, OP).Feasible;
+    if (!Feasible)
+      return false;
     for (auto *OP : OPs)
       runBottomUpFromOperand(OP, P2, VPCtx, H);
     if (P2.cost() < P.cost()) {
@@ -245,10 +257,57 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   for (auto *VP : Seeds)
     DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
+  BitVector Packed(VPCtx->getNumValues());
+  for (auto *VP : Seeds) {
+    if (VP->getElements().anyCommon(Packed))
+      continue;
+
+    Plan P2 = P;
+    for (auto *VP2 : DecomposedStores[VP])
+      P2.add(VP2);
+    auto *OP = VP->getOperandPacks().front();
+    if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+        Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+        Improve(P2, deinterleave(VPCtx, OP, 8))) {
+      errs() << "~COST: " << P.cost() << '\n';
+      Packed |= VP->getElements();
+    }
+  }
+
   bool Optimized;
   do {
     errs() << "COST: " << P.cost() << '\n';
     Optimized = false;
+    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+      const OperandPack *OP = I->first;
+      Plan P2 = P;
+      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 8))) {
+        Optimized = true;
+        break;
+      }
+    }
+    if (Optimized)
+      continue;
+    errs() << "??? finding good concats, num operands = " << std::distance(P.operands_begin(), P.operands_end()) << '\n';
+    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+      for (auto J = P.operands_begin(); J != E; ++J) {
+        const OperandPack *OP = I->first;
+        const OperandPack *OP2 = J->first;
+        auto *Concat = concat(VPCtx, *OP, *OP2);
+        Plan P2 = P;
+        if (Improve(P2, {Concat})) {
+          Optimized = true;
+          break;
+        }
+      }
+      if (Optimized)
+        break;
+    }
+    errs() << "~~~~~~ done\n";
+    if (Optimized)
+      continue;
     for (auto *VP : Seeds) {
       Plan P2 = P;
       for (auto *V : VP->elementValues())
@@ -264,88 +323,7 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
         break;
       }
     }
-    if (Optimized)
-      continue;
-    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
-      const OperandPack *OP = I->first;
-      Plan P2 = P;
-      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 8))) {
-        Optimized = true;
-        break;
-      }
-    }
-    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
-      for (auto J = P.operands_begin(); J != E; ++J) {
-        const OperandPack *OP = I->first;
-        const OperandPack *OP2 = J->first;
-        auto *Concat = concat(VPCtx, *OP, *OP2);
-        Plan P2 = P;
-        if (Improve(P2, {Concat})) {
-          Optimized = true;
-          break;
-        }
-      }
-      if (Optimized)
-        break;
-    }
-    if (Optimized)
-      continue;
-    for (auto *VP : P) {
-      for (auto *VP2 : P) {
-        auto Vals1 = VP->getOrderedValues();
-        auto Vals2 = VP2->getOrderedValues();
-        if (VP == VP2 || Vals1.size() != Vals2.size() ||
-            VP2->getDepended().anyCommon(VP->getElements()) ||
-            VP->getDepended().anyCommon(VP2->getElements()))
-          continue;
-        auto *Concat = concat(VPCtx, Vals1, Vals2);
-        auto *Interleaved = interleave(VPCtx, Vals1, Vals2);
-        Plan P2 = P;
-        P2.remove(VP);
-        P2.remove(VP2);
-        if (Improve(P2, {Interleaved}) || Improve(P2, {Concat})) {
-          Optimized = true;
-          break;
-        }
-      }
-      if (Optimized)
-        break;
-    }
   } while (Optimized);
-
-#ifndef NDEBUG
-  Plan P2(Pkr, BB);
-  for (auto *VP : P)
-    P2.add(VP);
-  if (P2.cost() != P.cost())
-    errs() << "!!! " << P2.cost() << ", " << P.cost() << '\n';
-  assert(P2.cost() == P.cost());
-
-  for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
-    const OperandPack *OP = I->first;
-    bool Foo = false;
-    for (auto *V : *OP) {
-      auto *I = dyn_cast_or_null<Instruction>(V);
-      if (I && !P.getProducer(I)) {
-        Foo = true;
-        break;
-      }
-    }
-    if (!Foo)
-      continue;
-    errs() << "op without producer: " << *OP << "\n\t[";
-    for (auto *V : *OP) {
-      auto *I = dyn_cast_or_null<Instruction>(V);
-      if (I && !P.getProducer(I)) {
-        errs() << " 0";
-      } else
-        errs() << " 1";
-    }
-    errs() << "]\n";
-  }
-#endif
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
