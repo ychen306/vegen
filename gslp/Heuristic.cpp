@@ -57,9 +57,10 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   }
 
   // Build by broadcast
-  float BroadcastCast = getCost(OP->front()) + C_Splat;
-  if (is_splat(*OP) && Cost > BroadcastCast)
-    Sol = Solution(BroadcastCast);
+  float BroadcastCost = getCost(OP->front()) + C_Splat;
+  if (is_splat(*OP) && Cost > BroadcastCost) {
+    return Solutions[OP] = Solution(BroadcastCost);
+  }
 
   const OperandPack *Deduped = VPCtx->dedup(OP);
   float ExtraCost = Deduped != OP ? C_Shuffle : 0;
@@ -86,6 +87,8 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
       auto Sol2 = solve(OP2);
       Packs.append(Sol2.Packs);
       Cost += Sol2.Cost;
+      if (Cost > Sol.Cost)
+        break;
     }
     Sol.update(Solution(Cost, Packs));
   }
