@@ -34,6 +34,10 @@ static cl::opt<std::string>
                 cl::desc("Path to the directory containing InstWrappers.*.bc"),
                 cl::Required);
 
+static cl::opt<std::string>
+    Filter("filter",
+           cl::desc("only run on function names containing this substring"));
+
 static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                                     cl::init(false));
 
@@ -209,6 +213,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  if (!Filter.empty() && !F.getName().contains(Filter))
+    return false;
   balanceReductionTree(F);
   errs() << F << '\n';
   // Table holding all IR vector instructions
