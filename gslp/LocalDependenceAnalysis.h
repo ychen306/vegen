@@ -8,7 +8,7 @@ class VectorPackContext;
 
 namespace llvm {
 class BasicBlock;
-}
+} // namespace llvm
 
 // Utility class to track dependency within a basic block
 class LocalDependenceAnalysis {
@@ -23,8 +23,8 @@ class LocalDependenceAnalysis {
   llvm::DenseMap<llvm::Instruction *, llvm::BitVector> IndependentInsts;
 
 public:
-  LocalDependenceAnalysis(llvm::AliasAnalysis *AA, llvm::BasicBlock *BB,
-                          VectorPackContext *VPCtx);
+  LocalDependenceAnalysis(llvm::AliasAnalysis *, const llvm::DataLayout *,
+                          llvm::BasicBlock *, VectorPackContext *);
 
   const llvm::BitVector &getDepended(llvm::Instruction *I) const {
     auto It = TransitiveClosure.find(I);
