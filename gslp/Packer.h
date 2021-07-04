@@ -112,7 +112,7 @@ public:
     return *StoreDAGs[BB];
   }
   AccessLayoutInfo &getLoadInfo(llvm::BasicBlock *BB) { return *LoadInfo[BB]; }
-  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) { return *LoadInfo[BB]; }
+  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) { return *StoreInfo[BB]; }
   LocalDependenceAnalysis &getLDA(llvm::BasicBlock *BB) { return *LDAs[BB]; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
