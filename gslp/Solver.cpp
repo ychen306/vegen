@@ -209,7 +209,6 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
     }
     Decomposed.push_back(
         VPCtx->createStorePack(Stores, Elements, Depended, TTI));
-    errs() << "\t" << *Decomposed.back();
   }
   return Decomposed;
 }
@@ -218,10 +217,19 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   std::vector<const VectorPack *> Seeds;
   auto *BB = P.getBasicBlock();
   for (auto &I : *BB)
-    if (auto *SI = dyn_cast<StoreInst>(&I))
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+    if (auto *SI = dyn_cast<StoreInst>(&I)) {
+      // hack to make things go faster
+      unsigned AS = SI->getPointerAddressSpace();
+      auto *TTI = Pkr->getTTI();
+      unsigned MaxVL = TTI->getLoadStoreVecRegBitWidth(AS) /
+        getBitWidth(SI->getValueOperand(), Pkr->getDataLayout());
+      for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+        if (VL > MaxVL)
+          continue;
         for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
           Seeds.push_back(VP);
+      }
+    }
 
   AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo(BB);
   std::sort(Seeds.begin(), Seeds.end(),
