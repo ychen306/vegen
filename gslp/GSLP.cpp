@@ -213,11 +213,6 @@ static void balanceReductionTree(Function &F) {
           Ignore.insert(I2);
           I2->eraseFromParent();
         }
-
-        // errs() << "MATCHED AND BALANCED REDUCTION : (\n";
-        // for (auto *V : Elems)
-        //  errs() << *V << '\n';
-        // errs() << ")\n";
       }
     }
   }
@@ -232,7 +227,9 @@ static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT) {
     NewBlocks.push_back(NewBB);
     return NewBB;
   };
+
   auto *Preheader = L->getLoopPreheader();
+
   DT->addNewBlock(Clone(Preheader),
                   DT->getNode(Preheader)->getIDom()->getBlock());
   for (auto *BB : L->getBlocks())
@@ -242,14 +239,13 @@ static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT) {
     DT->changeImmediateDominator(cast<BasicBlock>(VMap[BB]),
                                  cast<BasicBlock>(VMap[Dominator]));
   }
+
   Loop *NewL = cloneLoop(L, nullptr /*parent loop*/, VMap, LI,
                          nullptr /*lppassmanager*/);
   for (auto *BB : NewBlocks)
     for (auto &I : *BB)
       RemapInstruction(&I, VMap,
                        RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
-  for (auto *BB : NewBlocks)
-    errs() << "!!! cloned: " << *BB << '\n';
   return NewL;
 }
 
@@ -286,30 +282,17 @@ bool GSLP::runOnFunction(Function &F) {
       if (Loop *L = LI->getLoopFor(&BB)) {
         formLCSSARecursively(*L, *DT, LI, SE);
         simplifyLoop(L, DT, LI, SE, AC, nullptr, true);
-        if (!L->isLCSSAForm(*DT)) {
-          errs() << "???????????? bug: not in lcssa form\n";
-          abort();
-        }
-        if (!L->getLoopPreheader()) {
-          errs() << "???????????? bug: no preheader\n";
-          abort();
-        }
         Loop *NewL = cloneLoop(L, LI, DT);
 
         UnrollLoopOptions ULO;
         ULO.TripCount = 0;
-        ULO.Count = 2;
+        ULO.Count = 4;
         ULO.Force = true;
         ULO.PeelCount = 0;
         ULO.AllowRuntime = true;
         ULO.AllowExpensiveTripCount = true;
         ULO.ForgetAllSCEV = false;
         ULO.UnrollRemainder = true;
-
-        for (auto *BB : L->blocks())
-          for (auto &I : *BB)
-            if (SE->isSCEVable(I.getType()))
-              errs() << "scev: " << I << ", " << *SE->getSCEV(&I) << '\n';
 
         ValueMap<const Value *, UnrolledValue> OrigToUnrollMap;
         auto Result =
@@ -321,6 +304,10 @@ bool GSLP::runOnFunction(Function &F) {
         errs() << "??? unrolled loop: <<<<<<\n";
         for (auto *BB : NewL->blocks())
           errs() << *BB << '\n';
+          //for (auto &I : *BB)
+          //  if (SE->isSCEVable(I.getType())) {
+          //    errs() << I << ": " << *SE->getSCEV(&I) << '\n';
+          //  }
         errs() << ">>>>>>>>>>\n";
 
         BasicBlock *PH = NewL->getLoopPreheader();

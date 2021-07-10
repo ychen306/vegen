@@ -6,7 +6,7 @@
 
 struct UnrolledValue {
   unsigned Iter;
-  llvm::WeakTrackingVH VH;
+  const llvm::Value *V;
 };
 
 // Our version of llvm::UnrollLoop that additionally keeps track of the the

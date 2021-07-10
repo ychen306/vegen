@@ -49,6 +49,7 @@
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 #include "llvm/Transforms/Utils/UnrollLoop.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
 #include <algorithm>
 #include <assert.h>
 #include <type_traits>
@@ -83,6 +84,47 @@ static bool needToInsertPhisForLCSSA(Loop *L,
   return false;
 }
 
+
+void simplifyLoopAfterUnroll2(Loop *L, bool SimplifyIVs, LoopInfo *LI,
+                                   ScalarEvolution *SE, DominatorTree *DT,
+                                   AssumptionCache *AC,
+                                   const TargetTransformInfo *TTI) {
+  // Simplify any new induction variables in the partially unrolled loop.
+  if (SE && SimplifyIVs) {
+    SmallVector<WeakTrackingVH, 16> DeadInsts;
+    simplifyLoopIVs(L, SE, DT, LI, TTI, DeadInsts);
+
+    // Aggressively clean up dead instructions that simplifyLoopIVs already
+    // identified. Any remaining should be cleaned up below.
+    while (!DeadInsts.empty()) {
+      Value *V = DeadInsts.pop_back_val();
+      if (Instruction *Inst = dyn_cast_or_null<Instruction>(V))
+        RecursivelyDeleteTriviallyDeadInstructions(Inst);
+    }
+  }
+
+  // At this point, the code is well formed.  We now do a quick sweep over the
+  // inserted code, doing constant propagation and dead code elimination as we
+  // go.
+  const DataLayout &DL = L->getHeader()->getModule()->getDataLayout();
+  for (BasicBlock *BB : L->getBlocks()) {
+    for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E;) {
+      Instruction *Inst = &*I++;
+
+      if (Value *V = SimplifyInstruction(Inst, {DL, nullptr, DT, AC}))
+        if (LI->replacementPreservesLCSSAForm(Inst, V))
+          Inst->replaceAllUsesWith(V);
+      if (isInstructionTriviallyDead(Inst))
+        BB->getInstList().erase(Inst);
+    }
+  }
+
+  // TODO: after peeling or unrolling, previously loop variant conditions are
+  // likely to fold to constants, eagerly propagating those here will require
+  // fewer cleanup passes to be run.  Alternatively, a LoopEarlyCSE might be
+  // appropriate.
+}
+
 static bool isEpilogProfitable(Loop *L) {
   BasicBlock *PreHeader = L->getLoopPreheader();
   BasicBlock *Header = L->getHeader();
@@ -98,7 +140,7 @@ LoopUnrollResult
 UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
                    ScalarEvolution *SE, DominatorTree *DT, AssumptionCache *AC,
                    const TargetTransformInfo *TTI, bool PreserveLCSSA,
-                   ValueMap<const Value *, UnrolledValue> &OrigToUnrollMap,
+                   ValueMap<const Value *, UnrolledValue> &UnrollToOrigMap,
                    Loop **RemainderLoop) {
 
   if (!L->getLoopPreheader()) {
@@ -310,6 +352,8 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   SmallVector<MDNode *, 6> LoopLocalNoAliasDeclScopes;
   identifyNoAliasScopesToClone(L->getBlocks(), LoopLocalNoAliasDeclScopes);
 
+  SmallVector<Instruction *> PHIReplacements;
+
   for (unsigned It = 1; It != ULO.Count; ++It) {
     SmallVector<BasicBlock *, 8> NewBlocks;
     SmallDenseMap<const Loop *, Loop *, 4> NewLoops;
@@ -337,6 +381,8 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
             if (It > 1 && L->contains(InValI))
               InVal = LastValueMap[InValI];
           VMap[OrigPHI] = InVal;
+          if (auto *I = dyn_cast<Instruction>(InVal))
+            PHIReplacements.push_back(I);
           New->getInstList().erase(NewPHI);
         }
 
@@ -345,7 +391,8 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
       for (ValueToValueMapTy::iterator VI = VMap.begin(), VE = VMap.end();
            VI != VE; ++VI) {
         LastValueMap[VI->first] = VI->second;
-        OrigToUnrollMap[VI->first] = UnrolledValue{It, VI->second};
+        errs() << "??/ keeping track of cloned value: " << *VI->second << '\n';
+        UnrollToOrigMap[VI->second] = UnrolledValue{It, VI->first};
       }
 
       // Add phi entries for newly created values to all exit blocks.
@@ -611,11 +658,25 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   if (DT)
     DT = &DTU->getDomTree();
 
+  {
+    auto &DL = L->getHeader()->getModule()->getDataLayout();
+    SCEVExpander Expander(*SE, DL, "unroller");
+    // Simplify the values that *used to be* computed by PHIs
+    for (Instruction *I : PHIReplacements)
+      if (SE->isSCEVable(I->getType())) {
+        auto *I2 = Expander.expandCodeFor(SE->getSCEV(I), I->getType(), I);
+        assert(UnrollToOrigMap.count(I));
+        UnrollToOrigMap[I2] = UnrollToOrigMap[I];
+        UnrollToOrigMap.erase(I);
+        I->replaceAllUsesWith(I2);
+        I->eraseFromParent();
+      }
+  } // Scope for scev expander
 
   // At this point, the code is well formed.  We now simplify the unrolled loop,
   // doing constant propagation and dead code elimination as we go.
-  simplifyLoopAfterUnroll(L, !CompletelyUnroll && (ULO.Count > 1 || Peeled), LI,
-                          SE, DT, AC, TTI);
+  simplifyLoopAfterUnroll2(L, !CompletelyUnroll && (ULO.Count > 1 || Peeled), LI,
+      SE, DT, AC, TTI);
 
   Loop *OuterL = L->getParentLoop();
   // Update LoopInfo if the loop is completely removed.
@@ -632,7 +693,7 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   // it should be possible to fix it in-place.
   if (PreserveLCSSA && OuterL && CompletelyUnroll && !NeedToFixLCSSA)
     NeedToFixLCSSA |=
-        ::needToInsertPhisForLCSSA(OuterL, UnrolledLoopBlocks, LI);
+      ::needToInsertPhisForLCSSA(OuterL, UnrolledLoopBlocks, LI);
 
   // If we have a pass and a DominatorTree we should re-simplify impacted loops
   // to ensure subsequent analyses can rely on this form. We want to simplify
@@ -656,7 +717,7 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
         formLCSSARecursively(*FixLCSSALoop, *DT, LI, SE);
       } else if (PreserveLCSSA) {
         assert(OuterL->isLCSSAForm(*DT) &&
-               "Loops should be in LCSSA form after loop-unroll.");
+            "Loops should be in LCSSA form after loop-unroll.");
       }
 
       // TODO: That potentially might be compile-time expensive. We should try
@@ -670,5 +731,5 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   }
 
   return CompletelyUnroll ? LoopUnrollResult::FullyUnrolled
-                          : LoopUnrollResult::PartiallyUnrolled;
+    : LoopUnrollResult::PartiallyUnrolled;
 }
