@@ -46,10 +46,10 @@
 #include "llvm/Transforms/Utils/LoopPeel.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
+#include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 #include "llvm/Transforms/Utils/UnrollLoop.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
-#include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
 #include <algorithm>
 #include <assert.h>
 #include <type_traits>
@@ -84,11 +84,10 @@ static bool needToInsertPhisForLCSSA(Loop *L,
   return false;
 }
 
-
 void simplifyLoopAfterUnroll2(Loop *L, bool SimplifyIVs, LoopInfo *LI,
-                                   ScalarEvolution *SE, DominatorTree *DT,
-                                   AssumptionCache *AC,
-                                   const TargetTransformInfo *TTI) {
+                              ScalarEvolution *SE, DominatorTree *DT,
+                              AssumptionCache *AC,
+                              const TargetTransformInfo *TTI) {
   // Simplify any new induction variables in the partially unrolled loop.
   if (SE && SimplifyIVs) {
     SmallVector<WeakTrackingVH, 16> DeadInsts;
@@ -143,15 +142,11 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
                    ValueMap<const Value *, UnrolledValue> &UnrollToOrigMap,
                    Loop **RemainderLoop) {
 
-  if (!L->getLoopPreheader()) {
-    errs() << "no preheader\n";
+  if (!L->getLoopPreheader())
     return LoopUnrollResult::Unmodified;
-  }
 
-  if (!L->getLoopLatch()) {
-    errs() << "no preheader\n";
+  if (!L->getLoopLatch())
     return LoopUnrollResult::Unmodified;
-  }
 
   // Loops with indirectbr cannot be cloned.
   if (!L->isSafeToClone())
@@ -391,7 +386,6 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
       for (ValueToValueMapTy::iterator VI = VMap.begin(), VE = VMap.end();
            VI != VE; ++VI) {
         LastValueMap[VI->first] = VI->second;
-        errs() << "??/ keeping track of cloned value: " << *VI->second << '\n';
         UnrollToOrigMap[VI->second] = UnrolledValue{It, VI->first};
       }
 
@@ -647,7 +641,8 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
     if (Term && Term->isUnconditional()) {
       BasicBlock *Dest = Term->getSuccessor(0);
       BasicBlock *Fold = Dest->getUniquePredecessor();
-      if (MergeBlockIntoPredecessor(Dest, DTU ? DTU.getPointer() : nullptr, LI)) {
+      if (MergeBlockIntoPredecessor(Dest, DTU ? DTU.getPointer() : nullptr,
+                                    LI)) {
         // Dest has been folded into Fold. Update our worklists accordingly.
         std::replace(Latches.begin(), Latches.end(), Dest, Fold);
         llvm::erase_value(UnrolledLoopBlocks, Dest);
@@ -675,8 +670,8 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
 
   // At this point, the code is well formed.  We now simplify the unrolled loop,
   // doing constant propagation and dead code elimination as we go.
-  simplifyLoopAfterUnroll2(L, !CompletelyUnroll && (ULO.Count > 1 || Peeled), LI,
-      SE, DT, AC, TTI);
+  simplifyLoopAfterUnroll2(L, !CompletelyUnroll && (ULO.Count > 1 || Peeled),
+                           LI, SE, DT, AC, TTI);
 
   Loop *OuterL = L->getParentLoop();
   // Update LoopInfo if the loop is completely removed.
@@ -693,7 +688,7 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   // it should be possible to fix it in-place.
   if (PreserveLCSSA && OuterL && CompletelyUnroll && !NeedToFixLCSSA)
     NeedToFixLCSSA |=
-      ::needToInsertPhisForLCSSA(OuterL, UnrolledLoopBlocks, LI);
+        ::needToInsertPhisForLCSSA(OuterL, UnrolledLoopBlocks, LI);
 
   // If we have a pass and a DominatorTree we should re-simplify impacted loops
   // to ensure subsequent analyses can rely on this form. We want to simplify
@@ -717,7 +712,7 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
         formLCSSARecursively(*FixLCSSALoop, *DT, LI, SE);
       } else if (PreserveLCSSA) {
         assert(OuterL->isLCSSAForm(*DT) &&
-            "Loops should be in LCSSA form after loop-unroll.");
+               "Loops should be in LCSSA form after loop-unroll.");
       }
 
       // TODO: That potentially might be compile-time expensive. We should try
@@ -731,5 +726,5 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   }
 
   return CompletelyUnroll ? LoopUnrollResult::FullyUnrolled
-    : LoopUnrollResult::PartiallyUnrolled;
+                          : LoopUnrollResult::PartiallyUnrolled;
 }
