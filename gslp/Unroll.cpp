@@ -94,17 +94,22 @@ static bool isEpilogProfitable(Loop *L) {
   return false;
 }
 
-LoopUnrollResult UnrollLoopWithVMap(
-    Loop *L, UnrollLoopOptions ULO, LoopInfo *LI, ScalarEvolution *SE,
-    DominatorTree *DT, AssumptionCache *AC, const TargetTransformInfo *TTI,
-    ValueMap<const Value *, UnrolledValue> &OrigToUnrollMap,
-    bool PreserveLCSSA, Loop **RemainderLoop) {
+LoopUnrollResult
+UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
+                   ScalarEvolution *SE, DominatorTree *DT, AssumptionCache *AC,
+                   const TargetTransformInfo *TTI, bool PreserveLCSSA,
+                   ValueMap<const Value *, UnrolledValue> &OrigToUnrollMap,
+                   Loop **RemainderLoop) {
 
-  if (!L->getLoopPreheader())
+  if (!L->getLoopPreheader()) {
+    errs() << "no preheader\n";
     return LoopUnrollResult::Unmodified;
+  }
 
-  if (!L->getLoopLatch())
+  if (!L->getLoopLatch()) {
+    errs() << "no preheader\n";
     return LoopUnrollResult::Unmodified;
+  }
 
   // Loops with indirectbr cannot be cloned.
   if (!L->isSafeToClone())
@@ -340,7 +345,7 @@ LoopUnrollResult UnrollLoopWithVMap(
       for (ValueToValueMapTy::iterator VI = VMap.begin(), VE = VMap.end();
            VI != VE; ++VI) {
         LastValueMap[VI->first] = VI->second;
-        OrigToUnrollMap[VI->first] = UnrolledValue { It, VI->second };
+        OrigToUnrollMap[VI->first] = UnrolledValue{It, VI->second};
       }
 
       // Add phi entries for newly created values to all exit blocks.
@@ -582,7 +587,9 @@ LoopUnrollResult UnrollLoopWithVMap(
 
   assert(!DT || DT->verify(DominatorTree::VerificationLevel::Fast));
 
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
+  Optional<DomTreeUpdater> DTU;
+  if (DT)
+    DTU.emplace(DT, DomTreeUpdater::UpdateStrategy::Lazy);
   // Merge adjacent basic blocks, if possible.
   for (BasicBlock *Latch : Latches) {
     BranchInst *Term = dyn_cast<BranchInst>(Latch->getTerminator());
@@ -593,7 +600,7 @@ LoopUnrollResult UnrollLoopWithVMap(
     if (Term && Term->isUnconditional()) {
       BasicBlock *Dest = Term->getSuccessor(0);
       BasicBlock *Fold = Dest->getUniquePredecessor();
-      if (MergeBlockIntoPredecessor(Dest, &DTU, LI)) {
+      if (MergeBlockIntoPredecessor(Dest, DTU ? DTU.getPointer() : nullptr, LI)) {
         // Dest has been folded into Fold. Update our worklists accordingly.
         std::replace(Latches.begin(), Latches.end(), Dest, Fold);
         llvm::erase_value(UnrolledLoopBlocks, Dest);
@@ -601,7 +608,9 @@ LoopUnrollResult UnrollLoopWithVMap(
     }
   }
   // Apply updates to the DomTree.
-  DT = &DTU.getDomTree();
+  if (DT)
+    DT = &DTU->getDomTree();
+
 
   // At this point, the code is well formed.  We now simplify the unrolled loop,
   // doing constant propagation and dead code elimination as we go.

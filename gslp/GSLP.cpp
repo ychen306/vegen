@@ -3,18 +3,25 @@
 #include "Packer.h"
 #include "Solver.h"
 #include "VectorPackSet.h"
+#include "Unroll.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Analysis/LoopIterator.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Linker/Linker.h"
+#include "llvm/Transforms/Utils/LoopUtils.h" // cloneLoop
+#include "llvm/Transforms/Utils/Cloning.h" // CloneBasicBlock
+#include "llvm/Transforms/Utils/LoopSimplify.h" // simplifyLoop
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
@@ -57,8 +64,9 @@ class GSLP : public FunctionPass {
       return X86Insts;
     case Triple::aarch64:
       return ArmInsts;
+    default:
+      llvm_unreachable("unsupported target architecture");
     }
-    llvm_unreachable("unsupported target architecture");
   }
 
 public:
@@ -68,6 +76,9 @@ public:
   }
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<AssumptionCacheTracker>();
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<TargetTransformInfoWrapperPass>();
@@ -212,11 +223,39 @@ static void balanceReductionTree(Function &F) {
   }
 }
 
+static Loop *cloneLoop(Loop *L, LoopInfo *LI) {
+  ValueToValueMapTy VMap;
+  std::vector<BasicBlock *> NewBlocks;
+  auto Clone = [&](BasicBlock *BB) {
+    BasicBlock *NewBB = CloneBasicBlock(BB, VMap, "", BB->getParent());
+    VMap[BB] = NewBB;
+    NewBlocks.push_back(NewBB);
+  };
+  if (auto *Preheader = L->getLoopPreheader())
+    Clone(Preheader);
+  for (auto *BB : L->getBlocks())
+    Clone(BB);
+  for (auto *BB : NewBlocks)
+    for (auto &I : *BB)
+      RemapInstruction(&I, VMap,
+          RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+  return cloneLoop(L, nullptr /*parent loop*/, VMap, LI, nullptr /*lppassmanager*/);
+}
+
+static void removeInstsFromBlock(BasicBlock *BB) {
+  std::vector<Instruction *> Instructions;
+  for (auto &I : *BB) {
+    I.replaceAllUsesWith(UndefValue::get(I.getType()));
+    Instructions.push_back(&I);
+  }
+  for (auto *I : Instructions)
+    I->eraseFromParent();
+}
+
 bool GSLP::runOnFunction(Function &F) {
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
-  balanceReductionTree(F);
-  errs() << F << '\n';
+  //balanceReductionTree(F);
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
 
@@ -225,6 +264,60 @@ bool GSLP::runOnFunction(Function &F) {
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
   auto *DL = &F.getParent()->getDataLayout();
+
+  // Stuff to deal with loops
+  auto *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  auto *AC = &getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F);
+
+  {
+    for (auto &BB : F) {
+      if (Loop *L = LI->getLoopFor(&BB)) {
+        formLCSSARecursively(*L, *DT, LI, SE);
+        simplifyLoop(L, DT, LI, SE, AC, nullptr, true);
+        if (!L->isLCSSAForm(*DT)) {
+          errs() << "???????????? bug: not in lcssa form\n";
+          abort();
+        }
+        if (!L->getLoopPreheader()) {
+          errs() << "???????????? bug: no preheader\n";
+          abort();
+        }
+        Loop *NewL = cloneLoop(L, LI);
+
+        UnrollLoopOptions ULO;
+        ULO.TripCount = 0;
+        ULO.Count = 4;
+        ULO.Force = false;
+        ULO.PeelCount = 0;
+        ULO.AllowRuntime = true;
+        ULO.AllowExpensiveTripCount = true;
+        ULO.ForgetAllSCEV = false;
+        ULO.UnrollRemainder = true;
+
+        ValueMap<const Value *, UnrolledValue> OrigToUnrollMap;
+        auto Result = UnrollLoopWithVMap(NewL, ULO, LI, SE, nullptr/*DT*/, AC, TTI, true, OrigToUnrollMap, nullptr /*remainder loop*/);
+        errs() << "??? unroll result: " << (Result != LoopUnrollResult::Unmodified) << '\n';
+
+        errs() << "??? unrolled loop: <<<<<<\n";
+        for (auto *BB : NewL->blocks())
+          errs() << *BB << '\n';
+        errs() << ">>>>>>>>>>\n";
+
+        BasicBlock *PH = NewL->getLoopPreheader();
+        for (auto *BB : NewL->blocks())
+          removeInstsFromBlock(BB);
+        removeInstsFromBlock(PH);
+        for (auto *BB : NewL->blocks())
+          BB->eraseFromParent();
+        PH->eraseFromParent();
+        LI->removeLoop(std::find(LI->begin(), LI->end(), NewL));
+        LI->destroy(NewL);
+      }
+    }
+  }
+  errs() << F << '\n';
+  return false;
 
   std::vector<const InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts())
@@ -236,7 +329,7 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
-         << '\n';
+    << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
@@ -254,44 +347,47 @@ bool GSLP::runOnFunction(Function &F) {
   return true;
 }
 
-INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
-INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
+  INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
+  INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
+  INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
-INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
+  INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
-// Automatically enable the pass.
-// http://adriansampson.net/blog/clangpass.html
-static void registerGSLP(const PassManagerBuilder &PMB,
-                         legacy::PassManagerBase &MPM) {
-  MPM.add(createSROAPass());
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-  if (UseMainlineSLP) {
-    errs() << "USING LLVM SLP\n";
-    MPM.add(createSLPVectorizerPass());
-  } else {
-    errs() << "USING G-SLP\n";
-    MPM.add(new GSLP());
-  }
-
-  // run the cleanup passes, copied from llvm's pass builder
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-  MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
-                               PMB.ForgetAllSCEVInLoopUnroll));
-  if (!PMB.DisableUnrollLoops) {
+  // Automatically enable the pass.
+  // http://adriansampson.net/blog/clangpass.html
+  static void registerGSLP(const PassManagerBuilder &PMB,
+      legacy::PassManagerBase &MPM) {
+    MPM.add(createSROAPass());
     MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    MPM.add(
-        createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+    if (UseMainlineSLP) {
+      errs() << "USING LLVM SLP\n";
+      MPM.add(createSLPVectorizerPass());
+    } else {
+      errs() << "USING G-SLP\n";
+      MPM.add(new GSLP());
+    }
+
+    // run the cleanup passes, copied from llvm's pass builder
+    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+    MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
+          PMB.ForgetAllSCEVInLoopUnroll));
+    if (!PMB.DisableUnrollLoops) {
+      MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+      MPM.add(
+          createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+    }
+    MPM.add(createAlignmentFromAssumptionsPass());
+    MPM.add(createLoopSinkPass());
+    MPM.add(createInstSimplifyLegacyPass());
+    MPM.add(createDivRemPairsPass());
+    MPM.add(createCFGSimplificationPass());
   }
-  MPM.add(createAlignmentFromAssumptionsPass());
-  MPM.add(createLoopSinkPass());
-  MPM.add(createInstSimplifyLegacyPass());
-  MPM.add(createDivRemPairsPass());
-  MPM.add(createCFGSimplificationPass());
-}
 
 // Register this pass to run after all optimization,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
-    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
+RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
