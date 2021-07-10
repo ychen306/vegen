@@ -2,29 +2,29 @@
 #include "InstSema.h"
 #include "Packer.h"
 #include "Solver.h"
-#include "VectorPackSet.h"
 #include "Unroll.h"
+#include "VectorPackSet.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
-#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/LoopIterator.h"
+#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Linker/Linker.h"
-#include "llvm/Transforms/Utils/LoopUtils.h" // cloneLoop
-#include "llvm/Transforms/Utils/Cloning.h" // CloneBasicBlock
-#include "llvm/Transforms/Utils/LoopSimplify.h" // simplifyLoop
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils/Cloning.h"      // CloneBasicBlock
+#include "llvm/Transforms/Utils/LoopSimplify.h" // simplifyLoop
+#include "llvm/Transforms/Utils/LoopUtils.h"    // cloneLoop
 // For pass building
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -223,23 +223,34 @@ static void balanceReductionTree(Function &F) {
   }
 }
 
-static Loop *cloneLoop(Loop *L, LoopInfo *LI) {
+static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT) {
   ValueToValueMapTy VMap;
   std::vector<BasicBlock *> NewBlocks;
-  auto Clone = [&](BasicBlock *BB) {
+  auto Clone = [&](BasicBlock *BB) -> BasicBlock * {
     BasicBlock *NewBB = CloneBasicBlock(BB, VMap, "", BB->getParent());
     VMap[BB] = NewBB;
     NewBlocks.push_back(NewBB);
+    return NewBB;
   };
-  if (auto *Preheader = L->getLoopPreheader())
-    Clone(Preheader);
+  auto *Preheader = L->getLoopPreheader();
+  DT->addNewBlock(Clone(Preheader),
+                  DT->getNode(Preheader)->getIDom()->getBlock());
   for (auto *BB : L->getBlocks())
-    Clone(BB);
+    DT->addNewBlock(Clone(BB), Preheader);
+  for (auto *BB : L->getBlocks()) {
+    BasicBlock *Dominator = DT->getNode(BB)->getIDom()->getBlock();
+    DT->changeImmediateDominator(cast<BasicBlock>(VMap[BB]),
+                                 cast<BasicBlock>(VMap[Dominator]));
+  }
+  Loop *NewL = cloneLoop(L, nullptr /*parent loop*/, VMap, LI,
+                         nullptr /*lppassmanager*/);
   for (auto *BB : NewBlocks)
     for (auto &I : *BB)
       RemapInstruction(&I, VMap,
-          RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
-  return cloneLoop(L, nullptr /*parent loop*/, VMap, LI, nullptr /*lppassmanager*/);
+                       RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+  for (auto *BB : NewBlocks)
+    errs() << "!!! cloned: " << *BB << '\n';
+  return NewL;
 }
 
 static void removeInstsFromBlock(BasicBlock *BB) {
@@ -255,7 +266,7 @@ static void removeInstsFromBlock(BasicBlock *BB) {
 bool GSLP::runOnFunction(Function &F) {
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
-  //balanceReductionTree(F);
+  // balanceReductionTree(F);
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
 
@@ -283,21 +294,29 @@ bool GSLP::runOnFunction(Function &F) {
           errs() << "???????????? bug: no preheader\n";
           abort();
         }
-        Loop *NewL = cloneLoop(L, LI);
+        Loop *NewL = cloneLoop(L, LI, DT);
 
         UnrollLoopOptions ULO;
         ULO.TripCount = 0;
-        ULO.Count = 4;
-        ULO.Force = false;
+        ULO.Count = 2;
+        ULO.Force = true;
         ULO.PeelCount = 0;
         ULO.AllowRuntime = true;
         ULO.AllowExpensiveTripCount = true;
         ULO.ForgetAllSCEV = false;
         ULO.UnrollRemainder = true;
 
+        for (auto *BB : L->blocks())
+          for (auto &I : *BB)
+            if (SE->isSCEVable(I.getType()))
+              errs() << "scev: " << I << ", " << *SE->getSCEV(&I) << '\n';
+
         ValueMap<const Value *, UnrolledValue> OrigToUnrollMap;
-        auto Result = UnrollLoopWithVMap(NewL, ULO, LI, SE, nullptr/*DT*/, AC, TTI, true, OrigToUnrollMap, nullptr /*remainder loop*/);
-        errs() << "??? unroll result: " << (Result != LoopUnrollResult::Unmodified) << '\n';
+        auto Result =
+            UnrollLoopWithVMap(NewL, ULO, LI, SE, nullptr /*DT*/, AC, TTI, true,
+                               OrigToUnrollMap, nullptr /*remainder loop*/);
+        errs() << "??? unroll result: "
+               << (Result != LoopUnrollResult::Unmodified) << '\n';
 
         errs() << "??? unrolled loop: <<<<<<\n";
         for (auto *BB : NewL->blocks())
@@ -329,7 +348,7 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
-    << '\n';
+         << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
@@ -347,47 +366,47 @@ bool GSLP::runOnFunction(Function &F) {
   return true;
 }
 
-  INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
-  INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
-  INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
+INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
+INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
-  INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
+INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
-  // Automatically enable the pass.
-  // http://adriansampson.net/blog/clangpass.html
-  static void registerGSLP(const PassManagerBuilder &PMB,
-      legacy::PassManagerBase &MPM) {
-    MPM.add(createSROAPass());
-    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    if (UseMainlineSLP) {
-      errs() << "USING LLVM SLP\n";
-      MPM.add(createSLPVectorizerPass());
-    } else {
-      errs() << "USING G-SLP\n";
-      MPM.add(new GSLP());
-    }
-
-    // run the cleanup passes, copied from llvm's pass builder
-    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
-          PMB.ForgetAllSCEVInLoopUnroll));
-    if (!PMB.DisableUnrollLoops) {
-      MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-      MPM.add(
-          createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
-    }
-    MPM.add(createAlignmentFromAssumptionsPass());
-    MPM.add(createLoopSinkPass());
-    MPM.add(createInstSimplifyLegacyPass());
-    MPM.add(createDivRemPairsPass());
-    MPM.add(createCFGSimplificationPass());
+// Automatically enable the pass.
+// http://adriansampson.net/blog/clangpass.html
+static void registerGSLP(const PassManagerBuilder &PMB,
+                         legacy::PassManagerBase &MPM) {
+  MPM.add(createSROAPass());
+  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+  if (UseMainlineSLP) {
+    errs() << "USING LLVM SLP\n";
+    MPM.add(createSLPVectorizerPass());
+  } else {
+    errs() << "USING G-SLP\n";
+    MPM.add(new GSLP());
   }
+
+  // run the cleanup passes, copied from llvm's pass builder
+  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+  MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
+                               PMB.ForgetAllSCEVInLoopUnroll));
+  if (!PMB.DisableUnrollLoops) {
+    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+    MPM.add(
+        createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+  }
+  MPM.add(createAlignmentFromAssumptionsPass());
+  MPM.add(createLoopSinkPass());
+  MPM.add(createInstSimplifyLegacyPass());
+  MPM.add(createDivRemPairsPass());
+  MPM.add(createCFGSimplificationPass());
+}
 
 // Register this pass to run after all optimization,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
-RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
+    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
