@@ -304,10 +304,10 @@ bool GSLP::runOnFunction(Function &F) {
         errs() << "??? unrolled loop: <<<<<<\n";
         for (auto *BB : NewL->blocks())
           errs() << *BB << '\n';
-          //for (auto &I : *BB)
-          //  if (SE->isSCEVable(I.getType())) {
-          //    errs() << I << ": " << *SE->getSCEV(&I) << '\n';
-          //  }
+        // for (auto &I : *BB)
+        //  if (SE->isSCEVable(I.getType())) {
+        //    errs() << I << ": " << *SE->getSCEV(&I) << '\n';
+        //  }
         errs() << ">>>>>>>>>>\n";
 
         BasicBlock *PH = NewL->getLoopPreheader();
