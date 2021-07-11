@@ -257,9 +257,6 @@ static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT, std::vector<Bas
       RemapInstruction(&I, VMap,
                        RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
 
-  for (auto *BB : NewBlocks)
-    errs() << "~~~ cloned: " << *BB <<'\n';
-
   return NewL;
 }
 
