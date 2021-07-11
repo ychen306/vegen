@@ -218,9 +218,8 @@ static void balanceReductionTree(Function &F) {
   }
 }
 
-static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT) {
+static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT, std::vector<BasicBlock *> &NewBlocks) {
   ValueToValueMapTy VMap;
-  std::vector<BasicBlock *> NewBlocks;
   auto Clone = [&](BasicBlock *BB) -> BasicBlock * {
     BasicBlock *NewBB = CloneBasicBlock(BB, VMap, "", BB->getParent());
     VMap[BB] = NewBB;
@@ -229,16 +228,27 @@ static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT) {
   };
 
   auto *Preheader = L->getLoopPreheader();
+  SmallVector<BasicBlock *> ExitBlocks;
+  L->getExitBlocks(ExitBlocks);
 
   DT->addNewBlock(Clone(Preheader),
                   DT->getNode(Preheader)->getIDom()->getBlock());
   for (auto *BB : L->getBlocks())
     DT->addNewBlock(Clone(BB), Preheader);
-  for (auto *BB : L->getBlocks()) {
+  for (auto *BB : ExitBlocks)
+    DT->addNewBlock(Clone(BB), Preheader);
+
+  auto FixDominance = [&](BasicBlock *BB) {
     BasicBlock *Dominator = DT->getNode(BB)->getIDom()->getBlock();
-    DT->changeImmediateDominator(cast<BasicBlock>(VMap[BB]),
-                                 cast<BasicBlock>(VMap[Dominator]));
-  }
+    if (WeakTrackingVH Cloned = VMap.lookup(Dominator))
+      Dominator = cast<BasicBlock>(Cloned);
+    DT->changeImmediateDominator(cast<BasicBlock>(VMap[BB]), Dominator);
+  };
+
+  for (auto *BB : L->getBlocks())
+    FixDominance(BB);
+  for (auto *BB : ExitBlocks)
+    FixDominance(BB);
 
   Loop *NewL = cloneLoop(L, nullptr /*parent loop*/, VMap, LI,
                          nullptr /*lppassmanager*/);
@@ -246,17 +256,11 @@ static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT) {
     for (auto &I : *BB)
       RemapInstruction(&I, VMap,
                        RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
-  return NewL;
-}
 
-static void removeInstsFromBlock(BasicBlock *BB) {
-  std::vector<Instruction *> Instructions;
-  for (auto &I : *BB) {
-    I.replaceAllUsesWith(UndefValue::get(I.getType()));
-    Instructions.push_back(&I);
-  }
-  for (auto *I : Instructions)
-    I->eraseFromParent();
+  for (auto *BB : NewBlocks)
+    errs() << "~~~ cloned: " << *BB <<'\n';
+
+  return NewL;
 }
 
 bool GSLP::runOnFunction(Function &F) {
@@ -282,7 +286,8 @@ bool GSLP::runOnFunction(Function &F) {
       if (Loop *L = LI->getLoopFor(&BB)) {
         formLCSSARecursively(*L, *DT, LI, SE);
         simplifyLoop(L, DT, LI, SE, AC, nullptr, true);
-        Loop *NewL = cloneLoop(L, LI, DT);
+        std::vector<BasicBlock *> NewBlocks;
+        Loop *NewL = cloneLoop(L, LI, DT, NewBlocks);
 
         UnrollLoopOptions ULO;
         ULO.TripCount = 0;
@@ -310,13 +315,18 @@ bool GSLP::runOnFunction(Function &F) {
         //  }
         errs() << ">>>>>>>>>>\n";
 
-        BasicBlock *PH = NewL->getLoopPreheader();
-        for (auto *BB : NewL->blocks())
-          removeInstsFromBlock(BB);
-        removeInstsFromBlock(PH);
-        for (auto *BB : NewL->blocks())
+        for (auto *BB : NewBlocks) {
+          std::vector<Instruction *> Instructions;
+          for (auto &I : *BB) {
+            I.replaceAllUsesWith(UndefValue::get(I.getType()));
+            Instructions.push_back(&I);
+          }
+          for (auto *I : Instructions)
+            I->eraseFromParent();
+        }
+        for (auto *BB : NewBlocks)
           BB->eraseFromParent();
-        PH->eraseFromParent();
+
         LI->removeLoop(std::find(LI->begin(), LI->end(), NewL));
         LI->destroy(NewL);
       }
@@ -335,7 +345,7 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
-         << '\n';
+    << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
@@ -353,47 +363,47 @@ bool GSLP::runOnFunction(Function &F) {
   return true;
 }
 
-INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
-INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
+  INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
+  INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
+  INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+  INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
-INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
+  INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
-// Automatically enable the pass.
-// http://adriansampson.net/blog/clangpass.html
-static void registerGSLP(const PassManagerBuilder &PMB,
-                         legacy::PassManagerBase &MPM) {
-  MPM.add(createSROAPass());
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-  if (UseMainlineSLP) {
-    errs() << "USING LLVM SLP\n";
-    MPM.add(createSLPVectorizerPass());
-  } else {
-    errs() << "USING G-SLP\n";
-    MPM.add(new GSLP());
-  }
-
-  // run the cleanup passes, copied from llvm's pass builder
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-  MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
-                               PMB.ForgetAllSCEVInLoopUnroll));
-  if (!PMB.DisableUnrollLoops) {
+  // Automatically enable the pass.
+  // http://adriansampson.net/blog/clangpass.html
+  static void registerGSLP(const PassManagerBuilder &PMB,
+      legacy::PassManagerBase &MPM) {
+    MPM.add(createSROAPass());
     MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    MPM.add(
-        createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+    if (UseMainlineSLP) {
+      errs() << "USING LLVM SLP\n";
+      MPM.add(createSLPVectorizerPass());
+    } else {
+      errs() << "USING G-SLP\n";
+      MPM.add(new GSLP());
+    }
+
+    // run the cleanup passes, copied from llvm's pass builder
+    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+    MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
+          PMB.ForgetAllSCEVInLoopUnroll));
+    if (!PMB.DisableUnrollLoops) {
+      MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+      MPM.add(
+          createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+    }
+    MPM.add(createAlignmentFromAssumptionsPass());
+    MPM.add(createLoopSinkPass());
+    MPM.add(createInstSimplifyLegacyPass());
+    MPM.add(createDivRemPairsPass());
+    MPM.add(createCFGSimplificationPass());
   }
-  MPM.add(createAlignmentFromAssumptionsPass());
-  MPM.add(createLoopSinkPass());
-  MPM.add(createInstSimplifyLegacyPass());
-  MPM.add(createDivRemPairsPass());
-  MPM.add(createCFGSimplificationPass());
-}
 
 // Register this pass to run after all optimization,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
-    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
+RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);

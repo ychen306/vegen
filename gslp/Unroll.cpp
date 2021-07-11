@@ -394,7 +394,9 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
         if (L->contains(Succ))
           continue;
         for (PHINode &PHI : Succ->phis()) {
+          errs() << "~~~~~~~~~ getting incoming for " << *Succ << " from " << **BB << '\n';
           Value *Incoming = PHI.getIncomingValueForBlock(*BB);
+          errs() << "!!!! done\n";
           ValueToValueMapTy::iterator It = LastValueMap.find(Incoming);
           if (It != LastValueMap.end())
             Incoming = It->second;
