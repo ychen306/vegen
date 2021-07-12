@@ -328,7 +328,7 @@ static float estimateCostWithUnrollFactor(
     DT->eraseNode(BB);
   DT->eraseNode(PH);
 
-  // Remove the instructions
+  // Remove the instructions in the blocks
   clearBasicBlock(PH);
   for (auto *BB : ScratchL->getBlocks())
     clearBasicBlock(BB);
@@ -342,8 +342,10 @@ static float estimateCostWithUnrollFactor(
   for (auto *BB : ExitBlocks)
     BB->eraseFromParent();
 
+  // Remove the loop from loop info
   LI->removeLoop(std::find(LI->begin(), LI->end(), ScratchL));
   LI->destroy(ScratchL);
+
   // Return the saving normalized by the unroll factor
   return OverallSaving / UnrollFactor;
 }
@@ -383,10 +385,44 @@ bool GSLP::runOnFunction(Function &F) {
     if (L->isInnermost())
       Loops.insert(L);
 
-  for (Loop *L : Loops)
-    for (auto UF : {2, 4, 8, 16, 32})
-      estimateCostWithUnrollFactor(L, UF, SupportedIntrinsics, AA, DL, SE, LI,
+  // Assume the loop nests are disjoint
+  for (Loop *L : Loops) {
+    formLCSSARecursively(*L, *DT, LI, SE);
+    simplifyLoop(L, DT, LI, SE, AC, nullptr, true);
+
+    float BestCost = 0;
+    unsigned BestUF = 1;
+    for (auto UF : {2, 4, 8, 16, 32}) {
+      float Cost = estimateCostWithUnrollFactor(L, UF, SupportedIntrinsics, AA, DL, SE, LI,
                                    DT, AC, TTI, BFI);
+      if (Cost < BestCost) {
+        BestUF = UF;
+        Cost = BestCost;
+      }
+    }
+
+    BestUF = 4;
+    // Actually unroll the loop
+    if (BestUF > 1) {
+      UnrollLoopOptions ULO;
+      ULO.TripCount = 0;
+      ULO.Count = BestUF;
+      ULO.Force = true;
+      ULO.PeelCount = 0;
+      ULO.TripMultiple = SE->getSmallConstantTripMultiple(L);
+      ULO.AllowRuntime = true;
+      ULO.AllowExpensiveTripCount = true;
+      ULO.ForgetAllSCEV = false;
+      ULO.UnrollRemainder = true;
+      ULO.PreserveOnlyFirst = false;
+      ULO.PreserveCondBr = false;
+
+      // TODO: seed with isomorphism we get from unrolling
+      ValueMap<const Value *, UnrolledValue> OrigToUnrollMap;
+      UnrollLoopWithVMap(L, ULO, LI, SE, DT, AC, TTI, true,
+                         OrigToUnrollMap, nullptr/*remainder loop*/);
+    }
+  }
 
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
@@ -415,37 +451,37 @@ INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
-// Automatically enable the pass.
-// http://adriansampson.net/blog/clangpass.html
-static void registerGSLP(const PassManagerBuilder &PMB,
-                         legacy::PassManagerBase &MPM) {
-  MPM.add(createSROAPass());
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-  if (UseMainlineSLP) {
-    errs() << "USING LLVM SLP\n";
-    MPM.add(createSLPVectorizerPass());
-  } else {
-    errs() << "USING G-SLP\n";
-    MPM.add(new GSLP());
-  }
-
-  // run the cleanup passes, copied from llvm's pass builder
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-  MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
-                               PMB.ForgetAllSCEVInLoopUnroll));
-  if (!PMB.DisableUnrollLoops) {
+  // Automatically enable the pass.
+  // http://adriansampson.net/blog/clangpass.html
+  static void registerGSLP(const PassManagerBuilder &PMB,
+      legacy::PassManagerBase &MPM) {
+    MPM.add(createSROAPass());
     MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    MPM.add(
-        createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+    if (UseMainlineSLP) {
+      errs() << "USING LLVM SLP\n";
+      MPM.add(createSLPVectorizerPass());
+    } else {
+      errs() << "USING G-SLP\n";
+      MPM.add(new GSLP());
+    }
+
+    // run the cleanup passes, copied from llvm's pass builder
+    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+    MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
+          PMB.ForgetAllSCEVInLoopUnroll));
+    if (!PMB.DisableUnrollLoops) {
+      MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+      MPM.add(
+          createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+    }
+    MPM.add(createAlignmentFromAssumptionsPass());
+    MPM.add(createLoopSinkPass());
+    MPM.add(createInstSimplifyLegacyPass());
+    MPM.add(createDivRemPairsPass());
+    MPM.add(createCFGSimplificationPass());
   }
-  MPM.add(createAlignmentFromAssumptionsPass());
-  MPM.add(createLoopSinkPass());
-  MPM.add(createInstSimplifyLegacyPass());
-  MPM.add(createDivRemPairsPass());
-  MPM.add(createCFGSimplificationPass());
-}
 
 // Register this pass to run after all optimization,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
-    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
+RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
