@@ -128,7 +128,8 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
 
 void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr) {
   VectorPackSet PacksScratch = Packs;
-  float BottomUpCost = optimizeBottomUp(PacksScratch, &Pkr, &BB);
+  float ScalarCost;
+  float BottomUpCost = optimizeBottomUp(PacksScratch, &Pkr, &BB, ScalarCost);
   errs() << "Bottom-up cost: " << BottomUpCost << '\n';
   Packs = PacksScratch;
   return;
@@ -218,7 +219,8 @@ static void balanceReductionTree(Function &F) {
   }
 }
 
-static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT, std::vector<BasicBlock *> &NewBlocks) {
+static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT,
+                       std::vector<BasicBlock *> &NewBlocks) {
   ValueToValueMapTy VMap;
   auto Clone = [&](BasicBlock *BB) -> BasicBlock * {
     BasicBlock *NewBB = CloneBasicBlock(BB, VMap, "", BB->getParent());
@@ -260,6 +262,77 @@ static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT, std::vector<Bas
   return NewL;
 }
 
+static void clearBasicBlock(BasicBlock *BB) {
+  std::vector<Instruction *> Instructions;
+  for (auto &I : *BB) {
+    I.replaceAllUsesWith(UndefValue::get(I.getType()));
+    Instructions.push_back(&I);
+  }
+}
+
+static float estimateCostWithUnrollFactor(
+    Loop *L, unsigned UnrollFactor,
+    ArrayRef<const InstBinding *> SupportedIntrinsics, AliasAnalysis *AA,
+    const DataLayout *DL, ScalarEvolution *SE, LoopInfo *LI, DominatorTree *DT,
+    AssumptionCache *AC, TargetTransformInfo *TTI, BlockFrequencyInfo *BFI) {
+  std::vector<BasicBlock *> NewBlocks;
+  Loop *ScratchL = cloneLoop(L, LI, DT, NewBlocks);
+
+  UnrollLoopOptions ULO;
+  ULO.TripCount = 0;
+  ULO.Count = UnrollFactor;
+  ULO.Force = true;
+  ULO.PeelCount = 0;
+  // we are not actually generating code, so don't bother generating the
+  // remainder
+  ULO.TripMultiple = UnrollFactor;
+  ULO.AllowRuntime = true;
+  ULO.AllowExpensiveTripCount = true;
+  ULO.ForgetAllSCEV = false;
+  ULO.UnrollRemainder = true;
+
+  ValueMap<const Value *, UnrolledValue> OrigToUnrollMap;
+  auto Result =
+      UnrollLoopWithVMap(ScratchL, ULO, LI, SE, nullptr /*DT*/, AC, TTI, true,
+                         OrigToUnrollMap, nullptr /*remainder loop*/);
+  if (Result == LoopUnrollResult::Unmodified)
+    return 0; // the net benefit is 0 if we can't unroll
+
+  Function *F = L->getHeader()->getParent();
+  Packer Pkr(SupportedIntrinsics, *F, AA, DL, SE, TTI, BFI);
+  // errs() << "??? cloned loop ";
+  // ScratchL->dumpVerbose();
+  float OverallSaving = 0;
+  for (auto *BB : ScratchL->getBlocks()) {
+    float ScalarCost;
+    VectorPackSet PackSet(F);
+    float VectorCost = optimizeBottomUp(PackSet, &Pkr, BB, ScalarCost);
+    OverallSaving += VectorCost - ScalarCost;
+  }
+
+  auto *PH = ScratchL->getLoopPreheader();
+  assert(PH);
+  SmallVector<BasicBlock *> ExitBlocks;
+  ScratchL->getExitBlocks(ExitBlocks);
+
+  // Delete the scratch loop
+  clearBasicBlock(PH);
+  for (auto *BB : ScratchL->getBlocks())
+    clearBasicBlock(BB);
+  for (auto *BB : ExitBlocks)
+    clearBasicBlock(BB);
+  PH->eraseFromParent();
+  for (auto *BB : ScratchL->getBlocks())
+    BB->eraseFromParent();
+  for (auto *BB : ExitBlocks)
+    BB->eraseFromParent();
+
+  LI->removeLoop(std::find(LI->begin(), LI->end(), ScratchL));
+  LI->destroy(ScratchL);
+  // Return the saving normalized by the unroll factor
+  return OverallSaving / UnrollFactor;
+}
+
 bool GSLP::runOnFunction(Function &F) {
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
@@ -278,60 +351,6 @@ bool GSLP::runOnFunction(Function &F) {
   auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   auto *AC = &getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F);
 
-  {
-    for (auto &BB : F) {
-      if (Loop *L = LI->getLoopFor(&BB)) {
-        formLCSSARecursively(*L, *DT, LI, SE);
-        simplifyLoop(L, DT, LI, SE, AC, nullptr, true);
-        std::vector<BasicBlock *> NewBlocks;
-        Loop *NewL = cloneLoop(L, LI, DT, NewBlocks);
-
-        UnrollLoopOptions ULO;
-        ULO.TripCount = 0;
-        ULO.Count = 4;
-        ULO.Force = true;
-        ULO.PeelCount = 0;
-        ULO.AllowRuntime = true;
-        ULO.AllowExpensiveTripCount = true;
-        ULO.ForgetAllSCEV = false;
-        ULO.UnrollRemainder = true;
-
-        ValueMap<const Value *, UnrolledValue> OrigToUnrollMap;
-        auto Result =
-            UnrollLoopWithVMap(NewL, ULO, LI, SE, nullptr /*DT*/, AC, TTI, true,
-                               OrigToUnrollMap, nullptr /*remainder loop*/);
-        errs() << "??? unroll result: "
-               << (Result != LoopUnrollResult::Unmodified) << '\n';
-
-        errs() << "??? unrolled loop: <<<<<<\n";
-        for (auto *BB : NewL->blocks())
-          errs() << *BB << '\n';
-        // for (auto &I : *BB)
-        //  if (SE->isSCEVable(I.getType())) {
-        //    errs() << I << ": " << *SE->getSCEV(&I) << '\n';
-        //  }
-        errs() << ">>>>>>>>>>\n";
-
-        for (auto *BB : NewBlocks) {
-          std::vector<Instruction *> Instructions;
-          for (auto &I : *BB) {
-            I.replaceAllUsesWith(UndefValue::get(I.getType()));
-            Instructions.push_back(&I);
-          }
-          for (auto *I : Instructions)
-            I->eraseFromParent();
-        }
-        for (auto *BB : NewBlocks)
-          BB->eraseFromParent();
-
-        LI->removeLoop(std::find(LI->begin(), LI->end(), NewL));
-        LI->destroy(NewL);
-      }
-    }
-  }
-  errs() << F << '\n';
-  return false;
-
   std::vector<const InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts())
     if (isSupported(&Inst, F))
@@ -342,7 +361,17 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
-    << '\n';
+         << '\n';
+
+  DenseSet<Loop *> Loops;
+  for (Loop *L : *LI)
+    if (L->isInnermost())
+      Loops.insert(L);
+
+  for (Loop *L : Loops)
+    estimateCostWithUnrollFactor(L, 4, SupportedIntrinsics, AA, DL, SE, LI, DT,
+                                 AC, TTI, BFI);
+
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
@@ -360,47 +389,47 @@ bool GSLP::runOnFunction(Function &F) {
   return true;
 }
 
-  INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
-  INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
-  INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-  INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
+INITIALIZE_PASS_BEGIN(GSLP, "gslp", "gslp", false, false)
+INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
-  INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
+INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 
-  // Automatically enable the pass.
-  // http://adriansampson.net/blog/clangpass.html
-  static void registerGSLP(const PassManagerBuilder &PMB,
-      legacy::PassManagerBase &MPM) {
-    MPM.add(createSROAPass());
-    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    if (UseMainlineSLP) {
-      errs() << "USING LLVM SLP\n";
-      MPM.add(createSLPVectorizerPass());
-    } else {
-      errs() << "USING G-SLP\n";
-      MPM.add(new GSLP());
-    }
-
-    // run the cleanup passes, copied from llvm's pass builder
-    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
-          PMB.ForgetAllSCEVInLoopUnroll));
-    if (!PMB.DisableUnrollLoops) {
-      MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-      MPM.add(
-          createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
-    }
-    MPM.add(createAlignmentFromAssumptionsPass());
-    MPM.add(createLoopSinkPass());
-    MPM.add(createInstSimplifyLegacyPass());
-    MPM.add(createDivRemPairsPass());
-    MPM.add(createCFGSimplificationPass());
+// Automatically enable the pass.
+// http://adriansampson.net/blog/clangpass.html
+static void registerGSLP(const PassManagerBuilder &PMB,
+                         legacy::PassManagerBase &MPM) {
+  MPM.add(createSROAPass());
+  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+  if (UseMainlineSLP) {
+    errs() << "USING LLVM SLP\n";
+    MPM.add(createSLPVectorizerPass());
+  } else {
+    errs() << "USING G-SLP\n";
+    MPM.add(new GSLP());
   }
+
+  // run the cleanup passes, copied from llvm's pass builder
+  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+  MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
+                               PMB.ForgetAllSCEVInLoopUnroll));
+  if (!PMB.DisableUnrollLoops) {
+    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+    MPM.add(
+        createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
+  }
+  MPM.add(createAlignmentFromAssumptionsPass());
+  MPM.add(createLoopSinkPass());
+  MPM.add(createInstSimplifyLegacyPass());
+  MPM.add(createDivRemPairsPass());
+  MPM.add(createCFGSimplificationPass());
+}
 
 // Register this pass to run after all optimization,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
-RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
+    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);

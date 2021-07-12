@@ -11,6 +11,6 @@ struct CandidatePackSet {
 
 class Packer;
 class VectorPackSet;
-float optimizeBottomUp(VectorPackSet &, Packer *, llvm::BasicBlock *);
+float optimizeBottomUp(VectorPackSet &, Packer *, llvm::BasicBlock *, float &ScalarCost);
 
 #endif

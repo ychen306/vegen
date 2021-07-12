@@ -290,7 +290,8 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     }
     if (Optimized)
       continue;
-    errs() << "??? finding good concats, num operands = " << std::distance(P.operands_begin(), P.operands_end()) << '\n';
+    errs() << "??? finding good concats, num operands = "
+           << std::distance(P.operands_begin(), P.operands_end()) << '\n';
     for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
       for (auto J = P.operands_begin(); J != E; ++J) {
         const OperandPack *OP = I->first;
@@ -326,7 +327,8 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   } while (Optimized);
 }
 
-float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
+float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB,
+                       float &ScalarCost) {
   CandidatePackSet CandidateSet;
   CandidateSet.Packs = enumerate(BB, Pkr);
   auto *VPCtx = Pkr->getContext(BB);
@@ -336,6 +338,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB) {
       CandidateSet.Inst2Packs[i].push_back(VP);
 
   Plan P(Pkr, BB);
+  ScalarCost = P.cost();
   improvePlan(Pkr, P, &CandidateSet);
   for (auto *VP : P) {
     Packs.tryAdd(VP);
