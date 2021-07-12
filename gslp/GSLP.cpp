@@ -220,8 +220,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT,
-                       std::vector<BasicBlock *> &NewBlocks) {
-  ValueToValueMapTy VMap;
+                       ValueToValueMapTy &VMap) {
+  SmallVector<BasicBlock *> NewBlocks;
   auto Clone = [&](BasicBlock *BB) -> BasicBlock * {
     BasicBlock *NewBB = CloneBasicBlock(BB, VMap, "", BB->getParent());
     VMap[BB] = NewBB;
@@ -235,22 +235,20 @@ static Loop *cloneLoop(Loop *L, LoopInfo *LI, DominatorTree *DT,
 
   DT->addNewBlock(Clone(Preheader),
                   DT->getNode(Preheader)->getIDom()->getBlock());
-  for (auto *BB : L->getBlocks())
-    DT->addNewBlock(Clone(BB), Preheader);
-  for (auto *BB : ExitBlocks)
-    DT->addNewBlock(Clone(BB), Preheader);
-
-  auto FixDominance = [&](BasicBlock *BB) {
-    BasicBlock *Dominator = DT->getNode(BB)->getIDom()->getBlock();
-    if (WeakTrackingVH Cloned = VMap.lookup(Dominator))
-      Dominator = cast<BasicBlock>(Cloned);
-    DT->changeImmediateDominator(cast<BasicBlock>(VMap[BB]), Dominator);
-  };
-
-  for (auto *BB : L->getBlocks())
-    FixDominance(BB);
-  for (auto *BB : ExitBlocks)
-    FixDominance(BB);
+  // Clone the blocks in post order
+  LoopBlocksDFS DFS(L);
+  DFS.perform(LI);
+  for (auto *BB : make_range(DFS.beginPostorder(), DFS.endPostorder())) {
+    Value *IDomBB = VMap[DT->getNode(BB)->getIDom()->getBlock()];
+    assert(IDomBB && "idom not cloned yet");
+    DT->addNewBlock(Clone(BB), cast<BasicBlock>(IDomBB));
+  }
+  for (auto *BB : ExitBlocks) {
+    BasicBlock *IDomBB = DT->getNode(BB)->getIDom()->getBlock();
+    if (WeakTrackingVH ClonedIDom = VMap.lookup(IDomBB))
+      IDomBB = cast<BasicBlock>(ClonedIDom);
+    DT->addNewBlock(Clone(BB), IDomBB);
+  }
 
   Loop *NewL = cloneLoop(L, nullptr /*parent loop*/, VMap, LI,
                          nullptr /*lppassmanager*/);
@@ -270,13 +268,19 @@ static void clearBasicBlock(BasicBlock *BB) {
   }
 }
 
+static void eraseFromDominatorTree(BasicBlock *BB, DominatorTree *DT) {
+  errs() << "???? erasing block from dom tree " << *BB << '\n';
+  DT->getNode(BB)->clearAllChildren();
+  DT->eraseNode(BB);
+}
+
 static float estimateCostWithUnrollFactor(
     Loop *L, unsigned UnrollFactor,
     ArrayRef<const InstBinding *> SupportedIntrinsics, AliasAnalysis *AA,
     const DataLayout *DL, ScalarEvolution *SE, LoopInfo *LI, DominatorTree *DT,
     AssumptionCache *AC, TargetTransformInfo *TTI, BlockFrequencyInfo *BFI) {
-  std::vector<BasicBlock *> NewBlocks;
-  Loop *ScratchL = cloneLoop(L, LI, DT, NewBlocks);
+  ValueToValueMapTy VMap;
+  Loop *ScratchL = cloneLoop(L, LI, DT, VMap);
 
   UnrollLoopOptions ULO;
   ULO.TripCount = 0;
@@ -315,12 +319,24 @@ static float estimateCostWithUnrollFactor(
   SmallVector<BasicBlock *> ExitBlocks;
   ScratchL->getExitBlocks(ExitBlocks);
 
-  // Delete the scratch loop
+
+  // Erase the blocks from the dom tree in RPO
+  LoopBlocksDFS DFS(ScratchL);
+  DFS.perform(LI);
+  for (auto *BB : ExitBlocks)
+    DT->eraseNode(BB);
+  for (auto *BB : make_range(DFS.beginRPO(), DFS.endRPO()))
+    DT->eraseNode(BB);
+  DT->eraseNode(PH);
+
+  // Remove the instructions
   clearBasicBlock(PH);
   for (auto *BB : ScratchL->getBlocks())
     clearBasicBlock(BB);
   for (auto *BB : ExitBlocks)
     clearBasicBlock(BB);
+
+  // Remove the blocks
   PH->eraseFromParent();
   for (auto *BB : ScratchL->getBlocks())
     BB->eraseFromParent();
@@ -369,8 +385,9 @@ bool GSLP::runOnFunction(Function &F) {
       Loops.insert(L);
 
   for (Loop *L : Loops)
-    estimateCostWithUnrollFactor(L, 4, SupportedIntrinsics, AA, DL, SE, LI, DT,
-                                 AC, TTI, BFI);
+    for (auto UF : {2, 4, 8, 16, 32})
+      estimateCostWithUnrollFactor(L, UF, SupportedIntrinsics, AA, DL, SE, LI,
+                                   DT, AC, TTI, BFI);
 
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
