@@ -319,7 +319,6 @@ static float estimateCostWithUnrollFactor(
   SmallVector<BasicBlock *> ExitBlocks;
   ScratchL->getExitBlocks(ExitBlocks);
 
-
   // Erase the blocks from the dom tree in RPO
   LoopBlocksDFS DFS(ScratchL);
   DFS.perform(LI);
