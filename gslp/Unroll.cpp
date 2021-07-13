@@ -347,8 +347,6 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   SmallVector<MDNode *, 6> LoopLocalNoAliasDeclScopes;
   identifyNoAliasScopesToClone(L->getBlocks(), LoopLocalNoAliasDeclScopes);
 
-  SmallVector<Instruction *> PHIReplacements;
-
   for (unsigned It = 1; It != ULO.Count; ++It) {
     SmallVector<BasicBlock *, 8> NewBlocks;
     SmallDenseMap<const Loop *, Loop *, 4> NewLoops;
@@ -376,8 +374,6 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
             if (It > 1 && L->contains(InValI))
               InVal = LastValueMap[InValI];
           VMap[OrigPHI] = InVal;
-          if (auto *I = dyn_cast<Instruction>(InVal))
-            PHIReplacements.push_back(I);
           New->getInstList().erase(NewPHI);
         }
 
@@ -650,21 +646,6 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   // Apply updates to the DomTree.
   if (DT)
     DT = &DTU->getDomTree();
-
-  {
-    auto &DL = L->getHeader()->getModule()->getDataLayout();
-    SCEVExpander Expander(*SE, DL, "unroller");
-    // Simplify the values that *used to be* computed by PHIs
-    for (Instruction *I : PHIReplacements)
-      if (SE->isSCEVable(I->getType())) {
-        auto *I2 = Expander.expandCodeFor(SE->getSCEV(I), I->getType(), I);
-        assert(UnrollToOrigMap.count(I));
-        UnrollToOrigMap[I2] = UnrollToOrigMap[I];
-        UnrollToOrigMap.erase(I);
-        I->replaceAllUsesWith(I2);
-        I->eraseFromParent();
-      }
-  } // Scope for scev expander
 
   // At this point, the code is well formed.  We now simplify the unrolled loop,
   // doing constant propagation and dead code elimination as we go.

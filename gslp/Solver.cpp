@@ -274,57 +274,57 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     }
   }
 
-  bool Optimized;
-  do {
-    errs() << "COST: " << P.cost() << '\n';
-    Optimized = false;
-    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
-      const OperandPack *OP = I->first;
-      Plan P2 = P;
-      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 8))) {
-        Optimized = true;
-        break;
-      }
-    }
-    if (Optimized)
-      continue;
-    errs() << "??? finding good concats, num operands = "
-           << std::distance(P.operands_begin(), P.operands_end()) << '\n';
-    for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
-      for (auto J = P.operands_begin(); J != E; ++J) {
-        const OperandPack *OP = I->first;
-        const OperandPack *OP2 = J->first;
-        auto *Concat = concat(VPCtx, *OP, *OP2);
-        Plan P2 = P;
-        if (Improve(P2, {Concat})) {
-          Optimized = true;
-          break;
-        }
-      }
-      if (Optimized)
-        break;
-    }
-    errs() << "~~~~~~ done\n";
-    if (Optimized)
-      continue;
-    for (auto *VP : Seeds) {
-      Plan P2 = P;
-      for (auto *V : VP->elementValues())
-        if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
-          P2.remove(VP2);
-      for (auto *VP2 : DecomposedStores[VP])
-        P2.add(VP2);
-      auto *OP = VP->getOperandPacks().front();
-      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 8))) {
-        Optimized = true;
-        break;
-      }
-    }
-  } while (Optimized);
+  //bool Optimized;
+  //do {
+  //  errs() << "COST: " << P.cost() << '\n';
+  //  Optimized = false;
+  //  for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+  //    const OperandPack *OP = I->first;
+  //    Plan P2 = P;
+  //    if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+  //        Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+  //        Improve(P2, deinterleave(VPCtx, OP, 8))) {
+  //      Optimized = true;
+  //      break;
+  //    }
+  //  }
+  //  if (Optimized)
+  //    continue;
+  //  errs() << "??? finding good concats, num operands = "
+  //         << std::distance(P.operands_begin(), P.operands_end()) << '\n';
+  //  for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
+  //    for (auto J = P.operands_begin(); J != E; ++J) {
+  //      const OperandPack *OP = I->first;
+  //      const OperandPack *OP2 = J->first;
+  //      auto *Concat = concat(VPCtx, *OP, *OP2);
+  //      Plan P2 = P;
+  //      if (Improve(P2, {Concat})) {
+  //        Optimized = true;
+  //        break;
+  //      }
+  //    }
+  //    if (Optimized)
+  //      break;
+  //  }
+  //  errs() << "~~~~~~ done\n";
+  //  if (Optimized)
+  //    continue;
+  //  for (auto *VP : Seeds) {
+  //    Plan P2 = P;
+  //    for (auto *V : VP->elementValues())
+  //      if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
+  //        P2.remove(VP2);
+  //    for (auto *VP2 : DecomposedStores[VP])
+  //      P2.add(VP2);
+  //    auto *OP = VP->getOperandPacks().front();
+  //    if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+  //        Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+  //        Improve(P2, deinterleave(VPCtx, OP, 8))) {
+  //      Optimized = true;
+  //      break;
+  //    }
+  //  }
+  //} while (Optimized);
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr, BasicBlock *BB,

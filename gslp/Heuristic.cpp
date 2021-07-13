@@ -124,7 +124,7 @@ float Heuristic::getCost(Value *V) {
   if (!V)
     return 0;
   auto *I = dyn_cast<Instruction>(V);
-  if (!I || I->getParent() != VPCtx->getBasicBlock())
+  if (!I || I->getParent() != VPCtx->getBasicBlock() || isa<PHINode>(V))
     return 0;
 
   auto It = ScalarCosts.find(I);
