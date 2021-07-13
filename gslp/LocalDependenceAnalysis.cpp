@@ -33,40 +33,35 @@ static Value *getLoadStorePointer(Instruction *I) {
   return nullptr;
 }
 
-static bool overlaps(APInt Lo1, APInt Hi1, APInt Lo2, APInt Hi2) {
-  return Hi1.sge(Lo2);
+static bool isLessThan(ScalarEvolution *SE, const SCEV *A, const SCEV *B) {
+  return SE->isKnownNegative(SE->getMinusSCEV(A, B));
 }
 
 static bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
                       Instruction *Inst2, AliasAnalysis *AA,
-                      const DataLayout *DL) {
+                      const DataLayout *DL, ScalarEvolution *SE) {
   // Hack to get around the fact that AA sometimes return
   // MayAlias for consecutive accesses...
   auto *Ptr1 = getLoadStorePointer(Inst1);
   auto *Ptr2 = getLoadStorePointer(Inst2);
   if (Ptr1 && Ptr2) {
-    auto *Ty1 = cast<PointerType>(Ptr1->getType());
-    auto *Ty2 = cast<PointerType>(Ptr1->getType());
-    if (Ty1->getAddressSpace() != Ty2->getAddressSpace())
-      return false;
-
-    auto AS = Ty1->getAddressSpace();
-    unsigned IndexWidth = DL->getIndexSizeInBits(AS);
-
-    APInt Offset1(IndexWidth, 0), Offset2(IndexWidth, 0);
-    Ptr1 = Ptr1->stripAndAccumulateInBoundsConstantOffsets(*DL, Offset1);
-    Ptr2 = Ptr2->stripAndAccumulateInBoundsConstantOffsets(*DL, Offset2);
-    if (Ptr1 == Ptr2) {
+    auto *Ptr1SCEV = SE->getSCEV(Ptr1);
+    auto *Ptr2SCEV = SE->getSCEV(Ptr2);
+    bool Lt = isLessThan(SE, Ptr1SCEV, Ptr2SCEV);
+    bool Gt = isLessThan(SE, Ptr2SCEV, Ptr1SCEV);
+    if (Lt || Gt) {
       // Assume WLOG that Ptr1 < Ptr2
-      if (Offset1.sgt(Offset2)) {
-        std::swap(Offset1, Offset2);
-        std::swap(Ty1, Ty2);
+      if (Gt) {
+        std::swap(Ptr1SCEV, Ptr2SCEV);
+        std::swap(Ptr1, Ptr2);
       }
-      bool Overflows;
-      APInt Size1(IndexWidth, DL->getTypeStoreSize(Ty1));
-      bool Overlaps = Offset1.sadd_ov(Size1, Overflows).sle(Offset2);
-      if (!Overlaps && !Overflows)
-        return false;
+
+      auto *Ty = cast<PointerType>(Ptr1->getType());
+      auto AS = Ty->getAddressSpace();
+      unsigned IndexWidth = DL->getIndexSizeInBits(AS);
+      APInt Size(IndexWidth, DL->getTypeStoreSize(Ty));
+      return SE->isKnownNonPositive(SE->getMinusSCEV(
+          SE->getAddExpr(Ptr1SCEV, SE->getConstant(Size)), Ptr2SCEV));
     }
   }
 
@@ -81,9 +76,10 @@ static bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
   return Aliased;
 }
 
-LocalDependenceAnalysis::LocalDependenceAnalysis(llvm::AliasAnalysis *AA,
+LocalDependenceAnalysis::LocalDependenceAnalysis(AliasAnalysis *AA,
                                                  const DataLayout *DL,
-                                                 llvm::BasicBlock *BB,
+                                                 ScalarEvolution *SE,
+                                                 BasicBlock *BB,
                                                  VectorPackContext *VPCtx)
     : BB(BB), VPCtx(VPCtx) {
   std::vector<Instruction *> MemRefs;
@@ -103,7 +99,7 @@ LocalDependenceAnalysis::LocalDependenceAnalysis(llvm::AliasAnalysis *AA,
       // check dependence with preceding loads and stores
       for (auto *PrevRef : MemRefs) {
         if ((PrevRef->mayWriteToMemory() || I.mayWriteToMemory()) &&
-            isAliased(Loc, &I, PrevRef, AA, DL))
+            isAliased(Loc, &I, PrevRef, AA, DL, SE))
           Dependencies[&I].push_back(PrevRef);
       }
       MemRefs.push_back(&I);

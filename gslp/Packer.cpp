@@ -58,7 +58,7 @@ Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
     StoreInfo[&BB] = std::make_unique<AccessLayoutInfo>(*StoreDAG);
 
     MMs[&BB] = std::move(MM);
-    LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, DL, &BB, VPCtx.get());
+    LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, DL, SE, &BB, VPCtx.get());
     VPCtxs[&BB] = std::move(VPCtx);
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);

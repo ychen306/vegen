@@ -7,6 +7,7 @@
 class VectorPackContext;
 
 namespace llvm {
+class ScalarEvolution;
 class BasicBlock;
 } // namespace llvm
 
@@ -24,7 +25,8 @@ class LocalDependenceAnalysis {
 
 public:
   LocalDependenceAnalysis(llvm::AliasAnalysis *, const llvm::DataLayout *,
-                          llvm::BasicBlock *, VectorPackContext *);
+                          llvm::ScalarEvolution *, llvm::BasicBlock *,
+                          VectorPackContext *);
 
   const llvm::BitVector &getDepended(llvm::Instruction *I) const {
     auto It = TransitiveClosure.find(I);
