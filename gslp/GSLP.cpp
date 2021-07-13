@@ -421,7 +421,7 @@ bool GSLP::runOnFunction(Function &F) {
       ULO.AllowRuntime = true;
       ULO.AllowExpensiveTripCount = true;
       ULO.ForgetAllSCEV = false;
-      ULO.UnrollRemainder = true;
+      ULO.UnrollRemainder = false;
       ULO.PreserveOnlyFirst = false;
       ULO.PreserveCondBr = false;
 
