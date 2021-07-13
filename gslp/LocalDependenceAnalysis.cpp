@@ -59,8 +59,8 @@ static bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
       auto *Ty = cast<PointerType>(Ptr1->getType());
       auto AS = Ty->getAddressSpace();
       unsigned IndexWidth = DL->getIndexSizeInBits(AS);
-      APInt Size(IndexWidth, DL->getTypeStoreSize(Ty));
-      return SE->isKnownNonPositive(SE->getMinusSCEV(
+      APInt Size(IndexWidth, DL->getTypeStoreSize(Ty->getElementType()));
+      return SE->isKnownPositive(SE->getMinusSCEV(
           SE->getAddExpr(Ptr1SCEV, SE->getConstant(Size)), Ptr2SCEV));
     }
   }
