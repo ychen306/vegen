@@ -396,7 +396,7 @@ bool GSLP::runOnFunction(Function &F) {
   for (Loop *L : Loops) {
     float BestCost = 0;
     unsigned BestUF = 1;
-    for (auto UF : {2, 4, 8, 16, 32}) {
+    for (auto UF : {2, 4, 8}) {
       errs() << "?? trying unroll factor : " << UF << '\n';
       float Cost = estimateCostWithUnrollFactor(L, UF, SupportedIntrinsics, AA,
                                                 DL, SE, LI, DT, AC, TTI, BFI);
@@ -408,7 +408,7 @@ bool GSLP::runOnFunction(Function &F) {
 
     // BestUF = 4;
     // Actually unroll the loop
-    BestUF = 4;
+    //BestUF = 4;
     if (BestUF > 1) {
       errs() << "???????? unrolling\n";
       L->dumpVerbose();
