@@ -220,8 +220,10 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
   for (auto &I : *BB)
     if (auto *SI = dyn_cast<StoreInst>(&I))
       for (unsigned VL : {2, 4, 8, 16, 32, 64})
-        for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL))
+        for (auto *VP : getSeedMemPacks(Pkr, BB, SI, VL)) {
+          errs() << "???? enumerated " << *VP << '\n';
           Seeds.push_back(VP);
+        }
 
   AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo(BB);
   std::sort(Seeds.begin(), Seeds.end(),

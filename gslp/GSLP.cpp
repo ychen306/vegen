@@ -408,7 +408,7 @@ bool GSLP::runOnFunction(Function &F) {
 
     // BestUF = 4;
     // Actually unroll the loop
-    BestUF = 2;
+    BestUF = 4;
     if (BestUF > 1) {
       errs() << "???????? unrolling\n";
       L->dumpVerbose();
@@ -438,6 +438,7 @@ bool GSLP::runOnFunction(Function &F) {
         errs() << "scev of " << I << " is " << *SE->getSCEV(&I) << '\n';
 
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
+  errs() << F << "\n";
   VectorPackSet Packs(&F);
   for (auto &BB : F) {
     errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';
