@@ -6,6 +6,8 @@ set(LIB_PACKING_SRC
 
   Plan.cpp
 
+  LoopFusion.cpp
+
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IntrinsicBuilder.cpp
   Heuristic.cpp
