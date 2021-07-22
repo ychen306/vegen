@@ -1,5 +1,4 @@
 #include "LoopFusion.h"
-#include "llvm/ADT/STLExtras.h" // concat_iterator
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/LoopInfo.h"
@@ -83,8 +82,7 @@ static Optional<RecurKind> matchReduction(StoreInst *SI, LoadInst *&LI) {
   return Kind;
 }
 
-static void collectReadAndWrites(Loop &L, SmallVectorImpl<Instruction *> &Reads,
-                                 SmallVectorImpl<Instruction *> &Writes,
+static void collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
                                  DenseMap<Instruction *, RecurKind> &ReductionKinds,
                                  bool &UnsafeToFuse) {
   for (auto *BB : L.blocks()) {
@@ -114,10 +112,8 @@ static void collectReadAndWrites(Loop &L, SmallVectorImpl<Instruction *> &Reads,
         }
       }
 
-      if (I.mayReadFromMemory())
-        Reads.push_back(&I);
-      if (I.mayWriteToMemory())
-        Writes.push_back(&I);
+      if (I.mayReadFromMemory() || I.mayWriteToMemory())
+        Accesses.push_back(&I);
     }
   }
 }
@@ -142,18 +138,18 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE,
   DenseMap<Instruction *, RecurKind> ReductionKinds;
 
   // Collect the memory accesses
-  SmallVector<Instruction *> Reads1, Writes1, Reads2, Writes2;
+  SmallVector<Instruction *> Accesses1, Accesses2;
   bool UnsafeToFuse = false;
-  collectReadAndWrites(L1, Reads1, Writes1, ReductionKinds, UnsafeToFuse);
+  collectMemoryAccesses(L1, Accesses1, ReductionKinds, UnsafeToFuse);
   if (UnsafeToFuse)
     return true;
-  collectReadAndWrites(L2, Reads2, Writes2, ReductionKinds, UnsafeToFuse);
+  collectMemoryAccesses(L2, Accesses2, ReductionKinds, UnsafeToFuse);
   if (UnsafeToFuse)
     return true;
 
   // Check dependence
-  for (auto *I1 : concat<Instruction *>(Reads1, Writes1))
-    for (auto *I2 : concat<Instruction *>(Reads2, Writes2)) {
+  for (auto *I1 : Accesses1)
+    for (auto *I2 : Accesses2) {
       // We don't care about the dependence between a pair of reductions
       if (ReductionKinds.count(I1) && ReductionKinds.count(I2) &&
           ReductionKinds.lookup(I1) == ReductionKinds.lookup(I2))
