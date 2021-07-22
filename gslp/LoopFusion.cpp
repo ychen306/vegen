@@ -38,8 +38,8 @@ static Optional<RecurKind> matchReduction(StoreInst *SI, LoadInst *&LI) {
   using namespace llvm::PatternMatch;
 
   LI = nullptr;
-  auto TheLoad = m_Capture(
-      m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), LI);
+  auto TheLoad =
+      m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), LI);
 
   RecurKind Kind;
   if (match(V, m_c_Add(TheLoad, m_Value())))
@@ -82,9 +82,10 @@ static Optional<RecurKind> matchReduction(StoreInst *SI, LoadInst *&LI) {
   return Kind;
 }
 
-static void collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
-                                 DenseMap<Instruction *, RecurKind> &ReductionKinds,
-                                 bool &UnsafeToFuse) {
+static void
+collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
+                      DenseMap<Instruction *, RecurKind> &ReductionKinds,
+                      bool &UnsafeToFuse) {
   for (auto *BB : L.blocks()) {
     if (BB->hasAddressTaken()) {
       UnsafeToFuse = true;
