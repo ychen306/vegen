@@ -35,10 +35,13 @@ if(BUILD_TYPE STREQUAL "RELEASE")
 endif()
 
 add_library(GSLP MODULE GSLP.cpp)
+add_executable(test-loop-fusion TestLoopFusion.cpp)
 
-llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis codegen x86desc x86info x86codegen)
+llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis)
 
 target_link_libraries(GSLP Packing)
+
+target_link_libraries(test-loop-fusion ${LLVM_LIBRARIES})
 
 set_target_properties(GSLP PROPERTIES COMPILE_FLAGS "-fno-rtti")
 
