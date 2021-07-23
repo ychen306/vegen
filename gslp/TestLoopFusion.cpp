@@ -1,19 +1,21 @@
 #include "LoopFusion.h"
+#include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
+#include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
-#include "llvm/Analysis/GlobalsModRef.h"
-#include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils.h"
+#include "llvm/Transforms/Scalar.h"
 
 using namespace llvm;
 
@@ -30,6 +32,7 @@ namespace {
 
 struct TestLoopFusion : public FunctionPass {
   static char ID;
+
   TestLoopFusion() : FunctionPass(ID) {
     initializeTestLoopFusionPass(*PassRegistry::getPassRegistry());
   }
@@ -47,14 +50,25 @@ struct TestLoopFusion : public FunctionPass {
 
 } // namespace
 
-char TestLoopFusion::ID;
+char TestLoopFusion::ID = 0;
 
 bool TestLoopFusion::runOnFunction(Function &F) {
-  auto &SE = getAnalysis<ScalarEvolutionWrapperPass>(F).getSE();
-  auto &DT = getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
-  auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
-  auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-  auto &DI = getAnalysis<DependenceAnalysisWrapperPass>(F).getDI();
+  auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+  auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+  auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+
+  for (auto I = LI.begin(), E = LI.end(); I != E; ++I) {
+    Loop *L1 = *I;
+    for (auto J = std::next(I); J != E; ++J) {
+      Loop *L2 = *J;
+      outs() << "Checking " << L1->getHeader()->getName() << " and "
+             << L2->getHeader()->getName()
+             << ", fusable: " << !isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT)
+             << '\n';
+    }
+  }
   return false;
 }
 
@@ -80,12 +94,19 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // Add the alias analysis pipeline
   legacy::PassManager Passes;
+
+  // Add the alias analysis pipeline
   Passes.add(createTypeBasedAAWrapperPass());
   Passes.add(createScopedNoAliasAAWrapperPass());
   Passes.add(createGlobalsAAWrapperPass());
   Passes.add(createBasicAAWrapperPass());
+
+  // Canonicalize the loops
+  Passes.add(createLoopSimplifyPass());
+  Passes.add(createLCSSAPass());
+  Passes.add(createLoopRotatePass());
+
   Passes.add(new TestLoopFusion());
   Passes.run(*M);
 }

@@ -37,11 +37,11 @@ endif()
 add_library(GSLP MODULE GSLP.cpp)
 add_executable(test-loop-fusion TestLoopFusion.cpp)
 
-llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis)
+llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis scalaropts)
 
 target_link_libraries(GSLP Packing)
 
-target_link_libraries(test-loop-fusion ${LLVM_LIBRARIES})
+target_link_libraries(test-loop-fusion Packing ${LLVM_LIBRARIES})
 
 set_target_properties(GSLP PROPERTIES COMPILE_FLAGS "-fno-rtti")
 

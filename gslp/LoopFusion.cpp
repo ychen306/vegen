@@ -191,23 +191,36 @@ static bool isUsedByLoop(Instruction *I, Loop &L, DependenceInfo &DI) {
   return IsUsed(I);
 }
 
+static BasicBlock *getLoopEntry(Loop &L) {
+  return L.isGuarded() ? L.getLoopGuardBranch()->getParent()
+                       : L.getLoopPreheader();
+}
+
 bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
                     DominatorTree &DT, PostDominatorTree &PDT) {
-  if (!checkLoop(L1) || !checkLoop(L2))
+  if (!checkLoop(L1) || !checkLoop(L2)) {
+    errs() << "Loops don't have the right shape\n";
     return true;
+  }
 
-  if (L1.getLoopDepth() != L2.getLoopDepth())
+  if (L1.getLoopDepth() != L2.getLoopDepth()) {
+    errs() << "Loops have different nesting level\n";
     return true;
+  }
 
-  if (!isControlFlowEquivalent(*L1.getHeader(), *L2.getHeader(), DT, PDT))
+  if (!isControlFlowEquivalent(*getLoopEntry(L1), *getLoopEntry(L2), DT, PDT)) {
+    errs() << "Loops are not control flow equivalent\n";
     return true;
+  }
 
   // Make sure the two loops have constant trip counts
   const SCEV *TripCount1 = SE.getBackedgeTakenCount(&L1);
   const SCEV *TripCount2 = SE.getBackedgeTakenCount(&L2);
   if (isa<SCEVCouldNotCompute>(TripCount1) ||
-      isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2)
+      isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2) {
+    errs() << "Loops may have divergent trip count\n";
     return true;
+  }
 
   Loop *L1Parent = L1.getParentLoop();
   Loop *L2Parent = L2.getParentLoop();
@@ -215,22 +228,31 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
   // fused
   if (!L1.isOutermost() && L1Parent != L2Parent) {
     if (isUnsafeToFuse(*L1.getParentLoop(), *L2.getParentLoop(), SE, DI, DT,
-                       PDT))
+                       PDT)) {
+      errs() << "Parent loops can't be fused\n";
       return true;
+    }
   } else if (!checkDependencies(L1, L2, DI)) {
+    errs() << "Loops are dependent (memory)\n";
     return true;
   }
 
   // Check if one loop computes any SSA values that are used by another loop
-  if (!L1.isLCSSAForm(DT) || !L2.isLCSSAForm(DT))
+  if (!L1.isLCSSAForm(DT) || !L2.isLCSSAForm(DT)) {
+    errs() << "Loops are not in LCSSA\n";
     return true;
+  }
 
   for (PHINode &PN : L1.getExitBlock()->phis())
-    if (isUsedByLoop(&PN, L2, DI))
+    if (isUsedByLoop(&PN, L2, DI)) {
+      errs() << "Loops are dependent (ssa)\n";
       return true;
+    }
   for (PHINode &PN : L2.getExitBlock()->phis())
-    if (isUsedByLoop(&PN, L1, DI))
+    if (isUsedByLoop(&PN, L1, DI)) {
+      errs() << "Loops are dependent (ssa)\n";
       return true;
+    }
 
   return false; // *probably* safe
 }
