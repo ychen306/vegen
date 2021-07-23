@@ -10,7 +10,7 @@ class Loop;
 } // namespace llvm
 
 bool isUnsafeToFuse(llvm::Loop &, llvm::Loop &, llvm::ScalarEvolution &,
-                    llvm::DependenceInfo &);
+                    llvm::DependenceInfo &, llvm::DominatorTree &, llvm::PostDominatorTree &);
 bool fuseLoops(llvm::Loop &, llvm::Loop &, llvm::DominatorTree &,
                llvm::PostDominatorTree &, llvm::DependenceInfo &);
 

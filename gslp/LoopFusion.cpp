@@ -4,6 +4,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Transforms/Utils/CodeMoverUtils.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/PatternMatch.h"
 
@@ -98,6 +99,11 @@ collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
         return;
       }
 
+      if (isa<CallBase>(&I) && I.mayHaveSideEffects()) {
+        UnsafeToFuse = true;
+        return;
+      }
+
       auto *LI = dyn_cast<LoadInst>(&I);
       auto *SI = dyn_cast<StoreInst>(&I);
       if ((LI && LI->isVolatile()) || (SI && SI->isVolatile())) {
@@ -113,7 +119,7 @@ collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
         }
       }
 
-      if (I.mayReadFromMemory() || I.mayWriteToMemory())
+      if (I.mayReadOrWriteMemory())
         Accesses.push_back(&I);
     }
   }
@@ -121,32 +127,21 @@ collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
 
 static bool checkLoop(Loop &L) {
   return L.getLoopPreheader() && L.getHeader() && L.getExitingBlock() &&
-         L.getExitBlock() && L.getLoopLatch() && !L.isInvalid();
+         L.getExitBlock() && L.getLoopLatch() && L.isRotatedForm() && !L.isInvalid();
 }
 
-bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE,
-                    DependenceInfo &DI) {
-  if (!checkLoop(L1) || !checkLoop(L2))
-    return true;
-
-  // Make sure the two loops have constant trip counts
-  const SCEV *TripCount1 = SE.getBackedgeTakenCount(&L1);
-  const SCEV *TripCount2 = SE.getBackedgeTakenCount(&L2);
-  if (isa<SCEVCouldNotCompute>(TripCount1) ||
-      isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2)
-    return true;
-
-  DenseMap<Instruction *, RecurKind> ReductionKinds;
-
+// Return true is *independent*
+static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
+  DenseMap<Instruction *, RecurKind> ReductionKinds;
   bool UnsafeToFuse = false;
   collectMemoryAccesses(L1, Accesses1, ReductionKinds, UnsafeToFuse);
   if (UnsafeToFuse)
-    return true;
+    return false;
   collectMemoryAccesses(L2, Accesses2, ReductionKinds, UnsafeToFuse);
   if (UnsafeToFuse)
-    return true;
+    return false;
 
   // Check dependence
   for (auto *I1 : Accesses1)
@@ -157,8 +152,82 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE,
         continue;
       auto Dep = DI.depends(I1, I2, true);
       if (Dep && !Dep->isInput())
+        return false;
+    }
+  return true;
+}
+
+static bool isUsedByLoop(Instruction *I, Loop &L, DependenceInfo &DI) {
+  SmallVector<Instruction *> LoopReads;
+  for (auto *BB : L.blocks())
+    for (auto &I : *BB)
+      if (I.mayReadFromMemory())
+        LoopReads.push_back(&I);
+
+  DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
+  std::function<bool (Instruction *)> IsUsed = [&](Instruction *V) -> bool {
+    Visited.insert(I);
+
+    if (L.contains(I->getParent()))
+      return true;
+
+    if (I->mayWriteToMemory())
+      for (auto *I2 : LoopReads)
+        if (DI.depends(I, I2, true))
+          return true;
+
+    for (User *U : I->users()) {
+      auto *UI = dyn_cast<Instruction>(U);
+      if (Visited.count(UI))
+        continue;
+      if (UI && IsUsed(UI))
         return true;
     }
 
-  return false; // probably safe
+    return false;
+  };
+
+  return IsUsed(I);
+}
+
+bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE,
+                    DependenceInfo &DI, DominatorTree &DT, PostDominatorTree &PDT) {
+  if (!checkLoop(L1) || !checkLoop(L2))
+    return true;
+
+  if (L1.getLoopDepth() != L2.getLoopDepth())
+    return true;
+
+  if (!isControlFlowEquivalent(*L1.getHeader(), *L2.getHeader(), DT, PDT))
+    return true;
+
+  // Make sure the two loops have constant trip counts
+  const SCEV *TripCount1 = SE.getBackedgeTakenCount(&L1);
+  const SCEV *TripCount2 = SE.getBackedgeTakenCount(&L2);
+  if (isa<SCEVCouldNotCompute>(TripCount1) ||
+      isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2)
+    return true;
+
+  Loop *L1Parent = L1.getParentLoop();
+  Loop *L2Parent = L2.getParentLoop();
+  // If L1 and L2 are nested inside other loops, those loops also need to be fused
+  if (!L1.isOutermost() && L1Parent != L2Parent) {
+    if (isUnsafeToFuse(*L1.getParentLoop(), *L2.getParentLoop(), SE, DI, DT, PDT))
+      return true;
+  } else if (!checkDependencies(L1, L2, DI)) {
+    return true;
+  }
+
+  // Check if one loop computes any SSA values that are used by another loop
+  if (!L1.isLCSSAForm(DT) || !L2.isLCSSAForm(DT))
+    return true;
+
+  for (PHINode &PN : L1.getExitBlock()->phis())
+    if (isUsedByLoop(&PN, L2, DI))
+      return true;
+  for (PHINode &PN : L2.getExitBlock()->phis())
+    if (isUsedByLoop(&PN, L1, DI))
+      return true;
+
+  return false; // *probably* safe
 }
