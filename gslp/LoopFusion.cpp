@@ -4,9 +4,9 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Transforms/Utils/CodeMoverUtils.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/Transforms/Utils/CodeMoverUtils.h"
 
 using namespace llvm;
 
@@ -127,7 +127,8 @@ collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
 
 static bool checkLoop(Loop &L) {
   return L.getLoopPreheader() && L.getHeader() && L.getExitingBlock() &&
-         L.getExitBlock() && L.getLoopLatch() && L.isRotatedForm() && !L.isInvalid();
+         L.getExitBlock() && L.getLoopLatch() && L.isRotatedForm() &&
+         !L.isInvalid();
 }
 
 // Return true is *independent*
@@ -165,7 +166,7 @@ static bool isUsedByLoop(Instruction *I, Loop &L, DependenceInfo &DI) {
         LoopReads.push_back(&I);
 
   DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
-  std::function<bool (Instruction *)> IsUsed = [&](Instruction *V) -> bool {
+  std::function<bool(Instruction *)> IsUsed = [&](Instruction *V) -> bool {
     Visited.insert(I);
 
     if (L.contains(I->getParent()))
@@ -190,8 +191,8 @@ static bool isUsedByLoop(Instruction *I, Loop &L, DependenceInfo &DI) {
   return IsUsed(I);
 }
 
-bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE,
-                    DependenceInfo &DI, DominatorTree &DT, PostDominatorTree &PDT) {
+bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
+                    DominatorTree &DT, PostDominatorTree &PDT) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return true;
 
@@ -210,9 +211,11 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE,
 
   Loop *L1Parent = L1.getParentLoop();
   Loop *L2Parent = L2.getParentLoop();
-  // If L1 and L2 are nested inside other loops, those loops also need to be fused
+  // If L1 and L2 are nested inside other loops, those loops also need to be
+  // fused
   if (!L1.isOutermost() && L1Parent != L2Parent) {
-    if (isUnsafeToFuse(*L1.getParentLoop(), *L2.getParentLoop(), SE, DI, DT, PDT))
+    if (isUnsafeToFuse(*L1.getParentLoop(), *L2.getParentLoop(), SE, DI, DT,
+                       PDT))
       return true;
   } else if (!checkDependencies(L1, L2, DI)) {
     return true;
