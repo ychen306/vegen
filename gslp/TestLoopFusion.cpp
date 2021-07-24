@@ -63,10 +63,12 @@ bool TestLoopFusion::runOnFunction(Function &F) {
     Loop *L1 = *I;
     for (auto J = std::next(I); J != E; ++J) {
       Loop *L2 = *J;
-      outs() << "Checking " << L1->getHeader()->getName() << " and "
-             << L2->getHeader()->getName()
-             << ", fusable: " << !isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT)
-             << '\n';
+      outs() << "Fusing " << L1->getHeader()->getName() << " and "
+             << L2->getHeader()->getName() << " is ";
+    if (isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT))
+      outs() << "unsafe\n";
+    else
+      outs() << "safe\n";
     }
   }
   return false;

@@ -22,3 +22,8 @@ add_definitions(-std=c++14)
 
 include_directories(gslp)
 add_subdirectory(gslp)
+
+configure_file(
+  ${CMAKE_SOURCE_DIR}/test/lit.site.cfg.in
+  ${CMAKE_BINARY_DIR}/test/lit.site.cfg
+)
