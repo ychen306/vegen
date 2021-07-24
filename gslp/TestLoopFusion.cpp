@@ -59,16 +59,21 @@ bool TestLoopFusion::runOnFunction(Function &F) {
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
 
-  for (auto I = LI.begin(), E = LI.end(); I != E; ++I) {
+  auto Loops = LI.getLoopsInPreorder();
+  for (auto I = Loops.begin(), E = Loops.end(); I != E; ++I) {
     Loop *L1 = *I;
+    if (!L1->isInnermost())
+      continue;
     for (auto J = std::next(I); J != E; ++J) {
       Loop *L2 = *J;
+      if (!L2->isInnermost())
+        continue;
       outs() << "Fusing " << L1->getHeader()->getName() << " and "
-             << L2->getHeader()->getName() << " is ";
-    if (isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT))
-      outs() << "unsafe\n";
-    else
-      outs() << "safe\n";
+        << L2->getHeader()->getName() << " is ";
+      if (isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT))
+        outs() << "unsafe\n";
+      else
+        outs() << "safe\n";
     }
   }
   return false;
@@ -108,6 +113,9 @@ int main(int argc, char **argv) {
   Passes.add(createLoopSimplifyPass());
   Passes.add(createLCSSAPass());
   Passes.add(createLoopRotatePass());
+
+  // Make isControlFlowEquivalent more precise
+  Passes.add(createNewGVNPass());
 
   Passes.add(new TestLoopFusion());
   Passes.run(*M);

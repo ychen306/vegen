@@ -208,11 +208,6 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
     return true;
   }
 
-  if (!isControlFlowEquivalent(*getLoopEntry(L1), *getLoopEntry(L2), DT, PDT)) {
-    errs() << "Loops are not control flow equivalent\n";
-    return true;
-  }
-
   // Make sure the two loops have constant trip counts
   const SCEV *TripCount1 = SE.getBackedgeTakenCount(&L1);
   const SCEV *TripCount2 = SE.getBackedgeTakenCount(&L2);
@@ -232,9 +227,24 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
       errs() << "Parent loops can't be fused\n";
       return true;
     }
-  } else if (!checkDependencies(L1, L2, DI)) {
-    errs() << "Loops are dependent (memory)\n";
-    return true;
+    // TODO: maybe support convergent control flow?
+    // For how, don't fuse nested loops that are conditionally executed
+    // (since it's harder to prove they are executed together)
+    if (!isControlFlowEquivalent(*L1.getParentLoop()->getHeader(), *getLoopEntry(L1), DT, PDT) ||
+        !isControlFlowEquivalent(*L2.getParentLoop()->getHeader(), *getLoopEntry(L2), DT, PDT)) {
+      errs() << "Can't fuse conditional nested loop\n";
+      return true;
+    }
+  } else  {
+    if (!checkDependencies(L1, L2, DI)) {
+      errs() << "Loops are dependent (memory)\n";
+      return true;
+    }
+
+    if (!isControlFlowEquivalent(*L1.getLoopPreheader(), *L2.getLoopPreheader(), DT, PDT)) {
+      errs() << "Loops are not control flow equivalent\n";
+      return true;
+    }
   }
 
   // Check if one loop computes any SSA values that are used by another loop
