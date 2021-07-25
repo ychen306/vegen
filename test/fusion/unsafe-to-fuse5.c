@@ -3,7 +3,8 @@
 void foo(int n, int *restrict x, int *restrict y, int *t1, int *t2) {
   int s = 0;
   for (int i = 0; i < n; i++)
-    t1[i] += x[i];
+    s += x[i];
+  *t1 = s;
   for (int i = 0; i < n; i++)
-    y[i] *= t2[i];
+    y[i] *= *t2;
 }

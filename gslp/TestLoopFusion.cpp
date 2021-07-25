@@ -111,11 +111,12 @@ int main(int argc, char **argv) {
 
   // Canonicalize the loops
   Passes.add(createLoopSimplifyPass());
-  Passes.add(createLCSSAPass());
   Passes.add(createLoopRotatePass());
 
   // Make isControlFlowEquivalent more precise
   Passes.add(createNewGVNPass());
+
+  Passes.add(createLCSSAPass());
 
   Passes.add(new TestLoopFusion());
   Passes.run(*M);

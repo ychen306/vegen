@@ -84,44 +84,42 @@ static Optional<RecurKind> matchReduction(StoreInst *SI, LoadInst *&LI) {
 }
 
 static void
-collectMemoryAccesses(Loop &L, SmallVectorImpl<Instruction *> &Accesses,
+collectMemoryAccesses(BasicBlock *BB, SmallVectorImpl<Instruction *> &Accesses,
                       DenseMap<Instruction *, RecurKind> &ReductionKinds,
                       bool &UnsafeToFuse) {
-  for (auto *BB : L.blocks()) {
-    if (BB->hasAddressTaken()) {
+  if (BB->hasAddressTaken()) {
+    UnsafeToFuse = true;
+    return;
+  }
+
+  for (auto &I : *BB) {
+    if (I.mayThrow()) {
       UnsafeToFuse = true;
       return;
     }
 
-    for (auto &I : *BB) {
-      if (I.mayThrow()) {
-        UnsafeToFuse = true;
-        return;
-      }
-
-      if (isa<CallBase>(&I) && I.mayHaveSideEffects()) {
-        UnsafeToFuse = true;
-        return;
-      }
-
-      auto *LI = dyn_cast<LoadInst>(&I);
-      auto *SI = dyn_cast<StoreInst>(&I);
-      if ((LI && LI->isVolatile()) || (SI && SI->isVolatile())) {
-        UnsafeToFuse = true;
-        return;
-      }
-
-      if (SI) {
-        LoadInst *LI;
-        if (Optional<RecurKind> Kind = matchReduction(SI, LI)) {
-          ReductionKinds[SI] = *Kind;
-          ReductionKinds[LI] = *Kind;
-        }
-      }
-
-      if (I.mayReadOrWriteMemory())
-        Accesses.push_back(&I);
+    if (isa<CallBase>(&I) && I.mayHaveSideEffects()) {
+      UnsafeToFuse = true;
+      return;
     }
+
+    auto *LI = dyn_cast<LoadInst>(&I);
+    auto *SI = dyn_cast<StoreInst>(&I);
+    if ((LI && LI->isVolatile()) || (SI && SI->isVolatile())) {
+      UnsafeToFuse = true;
+      return;
+    }
+
+    if (SI) {
+      LoadInst *LI;
+      if (Optional<RecurKind> Kind = matchReduction(SI, LI)) {
+        ReductionKinds[SI] = *Kind;
+        ReductionKinds[LI] = *Kind;
+      }
+    }
+
+    if (I.mayReadOrWriteMemory())
+      Accesses.push_back(&I);
   }
 }
 
@@ -131,20 +129,79 @@ static bool checkLoop(Loop &L) {
          !L.isInvalid();
 }
 
+static BasicBlock *getLoopEntry(Loop &L) {
+  return L.isGuarded() ? L.getLoopGuardBranch()->getParent()
+                       : L.getLoopPreheader();
+}
+
+static bool isUsedByLoop(Instruction *I, Loop &L) {
+  DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
+  std::function<bool(Instruction *)> IsUsed = [&](Instruction *I) -> bool {
+    if (!Visited.insert(I).second)
+      return false; // ignore backedge
+
+    if (L.contains(I->getParent()))
+      return true;
+
+    for (User *U : I->users()) {
+      auto *UI = dyn_cast<Instruction>(U);
+      if (UI && IsUsed(UI))
+        return true;
+    }
+
+    return false;
+  };
+
+  return IsUsed(I);
+}
+
 // Return true is *independent*
-static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI) {
+// For the sake of checking there are unsafe memory accesses before L1 and L2,
+// we also assume L1 comes before L2.
+static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
+                              DominatorTree &DT, PostDominatorTree &PDT) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
   bool UnsafeToFuse = false;
-  collectMemoryAccesses(L1, Accesses1, ReductionKinds, UnsafeToFuse);
-  if (UnsafeToFuse)
-    return false;
-  collectMemoryAccesses(L2, Accesses2, ReductionKinds, UnsafeToFuse);
-  if (UnsafeToFuse)
-    return false;
+  for (auto *BB : L1.blocks()) {
+    collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
+    if (UnsafeToFuse)
+      return false;
+  }
+  for (auto *BB : L2.blocks()) {
+    collectMemoryAccesses(BB, Accesses2, ReductionKinds, UnsafeToFuse);
+    if (UnsafeToFuse)
+      return false;
+  }
 
-  // Check dependence
+  BasicBlock *L1Exit = L1.getExitBlock();
+  BasicBlock *L1Entry = getLoopEntry(L1);
+  BasicBlock *L2Entry = getLoopEntry(L2);
+
+  // Blocks after L1 and before L2
+  DenseSet<BasicBlock *> IntermediateBlocks;
+  for (BasicBlock *BB : depth_first(L1Exit)) {
+    // We know L2 post dominates L1.
+    // Therefore if L2 doesn't dominate BB, then BB must happen after L2.
+    if (PDT.dominates(L2Entry, BB))
+      IntermediateBlocks.insert(BB);
+  }
+  IntermediateBlocks.insert(L2.getLoopPreheader());
+
+  for (BasicBlock *BB : IntermediateBlocks) {
+    collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
+    if (UnsafeToFuse)
+      return false;
+    // Conservatively assume that if we need to load some thing
+    // in the intermediate blocks, we can't hoist the load before L1 
+    // (such hoisting is required to fuse L2 into L1)
+    for (auto &I : *BB)
+      if (I.mayReadFromMemory() && isUsedByLoop(&I, L2))
+        return false;
+  }
+
+  // Check the dependence
   for (auto *I1 : Accesses1)
     for (auto *I2 : Accesses2) {
       // We don't care about the dependence between a pair of reductions
@@ -156,44 +213,6 @@ static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI) {
         return false;
     }
   return true;
-}
-
-static bool isUsedByLoop(Instruction *I, Loop &L, DependenceInfo &DI) {
-  SmallVector<Instruction *> LoopReads;
-  for (auto *BB : L.blocks())
-    for (auto &I : *BB)
-      if (I.mayReadFromMemory())
-        LoopReads.push_back(&I);
-
-  DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
-  std::function<bool(Instruction *)> IsUsed = [&](Instruction *V) -> bool {
-    Visited.insert(I);
-
-    if (L.contains(I->getParent()))
-      return true;
-
-    if (I->mayWriteToMemory())
-      for (auto *I2 : LoopReads)
-        if (DI.depends(I, I2, true))
-          return true;
-
-    for (User *U : I->users()) {
-      auto *UI = dyn_cast<Instruction>(U);
-      if (Visited.count(UI))
-        continue;
-      if (UI && IsUsed(UI))
-        return true;
-    }
-
-    return false;
-  };
-
-  return IsUsed(I);
-}
-
-static BasicBlock *getLoopEntry(Loop &L) {
-  return L.isGuarded() ? L.getLoopGuardBranch()->getParent()
-                       : L.getLoopPreheader();
 }
 
 bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
@@ -230,19 +249,24 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
     // TODO: maybe support convergent control flow?
     // For how, don't fuse nested loops that are conditionally executed
     // (since it's harder to prove they are executed together)
-    if (!isControlFlowEquivalent(*L1.getParentLoop()->getHeader(), *getLoopEntry(L1), DT, PDT) ||
-        !isControlFlowEquivalent(*L2.getParentLoop()->getHeader(), *getLoopEntry(L2), DT, PDT)) {
+    if (!isControlFlowEquivalent(*L1.getParentLoop()->getHeader(),
+                                 *getLoopEntry(L1), DT, PDT) ||
+        !isControlFlowEquivalent(*L2.getParentLoop()->getHeader(),
+                                 *getLoopEntry(L2), DT, PDT)) {
       errs() << "Can't fuse conditional nested loop\n";
       return true;
     }
-  } else  {
-    if (!checkDependencies(L1, L2, DI)) {
-      errs() << "Loops are dependent (memory)\n";
+  } else {
+    if (!isControlFlowEquivalent(*L1.getLoopPreheader(), *L2.getLoopPreheader(),
+                                 DT, PDT)) {
+      errs() << "Loops are not control flow equivalent\n";
       return true;
     }
 
-    if (!isControlFlowEquivalent(*L1.getLoopPreheader(), *L2.getLoopPreheader(), DT, PDT)) {
-      errs() << "Loops are not control flow equivalent\n";
+    bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
+    if ((OneBeforeTwo && !checkDependencies(L1, L2, DI, DT, PDT)) ||
+        (!OneBeforeTwo && !checkDependencies(L2, L1, DI, DT, PDT))) {
+      errs() << "Loops are dependent (memory)\n";
       return true;
     }
   }
@@ -254,12 +278,12 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
   }
 
   for (PHINode &PN : L1.getExitBlock()->phis())
-    if (isUsedByLoop(&PN, L2, DI)) {
+    if (isUsedByLoop(&PN, L2)) {
       errs() << "Loops are dependent (ssa)\n";
       return true;
     }
   for (PHINode &PN : L2.getExitBlock()->phis())
-    if (isUsedByLoop(&PN, L1, DI)) {
+    if (isUsedByLoop(&PN, L1)) {
       errs() << "Loops are dependent (ssa)\n";
       return true;
     }
