@@ -193,9 +193,8 @@ static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
     collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
     if (UnsafeToFuse)
       return false;
-    // Conservatively assume that if we need to load some thing
-    // in the intermediate blocks, we can't hoist the load before L1 
-    // (such hoisting is required to fuse L2 into L1)
+    // If L2 uses loads from the intermediate blocks, conservatively assume that
+    // we can't hoist the load before L1 (such hoisting is required to fuse L2 into L1)
     for (auto &I : *BB)
       if (I.mayReadFromMemory() && isUsedByLoop(&I, L2))
         return false;
@@ -247,7 +246,7 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
       return true;
     }
     // TODO: maybe support convergent control flow?
-    // For how, don't fuse nested loops that are conditionally executed
+    // For now, don't fuse nested loops that are conditionally executed
     // (since it's harder to prove they are executed together)
     if (!isControlFlowEquivalent(*L1.getParentLoop()->getHeader(),
                                  *getLoopEntry(L1), DT, PDT) ||
@@ -271,12 +270,12 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
     }
   }
 
-  // Check if one loop computes any SSA values that are used by another loop
   if (!L1.isLCSSAForm(DT) || !L2.isLCSSAForm(DT)) {
     errs() << "Loops are not in LCSSA\n";
     return true;
   }
 
+  // Check if one loop computes any SSA values that are used by another loop
   for (PHINode &PN : L1.getExitBlock()->phis())
     if (isUsedByLoop(&PN, L2)) {
       errs() << "Loops are dependent (ssa)\n";
