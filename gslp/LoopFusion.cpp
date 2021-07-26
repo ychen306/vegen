@@ -135,6 +135,7 @@ static BasicBlock *getLoopEntry(Loop &L) {
                        : L.getLoopPreheader();
 }
 
+// FIXME: detect case where `I` is used by a conditional that's later joined by a PHINode later used by L
 static bool isUsedByLoop(Instruction *I, Loop &L) {
   DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
   std::function<bool(Instruction *)> IsUsed = [&](Instruction *I) -> bool {
@@ -216,13 +217,12 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     getInBetweenInstructions(BB->getTerminator(), I, InBetweenInsts);
 
     bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
+      // Assume we can't hoist branches
+    if (isa<PHINode>(I))
+      return false;
     for (auto *I2 : InBetweenInsts) {
       if (!SafeToSpeculate && I2->mayThrow())
         return Memo[I] = false;
-      // Assume we can't hoist branches
-      auto *BI = dyn_cast<BranchInst>(I2);
-      if (isa<PHINode>(I) && BI && BI->isConditional() && PDT.dominates(I, BI))
-        return false;
       auto Dep = DI.depends(I2, I, true);
       if (Dep && !Dep->isInput() && !IsSafeToHoist(I2)) {
         return Memo[I] = false;
