@@ -184,22 +184,27 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
                                 std::function<bool (Instruction *)> CannotHoist,
                                 DominatorTree &DT, DependenceInfo &DI) {
   DenseSet<Instruction *> Visited;
+  DenseMap<Instruction *, bool> Memo;
   std::function<bool (Instruction *)> IsSafeToHoist = [&](Instruction *I) {
+    auto It = Memo.find(I);
+    if (It != Memo.end())
+      return It->second;
+
     if (CannotHoist(I))
-      return false;
+      return Memo[I] = false;
 
     if (!Visited.insert(I).second)
-      return true;
+      return Memo[I] = true;
 
     // Already before BB->getTerminator()
     if (DT.dominates(I, BB)) {
-      return true;
+      return Memo[I] = true;
     }
 
     for (Value *V : I->operand_values()) {
       auto *OpInst = dyn_cast<Instruction>(V);
       if (OpInst && !IsSafeToHoist(OpInst))
-        return false;
+        return Memo[I] = false;
     }
 
     // If `I` reads or writes memory, we also need to check its memory dependencies
@@ -210,15 +215,15 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
     for (auto *I2 : InBetweenInsts) {
       if (!SafeToSpeculate && I2->mayThrow())
-        return false;
+        return Memo[I] = false;
       auto Dep = DI.depends(I2, I, true);
       if (Dep && !Dep->isInput() && !IsSafeToHoist(I2)) {
-        return false;
+        return Memo[I] = false;
       }
     }
 
     // FIXME: also check for control dependencies
-    return true;
+    return Memo[I] = true;
   };
 
   return IsSafeToHoist(I);
