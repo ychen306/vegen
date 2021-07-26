@@ -194,7 +194,8 @@ static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
     if (UnsafeToFuse)
       return false;
     // If L2 uses loads from the intermediate blocks, conservatively assume that
-    // we can't hoist the load before L1 (such hoisting is required to fuse L2 into L1)
+    // we can't hoist the load before L1 (such hoisting is required to fuse L2
+    // into L1)
     for (auto &I : *BB)
       if (I.mayReadFromMemory() && isUsedByLoop(&I, L2))
         return false;
