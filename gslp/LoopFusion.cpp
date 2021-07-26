@@ -156,7 +156,8 @@ static bool isUsedByLoop(Instruction *I, Loop &L) {
   return IsUsed(I);
 }
 
-static void getInBetweenInstructions(Instruction *Begin, Instruction *End, SmallPtrSetImpl<Instruction *> &Insts) {
+static void getInBetweenInstructions(Instruction *Begin, Instruction *End,
+                                     SmallPtrSetImpl<Instruction *> &Insts) {
   SmallPtrSet<Instruction *, 16> Worklist;
   Worklist.insert(Begin);
 
@@ -181,11 +182,12 @@ static void getInBetweenInstructions(Instruction *Begin, Instruction *End, Small
 
 // Precondition: I and BB are control-flow equivalent
 static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
-                                std::function<bool (Instruction *)> CannotHoist,
-                                DominatorTree &DT, DependenceInfo &DI) {
+                                std::function<bool(Instruction *)> CannotHoist,
+                                DominatorTree &DT, PostDominatorTree &PDT,
+                                DependenceInfo &DI) {
   DenseSet<Instruction *> Visited;
   DenseMap<Instruction *, bool> Memo;
-  std::function<bool (Instruction *)> IsSafeToHoist = [&](Instruction *I) {
+  std::function<bool(Instruction *)> IsSafeToHoist = [&](Instruction *I) {
     auto It = Memo.find(I);
     if (It != Memo.end())
       return It->second;
@@ -207,8 +209,9 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
         return Memo[I] = false;
     }
 
-    // If `I` reads or writes memory, we also need to check its memory dependencies
-    // Do this by collecting all intermediate instructions between BB and I
+    // If `I` reads or writes memory, we also need to check its memory
+    // dependencies Do this by collecting all intermediate instructions between
+    // BB and I
     SmallPtrSet<Instruction *, 16> InBetweenInsts;
     getInBetweenInstructions(BB->getTerminator(), I, InBetweenInsts);
 
@@ -216,13 +219,16 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     for (auto *I2 : InBetweenInsts) {
       if (!SafeToSpeculate && I2->mayThrow())
         return Memo[I] = false;
+      // Assume we can't hoist branches
+      auto *BI = dyn_cast<BranchInst>(I2);
+      if (isa<PHINode>(I) && BI && BI->isConditional() && PDT.dominates(I, BI))
+        return false;
       auto Dep = DI.depends(I2, I, true);
       if (Dep && !Dep->isInput() && !IsSafeToHoist(I2)) {
         return Memo[I] = false;
       }
     }
 
-    // FIXME: also check for control dependencies
     return Memo[I] = true;
   };
 
@@ -233,7 +239,7 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
 // we also assume L1 comes before L2.
 static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
-    DominatorTree &DT, PostDominatorTree &PDT) {
+                              DominatorTree &DT, PostDominatorTree &PDT) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
@@ -263,9 +269,7 @@ static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
   }
   IntermediateBlocks.insert(L2.getLoopPreheader());
 
-  auto IsInL1 = [&](Instruction *I) {
-    return L1.contains(I->getParent());
-  };
+  auto IsInL1 = [&](Instruction *I) { return L1.contains(I->getParent()); };
 
   for (BasicBlock *BB : IntermediateBlocks) {
     collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
@@ -273,7 +277,7 @@ static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
       return false;
     for (auto &I : *BB)
       if (isUsedByLoop(&I, L2) &&
-          !isSafeToHoistBefore(&I, L1Entry, IsInL1, DT, DI))
+          !isSafeToHoistBefore(&I, L1Entry, IsInL1, DT, PDT, DI))
         return false;
   }
 
@@ -292,7 +296,7 @@ static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
 }
 
 bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
-    DominatorTree &DT, PostDominatorTree &PDT) {
+                    DominatorTree &DT, PostDominatorTree &PDT) {
   if (!checkLoop(L1) || !checkLoop(L2)) {
     errs() << "Loops don't have the right shape\n";
     return true;
@@ -318,7 +322,7 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
   // fused
   if (!L1.isOutermost() && L1Parent != L2Parent) {
     if (isUnsafeToFuse(*L1.getParentLoop(), *L2.getParentLoop(), SE, DI, DT,
-          PDT)) {
+                       PDT)) {
       errs() << "Parent loops can't be fused\n";
       return true;
     }
@@ -326,15 +330,15 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
     // For now, don't fuse nested loops that are conditionally executed
     // (since it's harder to prove they are executed together)
     if (!isControlFlowEquivalent(*L1.getParentLoop()->getHeader(),
-          *getLoopEntry(L1), DT, PDT) ||
+                                 *getLoopEntry(L1), DT, PDT) ||
         !isControlFlowEquivalent(*L2.getParentLoop()->getHeader(),
-          *getLoopEntry(L2), DT, PDT)) {
+                                 *getLoopEntry(L2), DT, PDT)) {
       errs() << "Can't fuse conditional nested loop\n";
       return true;
     }
   } else {
     if (!isControlFlowEquivalent(*L1.getLoopPreheader(), *L2.getLoopPreheader(),
-          DT, PDT)) {
+                                 DT, PDT)) {
       errs() << "Loops are not control flow equivalent\n";
       return true;
     }
