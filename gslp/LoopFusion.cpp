@@ -186,18 +186,18 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
                                 std::function<bool(Instruction *)> CannotHoist,
                                 DominatorTree &DT, PostDominatorTree &PDT,
                                 DependenceInfo &DI) {
-  DenseSet<Instruction *> Visited;
   DenseMap<Instruction *, bool> Memo;
   std::function<bool(Instruction *)> IsSafeToHoist = [&](Instruction *I) {
     auto It = Memo.find(I);
     if (It != Memo.end())
       return It->second;
 
-    if (CannotHoist(I))
+      // Assume we can't hoist branches
+    if (isa<PHINode>(I))
       return Memo[I] = false;
 
-    if (!Visited.insert(I).second)
-      return Memo[I] = true;
+    if (CannotHoist(I))
+      return Memo[I] = false;
 
     // Already before BB->getTerminator()
     if (DT.dominates(I, BB)) {
@@ -217,9 +217,6 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     getInBetweenInstructions(BB->getTerminator(), I, InBetweenInsts);
 
     bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
-      // Assume we can't hoist branches
-    if (isa<PHINode>(I))
-      return false;
     for (auto *I2 : InBetweenInsts) {
       if (!SafeToSpeculate && I2->mayThrow())
         return Memo[I] = false;
