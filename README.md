@@ -9,15 +9,7 @@ cmake $path_to_vegen
 ```
 
 # To use
-There are some flags that you would need to pass to `clang` in order to load vegen
-as a plugin in to the optimization pipeline. To do this, do
-```bash
-source flags.sh $ABSOLUTE_PATH_TO_THE_BUILD_DIRECTORY
-```
-And then you can then for example do
-```bash
-clang $CLANG_FLAGS something.c -c -O3 -ffast-math
-```
+After building VeGen, you can in principle use `vegen-clang` and `vegen-clang++` as a drop-in replacement for clang.
 
 # Directory structure
 `/gslp` (`gslp` stands for Generalized SLP) 
