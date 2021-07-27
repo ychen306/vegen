@@ -1,0 +1,14 @@
+#/usr/bin/env bash
+executable=$(basename $0)
+if [ "$executable" == "vegen-clang" ]
+then
+  clang=clang
+elif [ "$executable" == "vegen-clang++" ]
+then
+  clang=clang++
+else
+  echo "Error invoking vegen-clang"
+  exit 1
+fi
+
+exec $clang -Xclang -load -Xclang @CMAKE_BINARY_DIR@/gslp/libGSLP.so -mllvm --wrappers-dir=@CMAKE_BINARY_DIR@ $@ -fno-slp-vectorize

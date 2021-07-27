@@ -27,3 +27,13 @@ configure_file(
   ${CMAKE_SOURCE_DIR}/test/lit.site.cfg.in
   ${CMAKE_BINARY_DIR}/test/lit.site.cfg
 )
+
+configure_file(
+  ${CMAKE_SOURCE_DIR}/vegen-clang.in
+  ${CMAKE_BINARY_DIR}/vegen-clang
+)
+
+configure_file(
+  ${CMAKE_SOURCE_DIR}/vegen-clang.in
+  ${CMAKE_BINARY_DIR}/vegen-clang++
+)
