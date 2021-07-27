@@ -11,4 +11,7 @@ else
   exit 1
 fi
 
-exec $clang -Xclang -load -Xclang @CMAKE_BINARY_DIR@/gslp/libGSLP.so -mllvm --wrappers-dir=@CMAKE_BINARY_DIR@ $@ -fno-slp-vectorize
+exec $clang -Xclang -load -Xclang @CMAKE_BINARY_DIR@/gslp/libGSLP.so\
+       -mllvm --wrappers-dir=@CMAKE_BINARY_DIR@\
+       $@\
+       -fno-slp-vectorize
