@@ -199,8 +199,8 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     if (CannotHoist(I))
       return Memo[I] = false;
 
-    // Already before BB->getTerminator()
-    if (DT.dominates(I, BB)) {
+    // Don't need to hoist I if already before BB
+    if (DT.dominates(I, BB->getTerminator())) {
       return Memo[I] = true;
     }
 
