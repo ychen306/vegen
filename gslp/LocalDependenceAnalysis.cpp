@@ -71,8 +71,6 @@ static bool isAliased(const MemoryLocation &Loc1, Instruction *Inst1,
     // Do the alias check.
     Aliased = AA->alias(Loc1, Loc2);
   }
-  if (Aliased)
-    errs() << *Inst1 << ", " << *Inst2 << " may alias\n";
   return Aliased;
 }
 
