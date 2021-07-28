@@ -1,37 +1,40 @@
-; RUN: %test-loop-fusion %s -do-fusion | FileCheck %s
+; RUN: %test-loop-fusion %s -do-fusion | FileCheck %s -check-prefixes=DO_FUSION
+; RUN: %test-loop-fusion %s | FileCheck %s
 
-; CHECK: for.body.preheader:
-; CHECK-NEXT:   %wide.trip.count25 = zext i32 %n to i64
-; CHECK-NEXT:   br label %for.body5.preheader
+; CHECK: {{[[:space:]]+}}safe
 
-; CHECK: for.cond2.preheader:
-; CHECK-NEXT:  %cmp319 = icmp sgt i32 %n, 0
-; CHECK-NEXT:  br i1 %cmp319, label %for.cond.cleanup4, label %for.cond.cleanup4
+; DO_FUSION: for.body.preheader:
+; DO_FUSION-NEXT:   %wide.trip.count25 = zext i32 %n to i64
+; DO_FUSION-NEXT:   br label %for.body5.preheader
 
-; CHECK: for.body5.preheader
-; CHECK-NEXT:   %wide.trip.count = zext i32 %n to i64
-; CHECK-NEXT:   br label %for.body
+; DO_FUSION: for.cond2.preheader:
+; DO_FUSION-NEXT:  %cmp319 = icmp sgt i32 %n, 0
+; DO_FUSION-NEXT:  br i1 %cmp319, label %for.cond.cleanup4, label %for.cond.cleanup4
 
-; CHECK: for.body:
-; CHECK-NEXT:   %indvars.iv23 = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next24, %for.body5 ]
-; CHECK-NEXT:   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
+; DO_FUSION: for.body5.preheader
+; DO_FUSION-NEXT:   %wide.trip.count = zext i32 %n to i64
+; DO_FUSION-NEXT:   br label %for.body{{$}}
 
-; CHECK-NEXT:   %arrayidx = getelementptr inbounds i32, i32* %x, i64 %indvars.iv23
-; CHECK-NEXT:   %t0 = load i32, i32* %arrayidx, align 4
-; CHECK-NEXT:   %mul = shl nsw i32 %t0, 1
-; CHECK-NEXT:   store i32 %mul, i32* %arrayidx, align 4
-; CHECK-NEXT:   %indvars.iv.next24 = add nuw nsw i64 %indvars.iv23, 1
-; CHECK-NEXT:   %exitcond26.not = icmp eq i64 %indvars.iv.next24, %wide.trip.count25
-; CHECK-NEXT:   br label %for.body5
+; DO_FUSION: for.body:
+; DO_FUSION-NEXT:   %indvars.iv23 = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next24, %for.body5 ]
+; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
 
-; CHECK: for.body5:
-; CHECK-NEXT:   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
-; CHECK-NEXT:   %t1 = load i32, i32* %arrayidx7, align 4
-; CHECK-NEXT:   %mul8 = shl nsw i32 %t1, 1
-; CHECK-NEXT:   store i32 %mul8, i32* %arrayidx7, align 4
-; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
-; CHECK-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
-; CHECK-NEXT:   br i1 %exitcond.not, label %for.cond2.preheader, label %for.body
+; DO_FUSION-NEXT:   %arrayidx = getelementptr inbounds i32, i32* %x, i64 %indvars.iv23
+; DO_FUSION-NEXT:   %t0 = load i32, i32* %arrayidx, align 4
+; DO_FUSION-NEXT:   %mul = shl nsw i32 %t0, 1
+; DO_FUSION-NEXT:   store i32 %mul, i32* %arrayidx, align 4
+; DO_FUSION-NEXT:   %indvars.iv.next24 = add nuw nsw i64 %indvars.iv23, 1
+; DO_FUSION-NEXT:   %exitcond26.not = icmp eq i64 %indvars.iv.next24, %wide.trip.count25
+; DO_FUSION-NEXT:   br label %for.body5
+
+; DO_FUSION: for.body5:
+; DO_FUSION-NEXT:   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
+; DO_FUSION-NEXT:   %t1 = load i32, i32* %arrayidx7, align 4
+; DO_FUSION-NEXT:   %mul8 = shl nsw i32 %t1, 1
+; DO_FUSION-NEXT:   store i32 %mul8, i32* %arrayidx7, align 4
+; DO_FUSION-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
+; DO_FUSION-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
+; DO_FUSION-NEXT:   br i1 %exitcond.not, label %for.cond2.preheader, label %for.body{{$}}
 
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
