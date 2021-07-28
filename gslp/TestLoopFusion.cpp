@@ -14,21 +14,25 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
-
-cl::opt<std::string>
-    InputFileName(cl::Positional,
-                  cl::desc("Specify the input llvm bitcode file"),
-                  cl::value_desc("input file name"), cl::init("-"));
 
 namespace llvm {
 void initializeTestLoopFusionPass(PassRegistry &);
 }
 
 namespace {
+
+cl::opt<std::string>
+    InputFileName(cl::Positional,
+                  cl::desc("Specify the input llvm bitcode file"),
+                  cl::value_desc("input file name"), cl::init("-"));
+cl::opt<bool>
+    DoFusion("do-fusion",
+        cl::desc("Do fusion instead of testing whether it's safe to fuse"),
+             cl::value_desc("run fuse safe-to-fuse loops"), cl::init(false));
 
 struct TestLoopFusion : public FunctionPass {
   static char ID;
@@ -68,12 +72,19 @@ bool TestLoopFusion::runOnFunction(Function &F) {
       Loop *L2 = *J;
       if (!L2->isInnermost())
         continue;
-      outs() << "Fusing " << L1->getHeader()->getName() << " and "
-        << L2->getHeader()->getName() << " is ";
-      if (isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT))
+      if (!DoFusion)
+        outs() << "Fusing " << L1->getHeader()->getName() << " and "
+               << L2->getHeader()->getName() << " is ";
+      if (isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT) && !DoFusion)
         outs() << "unsafe\n";
-      else
-        outs() << "safe\n";
+      else {
+        if (DoFusion) {
+          fuseLoops(*L1, *L2, DT, PDT, DI);
+          outs() << F << '\n';
+          return true;
+        } else
+          outs() << "safe\n";
+      }
     }
   }
   return false;
