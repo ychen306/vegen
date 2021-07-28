@@ -3,8 +3,14 @@
 #include "Packer.h"
 #include "Plan.h"
 #include "VectorPackSet.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+
+static cl::opt<bool>
+    RefinePlans("refine-plans",
+                cl::desc("Refine the initial vectorization plan"),
+                cl::init(false));
 
 static unsigned getBitWidth(Value *V, const DataLayout *DL) {
   auto *Ty = V->getType();
@@ -274,6 +280,9 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     }
   }
 
+  if (!RefinePlans)
+    return;
+
   bool Optimized;
   do {
     errs() << "COST: " << P.cost() << '\n';
@@ -290,7 +299,8 @@ void improvePlan(Packer *Pkr, Plan &P, const CandidatePackSet *CandidateSet) {
     }
     if (Optimized)
       continue;
-    errs() << "??? finding good concats, num operands = " << std::distance(P.operands_begin(), P.operands_end()) << '\n';
+    errs() << "??? finding good concats, num operands = "
+           << std::distance(P.operands_begin(), P.operands_end()) << '\n';
     for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
       for (auto J = P.operands_begin(); J != E; ++J) {
         const OperandPack *OP = I->first;
