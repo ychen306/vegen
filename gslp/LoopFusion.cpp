@@ -7,6 +7,7 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/CodeMoverUtils.h"
 
 using namespace llvm;
@@ -369,7 +370,49 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
   return false; // *probably* safe
 }
 
+static void rewriteBranch(BasicBlock *Src, BasicBlock *OldDst, BasicBlock *NewDst) {
+  Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
+}
+
+static bool getNumPHIs(BasicBlock *BB) {
+  return std::distance(BB->phis().begin(), BB->phis().end());
+}
+
 bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
                PostDominatorTree &PDT, llvm::DependenceInfo &DI) {
+  BasicBlock *L1Preheader = L1.getLoopPreheader();
+  BasicBlock *L2Preheader = L2.getLoopPreheader();
+  BasicBlock *L1Header = L1.getHeader();
+  BasicBlock *L2Header = L2.getHeader();
+  BasicBlock *L1Latch = L1.getLoopLatch();
+  BasicBlock *L2Latch = L2.getLoopLatch();
+  BasicBlock *L1Exit = L1.getExitBlock();
+  BasicBlock *L2Exit = L2.getExitBlock();
+
+  // TODO: get rid of this restriction
+  if (getNumPHIs(L1Preheader) != 0 || getNumPHIs(L2Preheader) != 0)
+    return false;
+
+  // Rewrire all edges going into L2's preheader to, instead, go into L2's exit block
+  std::vector<BasicBlock *> Preds(pred_begin(L2Preheader), pred_end(L2Preheader));
+  for (auto *BB : Preds)
+    rewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader, /*new dst=*/L2Exit);
+
+  // Run L2's preheader after L1's preheader
+  rewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header, /*new dst=*/L2Preheader);
+  rewriteBranch(/*src=*/L2Preheader, /*old dst=*/L2Header, /*new dst=*/L1Header);
+
+  // Run one iteration L2 after we are done with one iteration of L1
+  ReplaceInstWithInst(L1Latch->getTerminator(), BranchInst::Create(L2Header));
+  // hoist the phis in L2Header to L1Header
+  while (auto *L2PHI = dyn_cast<PHINode>(&L2Header->front()))
+    L2PHI->moveBefore(&*L1Header->getFirstInsertionPt());
+
+  L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
+  L1Header->replacePhiUsesWith(L1Latch, L2Latch);
+
+  rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Header, /*new dst=*/L1Header);
+  rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
+
   return false;
 }

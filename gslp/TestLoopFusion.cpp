@@ -72,19 +72,19 @@ bool TestLoopFusion::runOnFunction(Function &F) {
       Loop *L2 = *J;
       if (!L2->isInnermost())
         continue;
-      if (!DoFusion)
-        outs() << "Fusing " << L1->getHeader()->getName() << " and "
+
+      if (DoFusion) {
+        fuseLoops(*L1, *L2, DT, PDT, DI);
+        outs() << F << '\n';
+        return true;
+      }
+
+      outs() << "Fusing " << L1->getHeader()->getName() << " and "
                << L2->getHeader()->getName() << " is ";
       if (isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT) && !DoFusion)
         outs() << "unsafe\n";
-      else {
-        if (DoFusion) {
-          fuseLoops(*L1, *L2, DT, PDT, DI);
-          outs() << F << '\n';
-          return true;
-        } else
-          outs() << "safe\n";
-      }
+      else
+        outs() << "safe\n";
     }
   }
   return false;
@@ -114,20 +114,22 @@ int main(int argc, char **argv) {
 
   legacy::PassManager Passes;
 
-  // Add the alias analysis pipeline
-  Passes.add(createTypeBasedAAWrapperPass());
-  Passes.add(createScopedNoAliasAAWrapperPass());
-  Passes.add(createGlobalsAAWrapperPass());
-  Passes.add(createBasicAAWrapperPass());
+  if (!DoFusion) {
+    // Add the alias analysis pipeline
+    Passes.add(createTypeBasedAAWrapperPass());
+    Passes.add(createScopedNoAliasAAWrapperPass());
+    Passes.add(createGlobalsAAWrapperPass());
+    Passes.add(createBasicAAWrapperPass());
 
-  // Canonicalize the loops
-  Passes.add(createLoopSimplifyPass());
-  Passes.add(createLoopRotatePass());
+    // Canonicalize the loops
+    Passes.add(createLoopSimplifyPass());
+    Passes.add(createLoopRotatePass());
 
-  // Make isControlFlowEquivalent more precise
-  Passes.add(createNewGVNPass());
+    // Make isControlFlowEquivalent more precise
+    Passes.add(createNewGVNPass());
 
-  Passes.add(createLCSSAPass());
+    Passes.add(createLCSSAPass());
+  }
 
   Passes.add(new TestLoopFusion());
   Passes.run(*M);

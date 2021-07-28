@@ -2,40 +2,37 @@
 
 ; CHECK: for.body.preheader:
 ; CHECK-NEXT:   %wide.trip.count25 = zext i32 %n to i64
+; CHECK-NEXT:   br label %for.body5.preheader
+
+; CHECK: for.cond2.preheader:
+; CHECK-NEXT:  %cmp319 = icmp sgt i32 %n, 0
+; CHECK-NEXT:  br i1 %cmp319, label %for.cond.cleanup4, label %for.cond.cleanup4
+
+; CHECK: for.body5.preheader
 ; CHECK-NEXT:   %wide.trip.count = zext i32 %n to i64
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:
-; CHECK-NEXT:   %indvars.iv23 = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next24, %for.body ]
+; CHECK-NEXT:   %indvars.iv23 = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next24, %for.body5 ]
+; CHECK-NEXT:   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
+
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds i32, i32* %x, i64 %indvars.iv23
-; CHECK-NEXT:   %0 = load i32, i32* %arrayidx, align 4, !tbaa !3
-; CHECK-NEXT:   %mul = shl nsw i32 %0, 1
-; CHECK-NEXT:   store i32 %mul, i32* %arrayidx, align 4, !tbaa !3
+; CHECK-NEXT:   %t0 = load i32, i32* %arrayidx, align 4
+; CHECK-NEXT:   %mul = shl nsw i32 %t0, 1
+; CHECK-NEXT:   store i32 %mul, i32* %arrayidx, align 4
 ; CHECK-NEXT:   %indvars.iv.next24 = add nuw nsw i64 %indvars.iv23, 1
 ; CHECK-NEXT:   %exitcond26.not = icmp eq i64 %indvars.iv.next24, %wide.trip.count25
 ; CHECK-NEXT:   br label %for.body5
 
-; CHECK: for.body:
-; CHECK-NEXT:   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
+; CHECK: for.body5:
 ; CHECK-NEXT:   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
-; CHECK-NEXT:   %1 = load i32, i32* %arrayidx7, align 4, !tbaa !3
-; CHECK-NEXT:   %mul8 = shl nsw i32 %1, 1
-; CHECK-NEXT:   store i32 %mul8, i32* %arrayidx7, align 4, !tbaa !3
+; CHECK-NEXT:   %t1 = load i32, i32* %arrayidx7, align 4
+; CHECK-NEXT:   %mul8 = shl nsw i32 %t1, 1
+; CHECK-NEXT:   store i32 %mul8, i32* %arrayidx7, align 4
 ; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
 ; CHECK-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
-; CHECK-NEXT:   br i1 %exitcond26.not, label %for.cond2.preheader, label %for.body, !llvm.loop !7
+; CHECK-NEXT:   br i1 %exitcond.not, label %for.cond2.preheader, label %for.body
 
-; CHECK: for.cond2.preheader:
-; CHECK-NEXT:   %cmp319 = icmp sgt i32 %n, 0
-; CHECK-NEXT:   br i1 %cmp319, label %for.body5.preheader, label %for.cond.cleanup4
-
-; CHECK: for.body5.preheader:
-; CHECK-NEXT: br label %for.cond.cleanup4
-
-; ModuleID = 'safe-to-fuse1.c'
-source_filename = "safe-to-fuse1.c"
-target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-macosx10.15.0"
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
 define dso_local void @foo(i32 %n, i32* noalias nocapture %x, i32* noalias nocapture %y) local_unnamed_addr #0 {
@@ -58,12 +55,12 @@ for.body5.preheader:                              ; preds = %for.cond2.preheader
 for.body:                                         ; preds = %for.body.preheader, %for.body
   %indvars.iv23 = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next24, %for.body ]
   %arrayidx = getelementptr inbounds i32, i32* %x, i64 %indvars.iv23
-  %0 = load i32, i32* %arrayidx, align 4, !tbaa !3
-  %mul = shl nsw i32 %0, 1
+  %t0 = load i32, i32* %arrayidx, align 4, !tbaa !3
+  %mul = shl nsw i32 %t0, 1
   store i32 %mul, i32* %arrayidx, align 4, !tbaa !3
   %indvars.iv.next24 = add nuw nsw i64 %indvars.iv23, 1
   %exitcond26.not = icmp eq i64 %indvars.iv.next24, %wide.trip.count25
-  br i1 %exitcond26.not, label %for.cond2.preheader, label %for.body, !llvm.loop !7
+  br i1 %exitcond26.not, label %for.cond2.preheader, label %for.body
 
 for.cond.cleanup4:                                ; preds = %for.body5, %for.cond2.preheader
   ret void
@@ -71,12 +68,12 @@ for.cond.cleanup4:                                ; preds = %for.body5, %for.con
 for.body5:                                        ; preds = %for.body5.preheader, %for.body5
   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
-  %1 = load i32, i32* %arrayidx7, align 4, !tbaa !3
-  %mul8 = shl nsw i32 %1, 1
+  %t1 = load i32, i32* %arrayidx7, align 4, !tbaa !3
+  %mul8 = shl nsw i32 %t1, 1
   store i32 %mul8, i32* %arrayidx7, align 4, !tbaa !3
   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
-  br i1 %exitcond.not, label %for.cond.cleanup4, label %for.body5, !llvm.loop !10
+  br i1 %exitcond.not, label %for.cond.cleanup4, label %for.body5
 }
 
 attributes #0 = { nofree norecurse nounwind ssp uwtable "disable-tail-calls"="false" "frame-pointer"="all" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+cx8,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "tune-cpu"="generic" "unsafe-fp-math"="false" "use-soft-float"="false" }
