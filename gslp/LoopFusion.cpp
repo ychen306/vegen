@@ -370,7 +370,8 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
   return false; // *probably* safe
 }
 
-static void rewriteBranch(BasicBlock *Src, BasicBlock *OldDst, BasicBlock *NewDst) {
+static void rewriteBranch(BasicBlock *Src, BasicBlock *OldDst,
+                          BasicBlock *NewDst) {
   Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
 }
 
@@ -393,14 +394,18 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   if (getNumPHIs(L1Preheader) != 0 || getNumPHIs(L2Preheader) != 0)
     return false;
 
-  // Rewrire all edges going into L2's preheader to, instead, go into L2's exit block
-  std::vector<BasicBlock *> Preds(pred_begin(L2Preheader), pred_end(L2Preheader));
+  // Rewrire all edges going into L2's preheader to, instead, go into L2's exit
+  // block
+  std::vector<BasicBlock *> Preds(pred_begin(L2Preheader),
+                                  pred_end(L2Preheader));
   for (auto *BB : Preds)
     rewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader, /*new dst=*/L2Exit);
 
   // Run L2's preheader after L1's preheader
-  rewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header, /*new dst=*/L2Preheader);
-  rewriteBranch(/*src=*/L2Preheader, /*old dst=*/L2Header, /*new dst=*/L1Header);
+  rewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header,
+                /*new dst=*/L2Preheader);
+  rewriteBranch(/*src=*/L2Preheader, /*old dst=*/L2Header,
+                /*new dst=*/L1Header);
 
   // Run one iteration L2 after we are done with one iteration of L1
   ReplaceInstWithInst(L1Latch->getTerminator(), BranchInst::Create(L2Header));
@@ -413,6 +418,20 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
 
   rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Header, /*new dst=*/L1Header);
   rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
+
+  L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
+  // Fix the PHIs contorlling the exit values
+  for (PHINode &PN : L2Exit->phis()) {
+    if (all_of(PN.blocks(), [&](BasicBlock *BB) {
+          return BB == L2Latch || DT.dominates(PN.getIncomingValueForBlock(BB),
+                                               BB->getTerminator());
+        })) {
+      PN.moveBefore(&*L1Exit->getFirstInsertionPt());
+      continue;
+    }
+
+    llvm_unreachable("not implemented\n");
+  }
 
   return false;
 }
