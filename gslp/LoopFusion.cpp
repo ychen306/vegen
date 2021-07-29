@@ -125,26 +125,26 @@ collectMemoryAccesses(BasicBlock *BB, SmallVectorImpl<Instruction *> &Accesses,
   }
 }
 
-static bool checkLoop(Loop &L) {
-  return L.getLoopPreheader() && L.getHeader() && L.getExitingBlock() &&
-         L.getExitBlock() && L.getLoopLatch() && L.isRotatedForm() &&
-         !L.isInvalid();
+static bool checkLoop(Loop *L) {
+  return L->getLoopPreheader() && L->getHeader() && L->getExitingBlock() &&
+         L->getExitBlock() && L->getLoopLatch() && L->isRotatedForm() &&
+         !L->isInvalid();
 }
 
-static BasicBlock *getLoopEntry(Loop &L) {
-  return L.isGuarded() ? L.getLoopGuardBranch()->getParent()
-                       : L.getLoopPreheader();
+static BasicBlock *getLoopEntry(Loop *L) {
+  return L->isGuarded() ? L->getLoopGuardBranch()->getParent()
+                        : L->getLoopPreheader();
 }
 
 // FIXME: detect case where `I` is used by a conditional that's later joined by
 // a PHINode later used by L
-static bool isUsedByLoop(Instruction *I, Loop &L) {
+static bool isUsedByLoop(Instruction *I, Loop *L) {
   DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
   std::function<bool(Instruction *)> IsUsed = [&](Instruction *I) -> bool {
     if (!Visited.insert(I).second)
       return false; // ignore backedge
 
-    if (L.contains(I->getParent()))
+    if (L->contains(I->getParent()))
       return true;
 
     for (User *U : I->users()) {
@@ -236,39 +236,39 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
 
 // Return true is *independent*
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
-// we also assume L1 comes before L2.
-static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
+// we also assume L1 comes before L2->
+static bool checkDependencies(Loop *L1, Loop *L2, DependenceInfo &DI,
                               DominatorTree &DT, PostDominatorTree &PDT) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
   bool UnsafeToFuse = false;
-  for (auto *BB : L1.blocks()) {
+  for (auto *BB : L1->blocks()) {
     collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
     if (UnsafeToFuse)
       return false;
   }
-  for (auto *BB : L2.blocks()) {
+  for (auto *BB : L2->blocks()) {
     collectMemoryAccesses(BB, Accesses2, ReductionKinds, UnsafeToFuse);
     if (UnsafeToFuse)
       return false;
   }
 
-  BasicBlock *L1Exit = L1.getExitBlock();
+  BasicBlock *L1Exit = L1->getExitBlock();
   BasicBlock *L1Entry = getLoopEntry(L1);
   BasicBlock *L2Entry = getLoopEntry(L2);
 
   // Blocks after L1 and before L2
   DenseSet<BasicBlock *> IntermediateBlocks;
   for (BasicBlock *BB : depth_first(L1Exit)) {
-    // We know L2 post dominates L1.
-    // Therefore if L2 doesn't dominate BB, then BB must happen after L2.
+    // We know L2 post dominates L1->
+    // Therefore if L2 doesn't dominate BB, then BB must happen after L2->
     if (PDT.dominates(L2Entry, BB))
       IntermediateBlocks.insert(BB);
   }
-  IntermediateBlocks.insert(L2.getLoopPreheader());
+  IntermediateBlocks.insert(L2->getLoopPreheader());
 
-  auto IsInL1 = [&](Instruction *I) { return L1.contains(I->getParent()); };
+  auto IsInL1 = [&](Instruction *I) { return L1->contains(I->getParent()); };
 
   for (BasicBlock *BB : IntermediateBlocks) {
     collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
@@ -294,33 +294,33 @@ static bool checkDependencies(Loop &L1, Loop &L2, DependenceInfo &DI,
   return true;
 }
 
-bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
+bool isUnsafeToFuse(Loop *L1, Loop *L2, ScalarEvolution &SE, DependenceInfo &DI,
                     DominatorTree &DT, PostDominatorTree &PDT) {
   if (!checkLoop(L1) || !checkLoop(L2)) {
     errs() << "Loops don't have the right shape\n";
     return true;
   }
 
-  if (L1.getLoopDepth() != L2.getLoopDepth()) {
+  if (L1->getLoopDepth() != L2->getLoopDepth()) {
     errs() << "Loops have different nesting level\n";
     return true;
   }
 
   // Make sure the two loops have constant trip counts
-  const SCEV *TripCount1 = SE.getBackedgeTakenCount(&L1);
-  const SCEV *TripCount2 = SE.getBackedgeTakenCount(&L2);
+  const SCEV *TripCount1 = SE.getBackedgeTakenCount(L1);
+  const SCEV *TripCount2 = SE.getBackedgeTakenCount(L2);
   if (isa<SCEVCouldNotCompute>(TripCount1) ||
       isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2) {
     errs() << "Loops may have divergent trip count\n";
     return true;
   }
 
-  Loop *L1Parent = L1.getParentLoop();
-  Loop *L2Parent = L2.getParentLoop();
+  Loop *L1Parent = L1->getParentLoop();
+  Loop *L2Parent = L2->getParentLoop();
   // If L1 and L2 are nested inside other loops, those loops also need to be
   // fused
-  if (!L1.isOutermost() && L1Parent != L2Parent) {
-    if (isUnsafeToFuse(*L1.getParentLoop(), *L2.getParentLoop(), SE, DI, DT,
+  if (L1Parent != L2Parent) {
+    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), SE, DI, DT,
                        PDT)) {
       errs() << "Parent loops can't be fused\n";
       return true;
@@ -328,16 +328,16 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
     // TODO: maybe support convergent control flow?
     // For now, don't fuse nested loops that are conditionally executed
     // (since it's harder to prove they are executed together)
-    if (!isControlFlowEquivalent(*L1.getParentLoop()->getHeader(),
+    if (!isControlFlowEquivalent(*L1->getParentLoop()->getHeader(),
                                  *getLoopEntry(L1), DT, PDT) ||
-        !isControlFlowEquivalent(*L2.getParentLoop()->getHeader(),
+        !isControlFlowEquivalent(*L2->getParentLoop()->getHeader(),
                                  *getLoopEntry(L2), DT, PDT)) {
       errs() << "Can't fuse conditional nested loop\n";
       return true;
     }
   } else {
-    if (!isControlFlowEquivalent(*L1.getLoopPreheader(), *L2.getLoopPreheader(),
-                                 DT, PDT)) {
+    if (!isControlFlowEquivalent(*L1->getLoopPreheader(),
+                                 *L2->getLoopPreheader(), DT, PDT)) {
       errs() << "Loops are not control flow equivalent\n";
       return true;
     }
@@ -350,18 +350,18 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
     }
   }
 
-  if (!L1.isLCSSAForm(DT) || !L2.isLCSSAForm(DT)) {
+  if (!L1->isLCSSAForm(DT) || !L2->isLCSSAForm(DT)) {
     errs() << "Loops are not in LCSSA\n";
     return true;
   }
 
   // Check if one loop computes any SSA values that are used by another loop
-  for (PHINode &PN : L1.getExitBlock()->phis())
+  for (PHINode &PN : L1->getExitBlock()->phis())
     if (isUsedByLoop(&PN, L2)) {
       errs() << "Loops are dependent (ssa)\n";
       return true;
     }
-  for (PHINode &PN : L2.getExitBlock()->phis())
+  for (PHINode &PN : L2->getExitBlock()->phis())
     if (isUsedByLoop(&PN, L1)) {
       errs() << "Loops are dependent (ssa)\n";
       return true;
@@ -375,22 +375,21 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 // FIXME: support fusing nested loops without a direct, common parent
-bool fuseLoops(Loop &L1, Loop &L2, LoopInfo &LI, DominatorTree &DT,
+bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
                PostDominatorTree &PDT, DependenceInfo &DI) {
-  BasicBlock *L1Preheader = L1.getLoopPreheader();
-  BasicBlock *L2Preheader = L2.getLoopPreheader();
-  BasicBlock *L1Header = L1.getHeader();
-  BasicBlock *L2Header = L2.getHeader();
-  BasicBlock *L1Latch = L1.getLoopLatch();
-  BasicBlock *L2Latch = L2.getLoopLatch();
-  BasicBlock *L1Exit = L1.getExitBlock();
-  BasicBlock *L2Exit = L2.getExitBlock();
-
+  BasicBlock *L1Preheader = L1->getLoopPreheader();
+  BasicBlock *L2Preheader = L2->getLoopPreheader();
+  BasicBlock *L1Header = L1->getHeader();
+  BasicBlock *L2Header = L2->getHeader();
+  BasicBlock *L1Latch = L1->getLoopLatch();
+  BasicBlock *L2Latch = L2->getLoopLatch();
+  BasicBlock *L1Exit = L1->getExitBlock();
+  BasicBlock *L2Exit = L2->getExitBlock();
 
   SmallVector<DominatorTree::UpdateType> CFGUpdates;
 
   auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
-      BasicBlock *NewDst) {
+                           BasicBlock *NewDst) {
     Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
     CFGUpdates.push_back({DominatorTree::Delete, Src, OldDst});
     CFGUpdates.push_back({DominatorTree::Insert, Src, NewDst});
@@ -474,21 +473,20 @@ bool fuseLoops(Loop &L1, Loop &L2, LoopInfo &LI, DominatorTree &DT,
   PDT.applyUpdates(CFGUpdates);
 
   // Merge L2 into L1
-  SmallVector<BasicBlock *> L2Blocks(L2.blocks());
+  SmallVector<BasicBlock *> L2Blocks(L2->blocks());
   for (auto *BB : L2Blocks) {
-    L1.addBlockEntry(BB);
-    L2.removeBlockFromLoop(BB);
-    if (LI.getLoopFor(BB) == &L2)
-      LI.changeLoopFor(BB, &L1);
+    L1->addBlockEntry(BB);
+    L2->removeBlockFromLoop(BB);
+    if (LI.getLoopFor(BB) == L2)
+      LI.changeLoopFor(BB, L1);
   }
-  while (!L2.isInnermost()) {
-    auto ChildLoopIt = L2.begin();
+  while (!L2->isInnermost()) {
+    auto ChildLoopIt = L2->begin();
     Loop *ChildLoop = *ChildLoopIt;
-    L2.removeChildLoop(ChildLoopIt);
-    L1.addChildLoop(ChildLoop);
+    L2->removeChildLoop(ChildLoopIt);
+    L1->addChildLoop(ChildLoop);
   }
-
-  LI.erase(&L2);
+  LI.erase(L2);
 
   assert(DT.verify());
   assert(PDT.verify());

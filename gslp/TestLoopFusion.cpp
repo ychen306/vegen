@@ -31,7 +31,7 @@ cl::opt<std::string>
                   cl::value_desc("input file name"), cl::init("-"));
 cl::opt<bool>
     DoFusion("do-fusion",
-        cl::desc("Do fusion instead of testing whether it's safe to fuse"),
+             cl::desc("Do fusion instead of testing whether it's safe to fuse"),
              cl::value_desc("run fuse safe-to-fuse loops"), cl::init(false));
 
 struct TestLoopFusion : public FunctionPass {
@@ -74,14 +74,14 @@ bool TestLoopFusion::runOnFunction(Function &F) {
         continue;
 
       if (DoFusion) {
-        fuseLoops(*L1, *L2, LI, DT, PDT, DI);
+        fuseLoops(L1, L2, LI, DT, PDT, DI);
         outs() << *F.getParent() << '\n';
         return true;
       }
 
       outs() << "Fusing " << L1->getHeader()->getName() << " and "
-               << L2->getHeader()->getName() << " is ";
-      if (isUnsafeToFuse(*L1, *L2, SE, DI, DT, PDT) && !DoFusion)
+             << L2->getHeader()->getName() << " is ";
+      if (isUnsafeToFuse(L1, L2, SE, DI, DT, PDT) && !DoFusion)
         outs() << "unsafe\n";
       else
         outs() << "safe\n";
