@@ -420,12 +420,13 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
 
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
+  auto ComesFromL2OrDominatesL1Exit = [&](BasicBlock *BB) {
+    return BB == L2Latch || DT.dominates(PN.getIncomingValueForBlock(BB),
+                                         L1Exit->getTerminator());
+  };
   // Fix the PHIs contorlling the exit values
   for (PHINode &PN : L2Exit->phis()) {
-    if (all_of(PN.blocks(), [&](BasicBlock *BB) {
-          return BB == L2Latch || DT.dominates(PN.getIncomingValueForBlock(BB),
-                                               L1Exit->getTerminator());
-        })) {
+    if (all_of(PN.blocks(), ComesFromL2OrDominatesL1Exit)) {
       PN.moveBefore(&*L1Exit->getFirstInsertionPt());
       continue;
     }
