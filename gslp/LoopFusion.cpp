@@ -392,7 +392,8 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
 
   LLVMContext &Ctx = L1Preheader->getContext();
   Function *F = L1Preheader->getParent();
-  BasicBlock *L2Placeholder = BasicBlock::Create(Ctx, L2Preheader->getName()+".placeholder", F);
+  BasicBlock *L2Placeholder =
+      BasicBlock::Create(Ctx, L2Preheader->getName() + ".placeholder", F);
   BranchInst::Create(L2Exit /*to*/, L2Placeholder /*from*/);
 
   // TODO: get rid of this restriction
