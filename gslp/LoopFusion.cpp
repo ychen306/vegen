@@ -390,16 +390,22 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   BasicBlock *L1Exit = L1.getExitBlock();
   BasicBlock *L2Exit = L2.getExitBlock();
 
+  LLVMContext &Ctx = L1Preheader->getContext();
+  Function *F = L1Preheader->getParent();
+  BasicBlock *L2Placeholder = BasicBlock::Create(Ctx, L2Preheader->getName()+".placeholder", F);
+  BranchInst::Create(L2Exit /*to*/, L2Placeholder /*from*/);
+
   // TODO: get rid of this restriction
   if (getNumPHIs(L1Preheader) != 0 || getNumPHIs(L2Preheader) != 0)
     return false;
 
-  // Rewrire all edges going into L2's preheader to, instead, go into L2's exit
-  // block
+  // Rewrire all edges going into L2's preheader to, instead, go to
+  // a dedicated placeholder for L2 that directly jumps to the L2's exit
   std::vector<BasicBlock *> Preds(pred_begin(L2Preheader),
                                   pred_end(L2Preheader));
   for (auto *BB : Preds)
-    rewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader, /*new dst=*/L2Exit);
+    rewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader,
+                  /*new dst=*/L2Placeholder);
 
   // Run L2's preheader after L1's preheader
   rewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header,
@@ -409,7 +415,8 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
 
   // Run one iteration L2 after we are done with one iteration of L1
   ReplaceInstWithInst(L1Latch->getTerminator(), BranchInst::Create(L2Header));
-  // hoist the phis in L2Header to L1Header
+
+  // hoist the PHI nodes in L2Header to L1Header
   while (auto *L2PHI = dyn_cast<PHINode>(&L2Header->front()))
     L2PHI->moveBefore(&*L1Header->getFirstInsertionPt());
 
@@ -419,19 +426,35 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Header, /*new dst=*/L1Header);
   rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
 
-  L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
   // Fix the PHIs contorlling the exit values
+  L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
   for (PHINode &PN : L2Exit->phis()) {
     auto ComesFromL2OrDominatesL1Exit = [&](BasicBlock *BB) {
       return BB == L2Latch || DT.dominates(PN.getIncomingValueForBlock(BB),
-          L1Exit->getTerminator());
+                                           L1Exit->getTerminator());
     };
     if (all_of(PN.blocks(), ComesFromL2OrDominatesL1Exit)) {
       PN.moveBefore(&*L1Exit->getFirstInsertionPt());
-      continue;
-    }
+    } else {
+      auto *Ty = PN.getType();
+      SmallVector<BasicBlock *, 2> PredsOfL2Exit;
+      PredsOfL2Exit.append(pred_begin(L1Exit), pred_end(L1Exit));
+      auto *DummyPHI = PHINode::Create(Ty, PredsOfL2Exit.size(), "",
+                                       &*L1Exit->getFirstInsertionPt());
+      for (auto *BB : PredsOfL2Exit) {
+        Value *V = (BB == L2Latch) ? PN.getIncomingValueForBlock(L2Latch)
+                                   : UndefValue::get(Ty);
+        DummyPHI->addIncoming(V, BB);
+      }
 
-    llvm_unreachable("not implemented\n");
+      for (unsigned i = 0; i < PN.getNumIncomingValues(); i++) {
+        auto *BB = PN.getIncomingBlock(i);
+        if (BB == L2Latch) {
+          PN.setIncomingValue(i, DummyPHI);
+          PN.setIncomingBlock(i, L2Placeholder);
+        }
+      }
+    }
   }
 
   return false;
