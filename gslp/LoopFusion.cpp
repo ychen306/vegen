@@ -424,7 +424,7 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   for (PHINode &PN : L2Exit->phis()) {
     if (all_of(PN.blocks(), [&](BasicBlock *BB) {
           return BB == L2Latch || DT.dominates(PN.getIncomingValueForBlock(BB),
-                                               BB->getTerminator());
+                                               L1Exit->getTerminator());
         })) {
       PN.moveBefore(&*L1Exit->getFirstInsertionPt());
       continue;
