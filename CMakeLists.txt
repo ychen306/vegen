@@ -29,11 +29,11 @@ configure_file(
 )
 
 configure_file(
-  ${CMAKE_SOURCE_DIR}/vegen-clang.in
+  ${CMAKE_SOURCE_DIR}/utils/vegen-clang.in
   ${CMAKE_BINARY_DIR}/vegen-clang
 )
 
 configure_file(
-  ${CMAKE_SOURCE_DIR}/vegen-clang.in
+  ${CMAKE_SOURCE_DIR}/utils/vegen-clang.in
   ${CMAKE_BINARY_DIR}/vegen-clang++
 )
