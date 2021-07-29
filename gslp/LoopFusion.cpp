@@ -370,17 +370,13 @@ bool isUnsafeToFuse(Loop &L1, Loop &L2, ScalarEvolution &SE, DependenceInfo &DI,
   return false; // *probably* safe
 }
 
-static void rewriteBranch(BasicBlock *Src, BasicBlock *OldDst,
-                          BasicBlock *NewDst) {
-  Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
-}
-
 static bool getNumPHIs(BasicBlock *BB) {
   return std::distance(BB->phis().begin(), BB->phis().end());
 }
 
-bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
-               PostDominatorTree &PDT, llvm::DependenceInfo &DI) {
+// FIXME: support fusing nested loops without a direct, common parent
+bool fuseLoops(Loop &L1, Loop &L2, LoopInfo &LI, DominatorTree &DT,
+               PostDominatorTree &PDT, DependenceInfo &DI) {
   BasicBlock *L1Preheader = L1.getLoopPreheader();
   BasicBlock *L2Preheader = L2.getLoopPreheader();
   BasicBlock *L1Header = L1.getHeader();
@@ -389,6 +385,16 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   BasicBlock *L2Latch = L2.getLoopLatch();
   BasicBlock *L1Exit = L1.getExitBlock();
   BasicBlock *L2Exit = L2.getExitBlock();
+
+
+  SmallVector<DominatorTree::UpdateType> CFGUpdates;
+
+  auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
+      BasicBlock *NewDst) {
+    Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
+    CFGUpdates.push_back({DominatorTree::Delete, Src, OldDst});
+    CFGUpdates.push_back({DominatorTree::Insert, Src, NewDst});
+  };
 
   LLVMContext &Ctx = L1Preheader->getContext();
   Function *F = L1Preheader->getParent();
@@ -405,17 +411,21 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   std::vector<BasicBlock *> Preds(pred_begin(L2Preheader),
                                   pred_end(L2Preheader));
   for (auto *BB : Preds)
-    rewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader,
+    RewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader,
                   /*new dst=*/L2Placeholder);
 
   // Run L2's preheader after L1's preheader
-  rewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header,
+  RewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header,
                 /*new dst=*/L2Preheader);
-  rewriteBranch(/*src=*/L2Preheader, /*old dst=*/L2Header,
+  RewriteBranch(/*src=*/L2Preheader, /*old dst=*/L2Header,
                 /*new dst=*/L1Header);
 
   // Run one iteration L2 after we are done with one iteration of L1
+  assert(cast<BranchInst>(L1Latch->getTerminator())->isConditional());
   ReplaceInstWithInst(L1Latch->getTerminator(), BranchInst::Create(L2Header));
+  CFGUpdates.push_back({DominatorTree::Delete, L1Latch, L1Header});
+  CFGUpdates.push_back({DominatorTree::Delete, L1Latch, L1Exit});
+  CFGUpdates.push_back({DominatorTree::Insert, L1Latch, L2Header});
 
   // hoist the PHI nodes in L2Header to L1Header
   while (auto *L2PHI = dyn_cast<PHINode>(&L2Header->front()))
@@ -424,8 +434,8 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
   L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
   L1Header->replacePhiUsesWith(L1Latch, L2Latch);
 
-  rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Header, /*new dst=*/L1Header);
-  rewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
+  RewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Header, /*new dst=*/L1Header);
+  RewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
 
   // Fix the PHIs contorlling the exit values
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
@@ -458,5 +468,14 @@ bool fuseLoops(Loop &L1, Loop &L2, llvm::DominatorTree &DT,
     }
   }
 
-  return false;
+  DT.applyUpdates(CFGUpdates);
+  PDT.applyUpdates(CFGUpdates);
+
+  // FIXME: fix the dominator tree?
+  // FIXME: fix loop info
+  assert(DT.verify());
+  assert(PDT.verify());
+  //LI.verify(DT);
+
+  return true;
 }

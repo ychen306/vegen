@@ -74,7 +74,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
         continue;
 
       if (DoFusion) {
-        fuseLoops(*L1, *L2, DT, PDT, DI);
+        fuseLoops(*L1, *L2, LI, DT, PDT, DI);
         outs() << *F.getParent() << '\n';
         return true;
       }
