@@ -402,6 +402,8 @@ bool fuseLoops(Loop &L1, Loop &L2, LoopInfo &LI, DominatorTree &DT,
       BasicBlock::Create(Ctx, L2Preheader->getName() + ".placeholder", F);
   BranchInst::Create(L2Exit /*to*/, L2Placeholder /*from*/);
 
+  CFGUpdates.push_back({DominatorTree::Insert, L2Exit, L2Placeholder});
+
   // TODO: get rid of this restriction
   if (getNumPHIs(L1Preheader) != 0 || getNumPHIs(L2Preheader) != 0)
     return false;
@@ -471,11 +473,26 @@ bool fuseLoops(Loop &L1, Loop &L2, LoopInfo &LI, DominatorTree &DT,
   DT.applyUpdates(CFGUpdates);
   PDT.applyUpdates(CFGUpdates);
 
-  // FIXME: fix the dominator tree?
-  // FIXME: fix loop info
+  // Merge L2 into L1
+  SmallVector<BasicBlock *> L2Blocks(L2.blocks());
+  for (auto *BB : L2Blocks) {
+    L1.addBlockEntry(BB);
+    L2.removeBlockFromLoop(BB);
+    if (LI.getLoopFor(BB) == &L2)
+      LI.changeLoopFor(BB, &L1);
+  }
+  while (!L2.isInnermost()) {
+    auto ChildLoopIt = L2.begin();
+    Loop *ChildLoop = *ChildLoopIt;
+    L2.removeChildLoop(ChildLoopIt);
+    L1.addChildLoop(ChildLoop);
+  }
+
+  LI.erase(&L2);
+
   assert(DT.verify());
   assert(PDT.verify());
-  //LI.verify(DT);
+  LI.verify(DT);
 
   return true;
 }
