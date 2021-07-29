@@ -377,6 +377,18 @@ static bool getNumPHIs(BasicBlock *BB) {
 // FIXME: support fusing nested loops without a direct, common parent
 bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
                PostDominatorTree &PDT, DependenceInfo &DI) {
+  if (!checkLoop(L1) || !checkLoop(L2))
+    return false;
+
+  auto *L1Parent = L1->getParentLoop();
+  auto *L2Parent = L2->getParentLoop();
+  if (L1Parent != L2Parent) {
+    assert(L1Parent && L2Parent && "L1 and L2 not nested evenly");
+    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, DI);
+    L1->verifyLoop();
+    L2->verifyLoop();
+  }
+
   BasicBlock *L1Preheader = L1->getLoopPreheader();
   BasicBlock *L2Preheader = L2->getLoopPreheader();
   BasicBlock *L1Header = L1->getHeader();
@@ -487,6 +499,10 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L1->addChildLoop(ChildLoop);
   }
   LI.erase(L2);
+  if (L1Parent) {
+    L1Parent->addBlockEntry(L2Placeholder);
+    LI.changeLoopFor(L2Placeholder, L1Parent);
+  }
 
   assert(DT.verify());
   assert(PDT.verify());
