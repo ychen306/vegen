@@ -4,20 +4,6 @@
 
 ; CHECK: {{[[:space:]]+}}safe
 
-; DO_FUSION: for.body.preheader:
-; DO_FUSION-NEXT:   %wide.trip.count32 = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %for.body5.preheader
-
-; DO_FUSION: for.cond2.preheader:
-; DO_FUSION-NEXT:   %sx.0.lcssa = phi i32 [ 0, %entry ], [ %add, %for.body5 ]
-; DO_FUSION-NEXT:   %sy.0.lcssa = phi i32 [ 0, %entry ], [ %add8, %for.body5 ]
-; DO_FUSION-NEXT:   %cmp323 = icmp sgt i32 %n, 0
-; DO_FUSION-NEXT:   br i1 %cmp323, label %for.body5.preheader.placeholder, label %for.cond.cleanup4
-
-; DO_FUSION: for.body5.preheader:
-; DO_FUSION-NEXT:   %wide.trip.count = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %for.body{{$}}
-
 ; DO_FUSION: for.body:
 ; DO_FUSION-NEXT:   %indvars.iv30 = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next31, %for.body5 ]
 ; DO_FUSION-NEXT:   %sx.027 = phi i32 [ 0, %for.body5.preheader ], [ %add, %for.body5 ]
@@ -31,11 +17,6 @@
 ; DO_FUSION-NEXT:   %exitcond33.not = icmp eq i64 %indvars.iv.next31, %wide.trip.count32
 ; DO_FUSION-NEXT:   br label %for.body5
 
-; DO_FUSION: for.cond.cleanup4:
-; DO_FUSION-NEXT:   store i32 %sx.0.lcssa, i32* %out, align 4, !tbaa !3
-; DO_FUSION-NEXT:   store i32 %sy.0.lcssa, i32* %out2, align 4, !tbaa !3
-; DO_FUSION-NEXT:   ret void
-
 ; DO_FUSION: for.body5:
 ; DO_FUSION-NEXT:   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
 ; DO_FUSION-NEXT:   %t1 = load i32, i32* %arrayidx7, align 4, !tbaa !3
@@ -43,9 +24,6 @@
 ; DO_FUSION-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
 ; DO_FUSION-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
 ; DO_FUSION-NEXT:   br i1 %exitcond.not, label %for.cond2.preheader, label %for.body{{,|$}}
-
-; DO_FUSION: for.body5.preheader.placeholder:
-; DO_FUSION-NEXT:   br label %for.cond.cleanup4
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
 define dso_local void @foo(i32 %n, i32* nocapture readonly %x, i32* nocapture readonly %y, i32* nocapture %out, i32* nocapture %out2) local_unnamed_addr #0 {

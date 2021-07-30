@@ -4,14 +4,6 @@
 
 ; CHECK: {{[[:space:]]+}}safe
 
-; DO_FUSION: entry:
-; DO_FUSION-NEXT:   %cmp = icmp sgt i32 %n, 2
-; DO_FUSION-NEXT:   br i1 %cmp, label %for.body.preheader, label %if.else
-
-; DO_FUSION: for.body.preheader:
-; DO_FUSION-NEXT:   %wide.trip.count43 = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %for.body9.preheader
-
 ; DO_FUSION: for.body:
 ; DO_FUSION-NEXT:   %indvars.iv41 = phi i64 [ 0, %for.body9.preheader ], [ %indvars.iv.next42, %for.body9 ]
 ; DO_FUSION-NEXT:   %sx.038 = phi i32 [ 0, %for.body9.preheader ], [ %add, %for.body9 ]
@@ -25,20 +17,6 @@
 ; DO_FUSION-NEXT:   %exitcond44.not = icmp eq i64 %indvars.iv.next42, %wide.trip.count43
 ; DO_FUSION-NEXT:   br label %for.body9
 
-; DO_FUSION: if.else:
-; DO_FUSION-NEXT:   %t1 = load i32, i32* %x, align 4, !tbaa !3
-; DO_FUSION-NEXT:   br label %if.end
-
-; DO_FUSION: if.end:
-; DO_FUSION-NEXT:   %sx.1 = phi i32 [ %t1, %if.else ], [ %add, %for.body9 ]
-; DO_FUSION-NEXT:   %0 = phi i32 {{.*}}[ %add12, %for.body9 ]
-; DO_FUSION-NEXT:   store i32 %sx.1, i32* %out1, align 4, !tbaa !3
-; DO_FUSION-NEXT:   br i1 %cmp, label %for.body9.preheader.placeholder, label %if.else16
-
-; DO_FUSION: for.body9.preheader:
-; DO_FUSION-NEXT:   %wide.trip.count = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %for.body{{,|$}}
-
 ; DO_FUSION: for.body9:
 ; DO_FUSION-NEXT:   %arrayidx11 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
 ; DO_FUSION-NEXT:   %t2 = load i32, i32* %arrayidx11, align 4, !tbaa !3
@@ -46,18 +24,6 @@
 ; DO_FUSION-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
 ; DO_FUSION-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
 ; DO_FUSION-NEXT:   br i1 %exitcond.not, label %if.end, label %for.body{{,|$}}
-
-; DO_FUSION: if.else16:
-; DO_FUSION-NEXT:   %t3 = load i32, i32* %y, align 4, !tbaa !3
-; DO_FUSION-NEXT:   br label %if.end18
-
-; DO_FUSION: if.end18:
-; DO_FUSION-NEXT:   %sy.1 = phi i32 [ %t3, %if.else16 ], [ %0, %for.body9.preheader.placeholder ]
-; DO_FUSION-NEXT:   store i32 %sy.1, i32* %out2, align 4, !tbaa !3
-; DO_FUSION-NEXT:   ret void
-
-; DO_FUSION: for.body9.preheader.placeholder:
-; DO_FUSION-NEXT:   br label %if.end18
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
 define dso_local void @foo(i32 %n, i32* noalias nocapture readonly %x, i32* noalias nocapture readonly %y, i32* noalias nocapture %out1, i32* noalias nocapture %out2) local_unnamed_addr #0 {

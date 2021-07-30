@@ -4,41 +4,6 @@
 
 ; CHECK: {{[[:space:]]+}}safe
 
-; DO_FUSION: entry:
-; DO_FUSION-NEXT:   %0 = zext i32 %m to i64
-; DO_FUSION-NEXT:   %cmp56 = icmp sgt i32 %n, 0
-; DO_FUSION-NEXT:   br i1 %cmp56, label %loop1.outer.preheader, label %loop2.outer.guard
-
-; DO_FUSION: loop1.outer.preheader:
-; DO_FUSION-NEXT:   %cmp254 = icmp sgt i32 %m, 0
-; DO_FUSION-NEXT:   %wide.trip.count69 = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %loop2.outer.preheader
-
-; DO_FUSION: loop1.inner.guard:
-; DO_FUSION-NEXT:   %indvars.iv67 = phi i64 [ 0, %loop2.outer.preheader ], [ %indvars.iv.next68, %loop2.inner.exit ]
-; DO_FUSION-NEXT:   %indvars.iv59 = phi i64 [ 0, %loop2.outer.preheader ], [ %indvars.iv.next60, %loop2.inner.exit ]
-; DO_FUSION-NEXT:   br i1 %cmp254, label %loop1.inner.preheader, label %loop1.inner.exit
-
-; DO_FUSION: loop1.inner.preheader:
-; DO_FUSION-NEXT:   %1 = mul nuw nsw i64 %indvars.iv67, %0
-; DO_FUSION-NEXT:   %arrayidx = getelementptr inbounds i32, i32* %x, i64 %1
-; DO_FUSION-NEXT:   %wide.trip.count65 = zext i32 %m to i64
-; DO_FUSION-NEXT:   br label %loop2.inner.preheader
-
-; DO_FUSION: loop2.outer.guard:
-; DO_FUSION-NEXT:   %cmp1251 = icmp sgt i32 %n, 0
-; DO_FUSION-NEXT:   br i1 %cmp1251, label %loop2.outer.preheader.placeholder, label %exit
-
-; DO_FUSION: loop2.outer.preheader:
-; DO_FUSION-NEXT:   %cmp1749 = icmp sgt i32 %m, 0
-; DO_FUSION-NEXT:   %wide.trip.count61 = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %loop1.inner.guard
-
-; DO_FUSION: loop1.inner.exit:
-; DO_FUSION-NEXT:   %indvars.iv.next68 = add nuw nsw i64 %indvars.iv67, 1
-; DO_FUSION-NEXT:   %exitcond70.not = icmp eq i64 %indvars.iv.next68, %wide.trip.count69
-; DO_FUSION-NEXT:   br label %loop2.inner.guard
-
 ; DO_FUSION: loop1.inner.body:
 ; DO_FUSION-NEXT:   %indvars.iv63 = phi i64 [ 0, %loop2.inner.preheader ], [ %indvars.iv.next64, %loop2.inner.body ]
 ; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %loop2.inner.preheader ], [ %indvars.iv.next, %loop2.inner.body ]
@@ -51,23 +16,6 @@
 ; DO_FUSION-NEXT:   %exitcond66.not = icmp eq i64 %indvars.iv.next64, %wide.trip.count65
 ; DO_FUSION-NEXT:   br label %loop2.inner.body{{,|$}}
 
-; DO_FUSION: loop2.inner.guard:
-; DO_FUSION-NEXT:   br i1 %cmp1749, label %loop2.inner.preheader.placeholder, label %loop2.inner.exit
-
-; DO_FUSION: loop2.inner.preheader:
-; DO_FUSION-NEXT:   %3 = mul nuw nsw i64 %indvars.iv59, %0
-; DO_FUSION-NEXT:   %arrayidx21 = getelementptr inbounds i32, i32* %y, i64 %3
-; DO_FUSION-NEXT:   %wide.trip.count = zext i32 %m to i64
-; DO_FUSION-NEXT:   br label %loop1.inner.body
-
-; DO_FUSION: exit:
-; DO_FUSION-NEXT:   ret void
-
-; DO_FUSION: loop2.inner.exit:
-; DO_FUSION-NEXT:   %indvars.iv.next60 = add nuw nsw i64 %indvars.iv59, 1
-; DO_FUSION-NEXT:   %exitcond62.not = icmp eq i64 %indvars.iv.next60, %wide.trip.count61
-; DO_FUSION-NEXT:   br i1 %exitcond62.not, label %loop2.outer.guard, label %loop1.inner.guard
-
 ; DO_FUSION: loop2.inner.body:
 ; DO_FUSION-NEXT:   %arrayidx23 = getelementptr inbounds i32, i32* %arrayidx21, i64 %indvars.iv
 ; DO_FUSION-NEXT:   %4 = load i32, i32* %arrayidx23, align 4
@@ -76,13 +24,6 @@
 ; DO_FUSION-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
 ; DO_FUSION-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
 ; DO_FUSION-NEXT:   br i1 %exitcond.not, label %loop1.inner.exit, label %loop1.inner.body
-
-; DO_FUSION: loop2.outer.preheader.placeholder:
-; DO_FUSION-NEXT: br label %exit
-
-; DO_FUSION: loop2.inner.preheader.placeholder:
-; DO_FUSION-NEXT: br label %loop2.inner.exit
-
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
 define dso_local void @foo(i32 %n, i32 %m, i32* noalias nocapture %x, i32* noalias nocapture %y) local_unnamed_addr #0 {

@@ -4,18 +4,6 @@
 
 ; CHECK: {{[[:space:]]+}}safe
 
-; DO_FUSION: for.body.preheader:
-; DO_FUSION-NEXT:   %wide.trip.count25 = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %for.body5.preheader
-
-; DO_FUSION: for.cond2.preheader:
-; DO_FUSION-NEXT:  %cmp319 = icmp sgt i32 %n, 0
-; DO_FUSION-NEXT:  br i1 %cmp319, label %for.body5.preheader.placeholder, label %for.cond.cleanup4
-
-; DO_FUSION: for.body5.preheader
-; DO_FUSION-NEXT:   %wide.trip.count = zext i32 %n to i64
-; DO_FUSION-NEXT:   br label %for.body{{$}}
-
 ; DO_FUSION: for.body:
 ; DO_FUSION-NEXT:   %indvars.iv23 = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next24, %for.body5 ]
 ; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
@@ -36,9 +24,6 @@
 ; DO_FUSION-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
 ; DO_FUSION-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
 ; DO_FUSION-NEXT:   br i1 %exitcond.not, label %for.cond2.preheader, label %for.body{{$}}
-
-; DO_FUSION: for.body5.preheader.placeholder:
-; DO_FUSION-NEXT:   br label %for.cond.cleanup4
 
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable

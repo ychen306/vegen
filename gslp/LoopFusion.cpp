@@ -457,7 +457,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
       return BB == L2Latch || DT.dominates(PN.getIncomingValueForBlock(BB),
                                            L1Exit->getTerminator());
     };
-    if (all_of(PN.blocks(), ComesFromL2OrDominatesL1Exit)) {
+    if (false && all_of(PN.blocks(), ComesFromL2OrDominatesL1Exit)) {
       // FIXME: need to fix entry
       PN.moveBefore(&*L1Exit->getFirstInsertionPt());
     } else {
