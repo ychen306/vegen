@@ -1,5 +1,6 @@
 ; RUN: %test-loop-fusion %s -do-fusion | FileCheck %s -check-prefixes=DO_FUSION
 ; RUN: %test-loop-fusion %s | FileCheck %s
+; RUN: %test-loop-fusion %s -do-fusion > %t && %check-function  4 'int foo(int, int*, int*, int*, int*)' 'foo(512, %%s, %%s, %%s, %%s)' %t %s
 
 ; CHECK: {{[[:space:]]+}}safe
 
@@ -9,7 +10,7 @@
 
 ; DO_FUSION: for.cond2.preheader:
 ; DO_FUSION-NEXT:   %sx.0.lcssa = phi i32 [ 0, %entry ], [ %add, %for.body5 ]
-; DO_FUSION-NEXT:   %sy.0.lcssa = phi i32 [ 0, %for.cond2.preheader ], [ %add8, %for.body5 ]
+; DO_FUSION-NEXT:   %sy.0.lcssa = phi i32 [ 0, %entry ], [ %add8, %for.body5 ]
 ; DO_FUSION-NEXT:   %cmp323 = icmp sgt i32 %n, 0
 ; DO_FUSION-NEXT:   br i1 %cmp323, label %for.body5.preheader.placeholder, label %for.cond.cleanup4
 

@@ -458,6 +458,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
                                            L1Exit->getTerminator());
     };
     if (all_of(PN.blocks(), ComesFromL2OrDominatesL1Exit)) {
+      // FIXME: need to fix entry
       PN.moveBefore(&*L1Exit->getFirstInsertionPt());
     } else {
       auto *Ty = PN.getType();
@@ -499,6 +500,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L1->addChildLoop(ChildLoop);
   }
   LI.erase(L2);
+  // Add the placeholder block to the parent loop
   if (L1Parent) {
     L1Parent->addBlockEntry(L2Placeholder);
     LI.changeLoopFor(L2Placeholder, L1Parent);

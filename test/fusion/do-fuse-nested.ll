@@ -1,5 +1,6 @@
 ; RUN: %test-loop-fusion %s -do-fusion | FileCheck %s -check-prefixes=DO_FUSION
 ; RUN: %test-loop-fusion %s | FileCheck %s
+; RUN: %test-loop-fusion %s -do-fusion > %t && %check-function  2 'int foo(int, int, int*, int*)' 'foo(64, 16, %%s, %%s)' %t %s
 
 ; CHECK: {{[[:space:]]+}}safe
 
