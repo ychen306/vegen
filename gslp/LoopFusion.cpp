@@ -453,31 +453,22 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Fix the PHIs contorlling the exit values
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
   for (PHINode &PN : L2Exit->phis()) {
-    auto ComesFromL2OrDominatesL1Exit = [&](BasicBlock *BB) {
-      return BB == L2Latch || DT.dominates(PN.getIncomingValueForBlock(BB),
-                                           L1Exit->getTerminator());
-    };
-    if (false && all_of(PN.blocks(), ComesFromL2OrDominatesL1Exit)) {
-      // FIXME: need to fix entry
-      PN.moveBefore(&*L1Exit->getFirstInsertionPt());
-    } else {
-      auto *Ty = PN.getType();
-      SmallVector<BasicBlock *, 2> PredsOfL2Exit;
-      PredsOfL2Exit.append(pred_begin(L1Exit), pred_end(L1Exit));
-      auto *DummyPHI = PHINode::Create(Ty, PredsOfL2Exit.size(), "",
-                                       &*L1Exit->getFirstInsertionPt());
-      for (auto *BB : PredsOfL2Exit) {
-        Value *V = (BB == L2Latch) ? PN.getIncomingValueForBlock(L2Latch)
-                                   : UndefValue::get(Ty);
-        DummyPHI->addIncoming(V, BB);
-      }
+    auto *Ty = PN.getType();
+    SmallVector<BasicBlock *, 2> PredsOfL2Exit;
+    PredsOfL2Exit.append(pred_begin(L1Exit), pred_end(L1Exit));
+    auto *DummyPHI = PHINode::Create(Ty, PredsOfL2Exit.size(), "",
+        &*L1Exit->getFirstInsertionPt());
+    for (auto *BB : PredsOfL2Exit) {
+      Value *V = (BB == L2Latch) ? PN.getIncomingValueForBlock(L2Latch)
+        : UndefValue::get(Ty);
+      DummyPHI->addIncoming(V, BB);
+    }
 
-      for (unsigned i = 0; i < PN.getNumIncomingValues(); i++) {
-        auto *BB = PN.getIncomingBlock(i);
-        if (BB == L2Latch) {
-          PN.setIncomingValue(i, DummyPHI);
-          PN.setIncomingBlock(i, L2Placeholder);
-        }
+    for (unsigned i = 0; i < PN.getNumIncomingValues(); i++) {
+      auto *BB = PN.getIncomingBlock(i);
+      if (BB == L2Latch) {
+        PN.setIncomingValue(i, DummyPHI);
+        PN.setIncomingBlock(i, L2Placeholder);
       }
     }
   }
