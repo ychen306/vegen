@@ -294,7 +294,7 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 
 // Return true is *independent*
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
-// we also assume L1 comes before L2->
+// we also assume L1 comes before L2.
 static bool checkDependencies(Loop *L1, Loop *L2, DependenceInfo &DI,
                               DominatorTree &DT, PostDominatorTree &PDT) {
   // Collect the memory accesses
