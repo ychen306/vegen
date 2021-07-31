@@ -282,7 +282,6 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
         insert(L->getLoopLatch());
       }
     }
-    void completed(BasicBlock *) {}
   };
 
   DenseSet<BasicBlock *> ReachesL2;
