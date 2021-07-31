@@ -272,9 +272,6 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
 static void
 getIntermediateBlocks(Loop *L1, Loop *L2,
                       SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks) {
-  auto *L1Exit = L1->getExitBlock();
-  auto *L2Preheader = L2->getLoopPreheader();
-
   struct SkipBackEdge : public df_iterator_default_set<BasicBlock *> {
     SkipBackEdge(Loop *L) {
       if (L) {
@@ -286,11 +283,11 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 
   DenseSet<BasicBlock *> ReachesL2;
   SkipBackEdge BackwardState(L1->getParentLoop());
-  for (auto *BB : inverse_depth_first_ext(L2Preheader, BackwardState))
+  for (auto *BB : inverse_depth_first_ext(L2->getLoopPreheader(), BackwardState))
     ReachesL2.insert(BB);
 
   SkipBackEdge ForwardState(L1->getParentLoop());
-  for (auto *BB : depth_first_ext(L1Exit, ForwardState))
+  for (auto *BB : depth_first_ext(L1->getExitBlock(), ForwardState))
     if (ReachesL2.count(BB))
       IntermediateBlocks.insert(BB);
 }
