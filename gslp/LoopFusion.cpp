@@ -457,10 +457,10 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     SmallVector<BasicBlock *, 2> PredsOfL2Exit;
     PredsOfL2Exit.append(pred_begin(L1Exit), pred_end(L1Exit));
     auto *DummyPHI = PHINode::Create(Ty, PredsOfL2Exit.size(), "",
-        &*L1Exit->getFirstInsertionPt());
+                                     &*L1Exit->getFirstInsertionPt());
     for (auto *BB : PredsOfL2Exit) {
       Value *V = (BB == L2Latch) ? PN.getIncomingValueForBlock(L2Latch)
-        : UndefValue::get(Ty);
+                                 : UndefValue::get(Ty);
       DummyPHI->addIncoming(V, BB);
     }
 
