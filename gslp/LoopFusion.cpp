@@ -7,6 +7,7 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/CodeMoverUtils.h"
 
@@ -497,9 +498,11 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     LI.changeLoopFor(L2Placeholder, L1Parent);
   }
 
+
   assert(DT.verify());
   assert(PDT.verify());
   LI.verify(DT);
+  assert(!verifyFunction(*F, &errs()));
 
   return true;
 }
