@@ -184,7 +184,41 @@ static void getInBetweenInstructions(Instruction *Begin, Instruction *End,
   }
 }
 
+// Find instructions from `Earliest until `I that `I depends on
+static void findDependencies(Instruction *I, Instruction *Earliest,
+                             DominatorTree &DT, DependenceInfo &DI,
+                             SmallPtrSetImpl<Instruction *> &Depended) {
+  SmallPtrSet<Instruction *, 16> InBetweenInsts;
+  getInBetweenInstructions(Earliest, I, InBetweenInsts);
+
+  std::function<void(Instruction *)> FindDependencies = [&](Instruction *I) {
+    if (DT.dominates(I, Earliest))
+      return;
+
+    if (!Depended.insert(I).second)
+      return;
+
+    // SSA deps
+    for (Value *V : I->operand_values()) {
+      auto *OpInst = dyn_cast<Instruction>(V);
+      if (OpInst)
+        FindDependencies(OpInst);
+    }
+
+    // Memory deps
+    for (auto *I2 : InBetweenInsts) {
+      auto Dep = DI.depends(I2, I, true);
+      if (Dep && !Dep->isInput())
+        FindDependencies(I2);
+    }
+  };
+
+  FindDependencies(I);
+}
+
 // Precondition: I and BB are control-flow equivalent
+// FIXME: this is broken in cases where with conditional load, which we cannot
+// hoist
 static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
                                 std::function<bool(Instruction *)> CannotHoist,
                                 DominatorTree &DT, PostDominatorTree &PDT,
@@ -235,6 +269,33 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
   return IsSafeToHoist(I);
 }
 
+static void
+getIntermediateBlocks(Loop *L1, Loop *L2,
+                      SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks) {
+  auto *L1Exit = L1->getExitBlock();
+  auto *L2Preheader = L2->getLoopPreheader();
+
+  struct SkipBackEdge : public df_iterator_default_set<BasicBlock *> {
+    SkipBackEdge(Loop *L) {
+      if (L) {
+        assert(L->getLoopLatch());
+        insert(L->getLoopLatch());
+      }
+    }
+    void completed(BasicBlock *) {}
+  };
+
+  DenseSet<BasicBlock *> ReachesL2;
+  SkipBackEdge BackwardState(L1->getParentLoop());
+  for (auto *BB : inverse_depth_first_ext(L2Preheader, BackwardState))
+    ReachesL2.insert(BB);
+
+  SkipBackEdge ForwardState(L1->getParentLoop());
+  for (auto *BB : depth_first_ext(L1Exit, ForwardState))
+    if (ReachesL2.count(BB))
+      IntermediateBlocks.insert(BB);
+}
+
 // Return true is *independent*
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
 // we also assume L1 comes before L2->
@@ -255,21 +316,12 @@ static bool checkDependencies(Loop *L1, Loop *L2, DependenceInfo &DI,
       return false;
   }
 
-  BasicBlock *L1Exit = L1->getExitBlock();
-  BasicBlock *L1Entry = getLoopEntry(L1);
-  BasicBlock *L2Entry = getLoopEntry(L2);
-
   // Blocks after L1 and before L2
-  DenseSet<BasicBlock *> IntermediateBlocks;
-  for (BasicBlock *BB : depth_first(L1Exit)) {
-    // We know L2 post dominates L1->
-    // Therefore if L2 doesn't dominate BB, then BB must happen after L2->
-    if (PDT.dominates(L2Entry, BB))
-      IntermediateBlocks.insert(BB);
-  }
-  IntermediateBlocks.insert(L2->getLoopPreheader());
+  SmallPtrSet<BasicBlock *, 4> IntermediateBlocks;
+  getIntermediateBlocks(L1, L2, IntermediateBlocks);
 
   auto IsInL1 = [&](Instruction *I) { return L1->contains(I->getParent()); };
+  BasicBlock *L1Entry = getLoopEntry(L1);
 
   for (BasicBlock *BB : IntermediateBlocks) {
     collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
@@ -390,6 +442,11 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L2->verifyLoop();
   }
 
+  if (!DT.dominates(L1->getExitBlock(), L2->getExitBlock())) {
+    std::swap(L1, L2);
+    std::swap(L1Parent, L2Parent);
+  }
+
   BasicBlock *L1Preheader = L1->getLoopPreheader();
   BasicBlock *L2Preheader = L2->getLoopPreheader();
   BasicBlock *L1Header = L1->getHeader();
@@ -398,6 +455,32 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   BasicBlock *L2Latch = L2->getLoopLatch();
   BasicBlock *L1Exit = L1->getExitBlock();
   BasicBlock *L2Exit = L2->getExitBlock();
+
+  // Blocks after L1 and before L2
+  SmallPtrSet<BasicBlock *, 4> IntermediateBlocks;
+  getIntermediateBlocks(L1, L2, IntermediateBlocks);
+
+  // Find the set of instructions after L1 that are depended by L2.
+  // We need to hoist them before we run the (fused) L2.
+  SmallPtrSet<Instruction *, 16> L2Dependencies;
+  DenseMap<Instruction *, SmallPtrSet<Instruction *, 8>> Users;
+  errs() << "l1 exit: " << *L1Exit << '\n';
+  errs() << "l2 preheader: " << *L2Preheader << '\n';
+  for (auto *BB : IntermediateBlocks) {
+    errs() << "INTERMEDIATE BLOCK: " << *BB << '\n';
+    for (auto &I : *BB) {
+      if (isUsedByLoop(&I, L2)) {
+        findDependencies(&I,
+                         L1Preheader->getTerminator() /*Earliest possible dep*/,
+                         DT, DI, L2Dependencies);
+      }
+    }
+  }
+  SmallVector<Instruction *> OrderedL2Dependencies;
+  for (auto *BB : IntermediateBlocks)
+    for (auto &I : *BB)
+      if (L2Dependencies.count(&I))
+        OrderedL2Dependencies.push_back(&I);
 
   SmallVector<DominatorTree::UpdateType> CFGUpdates;
 
@@ -419,6 +502,8 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // TODO: get rid of this restriction
   if (getNumPHIs(L1Preheader) != 0 || getNumPHIs(L2Preheader) != 0)
     return false;
+
+  // Before we start changing the CFG, hoist any dependencies that
 
   // Rewrire all edges going into L2's preheader to, instead, go to
   // a dedicated placeholder for L2 that directly jumps to the L2's exit
@@ -477,6 +562,17 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   DT.applyUpdates(CFGUpdates);
   PDT.applyUpdates(CFGUpdates);
 
+  // Hoist L2's dependencies to before L2 preheader
+  for (Instruction *I : OrderedL2Dependencies) {
+    Instruction *InsertPt =
+        DT.findNearestCommonDominator(I->getParent(), L2Preheader)
+            ->getTerminator();
+    if (!DT.dominates(I, InsertPt)) {
+      assert(!I->isTerminator());
+      I->moveBefore(InsertPt);
+    }
+  }
+
   // Merge L2 into L1
   SmallVector<BasicBlock *> L2Blocks(L2->blocks());
   for (auto *BB : L2Blocks) {
@@ -497,7 +593,6 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L1Parent->addBlockEntry(L2Placeholder);
     LI.changeLoopFor(L2Placeholder, L1Parent);
   }
-
 
   assert(DT.verify());
   assert(PDT.verify());
