@@ -460,10 +460,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // We need to hoist them before we run the (fused) L2.
   SmallPtrSet<Instruction *, 16> L2Dependencies;
   DenseMap<Instruction *, SmallPtrSet<Instruction *, 8>> Users;
-  errs() << "l1 exit: " << *L1Exit << '\n';
-  errs() << "l2 preheader: " << *L2Preheader << '\n';
   for (auto *BB : IntermediateBlocks) {
-    errs() << "INTERMEDIATE BLOCK: " << *BB << '\n';
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
         findDependencies(&I,
@@ -586,8 +583,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   LI.erase(L2);
   // Add the placeholder block to the parent loop
   if (L1Parent) {
-    L1Parent->addBlockEntry(L2Placeholder);
-    LI.changeLoopFor(L2Placeholder, L1Parent);
+    L1Parent->addBasicBlockToLoop(L2Placeholder, LI);
   }
 
   assert(DT.verify());
