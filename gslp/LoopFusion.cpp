@@ -586,6 +586,11 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L1Parent->addBasicBlockToLoop(L2Placeholder, LI);
   }
 
+  assert(L1->getLoopPreheader() == L2Preheader);
+  assert(L1->getHeader() == L1Header);
+  assert(L1->getLoopLatch() == L2Latch);
+  assert(L1->getExitBlock() == L1Exit);
+
   assert(DT.verify());
   assert(PDT.verify());
   LI.verify(DT);
