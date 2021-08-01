@@ -16,6 +16,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
+#include "llvm/ADT/StringMap.h"
 
 using namespace llvm;
 
@@ -33,6 +34,9 @@ cl::opt<bool>
     DoFusion("do-fusion",
              cl::desc("Do fusion instead of testing whether it's safe to fuse"),
              cl::value_desc("run fuse safe-to-fuse loops"), cl::init(false));
+
+cl::list<std::string> FusionGroups("fusion-group",
+                                   cl::desc("group of loops to fuse"));
 
 struct TestLoopFusion : public FunctionPass {
   static char ID;
@@ -63,6 +67,47 @@ bool TestLoopFusion::runOnFunction(Function &F) {
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
 
+  auto PrintFusionLegality = [&](Loop *L1, Loop *L2) {
+    outs() << "Fusing " << L1->getHeader()->getName() << " and "
+      << L2->getHeader()->getName() << " is ";
+    if (isUnsafeToFuse(L1, L2, SE, DI, DT, PDT) && !DoFusion)
+      outs() << "unsafe\n";
+    else
+      outs() << "safe\n";
+  };
+
+  if (!FusionGroups.empty()) {
+    StringMap<BasicBlock *> BlocksByName;
+    for (auto &BB : F)
+      BlocksByName[BB.getName()] = &BB;
+
+    for (StringRef FG : FusionGroups) {
+      SmallVector<StringRef> BlockNames;
+      FG.split(BlockNames, ',');
+
+      SmallVector<Loop *> Loops;
+      for (StringRef Name : BlockNames) {
+        assert(BlocksByName.lookup(Name));
+        auto *BB = BlocksByName.lookup(Name);
+        auto *L = LI.getLoopFor(BB);
+        assert(L);
+        Loops.push_back(L);
+      }
+
+      if (DoFusion) {
+        for (unsigned i = 1; i < Loops.size(); i++) {
+          bool Ok = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, DI);
+          assert(Ok);
+        }
+      } else {
+        for (unsigned i = 0; i < Loops.size(); i++)
+          for (unsigned j = i+1; j < Loops.size(); j++)
+            PrintFusionLegality(Loops[i], Loops[j]);
+      }
+    }
+    return DoFusion;
+  }
+
   auto Loops = LI.getLoopsInPreorder();
   for (auto I = Loops.begin(), E = Loops.end(); I != E; ++I) {
     Loop *L1 = *I;
@@ -75,16 +120,10 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
       if (DoFusion) {
         fuseLoops(L1, L2, LI, DT, PDT, DI);
-        outs() << *F.getParent() << '\n';
         return true;
       }
 
-      outs() << "Fusing " << L1->getHeader()->getName() << " and "
-             << L2->getHeader()->getName() << " is ";
-      if (isUnsafeToFuse(L1, L2, SE, DI, DT, PDT) && !DoFusion)
-        outs() << "unsafe\n";
-      else
-        outs() << "safe\n";
+      PrintFusionLegality(L1, L2);
     }
   }
   return false;
@@ -133,4 +172,7 @@ int main(int argc, char **argv) {
 
   Passes.add(new TestLoopFusion());
   Passes.run(*M);
+
+  if (DoFusion)
+    outs() << *M << '\n';
 }
