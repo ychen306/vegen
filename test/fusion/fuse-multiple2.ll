@@ -24,7 +24,6 @@
 ; DO_FUSION-NEXT:   br label %for.body16
 
 ; DO_FUSION: for.body5:
-
 ; DO_FUSION-NEXT:   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv63
 ; DO_FUSION-NEXT:   %1 = load i32, i32* %arrayidx7, align 4
 ; DO_FUSION-NEXT:   %add8 = add nsw i32 %1, 100
