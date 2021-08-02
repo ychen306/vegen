@@ -1,4 +1,5 @@
 #include "LoopFusion.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
@@ -16,7 +17,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
-#include "llvm/ADT/StringMap.h"
 
 using namespace llvm;
 
@@ -69,7 +69,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
   auto PrintFusionLegality = [&](Loop *L1, Loop *L2) {
     outs() << "Fusing " << L1->getHeader()->getName() << " and "
-      << L2->getHeader()->getName() << " is ";
+           << L2->getHeader()->getName() << " is ";
     if (isUnsafeToFuse(L1, L2, LI, SE, DI, DT, PDT) && !DoFusion)
       outs() << "unsafe\n";
     else
@@ -101,7 +101,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
         }
       } else {
         for (unsigned i = 0; i < Loops.size(); i++)
-          for (unsigned j = i+1; j < Loops.size(); j++)
+          for (unsigned j = i + 1; j < Loops.size(); j++)
             PrintFusionLegality(Loops[i], Loops[j]);
       }
     }

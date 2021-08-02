@@ -36,7 +36,7 @@ Capture_match<PatternTy, ValueTy> m_Capture(PatternTy P, ValueTy *&V) {
   return Capture_match<PatternTy, ValueTy>(P, V);
 }
 
-template<typename LHSPattern, typename RHSPattern>
+template <typename LHSPattern, typename RHSPattern>
 Optional<RecurKind> matchReduction(Value *V, LHSPattern LHS, RHSPattern RHS) {
   if (match(V, m_c_Add(LHS, RHS)))
     return RecurKind::Add;
@@ -83,7 +83,8 @@ Value *stripTrivialPHI(Value *V) {
 }
 
 template <typename StartPattern>
-Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat, LoopInfo &LI) {
+Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
+                                                 LoopInfo &LI) {
   V = stripTrivialPHI(V);
 
   if (auto Kind = matchReduction(V, Pat, m_Value()))
@@ -112,7 +113,8 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat, Loo
   if (match(RD.getRecurrenceStartValue().getValPtr(), Pat))
     return RD.getRecurrenceKind();
 
-  auto Kind = matchReductionWithStartValue(RD.getRecurrenceStartValue(), Pat, LI);
+  auto Kind =
+      matchReductionWithStartValue(RD.getRecurrenceStartValue(), Pat, LI);
   if (!Kind || *Kind != RD.getRecurrenceKind()) {
     return None;
   }
@@ -121,19 +123,20 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat, Loo
 
 } // namespace
 
-static Optional<RecurKind> matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
+static Optional<RecurKind>
+matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
   Load = nullptr;
   auto TheLoad =
       m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), Load);
-  Optional<RecurKind> Kind = matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI);
+  Optional<RecurKind> Kind =
+      matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI);
   assert(!Kind || Load);
   return Kind;
 }
 
-static void
-collectMemoryAccesses(BasicBlock *BB, LoopInfo &LI, SmallVectorImpl<Instruction *> &Accesses,
-                      DenseMap<Instruction *, RecurKind> &ReductionKinds,
-                      bool &UnsafeToFuse) {
+static void collectMemoryAccesses(
+    BasicBlock *BB, LoopInfo &LI, SmallVectorImpl<Instruction *> &Accesses,
+    DenseMap<Instruction *, RecurKind> &ReductionKinds, bool &UnsafeToFuse) {
   if (BB->hasAddressTaken()) {
     UnsafeToFuse = true;
     return;
@@ -346,8 +349,9 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // Return true is *independent*
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
 // we also assume L1 comes before L2.
-static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI, DependenceInfo &DI,
-                              DominatorTree &DT, PostDominatorTree &PDT) {
+static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
+                              DependenceInfo &DI, DominatorTree &DT,
+                              PostDominatorTree &PDT) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
@@ -377,7 +381,7 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI, DependenceInfo &
     for (auto &I : *BB)
       if (isUsedByLoop(&I, L2) &&
           !isSafeToHoistBefore(&I, L1Entry, IntermediateBlocks, IsInL1, DT, PDT,
-                                DI))
+                               DI))
         return false;
   }
 
@@ -397,8 +401,9 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI, DependenceInfo &
   return true;
 }
 
-bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE, DependenceInfo &DI,
-                    DominatorTree &DT, PostDominatorTree &PDT) {
+bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
+                    DependenceInfo &DI, DominatorTree &DT,
+                    PostDominatorTree &PDT) {
   if (!checkLoop(L1) || !checkLoop(L2)) {
     errs() << "Loops don't have the right shape\n";
     return true;
@@ -432,15 +437,15 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE, Depen
     // For now, don't fuse nested loops that are conditionally executed
     // (since it's harder to prove they are executed together)
     if (!isControlEquivalent(*L1->getParentLoop()->getHeader(),
-                                 *getLoopEntry(L1), DT, PDT) ||
+                             *getLoopEntry(L1), DT, PDT) ||
         !isControlEquivalent(*L2->getParentLoop()->getHeader(),
-                                 *getLoopEntry(L2), DT, PDT)) {
+                             *getLoopEntry(L2), DT, PDT)) {
       errs() << "Can't fuse conditional nested loop\n";
       return true;
     }
   } else {
-    if (!isControlEquivalent(*L1->getLoopPreheader(),
-                                 *L2->getLoopPreheader(), DT, PDT)) {
+    if (!isControlEquivalent(*L1->getLoopPreheader(), *L2->getLoopPreheader(),
+                             DT, PDT)) {
       errs() << "Loops are not control flow equivalent\n";
       return true;
     }
