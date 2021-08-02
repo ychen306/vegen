@@ -6,6 +6,7 @@ set(LIB_PACKING_SRC
 
   Plan.cpp
 
+  ControlEquivalence.cpp
   LoopFusion.cpp
 
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp

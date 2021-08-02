@@ -70,7 +70,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
   auto PrintFusionLegality = [&](Loop *L1, Loop *L2) {
     outs() << "Fusing " << L1->getHeader()->getName() << " and "
       << L2->getHeader()->getName() << " is ";
-    if (isUnsafeToFuse(L1, L2, SE, DI, DT, PDT) && !DoFusion)
+    if (isUnsafeToFuse(L1, L2, LI, SE, DI, DT, PDT) && !DoFusion)
       outs() << "unsafe\n";
     else
       outs() << "safe\n";

@@ -1,4 +1,5 @@
 #include "LoopFusion.h"
+#include "ControlEquivalence.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/LoopInfo.h"
@@ -9,12 +10,12 @@
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/CodeMoverUtils.h"
+//#include "llvm/Transforms/Utils/CodeMoverUtils.h"
 
 using namespace llvm;
+using namespace llvm::PatternMatch;
 
 namespace {
-
 template <typename PatternTy, typename ValueTy> struct Capture_match {
   PatternTy P;
   ValueTy *&V;
@@ -35,59 +36,102 @@ Capture_match<PatternTy, ValueTy> m_Capture(PatternTy P, ValueTy *&V) {
   return Capture_match<PatternTy, ValueTy>(P, V);
 }
 
-} // namespace
-
-static Optional<RecurKind> matchReduction(StoreInst *SI, LoadInst *&LI) {
-  Value *V = SI->getValueOperand();
-  using namespace llvm::PatternMatch;
-
-  LI = nullptr;
-  auto TheLoad =
-      m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), LI);
-
-  RecurKind Kind;
-  if (match(V, m_c_Add(TheLoad, m_Value())))
-    Kind = RecurKind::Add;
-  else if (match(V, m_c_Mul(TheLoad, m_Value())))
-    Kind = RecurKind::Mul;
-  else if (match(V, m_c_And(TheLoad, m_Value())))
-    Kind = RecurKind::And;
-  else if (match(V, m_c_Or(TheLoad, m_Value())))
-    Kind = RecurKind::Or;
-  else if (match(V, m_c_Xor(TheLoad, m_Value())))
-    Kind = RecurKind::Xor;
-  else if (match(V, m_c_FAdd(TheLoad, m_Value())))
-    Kind = RecurKind::FAdd;
-  else if (match(V, m_c_FMul(TheLoad, m_Value())))
-    Kind = RecurKind::FMul;
+template<typename LHSPattern, typename RHSPattern>
+Optional<RecurKind> matchReduction(Value *V, LHSPattern LHS, RHSPattern RHS) {
+  if (match(V, m_c_Add(LHS, RHS)))
+    return RecurKind::Add;
+  if (match(V, m_c_Mul(LHS, RHS)))
+    return RecurKind::Mul;
+  if (match(V, m_c_And(LHS, RHS)))
+    return RecurKind::And;
+  if (match(V, m_c_Or(LHS, RHS)))
+    return RecurKind::Or;
+  if (match(V, m_c_Xor(LHS, RHS)))
+    return RecurKind::Xor;
+  if (match(V, m_c_FAdd(LHS, RHS)))
+    return RecurKind::FAdd;
+  if (match(V, m_c_FMul(LHS, RHS)))
+    return RecurKind::FMul;
 
   // there's no m_c_FMin/Max
-  else if (match(V, m_FMin(TheLoad, m_Value())))
-    Kind = RecurKind::FMax;
-  else if (match(V, m_FMax(TheLoad, m_Value())))
-    Kind = RecurKind::FMin;
-  else if (match(V, m_FMin(m_Value(), TheLoad)))
-    Kind = RecurKind::FMax;
-  else if (match(V, m_FMax(m_Value(), TheLoad)))
-    Kind = RecurKind::FMin;
+  if (match(V, m_FMin(LHS, RHS)))
+    return RecurKind::FMax;
+  if (match(V, m_FMax(LHS, RHS)))
+    return RecurKind::FMin;
+  if (match(V, m_FMin(RHS, LHS)))
+    return RecurKind::FMax;
+  if (match(V, m_FMax(RHS, LHS)))
+    return RecurKind::FMin;
 
-  else if (match(V, m_c_SMax(TheLoad, m_Value())))
-    Kind = RecurKind::SMax;
-  else if (match(V, m_c_SMin(TheLoad, m_Value())))
-    Kind = RecurKind::SMin;
-  else if (match(V, m_c_UMax(TheLoad, m_Value())))
-    Kind = RecurKind::UMax;
-  else if (match(V, m_c_UMin(TheLoad, m_Value())))
-    Kind = RecurKind::UMin;
-  else
+  if (match(V, m_c_SMax(LHS, RHS)))
+    return RecurKind::SMax;
+  if (match(V, m_c_SMin(LHS, RHS)))
+    return RecurKind::SMin;
+  if (match(V, m_c_UMax(LHS, RHS)))
+    return RecurKind::UMax;
+  if (match(V, m_c_UMin(LHS, RHS)))
+    return RecurKind::UMin;
+
+  return None;
+}
+
+Value *stripTrivialPHI(Value *V) {
+  auto *PN = dyn_cast<PHINode>(V);
+  if (!PN || PN->getNumIncomingValues() != 1)
+    return V;
+  return stripTrivialPHI(PN->getIncomingValue(0));
+}
+
+template <typename StartPattern>
+Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat, LoopInfo &LI) {
+  V = stripTrivialPHI(V);
+
+  if (auto Kind = matchReduction(V, Pat, m_Value()))
+    return Kind;
+
+  Value *V1, *V2;
+  if (auto Kind = matchReduction(V, m_Value(V1), m_Value(V2))) {
+    auto Kind1 = matchReductionWithStartValue(V1, Pat, LI);
+    if (Kind1 && *Kind1 == *Kind)
+      return Kind;
+    auto Kind2 = matchReductionWithStartValue(V2, Pat, LI);
+    if (Kind2 && *Kind2 == *Kind)
+      return Kind;
+  }
+
+  Loop *L = nullptr;
+  auto *PN = dyn_cast<PHINode>(V);
+  if (PN)
+    L = LI.getLoopFor(PN->getParent());
+  if (!L) {
     return None;
+  }
+  RecurrenceDescriptor RD;
+  if (!RecurrenceDescriptor::isReductionPHI(PN, L, RD))
+    return None;
+  if (match(RD.getRecurrenceStartValue().getValPtr(), Pat))
+    return RD.getRecurrenceKind();
 
-  assert(LI);
+  auto Kind = matchReductionWithStartValue(RD.getRecurrenceStartValue(), Pat, LI);
+  if (!Kind || *Kind != RD.getRecurrenceKind()) {
+    return None;
+  }
+  return Kind;
+}
+
+} // namespace
+
+static Optional<RecurKind> matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
+  Load = nullptr;
+  auto TheLoad =
+      m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), Load);
+  Optional<RecurKind> Kind = matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI);
+  assert(!Kind || Load);
   return Kind;
 }
 
 static void
-collectMemoryAccesses(BasicBlock *BB, SmallVectorImpl<Instruction *> &Accesses,
+collectMemoryAccesses(BasicBlock *BB, LoopInfo &LI, SmallVectorImpl<Instruction *> &Accesses,
                       DenseMap<Instruction *, RecurKind> &ReductionKinds,
                       bool &UnsafeToFuse) {
   if (BB->hasAddressTaken()) {
@@ -106,18 +150,18 @@ collectMemoryAccesses(BasicBlock *BB, SmallVectorImpl<Instruction *> &Accesses,
       return;
     }
 
-    auto *LI = dyn_cast<LoadInst>(&I);
+    auto *Load = dyn_cast<LoadInst>(&I);
     auto *SI = dyn_cast<StoreInst>(&I);
-    if ((LI && LI->isVolatile()) || (SI && SI->isVolatile())) {
+    if ((Load && Load->isVolatile()) || (SI && SI->isVolatile())) {
       UnsafeToFuse = true;
       return;
     }
 
     if (SI) {
-      LoadInst *LI;
-      if (Optional<RecurKind> Kind = matchReduction(SI, LI)) {
+      LoadInst *Load;
+      if (Optional<RecurKind> Kind = matchReductionOnMemory(SI, Load, LI)) {
         ReductionKinds[SI] = *Kind;
-        ReductionKinds[LI] = *Kind;
+        ReductionKinds[Load] = *Kind;
       }
     }
 
@@ -302,19 +346,19 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // Return true is *independent*
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
 // we also assume L1 comes before L2.
-static bool checkDependencies(Loop *L1, Loop *L2, DependenceInfo &DI,
+static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI, DependenceInfo &DI,
                               DominatorTree &DT, PostDominatorTree &PDT) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
   bool UnsafeToFuse = false;
   for (auto *BB : L1->blocks()) {
-    collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse);
     if (UnsafeToFuse)
       return false;
   }
   for (auto *BB : L2->blocks()) {
-    collectMemoryAccesses(BB, Accesses2, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses2, ReductionKinds, UnsafeToFuse);
     if (UnsafeToFuse)
       return false;
   }
@@ -327,13 +371,13 @@ static bool checkDependencies(Loop *L1, Loop *L2, DependenceInfo &DI,
   BasicBlock *L1Entry = getLoopEntry(L1);
 
   for (BasicBlock *BB : IntermediateBlocks) {
-    collectMemoryAccesses(BB, Accesses1, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse);
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
       if (isUsedByLoop(&I, L2) &&
           !isSafeToHoistBefore(&I, L1Entry, IntermediateBlocks, IsInL1, DT, PDT,
-                               DI))
+                                DI))
         return false;
   }
 
@@ -345,13 +389,15 @@ static bool checkDependencies(Loop *L1, Loop *L2, DependenceInfo &DI,
           ReductionKinds.lookup(I1) == ReductionKinds.lookup(I2))
         continue;
       auto Dep = DI.depends(I1, I2, true);
-      if (Dep && !Dep->isInput())
+      if (Dep && !Dep->isInput()) {
+        errs() << "Detected dependence from " << *I1 << " to " << *I2 << '\n';
         return false;
+      }
     }
   return true;
 }
 
-bool isUnsafeToFuse(Loop *L1, Loop *L2, ScalarEvolution &SE, DependenceInfo &DI,
+bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE, DependenceInfo &DI,
                     DominatorTree &DT, PostDominatorTree &PDT) {
   if (!checkLoop(L1) || !checkLoop(L2)) {
     errs() << "Loops don't have the right shape\n";
@@ -377,7 +423,7 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, ScalarEvolution &SE, DependenceInfo &DI,
   // If L1 and L2 are nested inside other loops, those loops also need to be
   // fused
   if (L1Parent != L2Parent) {
-    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), SE, DI, DT,
+    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, DI, DT,
                        PDT)) {
       errs() << "Parent loops can't be fused\n";
       return true;
@@ -385,23 +431,23 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, ScalarEvolution &SE, DependenceInfo &DI,
     // TODO: maybe support convergent control flow?
     // For now, don't fuse nested loops that are conditionally executed
     // (since it's harder to prove they are executed together)
-    if (!isControlFlowEquivalent(*L1->getParentLoop()->getHeader(),
+    if (!isControlEquivalent(*L1->getParentLoop()->getHeader(),
                                  *getLoopEntry(L1), DT, PDT) ||
-        !isControlFlowEquivalent(*L2->getParentLoop()->getHeader(),
+        !isControlEquivalent(*L2->getParentLoop()->getHeader(),
                                  *getLoopEntry(L2), DT, PDT)) {
       errs() << "Can't fuse conditional nested loop\n";
       return true;
     }
   } else {
-    if (!isControlFlowEquivalent(*L1->getLoopPreheader(),
+    if (!isControlEquivalent(*L1->getLoopPreheader(),
                                  *L2->getLoopPreheader(), DT, PDT)) {
       errs() << "Loops are not control flow equivalent\n";
       return true;
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
-    if ((OneBeforeTwo && !checkDependencies(L1, L2, DI, DT, PDT)) ||
-        (!OneBeforeTwo && !checkDependencies(L2, L1, DI, DT, PDT))) {
+    if ((OneBeforeTwo && !checkDependencies(L1, L2, LI, DI, DT, PDT)) ||
+        (!OneBeforeTwo && !checkDependencies(L2, L1, LI, DI, DT, PDT))) {
       errs() << "Loops are dependent (memory)\n";
       return true;
     }
@@ -590,9 +636,8 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   }
   LI.erase(L2);
   // Add the placeholder block to the parent loop
-  if (L1Parent) {
+  if (L1Parent)
     L1Parent->addBasicBlockToLoop(L2Placeholder, LI);
-  }
 
   assert(L1->getLoopPreheader() == L2Preheader);
   assert(L1->getHeader() == L1Header);
