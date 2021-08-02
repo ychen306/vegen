@@ -219,19 +219,17 @@ static void findDependencies(Instruction *I, Instruction *Earliest,
 // Precondition: I and BB are control-flow equivalent
 // FIXME: this is broken in cases where with conditional load, which we cannot
 // hoist
-static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
-                                std::function<bool(Instruction *)> CannotHoist,
-                                DominatorTree &DT, PostDominatorTree &PDT,
-                                DependenceInfo &DI) {
+static bool
+isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
+                    SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks,
+                    std::function<bool(Instruction *)> CannotHoist,
+                    DominatorTree &DT, PostDominatorTree &PDT,
+                    DependenceInfo &DI) {
   DenseMap<Instruction *, bool> Memo;
   std::function<bool(Instruction *)> IsSafeToHoist = [&](Instruction *I) {
     auto It = Memo.find(I);
     if (It != Memo.end())
       return It->second;
-
-    // Assume we can't hoist branches
-    if (isa<PHINode>(I))
-      return Memo[I] = false;
 
     if (CannotHoist(I))
       return Memo[I] = false;
@@ -240,6 +238,10 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     if (DT.dominates(I, BB->getTerminator())) {
       return Memo[I] = true;
     }
+
+    // Assume we can't hoist branches
+    if (isa<PHINode>(I))
+      return Memo[I] = false;
 
     for (Value *V : I->operand_values()) {
       auto *OpInst = dyn_cast<Instruction>(V);
@@ -251,16 +253,20 @@ static bool isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     // dependencies Do this by collecting all intermediate instructions between
     // BB and I
     SmallPtrSet<Instruction *, 16> InBetweenInsts;
+    // FIXME: this is broken because it considers spurious paths that are
+    // infeasible.
     getInBetweenInstructions(BB->getTerminator(), I, InBetweenInsts);
 
     bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
     for (auto *I2 : InBetweenInsts) {
+      // I2 is not actually reachable from `BB`
+      if (!IntermediateBlocks.count(I2->getParent()))
+        continue;
       if (!SafeToSpeculate && I2->mayThrow())
         return Memo[I] = false;
       auto Dep = DI.depends(I2, I, true);
-      if (Dep && !Dep->isInput() && !IsSafeToHoist(I2)) {
+      if (Dep && !Dep->isInput() && !IsSafeToHoist(I2))
         return Memo[I] = false;
-      }
     }
 
     return Memo[I] = true;
@@ -283,7 +289,8 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 
   DenseSet<BasicBlock *> ReachesL2;
   SkipBackEdge BackwardState(L1->getParentLoop());
-  for (auto *BB : inverse_depth_first_ext(L2->getLoopPreheader(), BackwardState))
+  for (auto *BB :
+       inverse_depth_first_ext(L2->getLoopPreheader(), BackwardState))
     ReachesL2.insert(BB);
 
   SkipBackEdge ForwardState(L1->getParentLoop());
@@ -325,7 +332,8 @@ static bool checkDependencies(Loop *L1, Loop *L2, DependenceInfo &DI,
       return false;
     for (auto &I : *BB)
       if (isUsedByLoop(&I, L2) &&
-          !isSafeToHoistBefore(&I, L1Entry, IsInL1, DT, PDT, DI))
+          !isSafeToHoistBefore(&I, L1Entry, IntermediateBlocks, IsInL1, DT, PDT,
+                               DI))
         return false;
   }
 
