@@ -7,9 +7,9 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
@@ -615,19 +615,21 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           ReductionsToSink.push_back({TheLoad, SI, *Kind});
           continue;
         }
-FindDep:
-        findDependencies(
-            &I, L1Preheader->getTerminator() /*Earliest possible dep*/,
-            IntermediateBlocks, DT, DI, L2Dependencies);
+      FindDep:
+        findDependencies(&I,
+                         L1Preheader->getTerminator() /*Earliest possible dep*/,
+                         IntermediateBlocks, DT, DI, L2Dependencies);
       }
     }
   }
 
   for (const ReductionInfo &RI : ReductionsToSink) {
-    Constant *Identity = RecurrenceDescriptor::getRecurrenceIdentity(RI.Kind, RI.LI->getType());
+    Constant *Identity =
+        RecurrenceDescriptor::getRecurrenceIdentity(RI.Kind, RI.LI->getType());
     RI.LI->replaceAllUsesWith(Identity);
     RI.LI->moveBefore(RI.SI);
-    emitReduction(RI.Kind, RI.SI->getValueOperand(), RI.LI, RI.SI/*insert before*/);
+    emitReduction(RI.Kind, RI.SI->getValueOperand(), RI.LI,
+                  RI.SI /*insert before*/);
   }
 
   SmallVector<BasicBlock *, 4> OrderedIntermediateBlocks;
