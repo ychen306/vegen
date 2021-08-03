@@ -2,14 +2,20 @@
 #include "ControlEquivalence.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Analysis/AssumptionCache.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/Pass.h"
 //#include "llvm/Transforms/Utils/CodeMoverUtils.h"
 
 using namespace llvm;
@@ -84,7 +90,7 @@ Value *stripTrivialPHI(Value *V) {
 
 template <typename StartPattern>
 Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
-                                                 LoopInfo &LI) {
+                                                 LoopInfo &LI, ScalarEvolution &SE) {
   V = stripTrivialPHI(V);
 
   if (auto Kind = matchReduction(V, Pat, m_Value()))
@@ -92,10 +98,10 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 
   Value *V1, *V2;
   if (auto Kind = matchReduction(V, m_Value(V1), m_Value(V2))) {
-    auto Kind1 = matchReductionWithStartValue(V1, Pat, LI);
+    auto Kind1 = matchReductionWithStartValue(V1, Pat, LI, SE);
     if (Kind1 && *Kind1 == *Kind)
       return Kind;
-    auto Kind2 = matchReductionWithStartValue(V2, Pat, LI);
+    auto Kind2 = matchReductionWithStartValue(V2, Pat, LI, SE);
     if (Kind2 && *Kind2 == *Kind)
       return Kind;
   }
@@ -107,14 +113,16 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
   if (!L) {
     return None;
   }
+
   RecurrenceDescriptor RD;
-  if (!RecurrenceDescriptor::isReductionPHI(PN, L, RD))
+
+  if (!RecurrenceDescriptor::isReductionPHI(PN, L, &SE, RD))
     return None;
   if (match(RD.getRecurrenceStartValue().getValPtr(), Pat))
     return RD.getRecurrenceKind();
 
   auto Kind =
-      matchReductionWithStartValue(RD.getRecurrenceStartValue(), Pat, LI);
+      matchReductionWithStartValue(RD.getRecurrenceStartValue(), Pat, LI, SE);
   if (!Kind || *Kind != RD.getRecurrenceKind()) {
     return None;
   }
@@ -124,19 +132,19 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 } // namespace
 
 static Optional<RecurKind>
-matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
+matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI, ScalarEvolution &SE) {
   Load = nullptr;
   auto TheLoad =
       m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), Load);
   Optional<RecurKind> Kind =
-      matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI);
+      matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI, SE);
   assert(!Kind || Load);
   return Kind;
 }
 
 static void collectMemoryAccesses(
     BasicBlock *BB, LoopInfo &LI, SmallVectorImpl<Instruction *> &Accesses,
-    DenseMap<Instruction *, RecurKind> &ReductionKinds, bool &UnsafeToFuse) {
+    DenseMap<Instruction *, RecurKind> &ReductionKinds, bool &UnsafeToFuse, ScalarEvolution &SE) {
   if (BB->hasAddressTaken()) {
     UnsafeToFuse = true;
     return;
@@ -162,7 +170,7 @@ static void collectMemoryAccesses(
 
     if (SI) {
       LoadInst *Load;
-      if (Optional<RecurKind> Kind = matchReductionOnMemory(SI, Load, LI)) {
+      if (Optional<RecurKind> Kind = matchReductionOnMemory(SI, Load, LI, SE)) {
         ReductionKinds[SI] = *Kind;
         ReductionKinds[Load] = *Kind;
       }
@@ -351,18 +359,18 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // we also assume L1 comes before L2.
 static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
                               DependenceInfo &DI, DominatorTree &DT,
-                              PostDominatorTree &PDT) {
+                              PostDominatorTree &PDT, ScalarEvolution &SE) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
   bool UnsafeToFuse = false;
   for (auto *BB : L1->blocks()) {
-    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse, SE);
     if (UnsafeToFuse)
       return false;
   }
   for (auto *BB : L2->blocks()) {
-    collectMemoryAccesses(BB, LI, Accesses2, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses2, ReductionKinds, UnsafeToFuse, SE);
     if (UnsafeToFuse)
       return false;
   }
@@ -375,7 +383,7 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
   BasicBlock *L1Entry = getLoopEntry(L1);
 
   for (BasicBlock *BB : IntermediateBlocks) {
-    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse, SE);
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
@@ -451,8 +459,8 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
-    if ((OneBeforeTwo && !checkDependencies(L1, L2, LI, DI, DT, PDT)) ||
-        (!OneBeforeTwo && !checkDependencies(L2, L1, LI, DI, DT, PDT))) {
+    if ((OneBeforeTwo && !checkDependencies(L1, L2, LI, DI, DT, PDT, SE)) ||
+        (!OneBeforeTwo && !checkDependencies(L2, L1, LI, DI, DT, PDT, SE))) {
       errs() << "Loops are dependent (memory)\n";
       return true;
     }

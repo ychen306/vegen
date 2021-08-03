@@ -268,7 +268,7 @@ float Packer::getScalarCost(Instruction *I) {
   if (isa<GetElementPtrInst>(I))
     return 0;
   if (isa<PHINode>(I) || isa<CallInst>(I) || isa<ReturnInst>(I) ||
-      I->isTerminator() || isa<AllocaInst>(I))
+      I->isTerminator() || isa<AllocaInst>(I) || isa<LandingPadInst>(I))
     return 1;
   SmallVector<const Value *, 4> Operands(I->operand_values());
   return TTI->getArithmeticInstrCost(
