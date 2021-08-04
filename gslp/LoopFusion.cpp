@@ -127,6 +127,7 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 // FIXME: the load and store should be control flow eqeuivalent
 // FIXME: there should be no other writes between the matched load and the
 // original store
+// FIXME: the value being stored should have no outside user
 static Optional<RecurKind>
 matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
   Load = nullptr;

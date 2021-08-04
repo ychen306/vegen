@@ -1,6 +1,6 @@
 ; RUN: %test-loop-fusion %s -fusion-group=body1,body2,body3,body4 | FileCheck %s
 ; RUN: %test-loop-fusion %s -fusion-group=body1,body2,body3,body4 -do-fusion | FileCheck %s -check-prefixes=DO_FUSION
-; RUN: %test-loop-fusion %s -fusion-group=body1,body2,body3,body4 -do-fusion > %t && %check-function  3 'int matvec(int, int, int, int*, int*, int*)' 'matvec(32, 16, 2, %%s, %%s, %%s)' %t %s
+; RUN: %test-loop-fusion %s -fusion-group=body1,body2,body3,body4 -do-fusion > %t && %check-function  3 'int matvec(int, int, int, int*, int*, int*)' 'matvec(30, 15, 3, %%s, %%s, %%s)' %t %s
 
 ; CHECK: Fusing body1 and body2 is safe
 ; CHECK: Fusing body1 and body3 is safe
