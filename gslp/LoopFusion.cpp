@@ -177,34 +177,28 @@ static void collectMemoryAccesses(
   }
 }
 
-void emitReduction(RecurKind Kind, Value *A, Value *B,
-                   Instruction *InsertBefore) {
+Value *emitReduction(RecurKind Kind, Value *A, Value *B,
+                     Instruction *InsertBefore) {
   IRBuilder<> IRB(InsertBefore);
   switch (Kind) {
   case RecurKind::Add:
-    IRB.CreateAdd(A, B);
-    return;
+    return IRB.CreateAdd(A, B);
   case RecurKind::Mul:
-    IRB.CreateMul(A, B);
-    return;
+    return IRB.CreateMul(A, B);
   case RecurKind::And:
-    IRB.CreateAnd(A, B);
-    return;
+    return IRB.CreateAnd(A, B);
   case RecurKind::Or:
-    IRB.CreateOr(A, B);
-    return;
+    return IRB.CreateOr(A, B);
   case RecurKind::Xor:
-    IRB.CreateXor(A, B);
-    return;
+    return IRB.CreateXor(A, B);
   case RecurKind::FAdd:
-    IRB.CreateFAdd(A, B);
-    return;
+    return IRB.CreateFAdd(A, B);
   case RecurKind::FMul:
-    IRB.CreateFMul(A, B);
-    return;
+    return IRB.CreateFMul(A, B);
   default:
     llvm_unreachable("unsupport reduction kind");
   }
+  return nullptr;
 }
 
 static bool checkLoop(Loop *L) {
@@ -628,8 +622,9 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         RecurrenceDescriptor::getRecurrenceIdentity(RI.Kind, RI.LI->getType());
     RI.LI->replaceAllUsesWith(Identity);
     RI.LI->moveBefore(RI.SI);
-    emitReduction(RI.Kind, RI.SI->getValueOperand(), RI.LI,
-                  RI.SI /*insert before*/);
+    auto *V = RI.SI->getValueOperand();
+    auto *Rdx = emitReduction(RI.Kind, V, RI.LI, RI.SI /*insert before*/);
+    RI.SI->replaceUsesOfWith(V, Rdx);
   }
 
   SmallVector<BasicBlock *, 4> OrderedIntermediateBlocks;
