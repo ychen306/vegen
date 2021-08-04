@@ -552,7 +552,7 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-               PostDominatorTree &PDT, DependenceInfo &DI) {
+               PostDominatorTree &PDT, DependenceInfo &DI, ScalarEvolution &SE) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return false;
 
@@ -560,7 +560,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   auto *L2Parent = L2->getParentLoop();
   if (L1Parent != L2Parent) {
     assert(L1Parent && L2Parent && "L1 and L2 not nested evenly");
-    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, DI);
+    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, DI, SE);
     L1->verifyLoop();
     L2->verifyLoop();
   }
@@ -611,7 +611,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         if (!SI)
           goto FindDep;
         LoadInst *TheLoad;
-        Kind = matchReductionOnMemory(SI, TheLoad, LI);
+        Kind = matchReductionOnMemory(SI, TheLoad, LI, SE);
         if (Kind && TheLoad == Load) {
           ReductionsToSink.push_back({TheLoad, SI, *Kind});
           continue;

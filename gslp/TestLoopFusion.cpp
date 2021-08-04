@@ -96,7 +96,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
       if (DoFusion) {
         for (unsigned i = 1; i < Loops.size(); i++) {
-          bool Ok = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, DI);
+          bool Ok = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, DI, SE);
           assert(Ok);
         }
       } else {
@@ -119,7 +119,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
         continue;
 
       if (DoFusion) {
-        fuseLoops(L1, L2, LI, DT, PDT, DI);
+        fuseLoops(L1, L2, LI, DT, PDT, DI, SE);
         return true;
       }
 
