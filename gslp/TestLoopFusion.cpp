@@ -153,13 +153,12 @@ int main(int argc, char **argv) {
 
   legacy::PassManager Passes;
 
+  // Add the alias analysis pipeline
+  Passes.add(createTypeBasedAAWrapperPass());
+  Passes.add(createScopedNoAliasAAWrapperPass());
+  Passes.add(createGlobalsAAWrapperPass());
+  Passes.add(createBasicAAWrapperPass());
   if (!DoFusion) {
-    // Add the alias analysis pipeline
-    Passes.add(createTypeBasedAAWrapperPass());
-    Passes.add(createScopedNoAliasAAWrapperPass());
-    Passes.add(createGlobalsAAWrapperPass());
-    Passes.add(createBasicAAWrapperPass());
-
     // Canonicalize the loops
     Passes.add(createLoopSimplifyPass());
     Passes.add(createLoopRotatePass());

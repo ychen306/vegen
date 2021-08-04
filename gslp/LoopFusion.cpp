@@ -14,9 +14,9 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Pass.h"
-//#include "llvm/Transforms/Utils/CodeMoverUtils.h"
+#include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -131,6 +131,9 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 
 } // namespace
 
+// FIXME: the load and store should be control flow eqeuivalent
+// FIXME: there should be no other writes between the matched load and the
+// original store
 static Optional<RecurKind>
 matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI, ScalarEvolution &SE) {
   Load = nullptr;
@@ -178,6 +181,36 @@ static void collectMemoryAccesses(
 
     if (I.mayReadOrWriteMemory())
       Accesses.push_back(&I);
+  }
+}
+
+void emitReduction(RecurKind Kind, Value *A, Value *B,
+                   Instruction *InsertBefore) {
+  IRBuilder<> IRB(InsertBefore);
+  switch (Kind) {
+  case RecurKind::Add:
+    IRB.CreateAdd(A, B);
+    return;
+  case RecurKind::Mul:
+    IRB.CreateMul(A, B);
+    return;
+  case RecurKind::And:
+    IRB.CreateAnd(A, B);
+    return;
+  case RecurKind::Or:
+    IRB.CreateOr(A, B);
+    return;
+  case RecurKind::Xor:
+    IRB.CreateXor(A, B);
+    return;
+  case RecurKind::FAdd:
+    IRB.CreateFAdd(A, B);
+    return;
+  case RecurKind::FMul:
+    IRB.CreateFMul(A, B);
+    return;
+  default:
+    llvm_unreachable("unsupport reduction kind");
   }
 }
 
@@ -239,8 +272,32 @@ static void getInBetweenInstructions(Instruction *Begin, Instruction *End,
   }
 }
 
+// Find a store that transitively uses LI and is control-flow equivalent
+static StoreInst *findSink(LoadInst *LI, DominatorTree &DT,
+                           PostDominatorTree &PDT) {
+  SmallPtrSet<Instruction *, 16> Visited;
+  SmallVector<Instruction *> Worklist;
+  Worklist.push_back(LI);
+  while (!Worklist.empty()) {
+    Instruction *I = Worklist.pop_back_val();
+    if (!Visited.insert(I).second)
+      continue;
+
+    auto *SI = dyn_cast<StoreInst>(I);
+    if (SI && isControlEquivalent(*I->getParent(), *SI->getParent(), DT, PDT))
+      return SI;
+
+    for (User *U : I->users())
+      if (auto *UserInst = dyn_cast<Instruction>(U))
+        Worklist.push_back(UserInst);
+  }
+  return nullptr;
+}
+
+// FIXME: treat reduction as special cases
 // Find instructions from `Earliest until `I that `I depends on
 static void findDependencies(Instruction *I, Instruction *Earliest,
+                             SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks,
                              DominatorTree &DT, DependenceInfo &DI,
                              SmallPtrSetImpl<Instruction *> &Depended) {
   SmallPtrSet<Instruction *, 16> InBetweenInsts;
@@ -262,9 +319,12 @@ static void findDependencies(Instruction *I, Instruction *Earliest,
 
     // Memory deps
     for (auto *I2 : InBetweenInsts) {
+      if (!IntermediateBlocks.count(I2->getParent()))
+        continue;
       auto Dep = DI.depends(I2, I, true);
-      if (Dep && !Dep->isInput())
+      if (Dep && !Dep->isInput()) {
         FindDependencies(I2);
+      }
     }
   };
 
@@ -330,9 +390,8 @@ isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
   return IsSafeToHoist(I);
 }
 
-static void
-getIntermediateBlocks(Loop *L1, Loop *L2,
-                      SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks) {
+static void getOrderedIntermediateBlocks(
+    Loop *L1, Loop *L2, SmallVectorImpl<BasicBlock *> &IntermediateBlocks) {
   struct SkipBackEdge : public df_iterator_default_set<BasicBlock *> {
     SkipBackEdge(Loop *L) {
       if (L) {
@@ -351,7 +410,15 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
   SkipBackEdge ForwardState(L1->getParentLoop());
   for (auto *BB : depth_first_ext(L1->getExitBlock(), ForwardState))
     if (ReachesL2.count(BB))
-      IntermediateBlocks.insert(BB);
+      IntermediateBlocks.push_back(BB);
+}
+
+static void
+getIntermediateBlocks(Loop *L1, Loop *L2,
+                      SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks) {
+  SmallVector<BasicBlock *> Blocks;
+  getOrderedIntermediateBlocks(L1, L2, Blocks);
+  IntermediateBlocks.insert(Blocks.begin(), Blocks.end());
 }
 
 // Return true is *independent*
@@ -490,7 +557,6 @@ static bool getNumPHIs(BasicBlock *BB) {
   return std::distance(BB->phis().begin(), BB->phis().end());
 }
 
-// FIXME: support fusing nested loops without a direct, common parent
 bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
                PostDominatorTree &PDT, DependenceInfo &DI) {
   if (!checkLoop(L1) || !checkLoop(L2))
@@ -505,10 +571,14 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L2->verifyLoop();
   }
 
+  // FIXME: this is broken
+#if 0
   if (!DT.dominates(L1->getExitBlock(), L2->getExitBlock())) {
     std::swap(L1, L2);
     std::swap(L1Parent, L2Parent);
+    assert(DT.dominates(L1->getExitBlock(), L2->getExitBlock()));
   }
+#endif
 
   BasicBlock *L1Preheader = L1->getLoopPreheader();
   BasicBlock *L2Preheader = L2->getLoopPreheader();
@@ -527,28 +597,64 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // We need to hoist them before we run the (fused) L2.
   SmallPtrSet<Instruction *, 16> L2Dependencies;
   DenseMap<Instruction *, SmallPtrSet<Instruction *, 8>> Users;
+  struct ReductionInfo {
+    LoadInst *LI;
+    StoreInst *SI;
+    RecurKind Kind;
+  };
+  SmallVector<ReductionInfo> ReductionsToSink;
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
-        findDependencies(&I,
-                         L1Preheader->getTerminator() /*Earliest possible dep*/,
-                         DT, DI, L2Dependencies);
+        LoadInst *Load;
+        StoreInst *SI;
+        Optional<RecurKind> Kind;
+
+        Load = dyn_cast<LoadInst>(&I);
+        if (!Load || !Load->hasOneUse())
+          goto FindDep;
+        SI = findSink(Load, DT, PDT);
+        if (!SI)
+          goto FindDep;
+        LoadInst *TheLoad;
+        Kind = matchReductionOnMemory(SI, TheLoad, LI);
+        if (Kind && TheLoad == Load) {
+          ReductionsToSink.push_back({TheLoad, SI, *Kind});
+          continue;
+        }
+FindDep:
+        findDependencies(
+            &I, L1Preheader->getTerminator() /*Earliest possible dep*/,
+            IntermediateBlocks, DT, DI, L2Dependencies);
       }
     }
   }
+
+  for (const ReductionInfo &RI : ReductionsToSink) {
+    Constant *Identity = RecurrenceDescriptor::getRecurrenceIdentity(RI.Kind, RI.LI->getType());
+    RI.LI->replaceAllUsesWith(Identity);
+    RI.LI->moveBefore(RI.SI);
+    emitReduction(RI.Kind, RI.SI->getValueOperand(), RI.LI, RI.SI/*insert before*/);
+  }
+
+  SmallVector<BasicBlock *, 4> OrderedIntermediateBlocks;
+  getOrderedIntermediateBlocks(L1, L2, OrderedIntermediateBlocks);
   SmallVector<Instruction *> OrderedL2Dependencies;
-  for (auto *BB : IntermediateBlocks)
+  for (auto *BB : OrderedIntermediateBlocks)
     for (auto &I : *BB)
-      if (L2Dependencies.count(&I))
+      if (L2Dependencies.count(&I)) {
+        assert(!isa<PHINode>(&I) &&
+               "can't fuse loops with intermediate phi deps");
         OrderedL2Dependencies.push_back(&I);
+      }
 
   SmallVector<DominatorTree::UpdateType> CFGUpdates;
 
   auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
                            BasicBlock *NewDst) {
     Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
-    CFGUpdates.push_back({DominatorTree::Delete, Src, OldDst});
     CFGUpdates.push_back({DominatorTree::Insert, Src, NewDst});
+    CFGUpdates.push_back({DominatorTree::Delete, Src, OldDst});
   };
 
   LLVMContext &Ctx = L1Preheader->getContext();
@@ -598,26 +704,10 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   // Fix the PHIs contorlling the exit values
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
-  for (PHINode &PN : L2Exit->phis()) {
-    auto *Ty = PN.getType();
-    SmallVector<BasicBlock *, 2> PredsOfL2Exit;
-    PredsOfL2Exit.append(pred_begin(L1Exit), pred_end(L1Exit));
-    auto *DummyPHI = PHINode::Create(Ty, PredsOfL2Exit.size(), "",
-                                     &*L1Exit->getFirstInsertionPt());
-    for (auto *BB : PredsOfL2Exit) {
-      Value *V = (BB == L2Latch) ? PN.getIncomingValueForBlock(L2Latch)
-                                 : UndefValue::get(Ty);
-      DummyPHI->addIncoming(V, BB);
-    }
-
-    for (unsigned i = 0; i < PN.getNumIncomingValues(); i++) {
-      auto *BB = PN.getIncomingBlock(i);
-      if (BB == L2Latch) {
-        PN.setIncomingValue(i, DummyPHI);
+  for (PHINode &PN : L2Exit->phis())
+    for (unsigned i = 0; i < PN.getNumIncomingValues(); i++)
+      if (PN.getIncomingBlock(i) == L2Latch)
         PN.setIncomingBlock(i, L2Placeholder);
-      }
-    }
-  }
 
   DT.applyUpdates(CFGUpdates);
   PDT.applyUpdates(CFGUpdates);
@@ -651,6 +741,57 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Add the placeholder block to the parent loop
   if (L1Parent)
     L1Parent->addBasicBlockToLoop(L2Placeholder, LI);
+
+  DenseMap<Instruction *, SmallVector<Instruction *, 4>> OutsideUsers;
+  for (auto *BB : L1->blocks())
+    for (auto &I : *BB) {
+      for (User *U : I.users()) {
+        auto *UserInst = dyn_cast<Instruction>(U);
+        if (UserInst && !L1->contains(UserInst) &&
+            !DT.dominates(&I, UserInst)) {
+          OutsideUsers[&I].push_back(UserInst);
+        }
+      }
+    }
+  for (auto &I : *L2Preheader) {
+    for (User *U : I.users()) {
+      auto *UserInst = dyn_cast<Instruction>(U);
+      if (UserInst && !DT.dominates(&I, UserInst)) {
+        OutsideUsers[&I].push_back(UserInst);
+      }
+    }
+  }
+
+  SmallVector<AllocaInst *> Allocas;
+  for (auto &KV : OutsideUsers) {
+    Instruction *I = KV.first;
+    ArrayRef<Instruction *> Users = KV.second;
+
+    auto *Alloca = new AllocaInst(I->getType(), 0, I->getName() + ".mem",
+                                  &*F->getEntryBlock().getFirstInsertionPt());
+    new StoreInst(I, Alloca, I->getNextNode());
+    Allocas.push_back(Alloca);
+    for (Instruction *UserInst : Users) {
+      if (auto *PN = dyn_cast<PHINode>(UserInst)) {
+        // Need to do the reload in predecessor for the phinodes
+        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
+          Value *V = PN->getIncomingValue(i);
+          if (V != I)
+            continue;
+          auto *Reload = new LoadInst(
+              I->getType(), Alloca, I->getName() + ".reload",
+              PN->getIncomingBlock(i)->getTerminator() /*insert before*/);
+          PN->setIncomingValue(i, Reload);
+        }
+        continue;
+      }
+      auto *Reload =
+          new LoadInst(I->getType(), Alloca, I->getName() + ".reload",
+                       UserInst /*insert before*/);
+      UserInst->replaceUsesOfWith(I, Reload);
+    }
+  }
+  PromoteMemToReg(Allocas, DT);
 
   assert(L1->getLoopPreheader() == L2Preheader);
   assert(L1->getHeader() == L1Header);
