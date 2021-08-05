@@ -13,8 +13,8 @@ class LoopInfo;
 bool isUnsafeToFuse(llvm::Loop *, llvm::Loop *, llvm::LoopInfo &,
                     llvm::ScalarEvolution &, llvm::DependenceInfo &,
                     llvm::DominatorTree &, llvm::PostDominatorTree &);
-bool fuseLoops(llvm::Loop *, llvm::Loop *, llvm::LoopInfo &,
-               llvm::DominatorTree &, llvm::PostDominatorTree &,
-               llvm::DependenceInfo &, llvm::ScalarEvolution &);
+llvm::Loop *fuseLoops(llvm::Loop *, llvm::Loop *, llvm::LoopInfo &,
+                      llvm::DominatorTree &, llvm::PostDominatorTree &,
+                      llvm::DependenceInfo &, llvm::ScalarEvolution &);
 
 #endif //  LOOP_FUSION_H

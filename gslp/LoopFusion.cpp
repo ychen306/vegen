@@ -1,5 +1,6 @@
 #include "LoopFusion.h"
 #include "ControlEquivalence.h"
+#include "llvm/ADT/GraphTraits.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -21,7 +22,28 @@
 using namespace llvm;
 using namespace llvm::PatternMatch;
 
+// Provide specialization for iterating from def to use
+namespace llvm {
+template <> struct GraphTraits<Value *> {
+  using NodeRef = Value *;
+  using ChildIteratorType = Value::user_iterator;
+  static NodeRef getEntryNode(Value *V) { return V; }
+  static ChildIteratorType child_begin(NodeRef N) { return N->user_begin(); }
+  static ChildIteratorType child_end(NodeRef N) { return N->user_end(); }
+};
+} // namespace llvm
+
 namespace {
+// Use this to do DFS without taking the backedge
+struct SkipBackEdge : public df_iterator_default_set<BasicBlock *> {
+  SkipBackEdge(Loop *L) {
+    if (L) {
+      assert(L->getLoopLatch());
+      insert(L->getLoopLatch());
+    }
+  }
+};
+
 template <typename PatternTy, typename ValueTy> struct Capture_match {
   PatternTy P;
   ValueTy *&V;
@@ -134,14 +156,45 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 // FIXME: the load and store should be control flow eqeuivalent
 // FIXME: there should be no other writes between the matched load and the
 // original store
+// FIXME: the value being stored should have no outside user
 static Optional<RecurKind>
+<<<<<<< HEAD
 matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI, ScalarEvolution &SE) {
+=======
+matchReductionForStore(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
+>>>>>>> main
   Load = nullptr;
   auto TheLoad =
       m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), Load);
   Optional<RecurKind> Kind =
       matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI, SE);
   assert(!Kind || Load);
+  return Kind;
+}
+
+// Find a store that transitively uses LI and is control-flow equivalent
+static StoreInst *findSink(LoadInst *LI, DominatorTree &DT,
+                           PostDominatorTree &PDT) {
+  auto *BB = LI->getParent();
+  for (auto *V : depth_first((Value *)LI)) {
+    auto *SI = dyn_cast<StoreInst>(V);
+    if (SI && isControlEquivalent(*BB, *SI->getParent(), DT, PDT))
+      return SI;
+  }
+  return nullptr;
+}
+
+static Optional<RecurKind> matchReductionForLoad(LoadInst *Load, StoreInst *&SI,
+                                                 DominatorTree &DT,
+                                                 PostDominatorTree &PDT,
+                                                 LoopInfo &LI) {
+  SI = findSink(Load, DT, PDT);
+  if (!SI)
+    return None;
+  LoadInst *TheLoad;
+  Optional<RecurKind> Kind = matchReductionForStore(SI, TheLoad, LI);
+  if (!Kind || TheLoad != Load)
+    return None;
   return Kind;
 }
 
@@ -173,7 +226,11 @@ static void collectMemoryAccesses(
 
     if (SI) {
       LoadInst *Load;
+<<<<<<< HEAD
       if (Optional<RecurKind> Kind = matchReductionOnMemory(SI, Load, LI, SE)) {
+=======
+      if (Optional<RecurKind> Kind = matchReductionForStore(SI, Load, LI)) {
+>>>>>>> main
         ReductionKinds[SI] = *Kind;
         ReductionKinds[Load] = *Kind;
       }
@@ -222,24 +279,12 @@ static BasicBlock *getLoopEntry(Loop *L) {
 // FIXME: detect case where `I` is used by a conditional that's later joined by
 // a PHINode later used by L
 static bool isUsedByLoop(Instruction *I, Loop *L) {
-  DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
-  std::function<bool(Instruction *)> IsUsed = [&](Instruction *I) -> bool {
-    if (!Visited.insert(I).second)
-      return false; // ignore backedge
-
-    if (L->contains(I->getParent()))
+  for (Value *V : depth_first((Value *)I)) {
+    auto *I = dyn_cast<Instruction>(V);
+    if (I && L->contains(I->getParent()))
       return true;
-
-    for (User *U : I->users()) {
-      auto *UI = dyn_cast<Instruction>(U);
-      if (UI && IsUsed(UI))
-        return true;
-    }
-
-    return false;
-  };
-
-  return IsUsed(I);
+  }
+  return false;
 }
 
 static void getInBetweenInstructions(Instruction *Begin, Instruction *End,
@@ -264,28 +309,6 @@ static void getInBetweenInstructions(Instruction *Begin, Instruction *End,
         Worklist.insert(&BB->front());
     }
   }
-}
-
-// Find a store that transitively uses LI and is control-flow equivalent
-static StoreInst *findSink(LoadInst *LI, DominatorTree &DT,
-                           PostDominatorTree &PDT) {
-  SmallPtrSet<Instruction *, 16> Visited;
-  SmallVector<Instruction *> Worklist;
-  Worklist.push_back(LI);
-  while (!Worklist.empty()) {
-    Instruction *I = Worklist.pop_back_val();
-    if (!Visited.insert(I).second)
-      continue;
-
-    auto *SI = dyn_cast<StoreInst>(I);
-    if (SI && isControlEquivalent(*I->getParent(), *SI->getParent(), DT, PDT))
-      return SI;
-
-    for (User *U : I->users())
-      if (auto *UserInst = dyn_cast<Instruction>(U))
-        Worklist.push_back(UserInst);
-  }
-  return nullptr;
 }
 
 // FIXME: treat reduction as special cases
@@ -386,14 +409,6 @@ isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
 
 static void getOrderedIntermediateBlocks(
     Loop *L1, Loop *L2, SmallVectorImpl<BasicBlock *> &IntermediateBlocks) {
-  struct SkipBackEdge : public df_iterator_default_set<BasicBlock *> {
-    SkipBackEdge(Loop *L) {
-      if (L) {
-        assert(L->getLoopLatch());
-        insert(L->getLoopLatch());
-      }
-    }
-  };
 
   DenseSet<BasicBlock *> ReachesL2;
   SkipBackEdge BackwardState(L1->getParentLoop());
@@ -551,11 +566,12 @@ static bool getNumPHIs(BasicBlock *BB) {
   return std::distance(BB->phis().begin(), BB->phis().end());
 }
 
-bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-               PostDominatorTree &PDT, DependenceInfo &DI, ScalarEvolution &SE) {
+Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
+                PostDominatorTree &PDT, DependenceInfo &DI, ScalarEvolution &SE) {
   if (!checkLoop(L1) || !checkLoop(L2))
-    return false;
+    return nullptr;
 
+  // If L1 and L2 do not have a direct common parent, fuse their parents first.
   auto *L1Parent = L1->getParentLoop();
   auto *L2Parent = L2->getParentLoop();
   if (L1Parent != L2Parent) {
@@ -565,14 +581,16 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L2->verifyLoop();
   }
 
-  // FIXME: this is broken
-#if 0
-  if (!DT.dominates(L1->getExitBlock(), L2->getExitBlock())) {
+  // If L1 doesn't come before L2, swap them.
+  SkipBackEdge SBE(L1->getParentLoop());
+  bool L1BeforeL2 =
+      any_of(depth_first_ext(L1->getExitBlock(), SBE),
+             [L2](BasicBlock *BB) { return BB == L2->getHeader(); });
+  if (!L1BeforeL2) {
     std::swap(L1, L2);
-    std::swap(L1Parent, L2Parent);
-    assert(DT.dominates(L1->getExitBlock(), L2->getExitBlock()));
+    L1Parent = L1->getParentLoop();
+    L2Parent = L2->getParentLoop();
   }
-#endif
 
   BasicBlock *L1Preheader = L1->getLoopPreheader();
   BasicBlock *L2Preheader = L2->getLoopPreheader();
@@ -583,23 +601,26 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   BasicBlock *L1Exit = L1->getExitBlock();
   BasicBlock *L2Exit = L2->getExitBlock();
 
-  // Blocks after L1 and before L2
+  // Find the blocks that run after L1 and before L2
   SmallPtrSet<BasicBlock *, 4> IntermediateBlocks;
   getIntermediateBlocks(L1, L2, IntermediateBlocks);
 
-  // Find the set of instructions after L1 that are depended by L2.
-  // We need to hoist them before we run the (fused) L2.
+  // Find the set of instructions that L2 depends on and run after L1.
+  // We need to hoist them before L1 and L2.
   SmallPtrSet<Instruction *, 16> L2Dependencies;
   DenseMap<Instruction *, SmallPtrSet<Instruction *, 8>> Users;
+  // Keep track of code snippet that do something like `*x = *x `reduction op`
+  // ...
   struct ReductionInfo {
-    LoadInst *LI;
-    StoreInst *SI;
+    LoadInst *Load;
+    StoreInst *Store;
     RecurKind Kind;
   };
-  SmallVector<ReductionInfo> ReductionsToSink;
+  SmallVector<ReductionInfo> ReductionsToPatch;
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
+<<<<<<< HEAD
         LoadInst *Load;
         StoreInst *SI;
         Optional<RecurKind> Kind;
@@ -614,9 +635,37 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         Kind = matchReductionOnMemory(SI, TheLoad, LI, SE);
         if (Kind && TheLoad == Load) {
           ReductionsToSink.push_back({TheLoad, SI, *Kind});
+=======
+        // Detect reduction, in which case we don't need to the hosit
+        // dependencies.
+        auto *Load = dyn_cast<LoadInst>(&I);
+        Optional<RecurKind> Kind = None;
+        StoreInst *Store = nullptr;
+        if (Load)
+          Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
+        if (Kind) {
+          assert(Store);
+          // Remember this reduction, and sink the load instead.
+          // E.g., for something like:
+          // ```
+          //   writes
+          //   x = load a
+          //   v = x + something()
+          //   store v
+          // ```
+          // We rewrite it into
+          // ```
+          //   v = 0 + something()
+          //   writes
+          //   x = load a
+          //   v' = x + v
+          //   store v'
+          // ```
+          ReductionsToPatch.push_back({Load, Store, *Kind});
+>>>>>>> main
           continue;
         }
-      FindDep:
+
         findDependencies(&I,
                          L1Preheader->getTerminator() /*Earliest possible dep*/,
                          IntermediateBlocks, DT, DI, L2Dependencies);
@@ -624,16 +673,17 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     }
   }
 
-  for (const ReductionInfo &RI : ReductionsToSink) {
-    Constant *Identity =
-        RecurrenceDescriptor::getRecurrenceIdentity(RI.Kind, RI.LI->getType());
-    RI.LI->replaceAllUsesWith(Identity);
-    RI.LI->moveBefore(RI.SI);
-    auto *V = RI.SI->getValueOperand();
-    auto *Rdx = emitReduction(RI.Kind, V, RI.LI, RI.SI /*insert before*/);
-    RI.SI->replaceUsesOfWith(V, Rdx);
+  for (const ReductionInfo &RI : ReductionsToPatch) {
+    Constant *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
+        RI.Kind, RI.Load->getType());
+    RI.Load->replaceAllUsesWith(Identity);
+    RI.Load->moveBefore(RI.Store);
+    Value *V = RI.Store->getValueOperand();
+    Value *Rdx = emitReduction(RI.Kind, V, RI.Load, RI.Store /*insert before*/);
+    RI.Store->replaceUsesOfWith(V, Rdx);
   }
 
+  // Compute a topological order for the dependencies we need to hoist.
   SmallVector<BasicBlock *, 4> OrderedIntermediateBlocks;
   getOrderedIntermediateBlocks(L1, L2, OrderedIntermediateBlocks);
   SmallVector<Instruction *> OrderedL2Dependencies;
@@ -646,7 +696,6 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
       }
 
   SmallVector<DominatorTree::UpdateType> CFGUpdates;
-
   auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
                            BasicBlock *NewDst) {
     Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
@@ -656,17 +705,13 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   LLVMContext &Ctx = L1Preheader->getContext();
   Function *F = L1Preheader->getParent();
+  // Create a placeholder block that will replace the loop header of L2
   BasicBlock *L2Placeholder =
       BasicBlock::Create(Ctx, L2Preheader->getName() + ".placeholder", F);
   BranchInst::Create(L2Exit /*to*/, L2Placeholder /*from*/);
-
   CFGUpdates.push_back({DominatorTree::Insert, L2Exit, L2Placeholder});
 
-  // TODO: get rid of this restriction
-  if (getNumPHIs(L1Preheader) != 0 || getNumPHIs(L2Preheader) != 0)
-    return false;
-
-  // Before we start changing the CFG, hoist any dependencies that
+  assert(getNumPHIs(L1Preheader) == 0 && getNumPHIs(L2Preheader) == 0);
 
   // Rewrire all edges going into L2's preheader to, instead, go to
   // a dedicated placeholder for L2 that directly jumps to the L2's exit
@@ -706,10 +751,12 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
       if (PN.getIncomingBlock(i) == L2Latch)
         PN.setIncomingBlock(i, L2Placeholder);
 
+  // Fix the dominance info, which we need to determine how to hoist L2's
+  // dependencies.
   DT.applyUpdates(CFGUpdates);
   PDT.applyUpdates(CFGUpdates);
 
-  // Hoist L2's dependencies to before L2 preheader
+  // Hoist L2's dependencies
   for (Instruction *I : OrderedL2Dependencies) {
     Instruction *InsertPt =
         DT.findNearestCommonDominator(I->getParent(), L2Preheader)
@@ -739,14 +786,17 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   if (L1Parent)
     L1Parent->addBasicBlockToLoop(L2Placeholder, LI);
 
-  DenseMap<Instruction *, SmallVector<Instruction *, 4>> OutsideUsers;
+  // Go through the fused loop and find instructions not dominating their uses.
+  // This happens when we move loops across branches (most notably their
+  // original loop guards).
+  DenseMap<Instruction *, SmallVector<Instruction *, 4>> BrokenUseDefs;
   for (auto *BB : L1->blocks())
     for (auto &I : *BB) {
       for (User *U : I.users()) {
         auto *UserInst = dyn_cast<Instruction>(U);
         if (UserInst && !L1->contains(UserInst) &&
             !DT.dominates(&I, UserInst)) {
-          OutsideUsers[&I].push_back(UserInst);
+          BrokenUseDefs[&I].push_back(UserInst);
         }
       }
     }
@@ -754,13 +804,16 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     for (User *U : I.users()) {
       auto *UserInst = dyn_cast<Instruction>(U);
       if (UserInst && !DT.dominates(&I, UserInst)) {
-        OutsideUsers[&I].push_back(UserInst);
+        BrokenUseDefs[&I].push_back(UserInst);
       }
     }
   }
 
+  // Don't bother fixing the SSA invariant (def dom use) directly.
+  // Just circumvent SSA with allocas
+  // and then turning the allocas into PHI nodes with PromoteMemToReg.
   SmallVector<AllocaInst *> Allocas;
-  for (auto &KV : OutsideUsers) {
+  for (auto &KV : BrokenUseDefs) {
     Instruction *I = KV.first;
     ArrayRef<Instruction *> Users = KV.second;
 
@@ -788,6 +841,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
       UserInst->replaceUsesOfWith(I, Reload);
     }
   }
+
   PromoteMemToReg(Allocas, DT);
 
   assert(L1->getLoopPreheader() == L2Preheader);
@@ -800,5 +854,5 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   LI.verify(DT);
   assert(!verifyFunction(*F, &errs()));
 
-  return true;
+  return L1;
 }
