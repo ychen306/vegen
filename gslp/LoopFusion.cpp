@@ -261,99 +261,97 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
   return false;
 }
 
-static void getInBetweenInstructions(Instruction *Begin, Instruction *End,
-                                     SmallPtrSetImpl<Instruction *> &Insts) {
-  SmallPtrSet<Instruction *, 16> Worklist;
-  Worklist.insert(Begin);
+static void
+getInBetweenInstructions(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
+                         SmallPtrSetImpl<Instruction *> &InBetweenInsts) {
+  // Figure out the blocks reaching I without taking the backedge of the parent
+  // loop
+  SkipBackEdge BackwardSBE(ParentLoop);
+  SmallPtrSet<BasicBlock *, 8> ReachesI;
+  for (auto *BB : inverse_depth_first_ext(I->getParent(), BackwardSBE))
+    ReachesI.insert(BB);
 
-  while (!Worklist.empty()) {
-    auto *I = *Worklist.begin();
-    Worklist.erase(I);
-
-    if (I == End)
+  SkipBackEdge SBE(ParentLoop);
+  for (BasicBlock *BB : depth_first_ext(Earliest, SBE)) {
+    if (BB == Earliest)
       continue;
 
-    if (!Insts.insert(I).second)
+    if (!ReachesI.count(BB))
       continue;
 
-    if (auto *Next = I->getNextNode())
-      Worklist.insert(Next);
-    else {
-      for (BasicBlock *BB : successors(I))
-        Worklist.insert(&BB->front());
+    if (BB == I->getParent()) {
+      for (auto &I2 : *BB) {
+        if (I->comesBefore(&I2))
+          break;
+        InBetweenInsts.insert(&I2);
+      }
+      continue;
     }
+
+    for (auto &I2 : *BB)
+      InBetweenInsts.insert(&I2);
   }
 }
 
 // FIXME: treat reduction as special cases
 // Find instructions from `Earliest until `I that `I depends on
-static void findDependencies(Instruction *I, Instruction *Earliest,
-                             SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks,
-                             DominatorTree &DT, DependenceInfo &DI,
+static void findDependencies(Instruction *I, BasicBlock *Earliest,
+                             Loop *ParentLoop, DominatorTree &DT,
+                             DependenceInfo &DI,
                              SmallPtrSetImpl<Instruction *> &Depended) {
   SmallPtrSet<Instruction *, 16> InBetweenInsts;
-  getInBetweenInstructions(Earliest, I, InBetweenInsts);
+  getInBetweenInstructions(I, Earliest, ParentLoop, InBetweenInsts);
 
-  std::function<void(Instruction *)> FindDependencies = [&](Instruction *I) {
-    if (DT.dominates(I, Earliest))
-      return;
+  SmallVector<Instruction *> Worklist{I};
+  while (!Worklist.empty()) {
+    Instruction *I = Worklist.pop_back_val();
+
+    if (DT.dominates(I, Earliest->getTerminator()))
+      continue;
 
     if (!Depended.insert(I).second)
-      return;
+      continue;
 
-    // SSA deps
-    for (Value *V : I->operand_values()) {
-      auto *OpInst = dyn_cast<Instruction>(V);
-      if (OpInst)
-        FindDependencies(OpInst);
-    }
+    for (Value *V : I->operand_values())
+      if (auto *OpInst = dyn_cast<Instruction>(V))
+        Worklist.push_back(OpInst);
 
-    // Memory deps
     for (auto *I2 : InBetweenInsts) {
-      if (!IntermediateBlocks.count(I2->getParent()))
-        continue;
       auto Dep = DI.depends(I2, I, true);
-      if (Dep && !Dep->isInput()) {
-        FindDependencies(I2);
-      }
+      if (Dep && !Dep->isInput())
+        Worklist.push_back(I2);
     }
-  };
-
-  FindDependencies(I);
+  }
 }
 
-// Precondition: I and BB are control-flow equivalent
+// Check if we can hoist `I` before `L`.
 // FIXME: this is broken in cases where with conditional load, which we cannot
 // hoist
-static bool
-isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
-                    SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks,
-                    std::function<bool(Instruction *)> CannotHoist,
-                    DominatorTree &DT, PostDominatorTree &PDT,
-                    DependenceInfo &DI) {
-  DenseMap<Instruction *, bool> Memo;
-  std::function<bool(Instruction *)> IsSafeToHoist = [&](Instruction *I) {
-    auto It = Memo.find(I);
-    if (It != Memo.end())
-      return It->second;
+static bool isSafeToHoistBefore(Instruction *I, Loop *L, DominatorTree &DT,
+                                PostDominatorTree &PDT, DependenceInfo &DI) {
+  BasicBlock *Header = L->getHeader();
+  SmallVector<Instruction *> Worklist{I};
+  SmallPtrSet<Instruction *, 16> Visited;
+  while (!Worklist.empty()) {
+    Instruction *I = Worklist.pop_back_val();
+    if (!Visited.insert(I).second)
+      continue;
 
-    if (CannotHoist(I))
-      return Memo[I] = false;
+    // Don't need to hoist I if already before the loop
+    if (DT.dominates(I, Header->getTerminator()))
+      continue;
 
-    // Don't need to hoist I if already before BB
-    if (DT.dominates(I, BB->getTerminator())) {
-      return Memo[I] = true;
-    }
+    // Can't hoist stuff in the loop itself
+    if (L->contains(I->getParent()))
+      return false;
 
     // Assume we can't hoist branches
     if (isa<PHINode>(I))
-      return Memo[I] = false;
+      return false;
 
-    for (Value *V : I->operand_values()) {
-      auto *OpInst = dyn_cast<Instruction>(V);
-      if (OpInst && !IsSafeToHoist(OpInst))
-        return Memo[I] = false;
-    }
+    for (Value *V : I->operand_values())
+      if (auto *OpInst = dyn_cast<Instruction>(V))
+        Worklist.push_back(OpInst);
 
     // If `I` reads or writes memory, we also need to check its memory
     // dependencies Do this by collecting all intermediate instructions between
@@ -361,24 +359,19 @@ isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
     SmallPtrSet<Instruction *, 16> InBetweenInsts;
     // FIXME: this is broken because it considers spurious paths that are
     // infeasible.
-    getInBetweenInstructions(BB->getTerminator(), I, InBetweenInsts);
+    getInBetweenInstructions(I, Header, L->getParentLoop(), InBetweenInsts);
 
     bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
     for (auto *I2 : InBetweenInsts) {
-      // I2 is not actually reachable from `BB`
-      if (!IntermediateBlocks.count(I2->getParent()))
-        continue;
       if (!SafeToSpeculate && I2->mayThrow())
-        return Memo[I] = false;
+        return false;
+
       auto Dep = DI.depends(I2, I, true);
-      if (Dep && !Dep->isInput() && !IsSafeToHoist(I2))
-        return Memo[I] = false;
+      if (Dep && !Dep->isInput())
+        Worklist.push_back(I2);
     }
-
-    return Memo[I] = true;
-  };
-
-  return IsSafeToHoist(I);
+  }
+  return true;
 }
 
 static void getOrderedIntermediateBlocks(
@@ -437,9 +430,7 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
-      if (isUsedByLoop(&I, L2) &&
-          !isSafeToHoistBefore(&I, L1Entry, IntermediateBlocks, IsInL1, DT, PDT,
-                               DI))
+      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, DT, PDT, DI))
         return false;
   }
 
@@ -623,9 +614,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           continue;
         }
 
-        findDependencies(&I,
-                         L1Preheader->getTerminator() /*Earliest possible dep*/,
-                         IntermediateBlocks, DT, DI, L2Dependencies);
+        findDependencies(&I, L1Preheader /*Earliest possible dep*/, L1Parent,
+                         DT, DI, L2Dependencies);
       }
     }
   }
