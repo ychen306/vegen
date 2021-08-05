@@ -1,6 +1,6 @@
 #include "LoopFusion.h"
 #include "ControlEquivalence.h"
-#include "llvm/ADT/GraphTraits.h"
+#include "UseDefIterator.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/LoopInfo.h"
@@ -16,17 +16,6 @@
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
-
-// Provide specialization for iterating from def to use
-namespace llvm {
-template <> struct GraphTraits<Value *> {
-  using NodeRef = Value *;
-  using ChildIteratorType = Value::user_iterator;
-  static NodeRef getEntryNode(Value *V) { return V; }
-  static ChildIteratorType child_begin(NodeRef N) { return N->user_begin(); }
-  static ChildIteratorType child_end(NodeRef N) { return N->user_end(); }
-};
-} // namespace llvm
 
 namespace {
 // Use this to do DFS without taking the backedge
@@ -165,7 +154,7 @@ matchReductionForStore(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
 static StoreInst *findSink(LoadInst *LI, DominatorTree &DT,
                            PostDominatorTree &PDT) {
   auto *BB = LI->getParent();
-  for (auto *V : depth_first((Value *)LI)) {
+  for (Value *V : depth_first(DefToUse(LI))) {
     auto *SI = dyn_cast<StoreInst>(V);
     if (SI && isControlEquivalent(*BB, *SI->getParent(), DT, PDT))
       return SI;
@@ -264,7 +253,7 @@ static BasicBlock *getLoopEntry(Loop *L) {
 // FIXME: detect case where `I` is used by a conditional that's later joined by
 // a PHINode later used by L
 static bool isUsedByLoop(Instruction *I, Loop *L) {
-  for (Value *V : depth_first((Value *)I)) {
+  for (Value *V : depth_first(DefToUse(I))) {
     auto *I = dyn_cast<Instruction>(V);
     if (I && L->contains(I->getParent()))
       return true;
