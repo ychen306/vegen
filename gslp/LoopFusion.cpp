@@ -17,6 +17,16 @@ using namespace llvm;
 using namespace llvm::PatternMatch;
 
 namespace {
+// Use this to do DFS without taking the backedge
+struct SkipBackEdge : public df_iterator_default_set<BasicBlock *> {
+  SkipBackEdge(Loop *L) {
+    if (L) {
+      assert(L->getLoopLatch());
+      insert(L->getLoopLatch());
+    }
+  }
+};
+
 template <typename PatternTy, typename ValueTy> struct Capture_match {
   PatternTy P;
   ValueTy *&V;
@@ -380,14 +390,6 @@ isSafeToHoistBefore(Instruction *I, BasicBlock *BB,
 
 static void getOrderedIntermediateBlocks(
     Loop *L1, Loop *L2, SmallVectorImpl<BasicBlock *> &IntermediateBlocks) {
-  struct SkipBackEdge : public df_iterator_default_set<BasicBlock *> {
-    SkipBackEdge(Loop *L) {
-      if (L) {
-        assert(L->getLoopLatch());
-        insert(L->getLoopLatch());
-      }
-    }
-  };
 
   DenseSet<BasicBlock *> ReachesL2;
   SkipBackEdge BackwardState(L1->getParentLoop());
@@ -545,10 +547,10 @@ static bool getNumPHIs(BasicBlock *BB) {
   return std::distance(BB->phis().begin(), BB->phis().end());
 }
 
-bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
+Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
                PostDominatorTree &PDT, DependenceInfo &DI) {
   if (!checkLoop(L1) || !checkLoop(L2))
-    return false;
+    return nullptr;
 
   auto *L1Parent = L1->getParentLoop();
   auto *L2Parent = L2->getParentLoop();
@@ -560,13 +562,15 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   }
 
   // FIXME: this is broken
-#if 0
-  if (!DT.dominates(L1->getExitBlock(), L2->getExitBlock())) {
+  SkipBackEdge SBE(L1->getParentLoop());
+  bool L1BeforeL2 =
+      any_of(depth_first_ext(L1->getExitBlock(), SBE),
+             [L2](BasicBlock *BB) { return BB == L2->getHeader(); });
+  if (!L1BeforeL2) {
     std::swap(L1, L2);
-    std::swap(L1Parent, L2Parent);
-    assert(DT.dominates(L1->getExitBlock(), L2->getExitBlock()));
+    L1Parent = L1->getParentLoop();
+    L2Parent = L2->getParentLoop();
   }
-#endif
 
   BasicBlock *L1Preheader = L1->getLoopPreheader();
   BasicBlock *L2Preheader = L2->getLoopPreheader();
@@ -656,9 +660,7 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   CFGUpdates.push_back({DominatorTree::Insert, L2Exit, L2Placeholder});
 
-  // TODO: get rid of this restriction
-  if (getNumPHIs(L1Preheader) != 0 || getNumPHIs(L2Preheader) != 0)
-    return false;
+  assert(getNumPHIs(L1Preheader) == 0 && getNumPHIs(L2Preheader) == 0);
 
   // Before we start changing the CFG, hoist any dependencies that
 
@@ -794,5 +796,5 @@ bool fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   LI.verify(DT);
   assert(!verifyFunction(*F, &errs()));
 
-  return true;
+  return L1;
 }
