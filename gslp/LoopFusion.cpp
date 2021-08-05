@@ -548,7 +548,7 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-               PostDominatorTree &PDT, DependenceInfo &DI) {
+                PostDominatorTree &PDT, DependenceInfo &DI) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 
@@ -561,7 +561,6 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L2->verifyLoop();
   }
 
-  // FIXME: this is broken
   SkipBackEdge SBE(L1->getParentLoop());
   bool L1BeforeL2 =
       any_of(depth_first_ext(L1->getExitBlock(), SBE),
