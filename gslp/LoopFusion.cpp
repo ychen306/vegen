@@ -1,5 +1,6 @@
 #include "LoopFusion.h"
 #include "ControlEquivalence.h"
+#include "llvm/ADT/GraphTraits.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/LoopInfo.h"
@@ -15,6 +16,17 @@
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
+
+// Provide specialization for iterating from def to use
+namespace llvm {
+template <> struct GraphTraits<Value *> {
+  using NodeRef = Value *;
+  using ChildIteratorType = Value::user_iterator;
+  static NodeRef getEntryNode(Value *V) { return V; }
+  static ChildIteratorType child_begin(NodeRef N) { return N->user_begin(); }
+  static ChildIteratorType child_end(NodeRef N) { return N->user_end(); }
+};
+} // namespace llvm
 
 namespace {
 // Use this to do DFS without taking the backedge
@@ -152,21 +164,11 @@ matchReductionForStore(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
 // Find a store that transitively uses LI and is control-flow equivalent
 static StoreInst *findSink(LoadInst *LI, DominatorTree &DT,
                            PostDominatorTree &PDT) {
-  SmallPtrSet<Instruction *, 16> Visited;
-  SmallVector<Instruction *> Worklist;
-  Worklist.push_back(LI);
-  while (!Worklist.empty()) {
-    Instruction *I = Worklist.pop_back_val();
-    if (!Visited.insert(I).second)
-      continue;
-
-    auto *SI = dyn_cast<StoreInst>(I);
-    if (SI && isControlEquivalent(*I->getParent(), *SI->getParent(), DT, PDT))
+  auto *BB = LI->getParent();
+  for (auto *V : depth_first((Value *)LI)) {
+    auto *SI = dyn_cast<StoreInst>(V);
+    if (SI && isControlEquivalent(*BB, *SI->getParent(), DT, PDT))
       return SI;
-
-    for (User *U : I->users())
-      if (auto *UserInst = dyn_cast<Instruction>(U))
-        Worklist.push_back(UserInst);
   }
   return nullptr;
 }
@@ -262,24 +264,12 @@ static BasicBlock *getLoopEntry(Loop *L) {
 // FIXME: detect case where `I` is used by a conditional that's later joined by
 // a PHINode later used by L
 static bool isUsedByLoop(Instruction *I, Loop *L) {
-  DenseSet<Instruction *> Visited; // Deal with cycles resulted from PHIs
-  std::function<bool(Instruction *)> IsUsed = [&](Instruction *I) -> bool {
-    if (!Visited.insert(I).second)
-      return false; // ignore backedge
-
-    if (L->contains(I->getParent()))
+  for (Value *V : depth_first((Value *)I)) {
+    auto *I = dyn_cast<Instruction>(V);
+    if (I && L->contains(I->getParent()))
       return true;
-
-    for (User *U : I->users()) {
-      auto *UI = dyn_cast<Instruction>(U);
-      if (UI && IsUsed(UI))
-        return true;
-    }
-
-    return false;
-  };
-
-  return IsUsed(I);
+  }
+  return false;
 }
 
 static void getInBetweenInstructions(Instruction *Begin, Instruction *End,
