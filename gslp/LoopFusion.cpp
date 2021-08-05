@@ -1,6 +1,7 @@
 #include "LoopFusion.h"
 #include "ControlEquivalence.h"
 #include "UseDefIterator.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/LoopInfo.h"
@@ -374,27 +375,18 @@ static bool isSafeToHoistBefore(Instruction *I, Loop *L, DominatorTree &DT,
   return true;
 }
 
-static void getOrderedIntermediateBlocks(
-    Loop *L1, Loop *L2, SmallVectorImpl<BasicBlock *> &IntermediateBlocks) {
-
-  DenseSet<BasicBlock *> ReachesL2;
-  SkipBackEdge BackwardState(L1->getParentLoop());
-  for (auto *BB :
-       inverse_depth_first_ext(L2->getLoopPreheader(), BackwardState))
-    ReachesL2.insert(BB);
-
-  SkipBackEdge ForwardState(L1->getParentLoop());
-  for (auto *BB : depth_first_ext(L1->getExitBlock(), ForwardState))
-    if (ReachesL2.count(BB))
-      IntermediateBlocks.push_back(BB);
-}
-
 static void
 getIntermediateBlocks(Loop *L1, Loop *L2,
-                      SmallPtrSetImpl<BasicBlock *> &IntermediateBlocks) {
-  SmallVector<BasicBlock *> Blocks;
-  getOrderedIntermediateBlocks(L1, L2, Blocks);
-  IntermediateBlocks.insert(Blocks.begin(), Blocks.end());
+                      SmallVectorImpl<BasicBlock *> &IntermediateBlocks) {
+  auto *ParentLoop = L1->getParentLoop();
+  DenseSet<BasicBlock *> ReachesL2;
+  SkipBackEdge SBE(ParentLoop);
+  for (auto *BB : inverse_depth_first_ext(L2->getLoopPreheader(), SBE))
+    ReachesL2.insert(BB);
+
+  for (auto *BB : ReversePostOrderTraversal<BasicBlock *>(L1->getExitBlock()))
+    if (ReachesL2.count(BB))
+      IntermediateBlocks.push_back(BB);
 }
 
 // Return true is *independent*
@@ -419,7 +411,7 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
   }
 
   // Blocks after L1 and before L2
-  SmallPtrSet<BasicBlock *, 4> IntermediateBlocks;
+  SmallVector<BasicBlock *, 8> IntermediateBlocks;
   getIntermediateBlocks(L1, L2, IntermediateBlocks);
 
   auto IsInL1 = [&](Instruction *I) { return L1->contains(I->getParent()); };
@@ -566,22 +558,20 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   BasicBlock *L1Exit = L1->getExitBlock();
   BasicBlock *L2Exit = L2->getExitBlock();
 
-  // Find the blocks that run after L1 and before L2
-  SmallPtrSet<BasicBlock *, 4> IntermediateBlocks;
-  getIntermediateBlocks(L1, L2, IntermediateBlocks);
-
   // Find the set of instructions that L2 depends on and run after L1.
   // We need to hoist them before L1 and L2.
   SmallPtrSet<Instruction *, 16> L2Dependencies;
   DenseMap<Instruction *, SmallPtrSet<Instruction *, 8>> Users;
-  // Keep track of code snippet that do something like `*x = *x `reduction op`
-  // ...
+  // Keep track of code snippet that do something like `*x = *x + ...
   struct ReductionInfo {
     LoadInst *Load;
     StoreInst *Store;
     RecurKind Kind;
   };
   SmallVector<ReductionInfo> ReductionsToPatch;
+  // Find the blocks that run after L1 and before L2
+  SmallVector<BasicBlock *, 8> IntermediateBlocks;
+  getIntermediateBlocks(L1, L2, IntermediateBlocks);
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
@@ -631,10 +621,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   }
 
   // Compute a topological order for the dependencies we need to hoist.
-  SmallVector<BasicBlock *, 4> OrderedIntermediateBlocks;
-  getOrderedIntermediateBlocks(L1, L2, OrderedIntermediateBlocks);
   SmallVector<Instruction *> OrderedL2Dependencies;
-  for (auto *BB : OrderedIntermediateBlocks)
+  for (auto *BB : IntermediateBlocks)
     for (auto &I : *BB)
       if (L2Dependencies.count(&I)) {
         assert(!isa<PHINode>(&I) &&
