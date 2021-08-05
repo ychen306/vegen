@@ -158,11 +158,7 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 // original store
 // FIXME: the value being stored should have no outside user
 static Optional<RecurKind>
-<<<<<<< HEAD
-matchReductionOnMemory(StoreInst *SI, LoadInst *&Load, LoopInfo &LI, ScalarEvolution &SE) {
-=======
-matchReductionForStore(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
->>>>>>> main
+matchReductionForStore(StoreInst *SI, LoadInst *&Load, LoopInfo &LI, ScalarEvolution &SE) {
   Load = nullptr;
   auto TheLoad =
       m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), Load);
@@ -187,12 +183,12 @@ static StoreInst *findSink(LoadInst *LI, DominatorTree &DT,
 static Optional<RecurKind> matchReductionForLoad(LoadInst *Load, StoreInst *&SI,
                                                  DominatorTree &DT,
                                                  PostDominatorTree &PDT,
-                                                 LoopInfo &LI) {
+                                                 LoopInfo &LI, ScalarEvolution &SE) {
   SI = findSink(Load, DT, PDT);
   if (!SI)
     return None;
   LoadInst *TheLoad;
-  Optional<RecurKind> Kind = matchReductionForStore(SI, TheLoad, LI);
+  Optional<RecurKind> Kind = matchReductionForStore(SI, TheLoad, LI, SE);
   if (!Kind || TheLoad != Load)
     return None;
   return Kind;
@@ -226,11 +222,7 @@ static void collectMemoryAccesses(
 
     if (SI) {
       LoadInst *Load;
-<<<<<<< HEAD
-      if (Optional<RecurKind> Kind = matchReductionOnMemory(SI, Load, LI, SE)) {
-=======
-      if (Optional<RecurKind> Kind = matchReductionForStore(SI, Load, LI)) {
->>>>>>> main
+      if (Optional<RecurKind> Kind = matchReductionForStore(SI, Load, LI, SE)) {
         ReductionKinds[SI] = *Kind;
         ReductionKinds[Load] = *Kind;
       }
@@ -620,29 +612,13 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
-<<<<<<< HEAD
-        LoadInst *Load;
-        StoreInst *SI;
-        Optional<RecurKind> Kind;
-
-        Load = dyn_cast<LoadInst>(&I);
-        if (!Load || !Load->hasOneUse())
-          goto FindDep;
-        SI = findSink(Load, DT, PDT);
-        if (!SI)
-          goto FindDep;
-        LoadInst *TheLoad;
-        Kind = matchReductionOnMemory(SI, TheLoad, LI, SE);
-        if (Kind && TheLoad == Load) {
-          ReductionsToSink.push_back({TheLoad, SI, *Kind});
-=======
         // Detect reduction, in which case we don't need to the hosit
         // dependencies.
         auto *Load = dyn_cast<LoadInst>(&I);
         Optional<RecurKind> Kind = None;
         StoreInst *Store = nullptr;
         if (Load)
-          Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
+          Kind = matchReductionForLoad(Load, Store, DT, PDT, LI, SE);
         if (Kind) {
           assert(Store);
           // Remember this reduction, and sink the load instead.
@@ -662,7 +638,6 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           //   store v'
           // ```
           ReductionsToPatch.push_back({Load, Store, *Kind});
->>>>>>> main
           continue;
         }
 
