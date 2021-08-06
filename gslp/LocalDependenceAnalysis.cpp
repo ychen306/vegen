@@ -87,10 +87,11 @@ LocalDependenceAnalysis::LocalDependenceAnalysis(AliasAnalysis *AA,
     if (isa<PHINode>(&I))
       continue;
 
-    for (Value *Operand : I.operands())
-      if (auto *I2 = dyn_cast<Instruction>(Operand))
-        if (!isa<PHINode>(I2) && I2->getParent() == BB)
-          Dependencies[&I].push_back(I2);
+    for (Value *Operand : I.operands()) {
+      auto *I2 = dyn_cast<Instruction>(Operand);
+      if (I2 && I2->getParent() == BB)
+        Dependencies[&I].push_back(I2);
+    }
 
     if (I.mayReadOrWriteMemory()) {
       MemoryLocation Loc = getLocation(&I, AA);

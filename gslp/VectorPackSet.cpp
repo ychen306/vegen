@@ -218,11 +218,9 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
       return;
 
     // visit the depended packs
-    for (Value *V : VP->dependedValues()) {
-      auto It = ValueToPackMap.find(V);
-      if (It != ValueToPackMap.end())
-        SortPack(It->second);
-    }
+    for (Value *V : VP->dependedValues())
+      if (auto *DependedVP = ValueToPackMap.lookup(V))
+        SortPack(DependedVP);
 
     SortedPacks.push_back(VP);
   };
@@ -393,10 +391,10 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       // Update the value index
       // to track where the originally scalar values are produced
       auto OutputLanes = VP->getOrderedValues();
-      for (unsigned i = 0, e = OutputLanes.size(); i != e; i++) {
+      for (unsigned i = 0, e = OutputLanes.size(); i != e; i++)
         if (auto *V = OutputLanes[i])
           ValueIndex[V] = {VP, i};
-      }
+
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
     }
