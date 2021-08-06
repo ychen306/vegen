@@ -41,6 +41,8 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   if (It != Solutions.end())
     return It->second;
 
+  Solutions[OP] = 0;
+
   // Build by explicit insertion
   float Cost = 0;
   SmallPtrSet<Value *, 8> Inserted;
@@ -61,6 +63,10 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   if (is_splat(*OP) && Cost > BroadcastCost) {
     return Solutions[OP] = Solution(BroadcastCost);
   }
+
+  auto *VPCtx = Pkr->getOperandContext(OP);
+  if (!VPCtx)
+    return Solutions[OP] = Sol;
 
   const OperandPack *Deduped = VPCtx->dedup(OP);
   float ExtraCost = Deduped != OP ? C_Shuffle : 0;
@@ -93,12 +99,13 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
     Sol.update(Solution(Cost, Packs));
   }
 
-  if (!Candidates)
+  if (!CandidatesByBlock)
     return Solutions[OP] = Sol;
 
+  auto &Candidates = CandidatesByBlock->at(VPCtx->getBasicBlock());
   DenseSet<const VectorPack *> Visited;
   for (unsigned InstId : OPI.Elements.set_bits()) {
-    for (auto *VP : Candidates->Inst2Packs[InstId]) {
+    for (auto *VP : Candidates.Inst2Packs[InstId]) {
       if (!Visited.insert(VP).second || !VP->isLoad())
         continue;
       ArrayRef<Value *> Vals = VP->getOrderedValues();
@@ -124,12 +131,15 @@ float Heuristic::getCost(Value *V) {
   if (!V)
     return 0;
   auto *I = dyn_cast<Instruction>(V);
-  if (!I || I->getParent() != VPCtx->getBasicBlock())
+  if (!I)
     return 0;
 
   auto It = ScalarCosts.find(I);
   if (It != ScalarCosts.end())
     return It->second;
+
+  // Hack to get around phi nodes, which introduce cycles.
+  ScalarCosts[I] = 0;
 
   float Cost = Pkr->getScalarCost(I);
   for (Value *V : I->operands())

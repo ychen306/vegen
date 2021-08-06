@@ -2,6 +2,7 @@
 #define HEURISTIC_H
 
 #include "llvm/ADT/DenseMap.h"
+#include <map>
 
 class Packer;
 class VectorPack;
@@ -12,6 +13,7 @@ class CandidatePackSet;
 namespace llvm {
 class Value;
 class Instruction;
+class BasicBlock;
 } // namespace llvm
 
 class Heuristic {
@@ -40,15 +42,12 @@ private:
   llvm::DenseMap<llvm::Instruction *, float> ScalarCosts;
 
   Packer *Pkr;
-  const VectorPackContext *VPCtx;
-  const CandidatePackSet *Candidates;
-
+  const std::map<llvm::BasicBlock *, CandidatePackSet> *CandidatesByBlock;
   float getCost(const VectorPack *VP);
 
 public:
-  Heuristic(Packer *Pkr, const VectorPackContext *VPCtx,
-            const CandidatePackSet *Candidates)
-      : Pkr(Pkr), VPCtx(VPCtx), Candidates(Candidates) {}
+  Heuristic(Packer *Pkr, const std::map<llvm::BasicBlock *, CandidatePackSet> *CandidatesByBlock)
+      : Pkr(Pkr), CandidatesByBlock(CandidatesByBlock) {}
   float getCost(const OperandPack *OP) { return solve(OP).Cost; }
   float getCost(llvm::Value *);
   Solution solve(const OperandPack *OP);

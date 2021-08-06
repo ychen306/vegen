@@ -58,7 +58,8 @@ Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
     StoreInfo[&BB] = std::make_unique<AccessLayoutInfo>(*StoreDAG);
 
     MMs[&BB] = std::move(MM);
-    LDAs[&BB] = std::make_unique<LocalDependenceAnalysis>(AA, DL, SE, &BB, VPCtx.get());
+    LDAs[&BB] =
+        std::make_unique<LocalDependenceAnalysis>(AA, DL, SE, &BB, VPCtx.get());
     VPCtxs[&BB] = std::move(VPCtx);
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);
@@ -274,4 +275,24 @@ float Packer::getScalarCost(Instruction *I) {
   return TTI->getArithmeticInstrCost(
       I->getOpcode(), I->getType(), TTI::TCK_RecipThroughput, TTI::OK_AnyValue,
       TTI::OK_AnyValue, TTI::OP_None, TTI::OP_None, Operands, I);
+}
+
+const VectorPackContext *
+Packer::getOperandContext(const OperandPack *OP) const {
+  BasicBlock *BB = nullptr;
+  for (auto *V : *OP) {
+    auto *I = dyn_cast_or_null<Instruction>(V);
+    if (!I)
+      continue;
+
+    if (!BB) {
+      BB = I->getParent();
+      continue;
+    }
+
+    // Can't produce OP within a single basic block
+    if (BB != I->getParent())
+      return nullptr;
+  }
+  return BB ? getContext(BB) : nullptr;
 }

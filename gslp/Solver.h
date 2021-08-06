@@ -1,8 +1,9 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
-#include "VectorPackContext.h"
-#include "llvm/ADT/ArrayRef.h"
+#include <vector>
+
+class VectorPack;
 
 struct CandidatePackSet {
   std::vector<const VectorPack *> Packs;
@@ -11,6 +12,6 @@ struct CandidatePackSet {
 
 class Packer;
 class VectorPackSet;
-float optimizeBottomUp(VectorPackSet &, Packer *, llvm::BasicBlock *);
+float optimizeBottomUp(VectorPackSet &, Packer *);
 
 #endif

@@ -57,8 +57,9 @@ class GSLP : public FunctionPass {
       return X86Insts;
     case Triple::aarch64:
       return ArmInsts;
+    default:
+      llvm_unreachable("unsupported target architecture");
     }
-    llvm_unreachable("unsupported target architecture");
   }
 
 public:
@@ -113,14 +114,6 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F) {
     if (!hasFeature(F, Feature))
       return false;
   return true;
-}
-
-void vectorizeBasicBlock(BasicBlock &BB, VectorPackSet &Packs, Packer &Pkr) {
-  VectorPackSet PacksScratch = Packs;
-  float BottomUpCost = optimizeBottomUp(PacksScratch, &Pkr, &BB);
-  errs() << "Bottom-up cost: " << BottomUpCost << '\n';
-  Packs = PacksScratch;
-  return;
 }
 
 } // namespace
@@ -239,10 +232,7 @@ bool GSLP::runOnFunction(Function &F) {
          << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, TTI, BFI);
   VectorPackSet Packs(&F);
-  for (auto &BB : F) {
-    errs() << "Optimizing " << F.getName() << "/" << BB.getName() << '\n';
-    vectorizeBasicBlock(BB, Packs, Pkr);
-  }
+  optimizeBottomUp(Packs, &Pkr);
 
   IntrinsicBuilder Builder(*InstWrappers);
   errs() << "Generating vector code\n";

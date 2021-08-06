@@ -122,6 +122,8 @@ public:
   const OperandProducerInfo &getProducerInfo(const VectorPackContext *,
                                              const OperandPack *);
   float getScalarCost(llvm::Instruction *);
+  // Get the basic block context if the operand can be produced within a single basic block
+  const VectorPackContext *getOperandContext(const OperandPack *) const;
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

@@ -18,7 +18,6 @@ class BasicBlock;
 // VeGen's VPlan
 class Plan {
   Packer *Pkr;
-  llvm::BasicBlock *BB;
   float Cost;
 
   llvm::DenseSet<const VectorPack *> Packs;
@@ -39,7 +38,6 @@ class Plan {
   llvm::DenseMap<const OperandPack *, float> ShuffleCosts;
   llvm::DenseMap<llvm::Instruction *, float> ExtractCosts;
 
-  llvm::Instruction *asInternalInst(llvm::Value *) const;
   float computeShuffleCost(const OperandPack *) const;
 
   bool isAlive(llvm::Instruction *I) const;
@@ -56,7 +54,7 @@ class Plan {
 
 public:
   Plan() = delete;
-  Plan(Packer *, llvm::BasicBlock *);
+  Plan(Packer *);
   Plan(const Plan &) = default;
   Plan(Plan &&) = default;
   Plan &operator=(const Plan &) = default;
@@ -69,7 +67,6 @@ public:
   OperandIterator operands_begin() const { return NumVectorUses.begin(); }
   OperandIterator operands_end() const { return NumVectorUses.end(); }
 
-  llvm::BasicBlock *getBasicBlock() const { return BB; }
   void add(const VectorPack *);
   void remove(const VectorPack *);
   float cost() const { return Cost; }

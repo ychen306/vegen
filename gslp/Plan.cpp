@@ -4,21 +4,15 @@
 #include "Solver.h"
 #include "VectorPack.h"
 #include "VectorPackContext.h"
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
-Plan::Plan(Packer *Pkr, BasicBlock *BB) : Pkr(Pkr), BB(BB), Cost(0) {
-  for (auto &I : *BB) {
+Plan::Plan(Packer *Pkr) : Pkr(Pkr), Cost(0) {
+  for (auto &I : instructions(Pkr->getFunction())) {
     Cost += Pkr->getScalarCost(&I);
     NumScalarUses[&I] = I.getNumUses();
   }
-}
-
-Instruction *Plan::asInternalInst(Value *V) const {
-  auto *I = dyn_cast_or_null<Instruction>(V);
-  if (I && I->getParent() == BB)
-    return I;
-  return nullptr;
 }
 
 void Plan::incScalarUses(Instruction *I) {
@@ -57,7 +51,7 @@ float Plan::computeShuffleCost(const OperandPack *OP) const {
   SmallPtrSet<const VectorPack *, 4> Gathered;
   for (unsigned i = 0, N = OP->size(); i < N; i++) {
     Value *V = (*OP)[i];
-    if (auto *I = asInternalInst(V)) {
+    if (auto *I = dyn_cast_or_null<Instruction>(V)) {
       if (auto *VP = getProducer(I)) {
         // I is produced by a pack we've never seen, shuffle!
         if (Gathered.insert(VP).second)
@@ -79,7 +73,7 @@ float Plan::computeShuffleCost(const OperandPack *OP) const {
 void Plan::updateCostOfVectorUses(ArrayRef<Value *> Values) {
   SmallPtrSet<const OperandPack *, 4> Uses;
   for (auto *V : Values)
-    if (auto *I = asInternalInst(V))
+    if (auto *I = dyn_cast_or_null<Instruction>(V))
       for (auto *OP : InstToOperandsMap.lookup(I))
         Uses.insert(OP);
   for (auto *OP : Uses) {
@@ -101,7 +95,7 @@ void Plan::incVectorUses(const OperandPack *OP) {
   // Also build the index that maps elements of
   // the vector to the vector itself
   for (auto *V : *OP)
-    if (auto *I = asInternalInst(V)) {
+    if (auto *I = dyn_cast_or_null<Instruction>(V)) {
       bool WasDead = !isAlive(I);
       InstToOperandsMap[I].insert(OP);
       if (isAlive(I) && WasDead && !getProducer(I))
@@ -122,7 +116,7 @@ void Plan::decVectorUses(const OperandPack *OP) {
   // OP is dead because it has zero uses
   SmallPtrSet<Instruction *, 8> Visited;
   for (auto *V : *OP)
-    if (auto *I = asInternalInst(V)) {
+    if (auto *I = dyn_cast_or_null<Instruction>(V)) {
       bool Inserted = Visited.insert(I).second;
       if (!Inserted)
         continue;
@@ -144,7 +138,7 @@ void Plan::revive(Instruction *I) {
   // reviving a dead instruction as scalar
   Cost += Pkr->getScalarCost(I);
   for (Value *O : I->operands())
-    if (auto *I2 = asInternalInst(O))
+    if (auto *I2 = dyn_cast<Instruction>(O))
       incScalarUses(I2);
 }
 
@@ -161,7 +155,7 @@ void Plan::kill(Instruction *I) {
   } else {
     Cost -= Pkr->getScalarCost(I);
     for (Value *O : I->operands())
-      if (auto *I2 = asInternalInst(O))
+      if (auto *I2 = dyn_cast<Instruction>(O))
         decScalarUses(I2);
   }
 }
@@ -196,10 +190,10 @@ bool Plan::verifyCost() const {
     TotalShuffleCost += ShuffleCost;
   }
   float TotalScalarCost = 0;
-  for (auto &I : *BB) {
+  for (auto &I : instructions(Pkr->getFunction()))
     if (isAlive(&I) && !getProducer(&I))
       TotalScalarCost += Pkr->getScalarCost(&I);
-  }
+
   float TotalVectorCost = 0;
   for (auto *VP : Packs)
     TotalVectorCost += VP->getProducingCost();
@@ -247,7 +241,7 @@ void Plan::add(const VectorPack *VP) {
       if (isAlive(I)) {
         Cost -= Pkr->getScalarCost(I);
         for (Value *O : I->operands())
-          if (auto *I2 = asInternalInst(O))
+          if (auto *I2 = dyn_cast<Instruction>(O))
             decScalarUses(I2);
       }
     }
