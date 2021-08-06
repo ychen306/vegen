@@ -5,6 +5,7 @@
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/Transforms/Utils/Local.h"
 
 using namespace llvm;
 
@@ -412,4 +413,12 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     assert(!I->isTerminator());
     I->eraseFromParent();
   }
+
+  // Another pass to delete trivially dead instructions
+  SmallVector<Instruction *> ReallyDeadInsts;
+  for (Instruction &I : instructions(F))
+    if (isInstructionTriviallyDead(&I))
+      ReallyDeadInsts.push_back(&I);
+  for (auto *I : ReallyDeadInsts)
+    I->eraseFromParent();
 }
