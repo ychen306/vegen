@@ -186,6 +186,7 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
   OPI.Feasible = true;
   bool AllLoads = true;
   bool HasUndef = false;
+  bool AllPHIs = true;
   for (unsigned i = 0; i < NumLanes; i++) {
     auto *V = (*OP)[i];
     if (!V) {
@@ -197,6 +198,7 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
       AllLoads = false;
       continue;
     }
+    AllPHIs &= isa<PHINode>(V);
 
     if (!isa<LoadInst>(I))
       AllLoads = false;
@@ -222,6 +224,14 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
     findExtendingLoadPacks(*OP, BB, this, OPI.LoadProducers);
     if (OPI.LoadProducers.empty())
       OPI.Feasible = false;
+    return OPI;
+  }
+
+  if (AllPHIs) {
+    SmallVector<PHINode *> PHIs;
+    for (auto *V : *OP)
+      PHIs.push_back(cast<PHINode>(V));
+    OPI.Producers.push_back(VPCtx->createPhiPack(PHIs, TTI));
     return OPI;
   }
 

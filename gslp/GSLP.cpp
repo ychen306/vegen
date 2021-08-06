@@ -285,3 +285,7 @@ static void registerGSLP(const PassManagerBuilder &PMB,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
     RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
+
+static struct RegisterGSLP {
+  RegisterGSLP() { initializeGSLPPass(*PassRegistry::getPassRegistry()); }
+} X;
