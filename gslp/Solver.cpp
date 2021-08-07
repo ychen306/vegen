@@ -126,11 +126,15 @@ bool Print = false;
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
   Plan Best = P;
-  std::vector<const OperandPack *> Worklist{OP};
+  SmallVector<const OperandPack *> Worklist;
+  Worklist.push_back(OP);
+  SmallPtrSet<const OperandPack *, 4> Visited;
   while (!Worklist.empty()) {
     assert(P.verifyCost());
-    auto *OP = Worklist.back();
-    Worklist.pop_back();
+    auto *OP = Worklist.pop_back_val();
+
+    if (!Visited.insert(OP).second)
+      continue;
 
     // The packs we are adding
     SmallVector<const VectorPack *, 4> NewPacks = H.solve(OP).Packs;
@@ -147,7 +151,7 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
     for (const VectorPack *VP : NewPacks) {
       P.add(VP);
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
-      Worklist.insert(Worklist.end(), Operands.begin(), Operands.end());
+      Worklist.append(Operands.begin(), Operands.end());
     }
     if (P.cost() < Best.cost())
       Best = P;

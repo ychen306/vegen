@@ -335,6 +335,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
+  SmallVector<const VectorPack *> PHIPacks;
   for (BasicBlock *BB : RPO) {
     if (Packs[BB].empty())
       continue;
@@ -345,13 +346,20 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
     // Now generate code according to the schedule
     for (auto *VP : OrderedPacks) {
+      if (VP->isPHI())
+        PHIPacks.push_back(VP);
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
       unsigned OperandId = 0;
       for (auto *OP : VP->getOperandPacks()) {
         VP->setOperandGatherPoint(OperandId, Builder);
-        Operands.push_back(
-            gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
+        Value *Gathered;
+        // Just pass in undef for PHI nodes, we will patch them up later
+        if (VP->isPHI())
+          Gathered = UndefValue::get(getVectorType(*OP));
+        else
+          Gathered = gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
+        Operands.push_back(Gathered);
         OperandId++;
       }
 
@@ -397,6 +405,15 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
+    }
+  }
+
+  // Patch up the operands of the phi packs
+  for (auto *VP : PHIPacks) {
+    ArrayRef<OperandPack *> OPs = VP->getOperandPacks();
+    for (unsigned i = 0; i < OPs.size(); i++) {
+      Value *Gathered = gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
+      cast<Instruction>(MaterializedPacks[VP])->setOperand(i, Gathered);
     }
   }
 

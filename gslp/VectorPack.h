@@ -135,6 +135,8 @@ public:
 
   bool isLoad() const { return Kind == Load; }
 
+  bool isPHI() const { return Kind == Phi; }
+
   llvm::BasicBlock *getBasicBlock() const { return VPCtx->getBasicBlock(); }
 
   llvm::ArrayRef<llvm::Value *> getOrderedValues() const {

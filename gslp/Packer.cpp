@@ -189,19 +189,20 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
   bool AllPHIs = true;
   for (unsigned i = 0; i < NumLanes; i++) {
     auto *V = (*OP)[i];
+
+    AllPHIs &= isa_and_nonnull<PHINode>(V);
+    AllLoads &= isa_and_nonnull<LoadInst>(V);
+
     if (!V) {
       HasUndef = true;
       continue;
     }
-    auto *I = dyn_cast<Instruction>(V);
-    if (!I) {
-      AllLoads = false;
-      continue;
-    }
-    AllPHIs &= isa<PHINode>(V);
 
-    if (!isa<LoadInst>(I))
-      AllLoads = false;
+    auto *I = dyn_cast<Instruction>(V);
+    if (!I)
+      continue;
+
+    AllPHIs &= isa<PHINode>(V);
 
     if (!I || I->getParent() != BB) {
       OPI.Feasible = false;

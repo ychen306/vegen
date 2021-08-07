@@ -1,6 +1,4 @@
 ; RUN: %opt -gslp %s -o - -S | FileCheck %s
-target triple = "x86_64-apple-macosx10.15.0"
-
 ; CHECK: entry:
 ; CHECK:   %tobool = icmp ne i32 %x, 0
 ; CHECK:   br i1 %tobool, label %if.then, label %if.else
@@ -24,6 +22,7 @@ target triple = "x86_64-apple-macosx10.15.0"
 ; CHECK-NEXT:   store <2 x i32> %4, <2 x i32>* %5, align 4, !tbaa !3
 ; CHECK-NEXT:   ret void
 
+target triple = "x86_64-apple-macosx10.15.0"
 
 ; Function Attrs: nounwind ssp uwtable
 define dso_local void @foo(i32 %x, i32* %a, i32* %b, i32* %c) #0 {
