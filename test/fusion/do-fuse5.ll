@@ -22,7 +22,7 @@
 ; DO_FUSION: for.body5:
 ; DO_FUSION-NEXT:   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
 ; DO_FUSION-NEXT:   %2 = load i32, i32* %arrayidx7, align 4
-; DO_FUSION-NEXT:   %mul = mul nsw i32 %2, %0
+; DO_FUSION-NEXT:   %mul = mul nsw i32 %2, %t0
 ; DO_FUSION-NEXT:   store i32 %mul, i32* %arrayidx7, align 4
 ; DO_FUSION-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
 ; DO_FUSION-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
@@ -47,6 +47,7 @@ for.cond.cleanup:                                 ; preds = %for.body, %entry
 
 inbetween:
   %0 = load i32, i32* %t2, align 4, !tbaa !3
+  %t0 = add i32 %0, 42
   br label %for.body5.preheader
 
 for.body5.preheader:                                  ; preds = %for.cond.cleanup
@@ -70,7 +71,7 @@ for.body5:                                        ; preds = %for.body5.preheader
   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv
   %2 = load i32, i32* %arrayidx7, align 4, !tbaa !3
-  %mul = mul nsw i32 %2, %0
+  %mul = mul nsw i32 %2, %t0
   store i32 %mul, i32* %arrayidx7, align 4, !tbaa !3
   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
