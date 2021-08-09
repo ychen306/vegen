@@ -4,10 +4,15 @@
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Analysis/AssumptionCache.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/PatternMatch.h"
@@ -97,7 +102,7 @@ Value *stripTrivialPHI(Value *V) {
 
 template <typename StartPattern>
 Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
-                                                 LoopInfo &LI) {
+                                                 LoopInfo &LI, ScalarEvolution &SE) {
   V = stripTrivialPHI(V);
 
   if (auto Kind = matchReduction(V, Pat, m_Value()))
@@ -105,10 +110,10 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 
   Value *V1, *V2;
   if (auto Kind = matchReduction(V, m_Value(V1), m_Value(V2))) {
-    auto Kind1 = matchReductionWithStartValue(V1, Pat, LI);
+    auto Kind1 = matchReductionWithStartValue(V1, Pat, LI, SE);
     if (Kind1 && *Kind1 == *Kind)
       return Kind;
-    auto Kind2 = matchReductionWithStartValue(V2, Pat, LI);
+    auto Kind2 = matchReductionWithStartValue(V2, Pat, LI, SE);
     if (Kind2 && *Kind2 == *Kind)
       return Kind;
   }
@@ -120,14 +125,16 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
   if (!L) {
     return None;
   }
+
   RecurrenceDescriptor RD;
-  if (!RecurrenceDescriptor::isReductionPHI(PN, L, RD))
+
+  if (!RecurrenceDescriptor::isReductionPHI(PN, L, &SE, RD))
     return None;
   if (match(RD.getRecurrenceStartValue().getValPtr(), Pat))
     return RD.getRecurrenceKind();
 
   auto Kind =
-      matchReductionWithStartValue(RD.getRecurrenceStartValue(), Pat, LI);
+      matchReductionWithStartValue(RD.getRecurrenceStartValue(), Pat, LI, SE);
   if (!Kind || *Kind != RD.getRecurrenceKind()) {
     return None;
   }
@@ -141,12 +148,12 @@ Optional<RecurKind> matchReductionWithStartValue(Value *V, StartPattern Pat,
 // original store
 // FIXME: the value being stored should have no outside user
 static Optional<RecurKind>
-matchReductionForStore(StoreInst *SI, LoadInst *&Load, LoopInfo &LI) {
+matchReductionForStore(StoreInst *SI, LoadInst *&Load, LoopInfo &LI, ScalarEvolution &SE) {
   Load = nullptr;
   auto TheLoad =
       m_Capture(m_OneUse(m_Load(m_Specific(SI->getPointerOperand()))), Load);
   Optional<RecurKind> Kind =
-      matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI);
+      matchReductionWithStartValue(SI->getValueOperand(), TheLoad, LI, SE);
   assert(!Kind || Load);
   return Kind;
 }
@@ -166,12 +173,12 @@ static StoreInst *findSink(LoadInst *LI, DominatorTree &DT,
 static Optional<RecurKind> matchReductionForLoad(LoadInst *Load, StoreInst *&SI,
                                                  DominatorTree &DT,
                                                  PostDominatorTree &PDT,
-                                                 LoopInfo &LI) {
+                                                 LoopInfo &LI, ScalarEvolution &SE) {
   SI = findSink(Load, DT, PDT);
   if (!SI)
     return None;
   LoadInst *TheLoad;
-  Optional<RecurKind> Kind = matchReductionForStore(SI, TheLoad, LI);
+  Optional<RecurKind> Kind = matchReductionForStore(SI, TheLoad, LI, SE);
   if (!Kind || TheLoad != Load)
     return None;
   return Kind;
@@ -179,7 +186,7 @@ static Optional<RecurKind> matchReductionForLoad(LoadInst *Load, StoreInst *&SI,
 
 static void collectMemoryAccesses(
     BasicBlock *BB, LoopInfo &LI, SmallVectorImpl<Instruction *> &Accesses,
-    DenseMap<Instruction *, RecurKind> &ReductionKinds, bool &UnsafeToFuse) {
+    DenseMap<Instruction *, RecurKind> &ReductionKinds, bool &UnsafeToFuse, ScalarEvolution &SE) {
   if (BB->hasAddressTaken()) {
     UnsafeToFuse = true;
     return;
@@ -205,7 +212,7 @@ static void collectMemoryAccesses(
 
     if (SI) {
       LoadInst *Load;
-      if (Optional<RecurKind> Kind = matchReductionForStore(SI, Load, LI)) {
+      if (Optional<RecurKind> Kind = matchReductionForStore(SI, Load, LI, SE)) {
         ReductionKinds[SI] = *Kind;
         ReductionKinds[Load] = *Kind;
       }
@@ -394,18 +401,18 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // we also assume L1 comes before L2.
 static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
                               DependenceInfo &DI, DominatorTree &DT,
-                              PostDominatorTree &PDT) {
+                              PostDominatorTree &PDT, ScalarEvolution &SE) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
   bool UnsafeToFuse = false;
   for (auto *BB : L1->blocks()) {
-    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse, SE);
     if (UnsafeToFuse)
       return false;
   }
   for (auto *BB : L2->blocks()) {
-    collectMemoryAccesses(BB, LI, Accesses2, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses2, ReductionKinds, UnsafeToFuse, SE);
     if (UnsafeToFuse)
       return false;
   }
@@ -418,7 +425,7 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
   BasicBlock *L1Entry = getLoopEntry(L1);
 
   for (BasicBlock *BB : IntermediateBlocks) {
-    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse);
+    collectMemoryAccesses(BB, LI, Accesses1, ReductionKinds, UnsafeToFuse, SE);
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
@@ -492,8 +499,8 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
-    if ((OneBeforeTwo && !checkDependencies(L1, L2, LI, DI, DT, PDT)) ||
-        (!OneBeforeTwo && !checkDependencies(L2, L1, LI, DI, DT, PDT))) {
+    if ((OneBeforeTwo && !checkDependencies(L1, L2, LI, DI, DT, PDT, SE)) ||
+        (!OneBeforeTwo && !checkDependencies(L2, L1, LI, DI, DT, PDT, SE))) {
       errs() << "Loops are dependent (memory)\n";
       return true;
     }
@@ -524,7 +531,7 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-                PostDominatorTree &PDT, DependenceInfo &DI) {
+                PostDominatorTree &PDT, DependenceInfo &DI, ScalarEvolution &SE) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 
@@ -533,7 +540,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   auto *L2Parent = L2->getParentLoop();
   if (L1Parent != L2Parent) {
     assert(L1Parent && L2Parent && "L1 and L2 not nested evenly");
-    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, DI);
+    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, DI, SE);
     L1->verifyLoop();
     L2->verifyLoop();
   }
@@ -581,7 +588,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         Optional<RecurKind> Kind = None;
         StoreInst *Store = nullptr;
         if (Load)
-          Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
+          Kind = matchReductionForLoad(Load, Store, DT, PDT, LI, SE);
         if (Kind) {
           assert(Store);
           // Remember this reduction, and sink the load instead.
