@@ -693,6 +693,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   // Hoist L2's dependencies
   for (Instruction *I : OrderedL2Dependencies) {
+    // FIXME: abort if the InsertPt is not control-equivalent to I
     Instruction *InsertPt =
         DT.findNearestCommonDominator(I->getParent(), L2Preheader)
             ->getTerminator();
