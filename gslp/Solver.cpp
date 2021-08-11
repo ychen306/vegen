@@ -21,8 +21,8 @@ static unsigned getBitWidth(Value *V, const DataLayout *DL) {
   if (Ty->isDoubleTy())
     return 64;
   auto *PtrTy = dyn_cast<PointerType>(Ty);
-  assert(PtrTy && "unsupported value type");
   return 64;
+  assert(PtrTy && "unsupported value type");
   return DL->getPointerSizeInBits(PtrTy->getAddressSpace());
 }
 
