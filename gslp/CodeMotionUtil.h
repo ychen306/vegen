@@ -39,4 +39,6 @@ void findDependencies(llvm::Instruction *I, llvm::BasicBlock *Earliest,
                       llvm::DependenceInfo &DI,
                       llvm::SmallPtrSetImpl<llvm::Instruction *> &Depended);
 
+bool comesBefore(llvm::BasicBlock *, llvm::BasicBlock *, llvm::Loop *);
+
 #endif // CODE_MOTION_UTIL_H

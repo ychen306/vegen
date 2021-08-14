@@ -467,11 +467,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   }
 
   // If L1 doesn't come before L2, swap them.
-  SkipBackEdge SBE(L1->getParentLoop());
-  bool L1BeforeL2 =
-      any_of(depth_first_ext(L1->getExitBlock(), SBE),
-             [L2](BasicBlock *BB) { return BB == L2->getHeader(); });
-  if (!L1BeforeL2) {
+  if (!comesBefore(L1->getExitBlock(), L2->getHeader(), L1->getParentLoop())) {
     std::swap(L1, L2);
     L1Parent = L1->getParentLoop();
     L2Parent = L2->getParentLoop();

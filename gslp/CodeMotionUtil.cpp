@@ -5,6 +5,14 @@
 
 using namespace llvm;
 
+bool comesBefore(BasicBlock *BB1, BasicBlock *BB2, Loop *ParentLoop) {
+  SkipBackEdge SBE(ParentLoop);
+  for (auto *BB : depth_first_ext(BB1, SBE))
+    if (BB == BB2)
+      return true;
+  return false;
+}
+
 void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
                               Loop *ParentLoop,
                               SmallPtrSetImpl<Instruction *> &InBetweenInsts) {
@@ -69,4 +77,5 @@ void findDependencies(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
 
 void hoistTo(Instruction *I, BasicBlock *BB, DominatorTree &DT,
              Loop *ParentLoop, DependenceInfo &DI,
-             EquivalenceClasses<Instruction *> CoupledInsts) {}
+             EquivalenceClasses<Instruction *> CoupledInsts) {
+}
