@@ -8,6 +8,7 @@ set(LIB_PACKING_SRC
 
   ControlEquivalence.cpp
   LoopFusion.cpp
+  CodeMotionUtil.cpp
 
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IntrinsicBuilder.cpp
