@@ -135,24 +135,24 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   SmallPtrSet<Instruction *, 16> Dependences;
   findDependencies(I, BB, L, DT, DI, Dependences);
 
-  // Hoist the dependences of `I` to a place that dominates BB
+  // Hoist the dependences of `I` to a place that dominates `BB`
   for (Instruction *Dep : Dependences) {
-    // Don't need to hoist the dependence if it already dominates BB
+    // Don't need to hoist the dependence if it already dominates `BB`
     if (DT.dominates(Dep, BB))
       continue;
 
     SmallVector<Instruction *> Coupled = getMembers(CoupledInsts, Dep);
-    // Find a common dominator for the instructions (which we need to hoist as well)
-    // coupled with `Dep`.
+    // Find a common dominator for the instructions (which we need to hoist as
+    // well) coupled with `Dep`.
     BasicBlock *Dominator = BB;
     for (Instruction *I2 : Coupled) {
-      Dominator = findCompatibleDominatorFor(I2, Dominator, LI, DT,
-                                             PDT, SE, DI);
+      Dominator =
+          findCompatibleDominatorFor(I2, Dominator, LI, DT, PDT, SE, DI);
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
     // Hoist `Dep` and its coupled instructions to the common dominator
-    for (Instruction *I2: Coupled)
+    for (Instruction *I2 : Coupled)
       hoistTo(I2, Dominator, LI, SE, DT, PDT, DI, CoupledInsts);
   }
   I->moveBefore(BB->getTerminator());
@@ -170,13 +170,13 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
       isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT))
     return false;
 
+  // Find dependences of `I` that comes after `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
   findDependencies(I, BB, findCommonParentLoop(I->getParent(), BB, LI), DT, DI,
                    Dependences);
 
   for (Instruction *Dep : Dependences)
-    if (!DT.dominates(Dep->getParent(), BB) &&
-        !findCompatibleDominatorFor(Dep, BB, LI, DT, PDT, SE, DI))
+    if (!findCompatibleDominatorFor(Dep, BB, LI, DT, PDT, SE, DI))
       return false;
 
   return true;
