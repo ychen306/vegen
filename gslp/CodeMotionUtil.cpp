@@ -126,7 +126,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   assert(LoopForI == LoopForBB ||
          !isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT));
   if (LoopForI != LoopForBB)
-    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, DI);
+    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, DI, SE);
 
   Loop *L = LI.getLoopFor(I->getParent());
   assert(L == LI.getLoopFor(BB) && "loop-fusion failed");
