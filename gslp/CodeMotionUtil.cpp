@@ -125,18 +125,21 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   Loop *LoopForBB = LI.getLoopFor(BB);
   assert(LoopForI == LoopForBB ||
          !isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT));
-  fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, DI);
+  if (LoopForI != LoopForBB)
+    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, DI);
 
   Loop *L = LI.getLoopFor(I->getParent());
   assert(L == LI.getLoopFor(BB) && "loop-fusion failed");
-  assert(comesBefore(I->getParent(), BB, L));
+  assert(comesBefore(BB, I->getParent(), L));
 
   // TODO: order the dependences in topological order for efficiency
   SmallPtrSet<Instruction *, 16> Dependences;
   findDependencies(I, BB, L, DT, DI, Dependences);
 
-  // Hoist the dependences of `I` to a place that dominates `BB`
   for (Instruction *Dep : Dependences) {
+    if (Dep == I)
+      continue;
+
     // Don't need to hoist the dependence if it already dominates `BB`
     if (DT.dominates(Dep, BB))
       continue;
@@ -176,7 +179,7 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
                    Dependences);
 
   for (Instruction *Dep : Dependences)
-    if (!findCompatibleDominatorFor(Dep, BB, LI, DT, PDT, SE, DI))
+    if (Dep != I && !findCompatibleDominatorFor(Dep, BB, LI, DT, PDT, SE, DI))
       return false;
 
   return true;
