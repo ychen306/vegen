@@ -1,9 +1,10 @@
 ; RUN: %opt -test-code-motion -inst-group=a,b %s -o - -S | FileCheck %s
 
-; CHECK: if.then:
-; CHECK-NEXT: %a = add i32 1, 2
-; CHECK-NEXT: %b = add i32 3, 4
-; CHECK-NEXT: br label %if.end
+; CHECK: if.end:
+; CHECK-NEXT:  %x = phi i32 [ 0, %if.then ], [ 1, %entry ]
+; CHECK-NEXT:  %y = phi i32 [ 2, %if.then ], [ 3, %entry ]
+; CHECK-NEXT:  %a = add i32 %x, 1
+; CHECK-NEXT:  %b = add i32 %y, 2
 
 define dso_local void @foo() {
 entry:
@@ -21,7 +22,7 @@ if.then2:
   br label %if.end2
 
 if.end2:
-  %y = phi i32 [ 0, %if.then2 ], [ 1, %if.end ]
+  %y = phi i32 [ 2, %if.then2 ], [ 3, %if.end ]
   %b = add i32 %y, 2
   ret void
 }

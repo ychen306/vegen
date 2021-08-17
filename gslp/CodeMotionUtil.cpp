@@ -161,8 +161,22 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     for (Instruction *I2 : Coupled)
       hoistTo(I2, Dominator, LI, SE, DT, PDT, DI, CoupledInsts);
   }
-  // FIXME: this doesn't work for phi nodes
-  I->moveBefore(BB->getTerminator());
+
+  auto *PN = dyn_cast<PHINode>(I);
+  if (!PN) {
+    I->moveBefore(BB->getTerminator());
+    return;
+  }
+
+  PN->moveBefore(BB->getFirstNonPHI());
+  // Replace the old incoming blocks with the control-equivalent preds of BB
+  for (BasicBlock *Incoming : PN->blocks())
+    for (BasicBlock *Pred : predecessors(BB))
+      if (isControlEquivalent(*Incoming, *Pred, DT, PDT)) {
+        PN->replaceIncomingBlockWith(Incoming, Pred);
+        break;
+      }
+  return;
 }
 
 bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
