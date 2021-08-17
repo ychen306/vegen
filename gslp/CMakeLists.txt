@@ -36,9 +36,8 @@ if(BUILD_TYPE STREQUAL "RELEASE")
     PROPERTIES COMPILE_FLAGS "-O0")
 endif()
 
-add_library(GSLP MODULE GSLP.cpp)
+add_library(GSLP MODULE GSLP.cpp TestCodeMotion.cpp)
 add_executable(test-loop-fusion TestLoopFusion.cpp)
-
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis scalaropts)
 
 target_link_libraries(GSLP Packing)
