@@ -151,6 +151,9 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     for (Instruction *I2 : Coupled) {
       Dominator =
           findCompatibleDominatorFor(I2, Dominator, LI, DT, PDT, SE, DI);
+      errs() << "???????? looking for dominator of "
+        << *BB
+        << "for " << *I2 << '\n';
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
@@ -158,6 +161,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     for (Instruction *I2 : Coupled)
       hoistTo(I2, Dominator, LI, SE, DT, PDT, DI, CoupledInsts);
   }
+  // FIXME: this doesn't work for phi nodes
   I->moveBefore(BB->getTerminator());
 }
 
