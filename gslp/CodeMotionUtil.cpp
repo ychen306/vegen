@@ -102,9 +102,11 @@ void findDependencies(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
     if (!Depended.insert(I).second)
       continue;
 
-    for (Value *V : I->operand_values())
-      if (auto *OpInst = dyn_cast<Instruction>(V))
+    for (Value *V : I->operand_values()) {
+      auto *OpInst = dyn_cast<Instruction>(V);
+      if (OpInst && comesBefore(OpInst, I, ParentLoop))
         Worklist.push_back(OpInst);
+    }
 
     for (auto *I2 : InBetweenInsts) {
       auto Dep = DI.depends(I2, I, true);
@@ -184,8 +186,9 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
       continue;
 
     // Don't need to hoist the dependence if it already comes before `BB`
-    if (!isa<PHINode>(I) && comesBefore(Dep, BB->getTerminator(), L))
-      continue;
+    if (comesBefore(Dep, BB->getTerminator(), L) &&
+        (!isa<PHINode>(I) || Dep->getParent() != BB))
+        continue;
 
     SmallVector<Instruction *> Coupled = getMembers(CoupledInsts, Dep);
     // Find a common dominator for the instructions (which we need to hoist as
@@ -222,6 +225,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   }
 }
 
+// FIXME: PHI-node should have a stricter compatibility criterion
 bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
                          DominatorTree &DT, PostDominatorTree &PDT,
                          ScalarEvolution &SE, DependenceInfo &DI) {
@@ -241,6 +245,7 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   findDependencies(I, BB, findCommonParentLoop(I->getParent(), BB, LI), DT, DI,
                    Dependences);
 
+  // TODO: ignore loop-carried dep
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
