@@ -1,7 +1,7 @@
 #include "LoopFusion.h"
+#include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
 #include "UseDefIterator.h"
-#include "CodeMotionUtil.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind

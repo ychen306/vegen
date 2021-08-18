@@ -1,5 +1,5 @@
-#include "LoopFusion.h"
 #include "CodeMotionUtil.h"
+#include "LoopFusion.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
