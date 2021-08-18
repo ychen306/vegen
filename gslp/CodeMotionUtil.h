@@ -7,6 +7,7 @@
 namespace llvm {
 class Instruction;
 class BasicBlock;
+class Function;
 class DominatorTree;
 class PostDominatorTree;
 class DependenceInfo;
@@ -43,11 +44,15 @@ bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *,
                          llvm::PostDominatorTree &, llvm::ScalarEvolution &,
                          llvm::DependenceInfo &);
 
+// If want to include dependences found in Earliest, set Inclusive=true
 void findDependencies(llvm::Instruction *I, llvm::BasicBlock *Earliest,
                       llvm::Loop *ParentLoop, llvm::DominatorTree &DT,
                       llvm::DependenceInfo &DI,
-                      llvm::SmallPtrSetImpl<llvm::Instruction *> &Depended);
+                      llvm::SmallPtrSetImpl<llvm::Instruction *> &Depended,
+                      bool Inclusive = false);
 
 bool comesBefore(llvm::BasicBlock *, llvm::BasicBlock *, llvm::Loop *);
+
+void fixDefUseDominance(llvm::Function *, llvm::DominatorTree &);
 
 #endif // CODE_MOTION_UTIL_H

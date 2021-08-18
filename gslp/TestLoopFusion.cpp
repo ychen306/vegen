@@ -1,4 +1,5 @@
 #include "LoopFusion.h"
+#include "CodeMotionUtil.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -107,6 +108,9 @@ bool TestLoopFusion::runOnFunction(Function &F) {
             PrintFusionLegality(Loops[i], Loops[j]);
       }
     }
+
+    if (DoFusion)
+      fixDefUseDominance(&F, DT);
     return DoFusion;
   }
 
@@ -122,6 +126,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
       if (DoFusion) {
         fuseLoops(L1, L2, LI, DT, PDT, DI);
+        fixDefUseDominance(&F, DT);
         return true;
       }
 

@@ -1,12 +1,22 @@
 ; RUN: %opt -test-code-motion -inst-group=a,b %s -o - -S | FileCheck %s
 
+; CHECK: if.end:
+; CHECK-NEXT:  %x = phi i32 [ %x.lcssa, %exit ], [ undef, %entry ]
+; CHECK-NEXT:  %y = phi i32 [ %y.lcssa, %exit ], [ undef, %entry ]
+; CHECK-NEXT:  %a = add i32 %x, 1
+; CHECK-NEXT:  %b = add i32 %y, 1
+
 define dso_local void @foo() {
 entry:
-  br i1 undef, label %header, label %if.end
+  %cond = icmp eq i32 0, 0
+  br i1 %cond, label %preheader, label %if.end
+
+preheader:
+  br label %header
 
 header:
   %x0 = load i32, i32* undef
-  br i1 undef, label %header, label %exit
+  br i1 false, label %header, label %exit
 
 exit:
   %x.lcssa = phi i32 [ %x0, %header ]
@@ -15,11 +25,14 @@ exit:
 if.end:
   %x = phi i32 [ %x.lcssa, %exit ], [ undef, %entry ]
   %a = add i32 %x, 1
-  br i1 undef, label %header2, label %if.end2
+  br i1 %cond, label %preheader2, label %if.end2
+
+preheader2:
+  br label %header2
 
 header2:
   %y0 = load i32, i32* undef
-  br i1 undef, label %header, label %exit2
+  br i1 false, label %header2, label %exit2
 
 exit2:
   %y.lcssa = phi i32 [ %y0, %header2 ]

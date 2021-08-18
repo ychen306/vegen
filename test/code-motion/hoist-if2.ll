@@ -16,10 +16,10 @@ if.then:
 if.end:
   %x = phi i32 [ 0, %if.then ], [ 1, %entry ]
   %a = add i32 %x, 1
+  %dep = load i32, i32* undef
   br i1 undef, label %if.then2, label %if.end2
 
 if.then2:
-  %dep = add i32 undef, undef
   br label %if.end2
 
 if.end2:

@@ -14,7 +14,6 @@
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -649,29 +648,30 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Go through the fused loop and find instructions not dominating their uses.
   // This happens when we move loops across branches (most notably their
   // original loop guards).
-  DenseMap<Instruction *, SmallVector<Instruction *, 4>> BrokenUseDefs;
-  for (auto *BB : L1->blocks())
-    for (auto &I : *BB) {
-      for (User *U : I.users()) {
-        auto *UserInst = dyn_cast<Instruction>(U);
-        if (UserInst && !L1->contains(UserInst) &&
-            !DT.dominates(&I, UserInst)) {
-          BrokenUseDefs[&I].push_back(UserInst);
-        }
-      }
-    }
-  for (auto &I : *L2Preheader) {
-    for (User *U : I.users()) {
-      auto *UserInst = dyn_cast<Instruction>(U);
-      if (UserInst && !DT.dominates(&I, UserInst)) {
-        BrokenUseDefs[&I].push_back(UserInst);
-      }
-    }
-  }
+  //DenseMap<Instruction *, SmallVector<Instruction *, 4>> BrokenUseDefs;
+  //for (auto *BB : L1->blocks())
+  //  for (auto &I : *BB) {
+  //    for (User *U : I.users()) {
+  //      auto *UserInst = dyn_cast<Instruction>(U);
+  //      if (UserInst && !L1->contains(UserInst) &&
+  //          !DT.dominates(&I, UserInst)) {
+  //        BrokenUseDefs[&I].push_back(UserInst);
+  //      }
+  //    }
+  //  }
+  //for (auto &I : *L2Preheader) {
+  //  for (User *U : I.users()) {
+  //    auto *UserInst = dyn_cast<Instruction>(U);
+  //    if (UserInst && !DT.dominates(&I, UserInst)) {
+  //      BrokenUseDefs[&I].push_back(UserInst);
+  //    }
+  //  }
+  //}
 
   // Don't bother fixing the SSA invariant (def dom use) directly.
   // Just circumvent SSA with allocas
   // and then turning the allocas into PHI nodes with PromoteMemToReg.
+#if 0
   SmallVector<AllocaInst *> Allocas;
   for (auto &KV : BrokenUseDefs) {
     Instruction *I = KV.first;
@@ -713,6 +713,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   assert(PDT.verify());
   LI.verify(DT);
   assert(!verifyFunction(*F, &errs()));
+#endif
 
   return L1;
 }
