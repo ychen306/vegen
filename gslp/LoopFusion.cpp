@@ -1,7 +1,7 @@
 #include "LoopFusion.h"
+#include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
 #include "UseDefIterator.h"
-#include "CodeMotionUtil.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
@@ -19,7 +19,6 @@
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -653,64 +652,6 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   if (L1Parent)
     L1Parent->addBasicBlockToLoop(L2Placeholder, LI);
 
-  // Go through the fused loop and find instructions not dominating their uses.
-  // This happens when we move loops across branches (most notably their
-  // original loop guards).
-  DenseMap<Instruction *, SmallVector<Instruction *, 4>> BrokenUseDefs;
-  for (auto *BB : L1->blocks())
-    for (auto &I : *BB) {
-      for (User *U : I.users()) {
-        auto *UserInst = dyn_cast<Instruction>(U);
-        if (UserInst && !L1->contains(UserInst) &&
-            !DT.dominates(&I, UserInst)) {
-          BrokenUseDefs[&I].push_back(UserInst);
-        }
-      }
-    }
-  for (auto &I : *L2Preheader) {
-    for (User *U : I.users()) {
-      auto *UserInst = dyn_cast<Instruction>(U);
-      if (UserInst && !DT.dominates(&I, UserInst)) {
-        BrokenUseDefs[&I].push_back(UserInst);
-      }
-    }
-  }
-
-  // Don't bother fixing the SSA invariant (def dom use) directly.
-  // Just circumvent SSA with allocas
-  // and then turning the allocas into PHI nodes with PromoteMemToReg.
-  SmallVector<AllocaInst *> Allocas;
-  for (auto &KV : BrokenUseDefs) {
-    Instruction *I = KV.first;
-    ArrayRef<Instruction *> Users = KV.second;
-
-    auto *Alloca = new AllocaInst(I->getType(), 0, I->getName() + ".mem",
-                                  &*F->getEntryBlock().getFirstInsertionPt());
-    new StoreInst(I, Alloca, I->getNextNode());
-    Allocas.push_back(Alloca);
-    for (Instruction *UserInst : Users) {
-      if (auto *PN = dyn_cast<PHINode>(UserInst)) {
-        // Need to do the reload in predecessor for the phinodes
-        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
-          Value *V = PN->getIncomingValue(i);
-          if (V != I)
-            continue;
-          auto *Reload = new LoadInst(
-              I->getType(), Alloca, I->getName() + ".reload",
-              PN->getIncomingBlock(i)->getTerminator() /*insert before*/);
-          PN->setIncomingValue(i, Reload);
-        }
-        continue;
-      }
-      auto *Reload =
-          new LoadInst(I->getType(), Alloca, I->getName() + ".reload",
-                       UserInst /*insert before*/);
-      UserInst->replaceUsesOfWith(I, Reload);
-    }
-  }
-
-  PromoteMemToReg(Allocas, DT);
-
   assert(L1->getLoopPreheader() == L2Preheader);
   assert(L1->getHeader() == L1Header);
   assert(L1->getLoopLatch() == L2Latch);
@@ -719,7 +660,6 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   assert(DT.verify());
   assert(PDT.verify());
   LI.verify(DT);
-  assert(!verifyFunction(*F, &errs()));
 
   return L1;
 }

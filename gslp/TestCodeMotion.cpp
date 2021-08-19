@@ -78,7 +78,8 @@ bool TestCodeMotion::runOnFunction(Function &F) {
       CoupledInsts.unionSets(I, Insts.front());
   }
 
-  return false;
+  errs() << F << '\n';
+  return true;
 }
 
 INITIALIZE_PASS_BEGIN(TestCodeMotion, "test-code-motion", "test-code-motion",

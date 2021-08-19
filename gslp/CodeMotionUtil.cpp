@@ -1,20 +1,44 @@
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
 #include "LoopFusion.h"
+#include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
 using namespace llvm;
 
 bool comesBefore(BasicBlock *BB1, BasicBlock *BB2, Loop *ParentLoop) {
-  SkipBackEdge SBE(ParentLoop);
-  for (auto *BB : depth_first_ext(BB1, SBE))
+  SmallPtrSet<BasicBlock *, 8> Visited;
+  // mark the loop header as visited to avoid visiting the backedge
+  if (ParentLoop)
+    Visited.insert(ParentLoop->getHeader());
+
+  SmallVector<BasicBlock *, 8> Worklist;
+  Worklist.append(succ_begin(BB1), succ_end(BB1));
+
+  while (!Worklist.empty()) {
+    BasicBlock *BB = Worklist.pop_back_val();
+    if (!Visited.insert(BB).second)
+      continue;
     if (BB == BB2)
       return true;
+    Worklist.append(succ_begin(BB), succ_end(BB));
+  }
   return false;
+}
+
+static bool comesBefore(Instruction *I1, Instruction *I2, Loop *ParentLoop) {
+  BasicBlock *BB1 = I1->getParent();
+  BasicBlock *BB2 = I2->getParent();
+  if (BB1 == BB2)
+    return I1->comesBefore(I2);
+  return comesBefore(BB1, BB2, ParentLoop);
 }
 
 void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
@@ -47,13 +71,21 @@ void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
     for (auto &I2 : *BB)
       InBetweenInsts.insert(&I2);
   }
+
+  for (auto &I2 : *I->getParent()) {
+    if (!I2.comesBefore(I))
+      break;
+    InBetweenInsts.insert(&I2);
+  }
 }
 
 // FIXME: treat reduction as special cases
+// FIXME: ignore cycles backedge coming from phi nodes
 // Find instructions from `Earliest until `I that `I depends on
 void findDependencies(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
                       DominatorTree &DT, DependenceInfo &DI,
-                      SmallPtrSetImpl<Instruction *> &Depended) {
+                      SmallPtrSetImpl<Instruction *> &Depended,
+                      bool Inclusive) {
   SmallPtrSet<Instruction *, 16> InBetweenInsts;
   getInBetweenInstructions(I, Earliest, ParentLoop, InBetweenInsts);
 
@@ -61,15 +93,20 @@ void findDependencies(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
   while (!Worklist.empty()) {
     Instruction *I = Worklist.pop_back_val();
 
-    if (DT.dominates(I, Earliest->getTerminator()))
+    if (!Inclusive && DT.dominates(I, Earliest->getTerminator()))
+      continue;
+
+    if (Inclusive && DT.properlyDominates(I->getParent(), Earliest))
       continue;
 
     if (!Depended.insert(I).second)
       continue;
 
-    for (Value *V : I->operand_values())
-      if (auto *OpInst = dyn_cast<Instruction>(V))
+    for (Value *V : I->operand_values()) {
+      auto *OpInst = dyn_cast<Instruction>(V);
+      if (OpInst && comesBefore(OpInst, I, ParentLoop))
         Worklist.push_back(OpInst);
+    }
 
     for (auto *I2 : InBetweenInsts) {
       auto Dep = DI.depends(I2, I, true);
@@ -96,14 +133,19 @@ static BasicBlock *getIDom(DominatorTree &DT, BasicBlock *BB) {
 }
 
 // Find a dominator for BB that's also control-compatible for I
-static BasicBlock *findCompatibleDominatorFor(Instruction *I, BasicBlock *BB,
-                                              LoopInfo &LI, DominatorTree &DT,
-                                              PostDominatorTree &PDT,
-                                              ScalarEvolution &SE,
-                                              DependenceInfo &DI) {
-  for (; BB; BB = getIDom(DT, BB))
-    if (isControlCompatible(I, BB, LI, DT, PDT, SE, DI))
-      return BB;
+static BasicBlock *
+findCompatiblePredecessorsFor(Instruction *I, BasicBlock *BB, LoopInfo &LI,
+                              DominatorTree &DT, PostDominatorTree &PDT,
+                              ScalarEvolution &SE, DependenceInfo &DI,
+                              bool Inclusive = true) {
+  Loop *ParentLoop = findCommonParentLoop(I->getParent(), BB, LI);
+  SkipBackEdge SBE(ParentLoop);
+  for (BasicBlock *Pred : inverse_depth_first_ext(BB, SBE)) {
+    if (!Inclusive && Pred == BB)
+      continue;
+    if (isControlCompatible(I, Pred, LI, DT, PDT, SE, DI))
+      return Pred;
+  }
   return nullptr;
 }
 
@@ -120,6 +162,8 @@ SmallVector<T> getMembers(const EquivalenceClasses<T> &EC, T X) {
 void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
              DominatorTree &DT, PostDominatorTree &PDT, DependenceInfo &DI,
              const EquivalenceClasses<Instruction *> &CoupledInsts) {
+  if (I->getParent() == BB)
+    return;
   // If I and BB are not in the same inner-loop, fuse the loops first
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
@@ -130,27 +174,31 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
 
   Loop *L = LI.getLoopFor(I->getParent());
   assert(L == LI.getLoopFor(BB) && "loop-fusion failed");
-  assert(comesBefore(BB, I->getParent(), L));
 
   // TODO: order the dependences in topological order for efficiency
   SmallPtrSet<Instruction *, 16> Dependences;
-  findDependencies(I, BB, L, DT, DI, Dependences);
+  findDependencies(
+      I, BB, L, DT, DI, Dependences,
+      isa<PHINode>(I) /* include the dep found in BB if it's a phi node*/);
 
   for (Instruction *Dep : Dependences) {
     if (Dep == I)
       continue;
 
-    // Don't need to hoist the dependence if it already dominates `BB`
-    if (DT.dominates(Dep, BB))
-      continue;
+    // Don't need to hoist the dependence if it already comes before `BB`
+    if (comesBefore(Dep, BB->getTerminator(), L) &&
+        (!isa<PHINode>(I) || Dep->getParent() != BB))
+        continue;
 
     SmallVector<Instruction *> Coupled = getMembers(CoupledInsts, Dep);
     // Find a common dominator for the instructions (which we need to hoist as
     // well) coupled with `Dep`.
     BasicBlock *Dominator = BB;
     for (Instruction *I2 : Coupled) {
-      Dominator =
-          findCompatibleDominatorFor(I2, Dominator, LI, DT, PDT, SE, DI);
+      // We need to hoist the dependence of a phi node *before* the target block
+      bool Inclusive = !isa<PHINode>(I);
+      Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, SE,
+                                                DI, Inclusive);
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
@@ -158,9 +206,26 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     for (Instruction *I2 : Coupled)
       hoistTo(I2, Dominator, LI, SE, DT, PDT, DI, CoupledInsts);
   }
-  I->moveBefore(BB->getTerminator());
+
+  auto *PN = dyn_cast<PHINode>(I);
+  if (!PN) {
+    I->moveBefore(BB->getTerminator());
+    return;
+  }
+
+  PN->moveBefore(BB->getFirstNonPHI());
+  // Replace the old incoming blocks with the control-equivalent preds of BB
+  for (BasicBlock *Incoming : PN->blocks()) {
+    auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
+      return isControlEquivalent(*Incoming, *Pred, DT, PDT);
+    });
+    assert(PredIt != pred_end(BB) &&
+           "can't find equivalent incoming for hoisted phi");
+    PN->replaceIncomingBlockWith(Incoming, *PredIt);
+  }
 }
 
+// FIXME: PHI-node should have a stricter compatibility criterion
 bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
                          DominatorTree &DT, PostDominatorTree &PDT,
                          ScalarEvolution &SE, DependenceInfo &DI) {
@@ -169,6 +234,8 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
 
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
+  if ((bool)LoopForI ^ (bool)LoopForBB)
+    return false;
   if (LoopForI != LoopForBB &&
       isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT))
     return false;
@@ -178,9 +245,75 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   findDependencies(I, BB, findCommonParentLoop(I->getParent(), BB, LI), DT, DI,
                    Dependences);
 
-  for (Instruction *Dep : Dependences)
-    if (Dep != I && !findCompatibleDominatorFor(Dep, BB, LI, DT, PDT, SE, DI))
+  // TODO: ignore loop-carried dep
+  for (Instruction *Dep : Dependences) {
+    // We need to hoist the dependences of a phi node into a proper predecessor
+    bool Inclusive = !isa<PHINode>(I);
+    if (Dep != I &&
+        !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, SE, DI, Inclusive))
       return false;
+  }
 
   return true;
+}
+
+void fixDefUseDominance(Function *F, DominatorTree &DT) {
+  // Find instructions not dominating their uses.
+  // This happens when we move things across branches.
+  DenseMap<Instruction *, SmallVector<Instruction *, 4>> BrokenUseDefs;
+  for (Instruction &I : instructions(F)) {
+    for (User *U : I.users()) {
+      // Special case when the user is a phi-node
+      if (auto *PN = dyn_cast<PHINode>(U)) {
+        BasicBlock *IncomingBlock;
+        Value *IncomingValue;
+        for (auto Incoming : zip(PN->blocks(), PN->incoming_values())) {
+          std::tie(IncomingBlock, IncomingValue) = Incoming;
+          if (IncomingValue == &I &&
+              !DT.dominates(I.getParent(), IncomingBlock)) {
+            BrokenUseDefs[&I].push_back(PN);
+            break;
+          }
+        }
+        continue;
+      }
+
+      auto *UserInst = dyn_cast<Instruction>(U);
+      if (UserInst && !DT.dominates(&I, UserInst))
+        BrokenUseDefs[&I].push_back(UserInst);
+    }
+  }
+
+  SmallVector<AllocaInst *> Allocas;
+  for (auto &KV : BrokenUseDefs) {
+    Instruction *I = KV.first;
+    ArrayRef<Instruction *> Users = KV.second;
+
+    auto *Alloca = new AllocaInst(I->getType(), 0, I->getName() + ".mem",
+                                  &*F->getEntryBlock().getFirstInsertionPt());
+    new StoreInst(I, Alloca, I->getNextNode());
+    Allocas.push_back(Alloca);
+    for (Instruction *UserInst : Users) {
+      if (auto *PN = dyn_cast<PHINode>(UserInst)) {
+        // Need to do the reload in predecessor for the phinodes
+        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
+          Value *V = PN->getIncomingValue(i);
+          if (V != I)
+            continue;
+          auto *Reload = new LoadInst(
+              I->getType(), Alloca, I->getName() + ".reload",
+              PN->getIncomingBlock(i)->getTerminator() /*insert before*/);
+          PN->setIncomingValue(i, Reload);
+        }
+        continue;
+      }
+      auto *Reload =
+          new LoadInst(I->getType(), Alloca, I->getName() + ".reload",
+                       UserInst /*insert before*/);
+      UserInst->replaceUsesOfWith(I, Reload);
+    }
+  }
+
+  PromoteMemToReg(Allocas, DT);
+  assert(!verifyFunction(*F, &errs()));
 }
