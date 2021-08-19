@@ -13,6 +13,7 @@
 
 using namespace llvm;
 
+// FIXME: rewrite this to ignore *all* backedges
 bool comesBefore(BasicBlock *BB1, BasicBlock *BB2, Loop *ParentLoop) {
   SmallPtrSet<BasicBlock *, 8> Visited;
   // mark the loop header as visited to avoid visiting the backedge
@@ -82,10 +83,11 @@ void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
 // FIXME: treat reduction as special cases
 // FIXME: ignore cycles backedge coming from phi nodes
 // Find instructions from `Earliest until `I that `I depends on
-void findDependencies(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
-                      DominatorTree &DT, DependenceInfo &DI,
-                      SmallPtrSetImpl<Instruction *> &Depended,
-                      bool Inclusive) {
+// FIXME: rewrite this to ignore *all* backedges (i.e. 
+// FIXME: support Earliest being null
+void findDependences(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
+                     DominatorTree &DT, DependenceInfo &DI,
+                     SmallPtrSetImpl<Instruction *> &Depended, bool Inclusive) {
   SmallPtrSet<Instruction *, 16> InBetweenInsts;
   getInBetweenInstructions(I, Earliest, ParentLoop, InBetweenInsts);
 
@@ -170,15 +172,16 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   assert(LoopForI == LoopForBB ||
          !isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT));
   if (LoopForI != LoopForBB)
-    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, DI);
+    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, SE, DI);
 
   Loop *L = LI.getLoopFor(I->getParent());
   assert(L == LI.getLoopFor(BB) && "loop-fusion failed");
 
   // TODO: order the dependences in topological order for efficiency
   SmallPtrSet<Instruction *, 16> Dependences;
-  findDependencies(
-      I, BB, L, DT, DI, Dependences,
+  BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
+  findDependences(
+      I, Dominator, L, DT, DI, Dependences,
       isa<PHINode>(I) /* include the dep found in BB if it's a phi node*/);
 
   for (Instruction *Dep : Dependences) {
@@ -188,7 +191,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     // Don't need to hoist the dependence if it already comes before `BB`
     if (comesBefore(Dep, BB->getTerminator(), L) &&
         (!isa<PHINode>(I) || Dep->getParent() != BB))
-        continue;
+      continue;
 
     SmallVector<Instruction *> Coupled = getMembers(CoupledInsts, Dep);
     // Find a common dominator for the instructions (which we need to hoist as
@@ -240,10 +243,11 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
       isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT))
     return false;
 
-  // Find dependences of `I` that comes after `BB`
+  // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
-  findDependencies(I, BB, findCommonParentLoop(I->getParent(), BB, LI), DT, DI,
-                   Dependences);
+  BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
+  findDependences(I, Dominator, findCommonParentLoop(I->getParent(), BB, LI), DT, DI,
+                  Dependences);
 
   // TODO: ignore loop-carried dep
   for (Instruction *Dep : Dependences) {
@@ -255,6 +259,15 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   }
 
   return true;
+}
+
+bool isControlCompatible(Instruction *I1, Instruction *I2, LoopInfo &LI,
+                         DominatorTree &DT, PostDominatorTree &PDT,
+                         ScalarEvolution &SE, DependenceInfo &DI) {
+  Loop *ParentLoop = findCommonParentLoop(I1->getParent(), I2->getParent(), LI);
+  if (comesBefore(I1, I2, ParentLoop))
+    std::swap(I1, I2);
+  return isControlCompatible(I1, I2->getParent(), LI, DT, PDT, SE, DI);
 }
 
 void fixDefUseDominance(Function *F, DominatorTree &DT) {
@@ -316,4 +329,9 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
 
   PromoteMemToReg(Allocas, DT);
   assert(!verifyFunction(*F, &errs()));
+}
+
+void gatherInstructions(const EquivalenceClasses<Instruction *> &EC,
+                        LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
+                        ScalarEvolution &SE, DependenceInfo &DI) {
 }

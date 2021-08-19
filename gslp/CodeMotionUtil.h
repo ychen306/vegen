@@ -44,15 +44,27 @@ bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *,
                          llvm::PostDominatorTree &, llvm::ScalarEvolution &,
                          llvm::DependenceInfo &);
 
+bool isControlCompatible(llvm::Instruction *, llvm::Instruction *,
+                         llvm::LoopInfo &, llvm::DominatorTree &,
+                         llvm::PostDominatorTree &, llvm::ScalarEvolution &,
+                         llvm::DependenceInfo &);
+
 // If want to include dependences found in Earliest, set Inclusive=true
-void findDependencies(llvm::Instruction *I, llvm::BasicBlock *Earliest,
-                      llvm::Loop *ParentLoop, llvm::DominatorTree &DT,
-                      llvm::DependenceInfo &DI,
-                      llvm::SmallPtrSetImpl<llvm::Instruction *> &Depended,
-                      bool Inclusive = false);
+void findDependences(llvm::Instruction *I, llvm::BasicBlock *Earliest,
+                     llvm::Loop *ParentLoop, llvm::DominatorTree &DT,
+                     llvm::DependenceInfo &DI,
+                     llvm::SmallPtrSetImpl<llvm::Instruction *> &Depended,
+                     bool Inclusive = false);
 
 bool comesBefore(llvm::BasicBlock *, llvm::BasicBlock *, llvm::Loop *);
 
 void fixDefUseDominance(llvm::Function *, llvm::DominatorTree &);
+
+// Move code around so that instructions in the same equivalence class end up in
+// the same basic block
+void gatherInstructions(const llvm::EquivalenceClasses<llvm::Instruction *> &,
+                        llvm::LoopInfo &, llvm::DominatorTree &,
+                        llvm::PostDominatorTree &, llvm::ScalarEvolution &,
+                        llvm::DependenceInfo &);
 
 #endif // CODE_MOTION_UTIL_H

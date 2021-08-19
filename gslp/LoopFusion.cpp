@@ -451,7 +451,8 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-                PostDominatorTree &PDT, DependenceInfo &DI) {
+                PostDominatorTree &PDT, ScalarEvolution &SE,
+                DependenceInfo &DI) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 
@@ -460,7 +461,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   auto *L2Parent = L2->getParentLoop();
   if (L1Parent != L2Parent) {
     assert(L1Parent && L2Parent && "L1 and L2 not nested evenly");
-    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, DI);
+    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, SE, DI);
     L1->verifyLoop();
     L2->verifyLoop();
   }
@@ -527,8 +528,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           continue;
         }
 
-        findDependencies(&I, L1Preheader /*Earliest possible dep*/, L1Parent,
-                         DT, DI, L2Dependencies);
+        findDependences(&I, L1Preheader /*Earliest possible dep*/, L1Parent, DT,
+                        DI, L2Dependencies);
       }
     }
   }
@@ -625,6 +626,9 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
       I->moveBefore(InsertPt);
     }
   }
+
+  SE.forgetLoop(L1);
+  SE.forgetLoop(L2);
 
   // Merge L2 into L1
   SmallVector<BasicBlock *> L2Blocks(L2->blocks());
