@@ -413,16 +413,26 @@ void gatherInstructions(Function *F,
     if (Member.isLeader())
       Visit(Member.getData());
 
+  auto ComesBefore = [&LI](Instruction *I1, Instruction *I2) {
+    auto *L = findCommonParentLoop(I1->getParent(), I2->getParent(), LI);
+    return comesBefore(I1, I2, L);
+  };
+
   EquivalenceClasses<Instruction *> CoupledInsts;
   for (auto ClassIt : SortedClasses) {
-    auto Members = make_range(EC.member_begin(ClassIt), EC.member_end());
-    assert(ClassIt->isLeader());
-    Instruction *Leader = ClassIt->getData();
+    SmallVector<Instruction *, 8> Members(EC.member_begin(ClassIt),
+                                          EC.member_end());
+    stable_sort(Members, ComesBefore);
+    Instruction *Leader = Members.front();
     for (Instruction *I : drop_begin(Members)) {
+      if (I == Leader)
+        continue;
       assert(isControlCompatible(I, Leader->getParent(), LI, DT, PDT, DI, &SE));
       hoistTo(I, Leader->getParent(), LI, SE, DT, PDT, DI, CoupledInsts);
     }
-    for (Instruction *I : drop_begin(Members))
+    for (Instruction *I : Members)
       CoupledInsts.unionSets(Leader, I);
   }
+
+  fixDefUseDominance(F, DT);
 }

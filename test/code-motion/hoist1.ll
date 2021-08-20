@@ -1,4 +1,5 @@
 ; RUN: %opt -test-code-motion -inst-group=a,b %s -o - -S | FileCheck %s
+; RUN: %opt -test-code-motion -gather -inst-group=a,b %s -o - -S | FileCheck %s
 
 ; CHECK: if.then:
 ; CHECK-NEXT: %a = add i32 1, 2

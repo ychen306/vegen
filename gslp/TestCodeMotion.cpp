@@ -22,6 +22,9 @@ namespace {
 cl::list<std::string> InstGroups("inst-group",
                                  cl::desc("instructions to group together"));
 
+cl::opt<bool> Gather("gather", cl::desc("use gatherInstructions"),
+                     cl::init(false));
+
 struct TestCodeMotion : public FunctionPass {
   static char ID;
 
@@ -58,7 +61,6 @@ bool TestCodeMotion::runOnFunction(Function &F) {
     return false;
 
   EquivalenceClasses<Instruction *> CoupledInsts;
-
   for (StringRef IG : InstGroups) {
     SmallVector<StringRef> InstNames;
     IG.split(InstNames, ',');
@@ -71,14 +73,18 @@ bool TestCodeMotion::runOnFunction(Function &F) {
       Insts.push_back(I);
     }
 
-    for (auto *I : drop_begin(Insts))
-      hoistTo(I, Insts.front()->getParent(), LI, SE, DT, PDT, DI, CoupledInsts);
+    if (!Gather)
+      for (auto *I : drop_begin(Insts))
+        hoistTo(I, Insts.front()->getParent(), LI, SE, DT, PDT, DI,
+                CoupledInsts);
 
     for (auto *I : drop_begin(Insts))
       CoupledInsts.unionSets(I, Insts.front());
   }
 
-  errs() << F << '\n';
+  if (Gather)
+    gatherInstructions(&F, CoupledInsts, LI, DT, PDT, SE, DI);
+
   return true;
 }
 
