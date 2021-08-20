@@ -27,7 +27,7 @@ struct SkipBackEdge : public llvm::df_iterator_default_set<llvm::BasicBlock *> {
 };
 
 void getInBetweenInstructions(
-    llvm::Instruction *I, llvm::BasicBlock *Earliest, llvm::Loop *ParentLoop,
+    llvm::Instruction *I, llvm::BasicBlock *Earliest, llvm::LoopInfo *,
     llvm::SmallPtrSetImpl<llvm::Instruction *> &InBetweenInsts);
 
 // Hoist an instruction to the end of a basic block.
@@ -51,7 +51,7 @@ bool isControlCompatible(llvm::Instruction *, llvm::Instruction *,
 
 // If want to include dependences found in Earliest, set Inclusive=true
 void findDependences(llvm::Instruction *I, llvm::BasicBlock *Earliest,
-                     llvm::Loop *ParentLoop, llvm::DominatorTree &DT,
+                     llvm::LoopInfo &LI, llvm::DominatorTree &DT,
                      llvm::DependenceInfo &DI,
                      llvm::SmallPtrSetImpl<llvm::Instruction *> &Depended,
                      bool Inclusive = false);

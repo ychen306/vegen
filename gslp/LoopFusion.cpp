@@ -255,7 +255,8 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 // Check if we can hoist `I` before `L`.
 // FIXME: this is broken in cases where with conditional load, which we cannot
 // hoist
-static bool isSafeToHoistBefore(Instruction *I, Loop *L, DominatorTree &DT,
+static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
+                                DominatorTree &DT,
                                 PostDominatorTree &PDT, DependenceInfo &DI) {
   BasicBlock *Header = L->getHeader();
   SmallVector<Instruction *> Worklist{I};
@@ -287,7 +288,7 @@ static bool isSafeToHoistBefore(Instruction *I, Loop *L, DominatorTree &DT,
     SmallPtrSet<Instruction *, 16> InBetweenInsts;
     // FIXME: this is broken because it considers spurious paths that are
     // infeasible.
-    getInBetweenInstructions(I, Header, L->getParentLoop(), InBetweenInsts);
+    getInBetweenInstructions(I, Header, &LI, InBetweenInsts);
 
     bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
     for (auto *I2 : InBetweenInsts) {
@@ -349,7 +350,7 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
-      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, DT, PDT, DI))
+      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, LI, DT, PDT, DI))
         return false;
   }
 
@@ -528,8 +529,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           continue;
         }
 
-        findDependences(&I, L1Preheader /*Earliest possible dep*/, L1Parent, DT,
-                        DI, L2Dependencies);
+        BasicBlock *Dominator = DT.findNearestCommonDominator(BB, L1Preheader);
+        findDependences(&I, Dominator/*Earliest possible dep*/, LI, DT, DI, L2Dependencies);
       }
     }
   }
