@@ -256,8 +256,8 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 // FIXME: this is broken in cases where with conditional load, which we cannot
 // hoist
 static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
-                                DominatorTree &DT,
-                                PostDominatorTree &PDT, DependenceInfo &DI) {
+                                DominatorTree &DT, PostDominatorTree &PDT,
+                                DependenceInfo &DI) {
   BasicBlock *Header = L->getHeader();
   SmallVector<Instruction *> Worklist{I};
   SmallPtrSet<Instruction *, 16> Visited;
@@ -530,7 +530,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         }
 
         BasicBlock *Dominator = DT.findNearestCommonDominator(BB, L1Preheader);
-        findDependences(&I, Dominator/*Earliest possible dep*/, LI, DT, DI, L2Dependencies);
+        findDependences(&I, Dominator /*Earliest possible dep*/, LI, DT, DI,
+                        L2Dependencies);
       }
     }
   }

@@ -42,7 +42,8 @@ static bool comesBefore(Instruction *I1, Instruction *I2, Loop *ParentLoop) {
   return comesBefore(BB1, BB2, ParentLoop);
 }
 
-static void getBlocksReachableFrom(BasicBlock *Earliest, SmallPtrSetImpl<BasicBlock *> &Reachable, 
+static void getBlocksReachableFrom(
+    BasicBlock *Earliest, SmallPtrSetImpl<BasicBlock *> &Reachable,
     const DenseSet<std::pair<BasicBlock *, BasicBlock *>> &BackEdges) {
   SmallVector<BasicBlock *> Worklist;
   SmallPtrSet<BasicBlock *, 16> Visited;
@@ -59,7 +60,8 @@ static void getBlocksReachableFrom(BasicBlock *Earliest, SmallPtrSetImpl<BasicBl
   }
 }
 
-static void getBlocksReaching(BasicBlock *Latest, SmallPtrSetImpl<BasicBlock *> &CanComeFrom,
+static void getBlocksReaching(
+    BasicBlock *Latest, SmallPtrSetImpl<BasicBlock *> &CanComeFrom,
     const DenseSet<std::pair<BasicBlock *, BasicBlock *>> &BackEdges) {
   SmallVector<BasicBlock *> Worklist;
   SmallPtrSet<BasicBlock *, 16> Visited;
@@ -77,7 +79,8 @@ static void getBlocksReaching(BasicBlock *Latest, SmallPtrSetImpl<BasicBlock *> 
 }
 
 void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
-                              LoopInfo *LI, SmallPtrSetImpl<Instruction *> &InBetweenInsts) {
+                              LoopInfo *LI,
+                              SmallPtrSetImpl<Instruction *> &InBetweenInsts) {
   DenseSet<std::pair<BasicBlock *, BasicBlock *>> BackEdges;
   if (LI) {
     for (Loop *L = LI->getLoopFor(I->getParent()); L; L = L->getParentLoop()) {
@@ -117,7 +120,7 @@ void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
 // FIXME: treat reduction as special cases
 // FIXME: ignore cycles backedge coming from phi nodes
 // Find instructions from `Earliest until `I that `I depends on
-// FIXME: rewrite this to ignore *all* backedges (i.e. 
+// FIXME: rewrite this to ignore *all* backedges (i.e.
 // FIXME: support Earliest being null
 void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
                      DominatorTree &DT, DependenceInfo &DI,
@@ -372,5 +375,4 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
 
 void gatherInstructions(const EquivalenceClasses<Instruction *> &EC,
                         LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
-                        ScalarEvolution &SE, DependenceInfo &DI) {
-}
+                        ScalarEvolution &SE, DependenceInfo &DI) {}
