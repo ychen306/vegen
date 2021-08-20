@@ -69,7 +69,8 @@ void fixDefUseDominance(llvm::Function *, llvm::DominatorTree &);
 
 // Move code around so that instructions in the same equivalence class end up in
 // the same basic block
-void gatherInstructions(const llvm::EquivalenceClasses<llvm::Instruction *> &,
+void gatherInstructions(llvm::Function *,
+                        const llvm::EquivalenceClasses<llvm::Instruction *> &,
                         llvm::LoopInfo &, llvm::DominatorTree &,
                         llvm::PostDominatorTree &, llvm::ScalarEvolution &,
                         llvm::DependenceInfo &);
