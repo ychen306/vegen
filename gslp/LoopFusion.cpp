@@ -262,8 +262,9 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 // Check if we can hoist `I` before `L`.
 // FIXME: this is broken in cases where with conditional load, which we cannot
 // hoist
-static bool isSafeToHoistBefore(Instruction *I, Loop *L, DominatorTree &DT,
-                                PostDominatorTree &PDT, DependenceInfo &DI) {
+static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
+                                DominatorTree &DT, PostDominatorTree &PDT,
+                                DependenceInfo &DI) {
   BasicBlock *Header = L->getHeader();
   SmallVector<Instruction *> Worklist{I};
   SmallPtrSet<Instruction *, 16> Visited;
@@ -294,7 +295,7 @@ static bool isSafeToHoistBefore(Instruction *I, Loop *L, DominatorTree &DT,
     SmallPtrSet<Instruction *, 16> InBetweenInsts;
     // FIXME: this is broken because it considers spurious paths that are
     // infeasible.
-    getInBetweenInstructions(I, Header, L->getParentLoop(), InBetweenInsts);
+    getInBetweenInstructions(I, Header, &LI, InBetweenInsts);
 
     bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
     for (auto *I2 : InBetweenInsts) {
@@ -356,7 +357,7 @@ static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
-      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, DT, PDT, DI))
+      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, LI, DT, PDT, DI))
         return false;
   }
 
@@ -458,7 +459,8 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-                PostDominatorTree &PDT, DependenceInfo &DI, ScalarEvolution &SE) {
+                PostDominatorTree &PDT, ScalarEvolution &SE,
+                DependenceInfo &DI) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 
@@ -467,7 +469,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   auto *L2Parent = L2->getParentLoop();
   if (L1Parent != L2Parent) {
     assert(L1Parent && L2Parent && "L1 and L2 not nested evenly");
-    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, DI, SE);
+    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, SE, DI);
     L1->verifyLoop();
     L2->verifyLoop();
   }
@@ -534,8 +536,9 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           continue;
         }
 
-        findDependencies(&I, L1Preheader /*Earliest possible dep*/, L1Parent,
-                         DT, DI, L2Dependencies);
+        BasicBlock *Dominator = DT.findNearestCommonDominator(BB, L1Preheader);
+        findDependences(&I, Dominator /*Earliest possible dep*/, LI, DT, DI,
+                        L2Dependencies);
       }
     }
   }
@@ -632,6 +635,9 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
       I->moveBefore(InsertPt);
     }
   }
+
+  SE.forgetLoop(L1);
+  SE.forgetLoop(L2);
 
   // Merge L2 into L1
   SmallVector<BasicBlock *> L2Blocks(L2->blocks());

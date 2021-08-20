@@ -97,7 +97,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
       if (DoFusion) {
         for (unsigned i = 1; i < Loops.size(); i++) {
-          if (Loop *Fused = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, DI, SE)) {
+          if (Loop *Fused = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI)) {
             Loops[0] = Fused;
           } else
             llvm_unreachable("failed to fuse fusable loops");
@@ -125,7 +125,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
         continue;
 
       if (DoFusion) {
-        fuseLoops(L1, L2, LI, DT, PDT, DI, SE);
+        fuseLoops(L1, L2, LI, DT, PDT, SE, DI);
         fixDefUseDominance(&F, DT);
         return true;
       }

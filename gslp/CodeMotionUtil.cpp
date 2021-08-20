@@ -13,6 +13,7 @@
 
 using namespace llvm;
 
+// FIXME: rewrite this to ignore *all* backedges
 bool comesBefore(BasicBlock *BB1, BasicBlock *BB2, Loop *ParentLoop) {
   SmallPtrSet<BasicBlock *, 8> Visited;
   // mark the loop header as visited to avoid visiting the backedge
@@ -41,22 +42,59 @@ static bool comesBefore(Instruction *I1, Instruction *I2, Loop *ParentLoop) {
   return comesBefore(BB1, BB2, ParentLoop);
 }
 
+static void getBlocksReachableFrom(
+    BasicBlock *Earliest, SmallPtrSetImpl<BasicBlock *> &Reachable,
+    const DenseSet<std::pair<BasicBlock *, BasicBlock *>> &BackEdges) {
+  SmallVector<BasicBlock *> Worklist;
+  SmallPtrSet<BasicBlock *, 16> Visited;
+  auto ProcessSuccessors = [&](BasicBlock *BB) {
+    for (auto *Succ : successors(BB))
+      if (!BackEdges.count({BB, Succ}))
+        Worklist.push_back(Succ);
+  };
+  ProcessSuccessors(Earliest);
+  while (!Worklist.empty()) {
+    BasicBlock *BB = Worklist.pop_back_val();
+    if (Reachable.insert(BB).second)
+      ProcessSuccessors(BB);
+  }
+}
+
+static void getBlocksReaching(
+    BasicBlock *Latest, SmallPtrSetImpl<BasicBlock *> &CanComeFrom,
+    const DenseSet<std::pair<BasicBlock *, BasicBlock *>> &BackEdges) {
+  SmallVector<BasicBlock *> Worklist;
+  SmallPtrSet<BasicBlock *, 16> Visited;
+  auto ProcessPreds = [&](BasicBlock *BB) {
+    for (auto *Pred : predecessors(BB))
+      if (!BackEdges.count({Pred, BB}))
+        Worklist.push_back(Pred);
+  };
+  ProcessPreds(Latest);
+  while (!Worklist.empty()) {
+    BasicBlock *BB = Worklist.pop_back_val();
+    if (CanComeFrom.insert(BB).second)
+      ProcessPreds(BB);
+  }
+}
+
 void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
-                              Loop *ParentLoop,
+                              LoopInfo *LI,
                               SmallPtrSetImpl<Instruction *> &InBetweenInsts) {
-  // Figure out the blocks reaching I without taking the backedge of the parent
-  // loop
-  SkipBackEdge BackwardSBE(ParentLoop);
-  SmallPtrSet<BasicBlock *, 8> ReachesI;
-  for (auto *BB : inverse_depth_first_ext(I->getParent(), BackwardSBE))
-    ReachesI.insert(BB);
+  DenseSet<std::pair<BasicBlock *, BasicBlock *>> BackEdges;
+  if (LI) {
+    for (Loop *L = LI->getLoopFor(I->getParent()); L; L = L->getParentLoop()) {
+      assert(L->getLoopLatch() && "loop doesn't have unique latch");
+      BackEdges.insert({L->getLoopLatch(), L->getHeader()});
+    }
+  }
 
-  SkipBackEdge SBE(ParentLoop);
-  for (BasicBlock *BB : depth_first_ext(Earliest, SBE)) {
-    if (BB == Earliest)
-      continue;
+  SmallPtrSet<BasicBlock *, 16> ReachableFromEarliest, CanReachI;
+  getBlocksReachableFrom(Earliest, ReachableFromEarliest, BackEdges);
+  getBlocksReaching(I->getParent(), CanReachI, BackEdges);
 
-    if (!ReachesI.count(BB))
+  for (auto *BB : ReachableFromEarliest) {
+    if (BB == Earliest || !CanReachI.count(BB))
       continue;
 
     if (BB == I->getParent()) {
@@ -70,24 +108,25 @@ void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
 
     for (auto &I2 : *BB)
       InBetweenInsts.insert(&I2);
-  }
 
-  for (auto &I2 : *I->getParent()) {
-    if (!I2.comesBefore(I))
-      break;
-    InBetweenInsts.insert(&I2);
+    for (auto &I2 : *I->getParent()) {
+      if (!I2.comesBefore(I))
+        break;
+      InBetweenInsts.insert(&I2);
+    }
   }
 }
 
 // FIXME: treat reduction as special cases
 // FIXME: ignore cycles backedge coming from phi nodes
 // Find instructions from `Earliest until `I that `I depends on
-void findDependencies(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
-                      DominatorTree &DT, DependenceInfo &DI,
-                      SmallPtrSetImpl<Instruction *> &Depended,
-                      bool Inclusive) {
+// FIXME: rewrite this to ignore *all* backedges (i.e.
+// FIXME: support Earliest being null
+void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
+                     DominatorTree &DT, DependenceInfo &DI,
+                     SmallPtrSetImpl<Instruction *> &Depended, bool Inclusive) {
   SmallPtrSet<Instruction *, 16> InBetweenInsts;
-  getInBetweenInstructions(I, Earliest, ParentLoop, InBetweenInsts);
+  getInBetweenInstructions(I, Earliest, &LI, InBetweenInsts);
 
   SmallVector<Instruction *> Worklist{I};
   while (!Worklist.empty()) {
@@ -103,8 +142,14 @@ void findDependencies(Instruction *I, BasicBlock *Earliest, Loop *ParentLoop,
       continue;
 
     for (Value *V : I->operand_values()) {
+      // Ignore loop carried dependences, which can only come from phi nodes
       auto *OpInst = dyn_cast<Instruction>(V);
-      if (OpInst && comesBefore(OpInst, I, ParentLoop))
+      if (OpInst && DT.dominates(I, OpInst)) {
+        assert(isa<PHINode>(I));
+        continue;
+      }
+
+      if (OpInst)
         Worklist.push_back(OpInst);
     }
 
@@ -170,15 +215,16 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   assert(LoopForI == LoopForBB ||
          !isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT));
   if (LoopForI != LoopForBB)
-    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, DI, SE);
+    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, SE, DI);
 
   Loop *L = LI.getLoopFor(I->getParent());
   assert(L == LI.getLoopFor(BB) && "loop-fusion failed");
 
   // TODO: order the dependences in topological order for efficiency
   SmallPtrSet<Instruction *, 16> Dependences;
-  findDependencies(
-      I, BB, L, DT, DI, Dependences,
+  BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
+  findDependences(
+      I, Dominator, LI, DT, DI, Dependences,
       isa<PHINode>(I) /* include the dep found in BB if it's a phi node*/);
 
   for (Instruction *Dep : Dependences) {
@@ -188,7 +234,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     // Don't need to hoist the dependence if it already comes before `BB`
     if (comesBefore(Dep, BB->getTerminator(), L) &&
         (!isa<PHINode>(I) || Dep->getParent() != BB))
-        continue;
+      continue;
 
     SmallVector<Instruction *> Coupled = getMembers(CoupledInsts, Dep);
     // Find a common dominator for the instructions (which we need to hoist as
@@ -240,10 +286,10 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
       isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT))
     return false;
 
-  // Find dependences of `I` that comes after `BB`
+  // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
-  findDependencies(I, BB, findCommonParentLoop(I->getParent(), BB, LI), DT, DI,
-                   Dependences);
+  BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
+  findDependences(I, Dominator, LI, DT, DI, Dependences);
 
   // TODO: ignore loop-carried dep
   for (Instruction *Dep : Dependences) {
@@ -255,6 +301,15 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   }
 
   return true;
+}
+
+bool isControlCompatible(Instruction *I1, Instruction *I2, LoopInfo &LI,
+                         DominatorTree &DT, PostDominatorTree &PDT,
+                         ScalarEvolution &SE, DependenceInfo &DI) {
+  Loop *ParentLoop = findCommonParentLoop(I1->getParent(), I2->getParent(), LI);
+  if (comesBefore(I1, I2, ParentLoop))
+    std::swap(I1, I2);
+  return isControlCompatible(I1, I2->getParent(), LI, DT, PDT, SE, DI);
 }
 
 void fixDefUseDominance(Function *F, DominatorTree &DT) {
@@ -317,3 +372,7 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
   PromoteMemToReg(Allocas, DT);
   assert(!verifyFunction(*F, &errs()));
 }
+
+void gatherInstructions(const EquivalenceClasses<Instruction *> &EC,
+                        LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
+                        ScalarEvolution &SE, DependenceInfo &DI) {}
