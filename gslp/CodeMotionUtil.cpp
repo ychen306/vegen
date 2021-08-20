@@ -395,8 +395,7 @@ void gatherInstructions(Function *F,
     if (!Visited.insert(I).second)
       return;
 
-    // Find the dependences of all instructions belonging to the equivalence
-    // class
+    // Find the dependences of all instructions in the same EC
     SmallPtrSet<Instruction *, 16> Dependences;
     for (Instruction *I2 : getMembers(EC, I))
       findDependences(I2, &F->getEntryBlock(), LI, DT, DI, Dependences,
