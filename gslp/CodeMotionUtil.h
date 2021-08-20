@@ -41,13 +41,20 @@ void hoistTo(llvm::Instruction *, llvm::BasicBlock *, llvm::LoopInfo &,
 // Determine if it's possible move an instruction into another basic block
 bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *,
                          llvm::LoopInfo &, llvm::DominatorTree &,
-                         llvm::PostDominatorTree &, llvm::ScalarEvolution &,
-                         llvm::DependenceInfo &);
+                         llvm::PostDominatorTree &, llvm::DependenceInfo &,
+                         llvm::ScalarEvolution *);
 
 bool isControlCompatible(llvm::Instruction *, llvm::Instruction *,
                          llvm::LoopInfo &, llvm::DominatorTree &,
-                         llvm::PostDominatorTree &, llvm::ScalarEvolution &,
-                         llvm::DependenceInfo &);
+                         llvm::PostDominatorTree &, llvm::DependenceInfo &,
+                         llvm::ScalarEvolution *);
+
+// Find a dominator for BB that's also control-compatible for I
+llvm::BasicBlock *
+findCompatiblePredecessorsFor(llvm::Instruction *I, llvm::BasicBlock *BB,
+                              llvm::LoopInfo &, llvm::DominatorTree &,
+                              llvm::PostDominatorTree &, llvm::DependenceInfo &,
+                              llvm::ScalarEvolution *, bool Inclusive = true);
 
 // If want to include dependences found in Earliest, set Inclusive=true
 void findDependences(llvm::Instruction *I, llvm::BasicBlock *Earliest,

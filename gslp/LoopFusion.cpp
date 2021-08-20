@@ -2,6 +2,7 @@
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
 #include "UseDefIterator.h"
+#include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
@@ -258,49 +259,19 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
                                 DominatorTree &DT, PostDominatorTree &PDT,
                                 DependenceInfo &DI) {
-  BasicBlock *Header = L->getHeader();
-  SmallVector<Instruction *> Worklist{I};
-  SmallPtrSet<Instruction *, 16> Visited;
-  while (!Worklist.empty()) {
-    Instruction *I = Worklist.pop_back_val();
-    if (!Visited.insert(I).second)
-      continue;
-
-    // Don't need to hoist I if already before the loop
-    if (DT.dominates(I, Header->getTerminator()))
-      continue;
-
-    // Can't hoist stuff in the loop itself
-    if (L->contains(I->getParent()))
+  BasicBlock *Preheader = L->getLoopPreheader();
+  BasicBlock *Dominator =
+      DT.findNearestCommonDominator(I->getParent(), Preheader);
+  SmallPtrSet<Instruction *, 16> Dependences;
+  findDependences(I, Dominator, LI, DT, DI, Dependences);
+  // Make sure I is not loop-dependent on L
+  for (Instruction *Dep : Dependences)
+    if (L->contains(Dep->getParent()))
       return false;
-
-    // Assume we can't hoist branches
-    if (isa<PHINode>(I))
-      return false;
-
-    for (Value *V : I->operand_values())
-      if (auto *OpInst = dyn_cast<Instruction>(V))
-        Worklist.push_back(OpInst);
-
-    // If `I` reads or writes memory, we also need to check its memory
-    // dependencies Do this by collecting all intermediate instructions between
-    // BB and I
-    SmallPtrSet<Instruction *, 16> InBetweenInsts;
-    // FIXME: this is broken because it considers spurious paths that are
-    // infeasible.
-    getInBetweenInstructions(I, Header, &LI, InBetweenInsts);
-
-    bool SafeToSpeculate = isSafeToSpeculativelyExecute(I);
-    for (auto *I2 : InBetweenInsts) {
-      if (!SafeToSpeculate && I2->mayThrow())
-        return false;
-
-      auto Dep = DI.depends(I2, I, true);
-      if (Dep && !Dep->isInput())
-        Worklist.push_back(I2);
-    }
-  }
-  return true;
+  // See if we can find a block before (and including) the preheader to hoist I
+  // to
+  return findCompatiblePredecessorsFor(I, Preheader, LI, DT, PDT, DI,
+                                       nullptr /*scalar evolution*/);
 }
 
 static void
@@ -320,9 +291,9 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // Return true is *independent*
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
 // we also assume L1 comes before L2.
-static bool checkDependencies(Loop *L1, Loop *L2, LoopInfo &LI,
-                              DependenceInfo &DI, DominatorTree &DT,
-                              PostDominatorTree &PDT) {
+static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
+                             DependenceInfo &DI, DominatorTree &DT,
+                             PostDominatorTree &PDT) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
@@ -420,8 +391,8 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
-    if ((OneBeforeTwo && !checkDependencies(L1, L2, LI, DI, DT, PDT)) ||
-        (!OneBeforeTwo && !checkDependencies(L2, L1, LI, DI, DT, PDT))) {
+    if ((OneBeforeTwo && !checkDependences(L1, L2, LI, DI, DT, PDT)) ||
+        (!OneBeforeTwo && !checkDependences(L2, L1, LI, DI, DT, PDT))) {
       errs() << "Loops are dependent (memory)\n";
       return true;
     }
@@ -485,8 +456,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   // Find the set of instructions that L2 depends on and run after L1.
   // We need to hoist them before L1 and L2.
-  SmallPtrSet<Instruction *, 16> L2Dependencies;
-  DenseMap<Instruction *, SmallPtrSet<Instruction *, 8>> Users;
+  // SmallPtrSet<Instruction *, 16> L2Dependencies;
   // Keep track of code snippet that do something like `*x = *x + ...
   struct ReductionInfo {
     LoadInst *Load;
@@ -497,10 +467,11 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Find the blocks that run after L1 and before L2
   SmallVector<BasicBlock *, 8> IntermediateBlocks;
   getIntermediateBlocks(L1, L2, IntermediateBlocks);
+  SmallVector<Instruction *> InstsToHoist;
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
-        // Detect reduction, in which case we don't need to the hosit
+        // Detect reduction, in which case we don't need to the hoist
         // dependencies.
         auto *Load = dyn_cast<LoadInst>(&I);
         Optional<RecurKind> Kind = None;
@@ -529,9 +500,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           continue;
         }
 
-        BasicBlock *Dominator = DT.findNearestCommonDominator(BB, L1Preheader);
-        findDependences(&I, Dominator /*Earliest possible dep*/, LI, DT, DI,
-                        L2Dependencies);
+        InstsToHoist.push_back(&I);
       }
     }
   }
@@ -545,16 +514,6 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     Value *Rdx = emitReduction(RI.Kind, V, RI.Load, RI.Store /*insert before*/);
     RI.Store->replaceUsesOfWith(V, Rdx);
   }
-
-  // Compute a topological order for the dependencies we need to hoist.
-  SmallVector<Instruction *> OrderedL2Dependencies;
-  for (auto *BB : IntermediateBlocks)
-    for (auto &I : *BB)
-      if (L2Dependencies.count(&I)) {
-        assert(!isa<PHINode>(&I) &&
-               "can't fuse loops with intermediate phi deps");
-        OrderedL2Dependencies.push_back(&I);
-      }
 
   SmallVector<DominatorTree::UpdateType> CFGUpdates;
   auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
@@ -618,15 +577,11 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   PDT.applyUpdates(CFGUpdates);
 
   // Hoist L2's dependencies
-  for (Instruction *I : OrderedL2Dependencies) {
-    // FIXME: abort if the InsertPt is not control-equivalent to I
-    Instruction *InsertPt =
-        DT.findNearestCommonDominator(I->getParent(), L2Preheader)
-            ->getTerminator();
-    if (!DT.dominates(I, InsertPt)) {
-      assert(!I->isTerminator());
-      I->moveBefore(InsertPt);
-    }
+  for (Instruction *I : InstsToHoist) {
+    BasicBlock *Dest = findCompatiblePredecessorsFor(
+        I, L1Preheader, LI, DT, PDT, DI, nullptr /*scalar evolution*/);
+    assert(Dest && "can't find a place to hoist dep of L2");
+    hoistTo(I, Dest, LI, SE, DT, PDT, DI, EquivalenceClasses<Instruction *>());
   }
 
   SE.forgetLoop(L1);

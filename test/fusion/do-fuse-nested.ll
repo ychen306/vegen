@@ -9,8 +9,8 @@
 ; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %loop2.inner.preheader ], [ %indvars.iv.next, %loop2.inner.body ]
 
 ; DO_FUSION-NEXT:   %arrayidx6 = getelementptr inbounds i32, i32* %arrayidx, i64 %indvars.iv63
-; DO_FUSION-NEXT:   %2 = load i32, i32* %arrayidx6, align 4
-; DO_FUSION-NEXT:   %mul = shl nsw i32 %2, 1
+; DO_FUSION-NEXT:   [[TMP1:%.*]] = load i32, i32* %arrayidx6, align 4
+; DO_FUSION-NEXT:   %mul = shl nsw i32 [[TMP1]], 1
 ; DO_FUSION-NEXT:   store i32 %mul, i32* %arrayidx6, align 4
 ; DO_FUSION-NEXT:   %indvars.iv.next64 = add nuw nsw i64 %indvars.iv63, 1
 ; DO_FUSION-NEXT:   %exitcond66.not = icmp eq i64 %indvars.iv.next64, %wide.trip.count65
@@ -18,8 +18,8 @@
 
 ; DO_FUSION: loop2.inner.body:
 ; DO_FUSION-NEXT:   %arrayidx23 = getelementptr inbounds i32, i32* %arrayidx21, i64 %indvars.iv
-; DO_FUSION-NEXT:   %4 = load i32, i32* %arrayidx23, align 4
-; DO_FUSION-NEXT:   %mul24 = shl nsw i32 %4, 1
+; DO_FUSION-NEXT:   [[TMP2:%.*]] = load i32, i32* %arrayidx23, align 4
+; DO_FUSION-NEXT:   %mul24 = shl nsw i32 [[TMP2:%.*]], 1
 ; DO_FUSION-NEXT:   store i32 %mul24, i32* %arrayidx23, align 4
 ; DO_FUSION-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
 ; DO_FUSION-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count

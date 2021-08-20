@@ -177,18 +177,17 @@ static BasicBlock *getIDom(DominatorTree &DT, BasicBlock *BB) {
   return Node->getIDom()->getBlock();
 }
 
-// Find a dominator for BB that's also control-compatible for I
-static BasicBlock *
+BasicBlock *
 findCompatiblePredecessorsFor(Instruction *I, BasicBlock *BB, LoopInfo &LI,
                               DominatorTree &DT, PostDominatorTree &PDT,
-                              ScalarEvolution &SE, DependenceInfo &DI,
-                              bool Inclusive = true) {
+                              DependenceInfo &DI, ScalarEvolution *SE,
+                              bool Inclusive) {
   Loop *ParentLoop = findCommonParentLoop(I->getParent(), BB, LI);
   SkipBackEdge SBE(ParentLoop);
   for (BasicBlock *Pred : inverse_depth_first_ext(BB, SBE)) {
     if (!Inclusive && Pred == BB)
       continue;
-    if (isControlCompatible(I, Pred, LI, DT, PDT, SE, DI))
+    if (isControlCompatible(I, Pred, LI, DT, PDT, DI, SE))
       return Pred;
   }
   return nullptr;
@@ -243,8 +242,8 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     for (Instruction *I2 : Coupled) {
       // We need to hoist the dependence of a phi node *before* the target block
       bool Inclusive = !isa<PHINode>(I);
-      Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, SE,
-                                                DI, Inclusive);
+      Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, DI,
+                                                &SE, Inclusive);
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
@@ -274,16 +273,27 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
 // FIXME: PHI-node should have a stricter compatibility criterion
 bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
                          DominatorTree &DT, PostDominatorTree &PDT,
-                         ScalarEvolution &SE, DependenceInfo &DI) {
+                         DependenceInfo &DI, ScalarEvolution *SE) {
   if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
     return false;
+
+  // PHI nodes needs to have their incoming blocks equivalent to some predecessor of BB
+  if (auto *PN = dyn_cast<PHINode>(I)) {
+    for (BasicBlock *Incoming : PN->blocks()) {
+      auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
+          return isControlEquivalent(*Incoming, *Pred, DT, PDT);
+          });
+      if (PredIt == pred_end(BB))
+        return false;
+    }
+  }
 
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
   if ((bool)LoopForI ^ (bool)LoopForBB)
     return false;
   if (LoopForI != LoopForBB &&
-      isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT))
+      (!SE || isUnsafeToFuse(LoopForI, LoopForBB, LI, *SE, DI, DT, PDT)))
     return false;
 
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
@@ -296,7 +306,7 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
     if (Dep != I &&
-        !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, SE, DI, Inclusive))
+        !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, DI, SE, Inclusive))
       return false;
   }
 
@@ -305,11 +315,11 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
 
 bool isControlCompatible(Instruction *I1, Instruction *I2, LoopInfo &LI,
                          DominatorTree &DT, PostDominatorTree &PDT,
-                         ScalarEvolution &SE, DependenceInfo &DI) {
+                         DependenceInfo &DI, ScalarEvolution *SE) {
   Loop *ParentLoop = findCommonParentLoop(I1->getParent(), I2->getParent(), LI);
   if (comesBefore(I1, I2, ParentLoop))
     std::swap(I1, I2);
-  return isControlCompatible(I1, I2->getParent(), LI, DT, PDT, SE, DI);
+  return isControlCompatible(I1, I2->getParent(), LI, DT, PDT, DI, SE);
 }
 
 void fixDefUseDominance(Function *F, DominatorTree &DT) {
