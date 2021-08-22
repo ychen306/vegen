@@ -518,8 +518,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
                            BasicBlock *NewDst) {
     Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
-    CFGUpdates.push_back({DominatorTree::Insert, Src, NewDst});
-    CFGUpdates.push_back({DominatorTree::Delete, Src, OldDst});
+    CFGUpdates.emplace_back(cfg::UpdateKind::Insert, Src, NewDst);
+    CFGUpdates.emplace_back(cfg::UpdateKind::Delete, Src, OldDst);
   };
 
   LLVMContext &Ctx = L1Preheader->getContext();
@@ -528,7 +528,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   BasicBlock *L2Placeholder =
       BasicBlock::Create(Ctx, L2Preheader->getName() + ".placeholder", F);
   BranchInst::Create(L2Exit /*to*/, L2Placeholder /*from*/);
-  CFGUpdates.push_back({DominatorTree::Insert, L2Exit, L2Placeholder});
+  CFGUpdates.emplace_back(cfg::UpdateKind::Insert, L2Exit, L2Placeholder);
 
   assert(getNumPHIs(L1Preheader) == 0 && getNumPHIs(L2Preheader) == 0);
 
@@ -549,9 +549,9 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Run one iteration L2 after we are done with one iteration of L1
   assert(cast<BranchInst>(L1Latch->getTerminator())->isConditional());
   ReplaceInstWithInst(L1Latch->getTerminator(), BranchInst::Create(L2Header));
-  CFGUpdates.push_back({DominatorTree::Delete, L1Latch, L1Header});
-  CFGUpdates.push_back({DominatorTree::Delete, L1Latch, L1Exit});
-  CFGUpdates.push_back({DominatorTree::Insert, L1Latch, L2Header});
+  CFGUpdates.emplace_back(cfg::UpdateKind::Delete, L1Latch, L1Header);
+  CFGUpdates.emplace_back(cfg::UpdateKind::Delete, L1Latch, L1Exit);
+  CFGUpdates.emplace_back(cfg::UpdateKind::Insert, L1Latch, L2Header);
 
   // hoist the PHI nodes in L2Header to L1Header
   while (auto *L2PHI = dyn_cast<PHINode>(&L2Header->front()))
