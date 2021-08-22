@@ -471,6 +471,11 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
+        if (isSafeToHoistBefore(&I, L1, LI, DT, PDT, DI)) {
+          InstsToHoist.push_back(&I);
+          continue;
+        }
+
         // Detect reduction, in which case we don't need to the hoist
         // dependencies.
         auto *Load = dyn_cast<LoadInst>(&I);
@@ -478,29 +483,26 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         StoreInst *Store = nullptr;
         if (Load)
           Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
-        if (Kind) {
-          assert(Store);
-          // Remember this reduction, and sink the load instead.
-          // E.g., for something like:
-          // ```
-          //   writes
-          //   x = load a
-          //   v = x + something()
-          //   store v
-          // ```
-          // We rewrite it into
-          // ```
-          //   v = 0 + something()
-          //   writes
-          //   x = load a
-          //   v' = x + v
-          //   store v'
-          // ```
-          ReductionsToPatch.push_back({Load, Store, *Kind});
-          continue;
-        }
-
-        InstsToHoist.push_back(&I);
+        if (!Kind)
+          report_fatal_error("unable to hoist inter-loop dep for loop-fusion\n");
+        assert(Store);
+        // Remember this reduction, and sink the load instead.
+        // E.g., for something like:
+        // ```
+        //   writes
+        //   x = load a
+        //   v = x + something()
+        //   store v
+        // ```
+        // We rewrite it into
+        // ```
+        //   v = 0 + something()
+        //   writes
+        //   x = load a
+        //   v' = x + v
+        //   store v'
+        // ```
+        ReductionsToPatch.push_back({Load, Store, *Kind});
       }
     }
   }
