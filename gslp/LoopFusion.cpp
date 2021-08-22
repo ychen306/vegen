@@ -476,9 +476,9 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           continue;
         }
 
-        // Has to be reduction if we can't hoist and we think we should be able to fuse L1 and L2.
-        // In this case, remember the reduction, and sink the load instead.
-        // E.g., for something like:
+        // Has to be reduction if we can't hoist and we think we should be able
+        // to fuse L1 and L2. In this case, remember the reduction, and sink the
+        // load instead. E.g., for something like:
         // ```
         //   writes
         //   x = load a
@@ -495,8 +495,10 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         // ```
         auto *Load = cast<LoadInst>(&I);
         StoreInst *Store = nullptr;
-        Optional<RecurKind> Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
-        assert(Kind && Store && "unable to hoist inter-loop dep for loop-fusion\n");
+        Optional<RecurKind> Kind =
+            matchReductionForLoad(Load, Store, DT, PDT, LI);
+        assert(Kind && Store &&
+               "unable to hoist inter-loop dep for loop-fusion\n");
         ReductionsToPatch.push_back({Load, Store, *Kind});
       }
     }
@@ -578,7 +580,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     BasicBlock *Dest = findCompatiblePredecessorsFor(
         I, L1Preheader, LI, DT, PDT, DI, nullptr /*scalar evolution*/);
     assert(Dest && "can't find a place to hoist dep of L2");
-    hoistTo(I, Dest, LI, SE, DT, PDT, DI, EquivalenceClasses<Instruction *>());
+    hoistTo(I, Dest, LI, SE, DT, PDT, DI);
   }
 
   SE.forgetLoop(L1);
