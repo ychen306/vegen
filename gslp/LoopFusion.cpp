@@ -484,7 +484,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         if (Load)
           Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
         if (!Kind)
-          report_fatal_error("unable to hoist inter-loop dep for loop-fusion\n");
+          report_fatal_error(
+              "unable to hoist inter-loop dep for loop-fusion\n");
         assert(Store);
         // Remember this reduction, and sink the load instead.
         // E.g., for something like:
