@@ -534,8 +534,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   // Rewrire all edges going into L2's preheader to, instead, go to
   // a dedicated placeholder for L2 that directly jumps to the L2's exit
-  std::vector<BasicBlock *> Preds(pred_begin(L2Preheader),
-                                  pred_end(L2Preheader));
+  SmallVector<BasicBlock *, 4> Preds(pred_begin(L2Preheader),
+                                     pred_end(L2Preheader));
   for (auto *BB : Preds)
     ReplaceBranchTarget(BB, L2Preheader, L2Placeholder);
 
