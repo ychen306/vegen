@@ -562,10 +562,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   // Fix the PHIs contorlling the exit values
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
-  for (PHINode &PN : L2Exit->phis())
-    for (unsigned i = 0; i < PN.getNumIncomingValues(); i++)
-      if (PN.getIncomingBlock(i) == L2Latch)
-        PN.setIncomingBlock(i, L2Placeholder);
+  L2Exit->replacePhiUsesWith(L2Latch, L2Placeholder);
 
   // Fix the dominance info, which we need to determine how to hoist L2's
   // dependencies.
