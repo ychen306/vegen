@@ -577,10 +577,11 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     hoistTo(I, Dest, LI, SE, DT, PDT, DI);
   }
 
+  // Invalidate Scalar Evolution analysis for the fused loops
   SE.forgetLoop(L1);
   SE.forgetLoop(L2);
 
-  // Merge L2 into L1
+  // Merge L2 into L1 for LoopInfo
   SmallVector<BasicBlock *> L2Blocks(L2->blocks());
   for (auto *BB : L2Blocks) {
     L1->addBlockEntry(BB);
