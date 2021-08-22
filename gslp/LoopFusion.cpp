@@ -476,18 +476,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
           continue;
         }
 
-        // Detect reduction, in which case we don't need to the hoist
-        // dependencies.
-        auto *Load = dyn_cast<LoadInst>(&I);
-        Optional<RecurKind> Kind = None;
-        StoreInst *Store = nullptr;
-        if (Load)
-          Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
-        if (!Kind)
-          report_fatal_error(
-              "unable to hoist inter-loop dep for loop-fusion\n");
-        assert(Store);
-        // Remember this reduction, and sink the load instead.
+        // Has to be reduction if we can't hoist and we think we should be able to fuse L1 and L2.
+        // In this case, remember the reduction, and sink the load instead.
         // E.g., for something like:
         // ```
         //   writes
@@ -503,6 +493,10 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         //   v' = x + v
         //   store v'
         // ```
+        auto *Load = cast<LoadInst>(&I);
+        StoreInst *Store = nullptr;
+        Optional<RecurKind> Kind = matchReductionForLoad(Load, Store, DT, PDT, LI);
+        assert(Kind && Store && "unable to hoist inter-loop dep for loop-fusion\n");
         ReductionsToPatch.push_back({Load, Store, *Kind});
       }
     }
