@@ -515,8 +515,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   }
 
   SmallVector<DominatorTree::UpdateType> CFGUpdates;
-  auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
-                           BasicBlock *NewDst) {
+  auto ReplaceBranchTarget = [&](BasicBlock *Src, BasicBlock *OldDst,
+                                 BasicBlock *NewDst) {
     Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
     CFGUpdates.emplace_back(cfg::UpdateKind::Insert, Src, NewDst);
     CFGUpdates.emplace_back(cfg::UpdateKind::Delete, Src, OldDst);
@@ -537,14 +537,11 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   std::vector<BasicBlock *> Preds(pred_begin(L2Preheader),
                                   pred_end(L2Preheader));
   for (auto *BB : Preds)
-    RewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader,
-                  /*new dst=*/L2Placeholder);
+    ReplaceBranchTarget(BB, L2Preheader, L2Placeholder);
 
   // Run L2's preheader after L1's preheader
-  RewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header,
-                /*new dst=*/L2Preheader);
-  RewriteBranch(/*src=*/L2Preheader, /*old dst=*/L2Header,
-                /*new dst=*/L1Header);
+  ReplaceBranchTarget(L1Preheader, L1Header, L2Preheader);
+  ReplaceBranchTarget(L2Preheader, L2Header, L1Header);
 
   // Run one iteration L2 after we are done with one iteration of L1
   assert(cast<BranchInst>(L1Latch->getTerminator())->isConditional());
@@ -560,8 +557,8 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
   L1Header->replacePhiUsesWith(L1Latch, L2Latch);
 
-  RewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Header, /*new dst=*/L1Header);
-  RewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
+  ReplaceBranchTarget(L2Latch, L2Header, L1Header);
+  ReplaceBranchTarget(L2Latch, L2Exit, L1Exit);
 
   // Fix the PHIs contorlling the exit values
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
