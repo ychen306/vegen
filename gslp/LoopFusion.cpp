@@ -498,7 +498,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         Optional<RecurKind> Kind =
             matchReductionForLoad(Load, Store, DT, PDT, LI);
         assert(Kind && Store &&
-               "unable to hoist inter-loop dep for loop-fusion\n");
+               "unable to hoist inter-loop dep for loop-fusion");
         ReductionsToPatch.push_back({Load, Store, *Kind});
       }
     }
