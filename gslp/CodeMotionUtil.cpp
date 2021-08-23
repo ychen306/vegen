@@ -430,7 +430,8 @@ void gatherInstructions(Function *F,
     for (Instruction *I : drop_begin(Members)) {
       if (I == Leader)
         continue;
-      assert(isControlEquivalent(*I->getParent(), *Leader->getParent(), DT, PDT));
+      assert(
+          isControlEquivalent(*I->getParent(), *Leader->getParent(), DT, PDT));
       assert(isControlCompatible(I, Leader->getParent(), LI, DT, PDT, DI, &SE));
       hoistTo(I, Leader->getParent(), LI, SE, DT, PDT, DI, CoupledInsts);
     }
