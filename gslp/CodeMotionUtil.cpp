@@ -177,11 +177,11 @@ static BasicBlock *getIDom(DominatorTree &DT, BasicBlock *BB) {
   return Node->getIDom()->getBlock();
 }
 
-BasicBlock *
-findCompatiblePredecessorsFor(Instruction *I, BasicBlock *BB, LoopInfo &LI,
-                              DominatorTree &DT, PostDominatorTree &PDT,
-                              DependenceInfo &DI, ScalarEvolution *SE,
-                              bool Inclusive) {
+BasicBlock *findCompatiblePredecessorsFor(Instruction *I, BasicBlock *BB,
+                                          LoopInfo &LI, DominatorTree &DT,
+                                          PostDominatorTree &PDT,
+                                          DependenceInfo &DI,
+                                          ScalarEvolution *SE, bool Inclusive) {
   Loop *ParentLoop = findCommonParentLoop(I->getParent(), BB, LI);
   SkipBackEdge SBE(ParentLoop);
   for (BasicBlock *Pred : inverse_depth_first_ext(BB, SBE)) {
@@ -277,12 +277,13 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
     return false;
 
-  // PHI nodes needs to have their incoming blocks equivalent to some predecessor of BB
+  // PHI nodes needs to have their incoming blocks equivalent to some
+  // predecessor of BB
   if (auto *PN = dyn_cast<PHINode>(I)) {
     for (BasicBlock *Incoming : PN->blocks()) {
       auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
-          return isControlEquivalent(*Incoming, *Pred, DT, PDT);
-          });
+        return isControlEquivalent(*Incoming, *Pred, DT, PDT);
+      });
       if (PredIt == pred_end(BB))
         return false;
     }
@@ -301,7 +302,7 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
   findDependences(I, Dominator, LI, DT, DI, Dependences);
 
-  // TODO: ignore loop-carried dep
+  // FIXME: check for unsafe to hoist things
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
@@ -383,6 +384,55 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
   assert(!verifyFunction(*F, &errs()));
 }
 
-void gatherInstructions(const EquivalenceClasses<Instruction *> &EC,
+void gatherInstructions(Function *F,
+                        const EquivalenceClasses<Instruction *> &EC,
                         LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
-                        ScalarEvolution &SE, DependenceInfo &DI) {}
+                        ScalarEvolution &SE, DependenceInfo &DI) {
+  // Do a top-sort of the equivalence classes of instructions
+  DenseSet<Instruction *> Visited;
+  SmallVector<EquivalenceClasses<Instruction *>::iterator> SortedClasses;
+  std::function<void(Instruction *)> Visit = [&](Instruction *I) {
+    if (!Visited.insert(I).second)
+      return;
+
+    // Find the dependences of all instructions in the same EC
+    SmallPtrSet<Instruction *, 16> Dependences;
+    for (Instruction *I2 : getMembers(EC, I))
+      findDependences(I2, &F->getEntryBlock(), LI, DT, DI, Dependences,
+                      true /*inclusive*/);
+
+    for (Instruction *Dep : Dependences)
+      Visit(Dep);
+
+    auto It = EC.findValue(I);
+    if (It != EC.end() && It->isLeader())
+      SortedClasses.push_back(It);
+  };
+
+  for (auto &Member : EC)
+    if (Member.isLeader())
+      Visit(Member.getData());
+
+  auto ComesBefore = [&LI](Instruction *I1, Instruction *I2) {
+    auto *L = findCommonParentLoop(I1->getParent(), I2->getParent(), LI);
+    return comesBefore(I1, I2, L);
+  };
+
+  EquivalenceClasses<Instruction *> CoupledInsts;
+  for (auto ClassIt : SortedClasses) {
+    SmallVector<Instruction *, 8> Members(EC.member_begin(ClassIt),
+                                          EC.member_end());
+    stable_sort(Members, ComesBefore);
+    Instruction *Leader = Members.front();
+    for (Instruction *I : drop_begin(Members)) {
+      if (I == Leader)
+        continue;
+      assert(isControlCompatible(I, Leader->getParent(), LI, DT, PDT, DI, &SE));
+      hoistTo(I, Leader->getParent(), LI, SE, DT, PDT, DI, CoupledInsts);
+    }
+    for (Instruction *I : Members)
+      CoupledInsts.unionSets(Leader, I);
+  }
+
+  fixDefUseDominance(F, DT);
+}

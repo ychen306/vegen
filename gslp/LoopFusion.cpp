@@ -478,36 +478,35 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
-        // Detect reduction, in which case we don't need to the hoist
-        // dependencies.
-        auto *Load = dyn_cast<LoadInst>(&I);
-        Optional<RecurKind> Kind = None;
-        StoreInst *Store = nullptr;
-        if (Load)
-          Kind = matchReductionForLoad(Load, Store, DT, PDT, LI, SE);
-        if (Kind) {
-          assert(Store);
-          // Remember this reduction, and sink the load instead.
-          // E.g., for something like:
-          // ```
-          //   writes
-          //   x = load a
-          //   v = x + something()
-          //   store v
-          // ```
-          // We rewrite it into
-          // ```
-          //   v = 0 + something()
-          //   writes
-          //   x = load a
-          //   v' = x + v
-          //   store v'
-          // ```
-          ReductionsToPatch.push_back({Load, Store, *Kind});
+        if (isSafeToHoistBefore(&I, L1, LI, DT, PDT, DI)) {
+          InstsToHoist.push_back(&I);
           continue;
         }
 
-        InstsToHoist.push_back(&I);
+        // Has to be reduction if we can't hoist and we think we should be able
+        // to fuse L1 and L2. In this case, remember the reduction, and sink the
+        // load instead. E.g., for something like:
+        // ```
+        //   writes
+        //   x = load a
+        //   v = x + something()
+        //   store v
+        // ```
+        // We rewrite it into
+        // ```
+        //   v = 0 + something()
+        //   writes
+        //   x = load a
+        //   v' = x + v
+        //   store v'
+        // ```
+        auto *Load = cast<LoadInst>(&I);
+        StoreInst *Store = nullptr;
+        Optional<RecurKind> Kind =
+            matchReductionForLoad(Load, Store, DT, PDT, LI);
+        assert(Kind && Store &&
+               "unable to hoist inter-loop dep for loop-fusion");
+        ReductionsToPatch.push_back({Load, Store, *Kind});
       }
     }
   }
@@ -523,11 +522,11 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   }
 
   SmallVector<DominatorTree::UpdateType> CFGUpdates;
-  auto RewriteBranch = [&](BasicBlock *Src, BasicBlock *OldDst,
-                           BasicBlock *NewDst) {
+  auto ReplaceBranchTarget = [&](BasicBlock *Src, BasicBlock *OldDst,
+                                 BasicBlock *NewDst) {
     Src->getTerminator()->replaceUsesOfWith(OldDst, NewDst);
-    CFGUpdates.push_back({DominatorTree::Insert, Src, NewDst});
-    CFGUpdates.push_back({DominatorTree::Delete, Src, OldDst});
+    CFGUpdates.emplace_back(cfg::UpdateKind::Insert, Src, NewDst);
+    CFGUpdates.emplace_back(cfg::UpdateKind::Delete, Src, OldDst);
   };
 
   LLVMContext &Ctx = L1Preheader->getContext();
@@ -536,30 +535,27 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   BasicBlock *L2Placeholder =
       BasicBlock::Create(Ctx, L2Preheader->getName() + ".placeholder", F);
   BranchInst::Create(L2Exit /*to*/, L2Placeholder /*from*/);
-  CFGUpdates.push_back({DominatorTree::Insert, L2Exit, L2Placeholder});
+  CFGUpdates.emplace_back(cfg::UpdateKind::Insert, L2Exit, L2Placeholder);
 
   assert(getNumPHIs(L1Preheader) == 0 && getNumPHIs(L2Preheader) == 0);
 
   // Rewrire all edges going into L2's preheader to, instead, go to
   // a dedicated placeholder for L2 that directly jumps to the L2's exit
-  std::vector<BasicBlock *> Preds(pred_begin(L2Preheader),
-                                  pred_end(L2Preheader));
+  SmallVector<BasicBlock *, 4> Preds(pred_begin(L2Preheader),
+                                     pred_end(L2Preheader));
   for (auto *BB : Preds)
-    RewriteBranch(/*src=*/BB, /*old dst=*/L2Preheader,
-                  /*new dst=*/L2Placeholder);
+    ReplaceBranchTarget(BB, L2Preheader, L2Placeholder);
 
   // Run L2's preheader after L1's preheader
-  RewriteBranch(/*src=*/L1Preheader, /*old dst=*/L1Header,
-                /*new dst=*/L2Preheader);
-  RewriteBranch(/*src=*/L2Preheader, /*old dst=*/L2Header,
-                /*new dst=*/L1Header);
+  ReplaceBranchTarget(L1Preheader, L1Header, L2Preheader);
+  ReplaceBranchTarget(L2Preheader, L2Header, L1Header);
 
   // Run one iteration L2 after we are done with one iteration of L1
   assert(cast<BranchInst>(L1Latch->getTerminator())->isConditional());
   ReplaceInstWithInst(L1Latch->getTerminator(), BranchInst::Create(L2Header));
-  CFGUpdates.push_back({DominatorTree::Delete, L1Latch, L1Header});
-  CFGUpdates.push_back({DominatorTree::Delete, L1Latch, L1Exit});
-  CFGUpdates.push_back({DominatorTree::Insert, L1Latch, L2Header});
+  CFGUpdates.emplace_back(cfg::UpdateKind::Delete, L1Latch, L1Header);
+  CFGUpdates.emplace_back(cfg::UpdateKind::Delete, L1Latch, L1Exit);
+  CFGUpdates.emplace_back(cfg::UpdateKind::Insert, L1Latch, L2Header);
 
   // hoist the PHI nodes in L2Header to L1Header
   while (auto *L2PHI = dyn_cast<PHINode>(&L2Header->front()))
@@ -568,15 +564,12 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
   L1Header->replacePhiUsesWith(L1Latch, L2Latch);
 
-  RewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Header, /*new dst=*/L1Header);
-  RewriteBranch(/*src=*/L2Latch, /*old dst=*/L2Exit, /*new dst=*/L1Exit);
+  ReplaceBranchTarget(L2Latch, L2Header, L1Header);
+  ReplaceBranchTarget(L2Latch, L2Exit, L1Exit);
 
   // Fix the PHIs contorlling the exit values
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
-  for (PHINode &PN : L2Exit->phis())
-    for (unsigned i = 0; i < PN.getNumIncomingValues(); i++)
-      if (PN.getIncomingBlock(i) == L2Latch)
-        PN.setIncomingBlock(i, L2Placeholder);
+  L2Exit->replacePhiUsesWith(L2Latch, L2Placeholder);
 
   // Fix the dominance info, which we need to determine how to hoist L2's
   // dependencies.
@@ -588,13 +581,14 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     BasicBlock *Dest = findCompatiblePredecessorsFor(
         I, L1Preheader, LI, DT, PDT, DI, nullptr /*scalar evolution*/);
     assert(Dest && "can't find a place to hoist dep of L2");
-    hoistTo(I, Dest, LI, SE, DT, PDT, DI, EquivalenceClasses<Instruction *>());
+    hoistTo(I, Dest, LI, SE, DT, PDT, DI);
   }
 
+  // Invalidate Scalar Evolution analysis for the fused loops
   SE.forgetLoop(L1);
   SE.forgetLoop(L2);
 
-  // Merge L2 into L1
+  // Merge L2 into L1 for LoopInfo
   SmallVector<BasicBlock *> L2Blocks(L2->blocks());
   for (auto *BB : L2Blocks) {
     L1->addBlockEntry(BB);
