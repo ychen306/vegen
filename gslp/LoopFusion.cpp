@@ -398,22 +398,19 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
     }
   }
 
-  if (!L1->isLCSSAForm(DT) || !L2->isLCSSAForm(DT)) {
-    errs() << "Loops are not in LCSSA\n";
-    return true;
-  }
-
   // Check if one loop computes any SSA values that are used by another loop
-  for (PHINode &PN : L1->getExitBlock()->phis())
-    if (isUsedByLoop(&PN, L2)) {
-      errs() << "Loops are dependent (ssa)\n";
-      return true;
-    }
-  for (PHINode &PN : L2->getExitBlock()->phis())
-    if (isUsedByLoop(&PN, L1)) {
-      errs() << "Loops are dependent (ssa)\n";
-      return true;
-    }
+  for (auto *BB : L1->blocks())
+    for (auto &I : *BB)
+      if (isUsedByLoop(&I, L2)) {
+        errs() << "Loops are dependent (ssa)\n";
+        return true;
+      }
+  for (auto *BB : L2->blocks())
+    for (auto &I : *BB)
+      if (isUsedByLoop(&I, L1)) {
+        errs() << "Loops are dependent (ssa)\n";
+        return true;
+      }
 
   return false; // *probably* safe
 }
