@@ -55,8 +55,13 @@ bool TestCodeMotion::runOnFunction(Function &F) {
   auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
 
   StringMap<Instruction *> NameToInstMap;
-  for (Instruction &I : instructions(F))
-    NameToInstMap[I.getName()] = &I;
+  StringMap<StoreInst *> NameToStoreMap;
+  for (Instruction &I : instructions(F)) {
+    if (auto *SI = dyn_cast<StoreInst>(&I))
+      NameToStoreMap[SI->getValueOperand()->getName()] = SI;
+    else
+      NameToInstMap[I.getName()] = &I;
+  }
   if (InstGroups.empty())
     return false;
 
@@ -67,7 +72,11 @@ bool TestCodeMotion::runOnFunction(Function &F) {
 
     SmallVector<Instruction *> Insts;
     for (StringRef Name : InstNames) {
-      auto *I = NameToInstMap.lookup(Name);
+      Instruction *I = nullptr;
+      if (Name.consume_front("STORE:"))
+        I = NameToStoreMap.lookup(Name);
+      else
+        I = NameToInstMap.lookup(Name);
       if (!I)
         report_fatal_error("invalid inst group");
       Insts.push_back(I);

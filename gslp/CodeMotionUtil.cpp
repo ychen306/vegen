@@ -280,6 +280,9 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   // PHI nodes needs to have their incoming blocks equivalent to some
   // predecessor of BB
   if (auto *PN = dyn_cast<PHINode>(I)) {
+    if (PN->getNumIncomingValues() != pred_size(BB))
+      return false;
+
     for (BasicBlock *Incoming : PN->blocks()) {
       auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
         return isControlEquivalent(*Incoming, *Pred, DT, PDT);
