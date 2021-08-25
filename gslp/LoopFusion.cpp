@@ -503,7 +503,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
         auto *Load = cast<LoadInst>(&I);
         StoreInst *Store = nullptr;
         Optional<RecurKind> Kind =
-            matchReductionForLoad(Load, Store, DT, PDT, LI);
+            matchReductionForLoad(Load, Store, DT, PDT, LI, SE);
         assert(Kind && Store &&
                "unable to hoist inter-loop dep for loop-fusion");
         ReductionsToPatch.push_back({Load, Store, *Kind});
