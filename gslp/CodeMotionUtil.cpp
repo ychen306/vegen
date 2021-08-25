@@ -280,6 +280,9 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   // PHI nodes needs to have their incoming blocks equivalent to some
   // predecessor of BB
   if (auto *PN = dyn_cast<PHINode>(I)) {
+    if (PN->getNumIncomingValues() != pred_size(BB))
+      return false;
+
     for (BasicBlock *Incoming : PN->blocks()) {
       auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
         return isControlEquivalent(*Incoming, *Pred, DT, PDT);
@@ -427,6 +430,8 @@ void gatherInstructions(Function *F,
     for (Instruction *I : drop_begin(Members)) {
       if (I == Leader)
         continue;
+      assert(
+          isControlEquivalent(*I->getParent(), *Leader->getParent(), DT, PDT));
       assert(isControlCompatible(I, Leader->getParent(), LI, DT, PDT, DI, &SE));
       hoistTo(I, Leader->getParent(), LI, SE, DT, PDT, DI, CoupledInsts);
     }

@@ -1,75 +1,9 @@
-; RUN: %test-loop-fusion %s -fusion-group=body1,body2,body3,body4 | FileCheck %s
-; RUN: %test-loop-fusion %s -fusion-group=body1,body2,body3,body4 -do-fusion | FileCheck %s -check-prefixes=DO_FUSION
-; RUN: %test-loop-fusion %s -fusion-group=body1,body2 -fusion-group=body3,body4 -do-fusion
-; RUN: %test-loop-fusion %s -fusion-group=body4,body1,body3,body2 -do-fusion > %t && %check-function  3 'int matvec(int, int, int, int*, int*, int*)' 'matvec(30, 15, 3, %%s, %%s, %%s)' %t %s
+; RUN: %opt -test-code-motion -gather -inst-group=STORE:add,STORE:add.1 %s -o - -S | FileCheck %s
+; RUN: %opt -test-code-motion -gather -inst-group=STORE:add,STORE:add.1 %s -o %t -S && %check-function  3 'int matvec(int, int, int, int*, int*, int*)' 'matvec(30, 15, 3, %%s, %%s, %%s)' %t %s
 
-; CHECK: Fusing body1 and body2 is safe
-; CHECK: Fusing body1 and body3 is safe
-; CHECK: Fusing body1 and body4 is safe
-; CHECK: Fusing body2 and body3 is safe
-; CHECK: Fusing body2 and body4 is safe
-; CHECK: Fusing body3 and body4 is safe
-
-; DO_FUSION: body1:
-; DO_FUSION-NEXT:  %indvars.iv = phi i64
-; DO_FUSION-NEXT:  %add51 = phi i32
-; DO_FUSION-NEXT:  %indvars.iv.1 = phi i64
-; DO_FUSION-NEXT:  %add51.1 = phi i32
-; DO_FUSION-NEXT:  %indvars.iv.188 = phi i64
-; DO_FUSION-NEXT:  %add51.189 = phi i32
-; DO_FUSION-NEXT:  %indvars.iv.1.1 = phi i64
-; DO_FUSION-NEXT:  %add51.1.1 = phi i32
-
-; DO_FUSION-NEXT:  %arrayidx10 = getelementptr inbounds i32, i32* %arrayidx, i64 %indvars.iv
-; DO_FUSION-NEXT:  [[TMP0:%.*]] = load i32, i32* %arrayidx10, align 4, !tbaa !3
-; DO_FUSION-NEXT:  [[TMP1:%.*]] = mul nuw nsw i64 %indvars.iv, %1
-; DO_FUSION-NEXT:  %arrayidx12 = getelementptr inbounds i32, i32* %B, i64 %indvars.iv52
-; DO_FUSION-NEXT:  %arrayidx14 = getelementptr inbounds i32, i32* %arrayidx12, i64 [[TMP1]]
-; DO_FUSION-NEXT:  [[TMP2:%.*]] = load i32, i32* %arrayidx14, align 4, !tbaa !3
-; DO_FUSION-NEXT:  %mul = mul nsw i32 [[TMP2]], [[TMP0]]
-; DO_FUSION-NEXT:  %add = add nsw i32 %add51, %mul
-; DO_FUSION-NEXT:  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
-; DO_FUSION-NEXT:  %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
-; DO_FUSION-NEXT:  br label %body2
-
-; DO_FUSION: body2:
-; DO_FUSION-NEXT:  %arrayidx10.1 = getelementptr inbounds i32, i32* %arrayidx, i64 %indvars.iv.1
-; DO_FUSION-NEXT:  [[TMP3:%.*]] = load i32, i32* %arrayidx10.1, align 4, !tbaa !3
-; DO_FUSION-NEXT:  [[TMP4:%.*]] = mul nuw nsw i64 %indvars.iv.1, %1
-; DO_FUSION-NEXT:  %arrayidx12.1 = getelementptr inbounds i32, i32* %B, i64 %indvars.iv.next53
-; DO_FUSION-NEXT:  %arrayidx14.1 = getelementptr inbounds i32, i32* %arrayidx12.1, i64 [[TMP4]]
-; DO_FUSION-NEXT:  [[TMP5:%.*]] = load i32, i32* %arrayidx14.1, align 4, !tbaa !3
-; DO_FUSION-NEXT:  %mul.1 = mul nsw i32 [[TMP5]], [[TMP3]]
-; DO_FUSION-NEXT:  %add.1 = add nsw i32 %add51.1, %mul.1
-; DO_FUSION-NEXT:  %indvars.iv.next.1 = add nuw nsw i64 %indvars.iv.1, 1
-; DO_FUSION-NEXT:  %exitcond.1.not = icmp eq i64 %indvars.iv.next.1, %wide.trip.count.1
-; DO_FUSION-NEXT:  br label %body3
-
-; DO_FUSION: body3:
-; DO_FUSION-NEXT:  %arrayidx10.190 = getelementptr inbounds i32, i32* %arrayidx.1, i64 %indvars.iv.188
-; DO_FUSION-NEXT:  [[TMP6:%.*]] = load i32, i32* %arrayidx10.190, align 4, !tbaa !3
-; DO_FUSION-NEXT:  [[TMP7:%.*]] = mul nuw nsw i64 %indvars.iv.188, %1
-; DO_FUSION-NEXT:  %arrayidx12.191 = getelementptr inbounds i32, i32* %B, i64 %indvars.iv52.1
-; DO_FUSION-NEXT:  %arrayidx14.192 = getelementptr inbounds i32, i32* %arrayidx12.191, i64 [[TMP7]]
-; DO_FUSION-NEXT:  [[TMP8:%.*]] = load i32, i32* %arrayidx14.192, align 4, !tbaa !3
-; DO_FUSION-NEXT:  %mul.193 = mul nsw i32 [[TMP8]], [[TMP6]]
-; DO_FUSION-NEXT:  %add.194 = add nsw i32 %add51.189, %mul.193
-; DO_FUSION-NEXT:  %indvars.iv.next.195 = add nuw nsw i64 %indvars.iv.188, 1
-; DO_FUSION-NEXT:  %exitcond.196.not = icmp eq i64 %indvars.iv.next.195, %wide.trip.count.186
-; DO_FUSION-NEXT:  br label %body4
-
-; DO_FUSION: body4:
-; DO_FUSION-NEXT:  %arrayidx10.1.1 = getelementptr inbounds i32, i32* %arrayidx.1, i64 %indvars.iv.1.1
-; DO_FUSION-NEXT:  [[TMP9:%.*]] = load i32, i32* %arrayidx10.1.1, align 4, !tbaa !3
-; DO_FUSION-NEXT:  [[TMP10:%.*]] = mul nuw nsw i64 %indvars.iv.1.1, %1
-; DO_FUSION-NEXT:  %arrayidx12.1.1 = getelementptr inbounds i32, i32* %B, i64 %indvars.iv.next53.1100
-; DO_FUSION-NEXT:  %arrayidx14.1.1 = getelementptr inbounds i32, i32* %arrayidx12.1.1, i64 [[TMP10]] 
-; DO_FUSION-NEXT:  [[TMP11:%.*]] = load i32, i32* %arrayidx14.1.1, align 4, !tbaa !3
-; DO_FUSION-NEXT:  %mul.1.1 = mul nsw i32 [[TMP11]], [[TMP9]]
-; DO_FUSION-NEXT:  %add.1.1 = add nsw i32 %add51.1.1, %mul.1.1
-; DO_FUSION-NEXT:  %indvars.iv.next.1.1 = add nuw nsw i64 %indvars.iv.1.1, 1
-; DO_FUSION-NEXT:  %exitcond.1.1.not = icmp eq i64 %indvars.iv.next.1.1, %wide.trip.count.1.1
-; DO_FUSION-NEXT:  br i1 %exitcond.1.1.not, label %for.cond5.for.cond.cleanup7_crit_edge, label %body1
+; CHECK: for.cond5.for.cond.cleanup7_crit_edge:
+; CHECK-NEXT: store i32 %add, i32* %arrayidx18
+; CHECK-NEXT: store i32 %add.1, i32* %arrayidx18.1
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
 define dso_local void @matvec(i32 %n, i32 %m, i32 %l, i32* noalias nocapture readonly %A, i32* noalias nocapture readonly %B, i32* noalias nocapture %C) local_unnamed_addr #0 {
