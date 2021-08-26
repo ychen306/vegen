@@ -1,14 +1,17 @@
 #include "LoopFusion.h"
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
+#include "DependenceAnalysis.h"
 #include "UseDefIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
+#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
@@ -420,8 +423,8 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-                PostDominatorTree &PDT, ScalarEvolution &SE,
-                DependenceInfo &DI) {
+                PostDominatorTree &PDT, ScalarEvolution &SE, DependenceInfo &DI,
+                LazyValueInfo *LVI) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 

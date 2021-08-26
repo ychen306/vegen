@@ -8,6 +8,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/IR/Dominators.h"
@@ -52,6 +53,7 @@ struct TestLoopFusion : public FunctionPass {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
     AU.addRequired<PostDominatorTreeWrapperPass>();
+    AU.addRequired<LazyValueInfoWrapperPass>();
   }
 
   bool runOnFunction(Function &) override;
@@ -67,6 +69,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
   auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+  auto &LVI = getAnalysis<LazyValueInfoWrapperPass>().getLVI();
 
   auto PrintFusionLegality = [&](Loop *L1, Loop *L2) {
     outs() << "Fusing " << L1->getHeader()->getName() << " and "
@@ -97,7 +100,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
       if (DoFusion) {
         for (unsigned i = 1; i < Loops.size(); i++) {
-          if (Loop *Fused = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI))
+          if (Loop *Fused = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI, &LVI))
             Loops[0] = Fused;
           else
             llvm_unreachable("failed to fuse fusable loops");
@@ -142,6 +145,7 @@ INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DependenceAnalysisWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LazyValueInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 INITIALIZE_PASS_END(TestLoopFusion, "test-loop-fusion", "test-loop-fusion",
                     false, false)
