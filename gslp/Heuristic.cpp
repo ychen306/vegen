@@ -2,7 +2,7 @@
 #include "Packer.h"
 #include "Solver.h"
 #include "VectorPack.h"
-#include "llvm/Support/Timer.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
 
@@ -11,6 +11,9 @@ static constexpr float C_Insert = 2;
 static constexpr float C_Perm = 2;
 static constexpr float C_Shuffle = 2;
 static constexpr float C_Extract = 1.0;
+
+static cl::opt<bool> AllowDeinterleave("allow-deinterleave", cl::init(false));
+static cl::opt<bool> AllowTranspose("allow-transpose", cl::init(false));
 
 float Heuristic::getCost(const VectorPack *VP) {
   float Cost = VP->getProducingCost();
@@ -75,28 +78,32 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
   }
 
-  for (unsigned N : {2, 4, 8})
-    if (auto *T = transpose(VPCtx, OP, N)) {
-      auto OPI = Pkr->getProducerInfo(VPCtx, T);
-      for (auto *VP : OPI.getProducers())
-        Sol.update(Solution(getCost(VP) + C_Perm, VP));
-    }
+  if (AllowTranspose) {
+    for (unsigned N : {2, 4, 8})
+      if (auto *T = transpose(VPCtx, OP, N)) {
+        auto OPI = Pkr->getProducerInfo(VPCtx, T);
+        for (auto *VP : OPI.getProducers())
+          Sol.update(Solution(getCost(VP) + C_Perm, VP));
+      }
+  }
 
-  // try to deinterleave the vector and produce it that way
-  for (unsigned Stride : {2, 4, 8}) {
-    if (Deduped->size() % Stride)
-      continue;
-    SmallVector<const VectorPack *> Packs;
-    auto OPs = deinterleave(VPCtx, Deduped, Stride);
-    float Cost = C_Shuffle * OPs.size();
-    for (auto OP2 : OPs) {
-      auto Sol2 = solve(OP2);
-      Packs.append(Sol2.Packs);
-      Cost += Sol2.Cost;
-      if (Cost > Sol.Cost)
-        break;
+  if (AllowDeinterleave) {
+    // try to deinterleave the vector and produce it that way
+    for (unsigned Stride : {2, 4, 8}) {
+      if (Deduped->size() % Stride)
+        continue;
+      SmallVector<const VectorPack *> Packs;
+      auto OPs = deinterleave(VPCtx, Deduped, Stride);
+      float Cost = C_Shuffle * OPs.size();
+      for (auto OP2 : OPs) {
+        auto Sol2 = solve(OP2);
+        Packs.append(Sol2.Packs);
+        Cost += Sol2.Cost;
+        if (Cost > Sol.Cost)
+          break;
+      }
+      Sol.update(Solution(Cost, Packs));
     }
-    Sol.update(Solution(Cost, Packs));
   }
 
   if (!CandidatesByBlock)
