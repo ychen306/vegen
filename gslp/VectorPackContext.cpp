@@ -1,5 +1,6 @@
 #include "VectorPackContext.h"
 #include "VectorPack.h"
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
@@ -18,10 +19,10 @@ struct VectorPackCache {
 
 VectorPackContext::~VectorPackContext() = default;
 
-VectorPackContext::VectorPackContext(BasicBlock *BB)
-    : BB(BB), PackCache(std::make_unique<VectorPackCache>()) {
+VectorPackContext::VectorPackContext(Function *F)
+    : F(F), PackCache(std::make_unique<VectorPackCache>()) {
   unsigned i = 0;
-  for (auto &I : *BB) {
+  for (Instruction &I : instructions(F)) {
     ScalarToIdMap[&I] = i++;
     Scalars.push_back(&I);
   }

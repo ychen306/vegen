@@ -34,7 +34,7 @@ class VectorPack;
 struct VectorPackCache;
 struct OperandPackCache;
 class VectorPackContext {
-  llvm::BasicBlock *BB;
+  llvm::Function *F;
   std::vector<llvm::Value *> Scalars;
   llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
 
@@ -44,7 +44,7 @@ class VectorPackContext {
       OperandCache;
 
 public:
-  VectorPackContext(llvm::BasicBlock *BB);
+  VectorPackContext(llvm::Function *F);
   ~VectorPackContext();
 
   // Create a "General" vector pack
@@ -100,7 +100,7 @@ public:
   }
 
   unsigned getNumValues() const { return Scalars.size(); }
-  llvm::BasicBlock *getBasicBlock() const { return BB; }
+  llvm::Function *getFunction() const { return F; }
 
   // Fixme : templatize this to decouple use of bitvector
   class value_iterator {

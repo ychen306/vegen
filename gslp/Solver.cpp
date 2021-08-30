@@ -26,13 +26,13 @@ static unsigned getBitWidth(Value *V, const DataLayout *DL) {
 }
 
 template <typename AccessType>
-VectorPack *createMemPack(VectorPackContext *VPCtx,
+VectorPack *createMemPack(const VectorPackContext *VPCtx,
                           ArrayRef<AccessType *> Accesses,
                           const BitVector &Elements, const BitVector &Depended,
                           TargetTransformInfo *TTI);
 
 template <>
-VectorPack *createMemPack(VectorPackContext *VPCtx,
+VectorPack *createMemPack(const VectorPackContext *VPCtx,
                           ArrayRef<StoreInst *> Stores,
                           const BitVector &Elements, const BitVector &Depended,
                           TargetTransformInfo *TTI) {
@@ -40,7 +40,7 @@ VectorPack *createMemPack(VectorPackContext *VPCtx,
 }
 
 template <>
-VectorPack *createMemPack(VectorPackContext *VPCtx, ArrayRef<LoadInst *> Loads,
+VectorPack *createMemPack(const VectorPackContext *VPCtx, ArrayRef<LoadInst *> Loads,
                           const BitVector &Elements, const BitVector &Depended,
                           TargetTransformInfo *TTI) {
   return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
@@ -50,7 +50,7 @@ template <typename AccessType>
 std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
                                           AccessType *Access, unsigned VL) {
   auto &LDA = Pkr->getLDA(BB);
-  auto *VPCtx = Pkr->getContext(BB);
+  auto *VPCtx = Pkr->getContext();
   auto *TTI = Pkr->getTTI();
   bool IsStore = std::is_same<AccessType, StoreInst>::value;
   auto &AccessDAG = IsStore ? Pkr->getStoreDAG(BB) : Pkr->getLoadDAG(BB);
@@ -98,7 +98,7 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
 
 std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto &LDA = Pkr->getLDA(BB);
-  auto *VPCtx = Pkr->getContext(BB);
+  auto *VPCtx = Pkr->getContext();
   auto &LayoutInfo = Pkr->getStoreInfo(BB);
 
   auto *TTI = Pkr->getTTI();
@@ -191,18 +191,26 @@ static const OperandPack *interleave(const VectorPackContext *VPCtx,
   return VPCtx->getCanonicalOperandPack(Interleaved);
 }
 
+static BasicBlock *getBlockForPack(const VectorPack *VP) {
+  for (auto *V : VP->elementValues())
+    if (auto *I = dyn_cast<Instruction>(V))
+      return I->getParent();
+  llvm_unreachable("not block for pack");
+}
+
 // decompose a store pack to packs that fit in native bitwidth
 static SmallVector<const VectorPack *>
 decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   assert(VP->isStore());
-  auto *VPCtx = VP->getContext();
+  auto *BB = getBlockForPack(VP);
+  auto *VPCtx = Pkr->getContext();
   ArrayRef<Value *> Values = VP->getOrderedValues();
   auto *SI = cast<StoreInst>(Values.front());
   unsigned AS = SI->getPointerAddressSpace();
   auto *TTI = Pkr->getTTI();
   unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS) /
                 getBitWidth(SI->getValueOperand(), Pkr->getDataLayout());
-  auto &LDA = Pkr->getLDA(VPCtx->getBasicBlock());
+  auto &LDA = Pkr->getLDA(BB);
   if (Values.size() <= VL)
     return {VP};
   SmallVector<const VectorPack *> Decomposed;
@@ -249,6 +257,7 @@ improvePlan(Packer *Pkr, Plan &P,
   }
 
   Heuristic H(Pkr, CandidatesByBlock);
+  auto *VPCtx = Pkr->getContext();
 
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
     bool Feasible = false;
@@ -274,7 +283,7 @@ improvePlan(Packer *Pkr, Plan &P,
     for (auto *VP : Seeds)
       DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
-    BitVector Packed(Pkr->getContext(&BB)->getNumValues());
+    BitVector Packed(Pkr->getContext()->getNumValues());
     for (auto *VP : Seeds) {
       if (VP->getElements().anyCommon(Packed))
         continue;
@@ -283,12 +292,9 @@ improvePlan(Packer *Pkr, Plan &P,
       for (auto *VP2 : DecomposedStores[VP])
         P2.add(VP2);
       auto *OP = VP->getOperandPacks().front();
-      auto *OPCtx = Pkr->getOperandContext(OP);
-      if (!OPCtx)
-        continue;
-      if (Improve(P2, {OP}) || Improve(P2, deinterleave(OPCtx, OP, 2)) ||
-          Improve(P2, deinterleave(OPCtx, OP, 4)) ||
-          Improve(P2, deinterleave(OPCtx, OP, 8))) {
+      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 8))) {
         errs() << "~COST: " << P.cost() << '\n';
         Packed |= VP->getElements();
       }
@@ -304,9 +310,6 @@ improvePlan(Packer *Pkr, Plan &P,
     Optimized = false;
     for (auto I = P.operands_begin(), E = P.operands_end(); I != E; ++I) {
       const OperandPack *OP = I->first;
-      auto *VPCtx = Pkr->getOperandContext(OP);
-      if (!VPCtx)
-        continue;
       Plan P2 = P;
       if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
           Improve(P2, deinterleave(VPCtx, OP, 4)) ||
@@ -323,8 +326,8 @@ improvePlan(Packer *Pkr, Plan &P,
       for (auto J = P.operands_begin(); J != E; ++J) {
         const OperandPack *OP = I->first;
         const OperandPack *OP2 = J->first;
-        auto *VPCtx = Pkr->getOperandContext(OP);
-        if (!VPCtx || VPCtx != Pkr->getOperandContext(OP2))
+        auto *BB = Pkr->getBlockForOperand(OP);
+        if (!BB || BB != Pkr->getBlockForOperand(OP2))
           continue;
         auto *Concat = concat(VPCtx, *OP, *OP2);
         Plan P2 = P;
@@ -349,9 +352,6 @@ improvePlan(Packer *Pkr, Plan &P,
         for (auto *VP2 : DecomposedStores[VP])
           P2.add(VP2);
         auto *OP = VP->getOperandPacks().front();
-        auto *VPCtx = Pkr->getOperandContext(OP);
-        if (!VPCtx)
-          continue;
         if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
             Improve(P2, deinterleave(VPCtx, OP, 4)) ||
             Improve(P2, deinterleave(VPCtx, OP, 8))) {
@@ -368,7 +368,7 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr) {
   for (auto &BB : *Pkr->getFunction()) {
     auto &CandidateSet = CandidatesByBlock[&BB];
     CandidateSet.Packs = enumerate(&BB, Pkr);
-    auto *VPCtx = Pkr->getContext(&BB);
+    auto *VPCtx = Pkr->getContext();
     CandidateSet.Inst2Packs.resize(VPCtx->getNumValues());
     for (auto *VP : CandidateSet.Packs)
       for (unsigned i : VP->getElements().set_bits())

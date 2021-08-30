@@ -135,8 +135,15 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
   return Acc;
 }
 
+static BasicBlock *getBlockForPack(const VectorPack *VP) {
+  for (auto *V : VP->elementValues())
+    if (auto *I = dyn_cast<Instruction>(V))
+      return I->getParent();
+  llvm_unreachable("not block for pack");
+}
+
 void VectorPackSet::add(const VectorPack *VP) {
-  auto *BB = VP->getBasicBlock();
+  auto *BB = getBlockForPack(VP);
   PackedValues[BB] |= VP->getElements();
   AllPacks.push_back(VP);
 
@@ -146,7 +153,7 @@ void VectorPackSet::add(const VectorPack *VP) {
 }
 
 bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
-  auto *BB = VP.getBasicBlock();
+  auto *BB = getBlockForPack(&VP);
   // Abort if one of the value we want to produce is produced by another pack
   auto It = PackedValues.find(BB);
   if (It != PackedValues.end() && It->second.anyCommon(VP.getElements())) {

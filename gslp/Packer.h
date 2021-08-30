@@ -65,6 +65,7 @@ public:
 
 class Packer {
   llvm::Function *F;
+  VectorPackContext VPCtx;
 
   // FIXME: fuse all of these together into a single map
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> MMs;
@@ -74,7 +75,6 @@ class Packer {
       LoadDAGs;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
       StoreDAGs;
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<VectorPackContext>> VPCtxs;
 
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<AccessLayoutInfo>>
       LoadInfo;
@@ -94,11 +94,7 @@ public:
          llvm::ScalarEvolution *SE, llvm::TargetTransformInfo *TTI,
          llvm::BlockFrequencyInfo *BFI);
 
-  VectorPackContext *getContext(llvm::BasicBlock *BB) const {
-    auto It = VPCtxs.find(BB);
-    assert(It != VPCtxs.end());
-    return It->second.get();
-  }
+  const VectorPackContext *getContext() const { return &VPCtx; }
 
   llvm::ArrayRef<const InstBinding *> getInsts() const {
     return SupportedInsts;
@@ -119,11 +115,10 @@ public:
   const llvm::DataLayout *getDataLayout() const { return DL; }
 
   llvm::Function *getFunction() const { return F; }
-  const OperandProducerInfo &getProducerInfo(const VectorPackContext *,
-                                             const OperandPack *);
+  const OperandProducerInfo &getProducerInfo(llvm::BasicBlock *, const OperandPack *);
   float getScalarCost(llvm::Instruction *);
-  // Get the basic block context if the operand can be produced within a single basic block
-  const VectorPackContext *getOperandContext(const OperandPack *) const;
+  // Get the basic block if the operand can be produced within a single basic block
+  llvm::BasicBlock *getBlockForOperand(const OperandPack *) const;
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

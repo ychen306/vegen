@@ -66,9 +66,8 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
 
     // Compute the type of don't care vector as special cases
     if (!OP.front() && is_splat(OP)) {
-      auto *BB = VPCtx->getBasicBlock();
       OP.Ty = FixedVectorType::get(
-          IntegerType::get(BB->getContext(), ElementSize), OP.size());
+          IntegerType::get(VPCtx->getFunction()->getContext(), ElementSize), OP.size());
     }
   }
 
@@ -180,9 +179,9 @@ Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands,
 
 Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
                                  IntrinsicBuilder &Builder) const {
-  auto *BB = VPCtx->getBasicBlock();
+  auto *BB = PHIs.front()->getParent();
   Builder.SetInsertPoint(&*BB->begin());
-  auto *FirstPHI = PHIs[0];
+  auto *FirstPHI = PHIs.front();
   unsigned NumIncomings = FirstPHI->getNumIncomingValues();
 
   auto *VecTy = FixedVectorType::get(FirstPHI->getType(), PHIs.size());
@@ -246,7 +245,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   // 1) First figure out cost of the vector instruction
   switch (Kind) {
   case General:
-    Cost = Producer->getCost(TTI, getBasicBlock()->getContext());
+    Cost = Producer->getCost(TTI, VPCtx->getFunction()->getContext());
     break;
   case Load: {
     auto *LI = Loads[0];

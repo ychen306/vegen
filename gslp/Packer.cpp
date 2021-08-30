@@ -31,7 +31,7 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
 Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
-    : F(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
+    : F(&F), VPCtx(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<LoadInst *> Loads;
@@ -48,7 +48,6 @@ Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
       }
     }
 
-    auto VPCtx = std::make_unique<VectorPackContext>(&BB);
     auto LoadDAG = std::make_unique<ConsecutiveAccessDAG>();
     auto StoreDAG = std::make_unique<ConsecutiveAccessDAG>();
     buildAccessDAG<LoadInst>(*LoadDAG, Loads, DL, SE);
@@ -59,8 +58,7 @@ Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
 
     MMs[&BB] = std::move(MM);
     LDAs[&BB] =
-        std::make_unique<LocalDependenceAnalysis>(AA, DL, SE, &BB, VPCtx.get());
-    VPCtxs[&BB] = std::move(VPCtx);
+        std::make_unique<LocalDependenceAnalysis>(AA, DL, SE, &BB, &VPCtx);
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
@@ -103,7 +101,7 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
 static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
                                    Packer *Pkr,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
-  auto *VPCtx = Pkr->getContext(BB);
+  auto *VPCtx = Pkr->getContext();
   auto &LoadDAG = Pkr->getLoadDAG(BB);
   auto &LDA = Pkr->getLDA(BB);
 
@@ -168,7 +166,7 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
 }
 
 const OperandProducerInfo &
-Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
+Packer::getProducerInfo(BasicBlock *BB, const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;
   OP->OPIValid = true;
@@ -176,13 +174,12 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
   OPI.Producers.clear();
   OPI.LoadProducers.clear();
 
-  auto *BB = VPCtx->getBasicBlock();
   auto &LDA = *LDAs[BB];
   auto &MM = *MMs[BB];
 
   unsigned NumLanes = OP->size();
-  BitVector Elements(VPCtx->getNumValues());
-  BitVector Depended(VPCtx->getNumValues());
+  BitVector Elements(VPCtx.getNumValues());
+  BitVector Depended(VPCtx.getNumValues());
   OPI.Feasible = true;
   bool AllLoads = true;
   bool HasUndef = false;
@@ -209,8 +206,8 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
       continue;
     }
 
-    unsigned InstId = VPCtx->getScalarId(I);
-    if (!checkIndependence(LDA, *VPCtx, I, Elements, Depended))
+    unsigned InstId = VPCtx.getScalarId(I);
+    if (!checkIndependence(LDA, VPCtx, I, Elements, Depended))
       OPI.Feasible = false;
     Elements.set(InstId);
     Depended |= LDA.getDepended(I);
@@ -232,7 +229,7 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
     SmallVector<PHINode *> PHIs;
     for (auto *V : *OP)
       PHIs.push_back(cast<PHINode>(V));
-    OPI.Producers.push_back(VPCtx->createPhiPack(PHIs, TTI));
+    OPI.Producers.push_back(VPCtx.createPhiPack(PHIs, TTI));
     return OPI;
   }
 
@@ -260,7 +257,7 @@ Packer::getProducerInfo(const VectorPackContext *VPCtx, const OperandPack *OP) {
       while (Lanes.size() < LaneOps.size())
         Lanes.push_back(nullptr);
       OPI.Producers.push_back(
-          VPCtx->createVectorPack(Lanes, OPI.Elements, Depended, Inst, TTI));
+          VPCtx.createVectorPack(Lanes, OPI.Elements, Depended, Inst, TTI));
     }
   }
   OPI.Feasible = !OPI.Producers.empty();
@@ -288,8 +285,8 @@ float Packer::getScalarCost(Instruction *I) {
       TTI::OK_AnyValue, TTI::OP_None, TTI::OP_None, Operands, I);
 }
 
-const VectorPackContext *
-Packer::getOperandContext(const OperandPack *OP) const {
+BasicBlock *
+Packer::getBlockForOperand(const OperandPack *OP) const {
   BasicBlock *BB = nullptr;
   for (auto *V : *OP) {
     auto *I = dyn_cast_or_null<Instruction>(V);
@@ -305,5 +302,5 @@ Packer::getOperandContext(const OperandPack *OP) const {
     if (BB != I->getParent())
       return nullptr;
   }
-  return BB ? getContext(BB) : nullptr;
+  return BB;
 }
