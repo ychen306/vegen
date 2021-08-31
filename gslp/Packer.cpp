@@ -30,13 +30,11 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
 
 Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
-               DominatorTree *DT, PostDominatorTree *PDT, 
-               DependenceInfo *DI,
-               LazyValueInfo *LVI, 
-               TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
-    : F(&F), VPCtx(&F), 
-    DA(*AA, *SE, *DT, &F, LVI, &VPCtx),
-    SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
+               DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
+               LazyValueInfo *LVI, TargetTransformInfo *TTI,
+               BlockFrequencyInfo *BFI)
+    : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, &F, LVI, &VPCtx),
+      SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<LoadInst *> Loads;
@@ -168,8 +166,8 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
   }
 }
 
-const OperandProducerInfo &
-Packer::getProducerInfo(BasicBlock *BB, const OperandPack *OP) {
+const OperandProducerInfo &Packer::getProducerInfo(BasicBlock *BB,
+                                                   const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;
   OP->OPIValid = true;
@@ -287,8 +285,7 @@ float Packer::getScalarCost(Instruction *I) {
       TTI::OK_AnyValue, TTI::OP_None, TTI::OP_None, Operands, I);
 }
 
-BasicBlock *
-Packer::getBlockForOperand(const OperandPack *OP) const {
+BasicBlock *Packer::getBlockForOperand(const OperandPack *OP) const {
   BasicBlock *BB = nullptr;
   for (auto *V : *OP) {
     auto *I = dyn_cast_or_null<Instruction>(V);

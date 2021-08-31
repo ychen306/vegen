@@ -40,9 +40,9 @@ VectorPack *createMemPack(const VectorPackContext *VPCtx,
 }
 
 template <>
-VectorPack *createMemPack(const VectorPackContext *VPCtx, ArrayRef<LoadInst *> Loads,
-                          const BitVector &Elements, const BitVector &Depended,
-                          TargetTransformInfo *TTI) {
+VectorPack *createMemPack(const VectorPackContext *VPCtx,
+                          ArrayRef<LoadInst *> Loads, const BitVector &Elements,
+                          const BitVector &Depended, TargetTransformInfo *TTI) {
   return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
 }
 

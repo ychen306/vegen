@@ -4,10 +4,10 @@
 #include "UseDefIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"

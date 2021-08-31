@@ -16,6 +16,7 @@ bool isUnsafeToFuse(llvm::Loop *, llvm::Loop *, llvm::LoopInfo &,
                     llvm::DominatorTree &, llvm::PostDominatorTree &);
 llvm::Loop *fuseLoops(llvm::Loop *, llvm::Loop *, llvm::LoopInfo &,
                       llvm::DominatorTree &, llvm::PostDominatorTree &,
-                      llvm::ScalarEvolution &, llvm::DependenceInfo &, llvm::LazyValueInfo *LVI=nullptr);
+                      llvm::ScalarEvolution &, llvm::DependenceInfo &,
+                      llvm::LazyValueInfo *LVI = nullptr);
 
 #endif //  LOOP_FUSION_H

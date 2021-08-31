@@ -67,7 +67,8 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
     // Compute the type of don't care vector as special cases
     if (!OP.front() && is_splat(OP)) {
       OP.Ty = FixedVectorType::get(
-          IntegerType::get(VPCtx->getFunction()->getContext(), ElementSize), OP.size());
+          IntegerType::get(VPCtx->getFunction()->getContext(), ElementSize),
+          OP.size());
     }
   }
 

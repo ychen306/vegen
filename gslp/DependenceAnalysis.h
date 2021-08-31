@@ -23,11 +23,9 @@ class GlobalDependenceAnalysis {
   llvm::DenseMap<llvm::Instruction *, llvm::BitVector> IndependentInsts;
 
 public:
-  GlobalDependenceAnalysis(llvm::AliasAnalysis &,
-                          llvm::ScalarEvolution &,
-                          llvm::DominatorTree &,
-                          llvm::Function *,
-                          llvm::LazyValueInfo *, VectorPackContext *);
+  GlobalDependenceAnalysis(llvm::AliasAnalysis &, llvm::ScalarEvolution &,
+                           llvm::DominatorTree &, llvm::Function *,
+                           llvm::LazyValueInfo *, VectorPackContext *);
 
   const llvm::BitVector &getDepended(llvm::Instruction *I) const {
     auto It = TransitiveClosure.find(I);

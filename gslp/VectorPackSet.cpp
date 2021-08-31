@@ -365,7 +365,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         if (VP->isPHI())
           Gathered = UndefValue::get(getVectorType(*OP));
         else
-          Gathered = gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
+          Gathered =
+              gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
         Operands.push_back(Gathered);
         OperandId++;
       }
@@ -419,7 +420,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *VP : PHIPacks) {
     ArrayRef<OperandPack *> OPs = VP->getOperandPacks();
     for (unsigned i = 0; i < OPs.size(); i++) {
-      Value *Gathered = gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
+      Value *Gathered =
+          gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
       cast<Instruction>(MaterializedPacks[VP])->setOperand(i, Gathered);
     }
   }
