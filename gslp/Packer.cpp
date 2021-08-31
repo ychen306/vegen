@@ -28,19 +28,19 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
 
 } // end anonymous namespace
 
-Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
+Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
                DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
                LazyValueInfo *LVI, TargetTransformInfo *TTI,
                BlockFrequencyInfo *BFI)
-    : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, &F, LVI, &VPCtx),
-      SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
+    : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, &F, LVI, &VPCtx), MM(Insts, F),
+      SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<LoadInst *> Loads;
     std::vector<StoreInst *> Stores;
+
     // Find packable instructions
-    auto MM = std::make_unique<MatchManager>(SupportedInsts, BB);
     for (auto &I : BB) {
       if (auto *LI = dyn_cast<LoadInst>(&I)) {
         if (LI->isSimple())
@@ -59,7 +59,6 @@ Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
     LoadInfo[&BB] = std::make_unique<AccessLayoutInfo>(*LoadDAG);
     StoreInfo[&BB] = std::make_unique<AccessLayoutInfo>(*StoreDAG);
 
-    MMs[&BB] = std::move(MM);
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
@@ -174,8 +173,6 @@ const OperandProducerInfo &Packer::getProducerInfo(BasicBlock *BB,
   auto &OPI = OP->OPI;
   OPI.Producers.clear();
   OPI.LoadProducers.clear();
-
-  auto &MM = *MMs[BB];
 
   unsigned NumLanes = OP->size();
   BitVector Elements(VPCtx.getNumValues());

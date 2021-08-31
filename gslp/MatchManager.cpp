@@ -1,5 +1,6 @@
 #include "MatchManager.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
@@ -16,11 +17,12 @@ void MatchManager::match(llvm::Value *V) {
 }
 
 MatchManager::MatchManager(llvm::ArrayRef<const InstBinding *> Insts,
-                           llvm::BasicBlock &BB) {
+                           llvm::Function &F) {
   for (auto &Inst : Insts)
     for (auto &LaneOp : Inst->getLaneOps())
       OpMatches.FindAndConstruct(LaneOp.getOperation());
-  for (auto &I : BB)
+
+  for (auto &I : instructions(&F))
     match(&I);
 
   for (auto &KV : OpMatches) {

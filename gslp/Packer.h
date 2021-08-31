@@ -69,9 +69,9 @@ class Packer {
   llvm::Function *F;
   VectorPackContext VPCtx;
   GlobalDependenceAnalysis DA;
+  MatchManager MM;
 
   // FIXME: fuse all of these together into a single map
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> MMs;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
       LoadDAGs;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
@@ -103,7 +103,7 @@ public:
     return SupportedInsts;
   }
 
-  MatchManager &getMatchManager(llvm::BasicBlock *BB) { return *MMs[BB]; }
+  MatchManager &getMatchManager() { return MM; }
   ConsecutiveAccessDAG &getLoadDAG(llvm::BasicBlock *BB) {
     return *LoadDAGs[BB];
   }

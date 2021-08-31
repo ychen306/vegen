@@ -2,8 +2,11 @@
 #define MATCH_MANAGER_H
 
 #include "InstSema.h"
-#include "llvm/IR/BasicBlock.h"
 #include <algorithm>
+
+namespace llvm {
+class Function;
+}
 
 // This class pulls all operation that we are interested in
 // and tries to match all of them while trying to avoid
@@ -18,7 +21,7 @@ class MatchManager {
                            const Operation::Match &B);
 
 public:
-  MatchManager(llvm::ArrayRef<const InstBinding *> Insts, llvm::BasicBlock &BB);
+  MatchManager(llvm::ArrayRef<const InstBinding *> Insts, llvm::Function &F);
 
   llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const;
 
