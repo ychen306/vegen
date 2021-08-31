@@ -30,8 +30,13 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
 
 Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, ScalarEvolution *SE,
+               DominatorTree *DT, PostDominatorTree *PDT, 
+               DependenceInfo *DI,
+               LazyValueInfo *LVI, 
                TargetTransformInfo *TTI, BlockFrequencyInfo *BFI)
-    : F(&F), VPCtx(&F), SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
+    : F(&F), VPCtx(&F), 
+    DA(*AA, *SE, *DT, &F, LVI, &VPCtx),
+    SupportedInsts(SupportedInsts.vec()), TTI(TTI), BFI(BFI) {
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<LoadInst *> Loads;
@@ -57,8 +62,6 @@ Packer::Packer(ArrayRef<const InstBinding *> SupportedInsts, Function &F,
     StoreInfo[&BB] = std::make_unique<AccessLayoutInfo>(*StoreDAG);
 
     MMs[&BB] = std::move(MM);
-    LDAs[&BB] =
-        std::make_unique<LocalDependenceAnalysis>(AA, DL, SE, &BB, &VPCtx);
     LoadDAGs[&BB] = std::move(LoadDAG);
     StoreDAGs[&BB] = std::move(StoreDAG);
   }
@@ -103,7 +106,7 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
   auto *VPCtx = Pkr->getContext();
   auto &LoadDAG = Pkr->getLoadDAG(BB);
-  auto &LDA = Pkr->getLDA(BB);
+  auto &DA = Pkr->getDA();
 
   // The set of loads producing elements of `OP`
   SmallPtrSet<Instruction *, 8> LoadSet;
@@ -123,7 +126,7 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
     BitVector Elements(VPCtx->getNumValues());
     BitVector Depended(VPCtx->getNumValues());
     Elements.set(VPCtx->getScalarId(LeadLI));
-    Depended |= LDA.getDepended(LeadLI);
+    Depended |= DA.getDepended(LeadLI);
     std::vector<LoadInst *> Loads{LeadLI};
 
     LoadInst *CurLoad = LeadLI;
@@ -147,11 +150,11 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
         CurLoad = cast<LoadInst>(*It->second.begin());
         continue;
       }
-      if (!checkIndependence(LDA, *VPCtx, NextLI, Elements, Depended))
+      if (!checkIndependence(DA, *VPCtx, NextLI, Elements, Depended))
         break;
       Loads.push_back(NextLI);
       Elements.set(VPCtx->getScalarId(NextLI));
-      Depended |= LDA.getDepended(NextLI);
+      Depended |= DA.getDepended(NextLI);
       CurLoad = NextLI;
     }
     if (Elements.count() == LoadSet.size()) {
@@ -174,7 +177,6 @@ Packer::getProducerInfo(BasicBlock *BB, const OperandPack *OP) {
   OPI.Producers.clear();
   OPI.LoadProducers.clear();
 
-  auto &LDA = *LDAs[BB];
   auto &MM = *MMs[BB];
 
   unsigned NumLanes = OP->size();
@@ -207,10 +209,10 @@ Packer::getProducerInfo(BasicBlock *BB, const OperandPack *OP) {
     }
 
     unsigned InstId = VPCtx.getScalarId(I);
-    if (!checkIndependence(LDA, VPCtx, I, Elements, Depended))
+    if (!checkIndependence(DA, VPCtx, I, Elements, Depended))
       OPI.Feasible = false;
     Elements.set(InstId);
-    Depended |= LDA.getDepended(I);
+    Depended |= DA.getDepended(I);
   }
 
   OPI.Elements = std::move(Elements);

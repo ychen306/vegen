@@ -205,7 +205,7 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
 // instruction that you are replacing.
 static std::vector<const VectorPack *>
 sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
-                       LocalDependenceAnalysis &LDA) {
+                       GlobalDependenceAnalysis &DA) {
   if (Packs.empty())
     return std::vector<const VectorPack *>();
 
@@ -266,7 +266,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
     // Figure out the dependence
     std::vector<Value *> DependedValues;
     if (I) {
-      auto Depended = LDA.getDepended(const_cast<Instruction *>(I));
+      auto Depended = DA.getDepended(const_cast<Instruction *>(I));
       for (auto *V : VPCtx->iter_values(Depended))
         DependedValues.push_back(V);
     } else {
@@ -349,7 +349,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
-        sortPacksAndScheduleBB(BB, Packs[BB], Pkr.getLDA(BB));
+        sortPacksAndScheduleBB(BB, Packs[BB], Pkr.getDA());
 
     // Now generate code according to the schedule
     for (auto *VP : OrderedPacks) {

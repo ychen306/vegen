@@ -1,8 +1,8 @@
 #ifndef PACKER_H
 #define PACKER_H
 
+#include "DependenceAnalysis.h"
 #include "InstSema.h"
-#include "LocalDependenceAnalysis.h"
 #include "MatchManager.h"
 #include "VectorPackContext.h"
 #include "llvm/ADT/DenseMap.h"
@@ -16,9 +16,11 @@
 
 namespace llvm {
 class ScalarEvolution;
+class DependenceInfo;
+class DominatorTree;
+class PostDominatorTree;
 class TargetTransformInfo;
 } // namespace llvm
-
 
 using ConsecutiveAccessDAG =
     llvm::DenseMap<llvm::Instruction *,
@@ -66,11 +68,10 @@ public:
 class Packer {
   llvm::Function *F;
   VectorPackContext VPCtx;
+  GlobalDependenceAnalysis DA;
 
   // FIXME: fuse all of these together into a single map
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<MatchManager>> MMs;
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<LocalDependenceAnalysis>>
-      LDAs;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
       LoadDAGs;
   llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
@@ -91,7 +92,9 @@ class Packer {
 public:
   Packer(llvm::ArrayRef<const InstBinding *> SupportedInsts, llvm::Function &F,
          llvm::AliasAnalysis *AA, const llvm::DataLayout *DL,
-         llvm::ScalarEvolution *SE, llvm::TargetTransformInfo *TTI,
+         llvm::ScalarEvolution *SE, llvm::DominatorTree *DT,
+         llvm::PostDominatorTree *PDT, llvm::DependenceInfo *DI,
+         llvm::LazyValueInfo *LVI, llvm::TargetTransformInfo *TTI,
          llvm::BlockFrequencyInfo *BFI);
 
   const VectorPackContext *getContext() const { return &VPCtx; }
@@ -108,29 +111,33 @@ public:
     return *StoreDAGs[BB];
   }
   AccessLayoutInfo &getLoadInfo(llvm::BasicBlock *BB) { return *LoadInfo[BB]; }
-  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) { return *StoreInfo[BB]; }
-  LocalDependenceAnalysis &getLDA(llvm::BasicBlock *BB) { return *LDAs[BB]; }
+  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) {
+    return *StoreInfo[BB];
+  }
+  GlobalDependenceAnalysis &getDA() { return DA; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
   const llvm::DataLayout *getDataLayout() const { return DL; }
 
   llvm::Function *getFunction() const { return F; }
-  const OperandProducerInfo &getProducerInfo(llvm::BasicBlock *, const OperandPack *);
+  const OperandProducerInfo &getProducerInfo(llvm::BasicBlock *,
+                                             const OperandPack *);
   float getScalarCost(llvm::Instruction *);
-  // Get the basic block if the operand can be produced within a single basic block
+  // Get the basic block if the operand can be produced within a single basic
+  // block
   llvm::BasicBlock *getBlockForOperand(const OperandPack *) const;
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on
 // `Depended`.
-static inline bool checkIndependence(const LocalDependenceAnalysis &LDA,
+static inline bool checkIndependence(const GlobalDependenceAnalysis &DA,
                                      const VectorPackContext &VPCtx,
                                      llvm::Instruction *I,
                                      const llvm::BitVector &Elements,
                                      const llvm::BitVector &Depended) {
   unsigned Id = VPCtx.getScalarId(I);
   return !Elements.test(Id) && !Depended.test(Id) &&
-         !Elements.anyCommon(LDA.getDepended(I));
+         !Elements.anyCommon(DA.getDepended(I));
 }
 
 #endif // PACKER

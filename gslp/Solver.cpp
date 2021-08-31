@@ -49,7 +49,7 @@ VectorPack *createMemPack(const VectorPackContext *VPCtx, ArrayRef<LoadInst *> L
 template <typename AccessType>
 std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
                                           AccessType *Access, unsigned VL) {
-  auto &LDA = Pkr->getLDA(BB);
+  auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto *TTI = Pkr->getTTI();
   bool IsStore = std::is_same<AccessType, StoreInst>::value;
@@ -72,7 +72,7 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
         }
         for (auto *Next : It->second) {
           auto *NextAccess = cast<AccessType>(Next);
-          if (!checkIndependence(LDA, *VPCtx, NextAccess, Elements, Depended)) {
+          if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended)) {
             continue;
           }
           auto AccessesExt = Accesses;
@@ -80,7 +80,7 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
           auto DependedExt = Depended;
           AccessesExt.push_back(NextAccess);
           ElementsExt.set(VPCtx->getScalarId(NextAccess));
-          DependedExt |= LDA.getDepended(NextAccess);
+          DependedExt |= DA.getDepended(NextAccess);
           Enumerate(AccessesExt, ElementsExt, DependedExt);
         }
       };
@@ -90,14 +90,14 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
   BitVector Depended(VPCtx->getNumValues());
 
   Elements.set(VPCtx->getScalarId(Access));
-  Depended |= LDA.getDepended(Access);
+  Depended |= DA.getDepended(Access);
 
   Enumerate(Accesses, Elements, Depended);
   return Seeds;
 }
 
 std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
-  auto &LDA = Pkr->getLDA(BB);
+  auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto &LayoutInfo = Pkr->getStoreInfo(BB);
 
@@ -210,7 +210,7 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   auto *TTI = Pkr->getTTI();
   unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS) /
                 getBitWidth(SI->getValueOperand(), Pkr->getDataLayout());
-  auto &LDA = Pkr->getLDA(BB);
+  auto &DA = Pkr->getDA();
   if (Values.size() <= VL)
     return {VP};
   SmallVector<const VectorPack *> Decomposed;
@@ -222,7 +222,7 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
       auto *SI = cast<StoreInst>(Values[j]);
       Stores.push_back(SI);
       Elements.set(VPCtx->getScalarId(SI));
-      Depended |= LDA.getDepended(SI);
+      Depended |= DA.getDepended(SI);
     }
     Decomposed.push_back(
         VPCtx->createStorePack(Stores, Elements, Depended, TTI));

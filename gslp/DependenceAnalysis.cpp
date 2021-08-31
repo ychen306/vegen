@@ -2,7 +2,6 @@
 #include "VectorPackContext.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/Analysis/AliasSetTracker.h"
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
@@ -61,6 +60,14 @@ public:
   }
 };
 } // namespace
+
+static MemoryLocation getLocation(Instruction *I) {
+  if (StoreInst *SI = dyn_cast<StoreInst>(I))
+    return MemoryLocation::get(SI);
+  if (LoadInst *LI = dyn_cast<LoadInst>(I))
+    return MemoryLocation::get(LI);
+  return MemoryLocation();
+}
 
 /// True if the instruction is not a volatile or atomic load/store.
 static bool isSimple(Instruction *I) {
@@ -141,8 +148,8 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
     }
   }
 
-  auto Loc1 = MemoryLocation::get(I1);
-  auto Loc2 = MemoryLocation::get(I2);
+  auto Loc1 = getLocation(I1);
+  auto Loc2 = getLocation(I2);
   bool Aliased = true;
   if (Loc1.Ptr && Loc2.Ptr && isSimple(I1) && isSimple(I2)) {
     // Do the alias check.
@@ -155,7 +162,7 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
     llvm::AliasAnalysis &AA, llvm::ScalarEvolution &SE, llvm::DominatorTree &DT,
     llvm::Function *F, llvm::LazyValueInfo *LVI, VectorPackContext *VPCtx) {
 
-  AliasSetTracker AST(AA);
+  SmallVector<Instruction *> MemRefs;
 
   // Scan the CFG in rpo (pred before succ) to discover the *direct* dependences
   // Mapping inst -> <users>
@@ -180,21 +187,12 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
       if (!I.mayReadOrWriteMemory())
         continue;
 
-      auto Loc = MemoryLocation::get(&I);
-      for (auto &AV : AST.getAliasSetFor(Loc)) {
-        Value *Ptr = AV.getValue();
-        for (auto *PtrUser : Ptr->users()) {
-          auto *I2 = dyn_cast<Instruction>(PtrUser);
-          // Only consider instructions that executes before `I`
-          if (I2 == &I || !Processed.count(I2))
-            continue;
-          if (I.mayWriteToMemory() && I2->mayWriteToMemory() &&
-              isAliased(&I, I2, AA, SE, DT, LVI))
-            Dependences[&I].push_back(I2);
-        }
-      }
+      for (Instruction *PrevRef : MemRefs)
+        if ((PrevRef->mayWriteToMemory() || I.mayWriteToMemory()) &&
+            isAliased(&I, PrevRef, AA, SE, DT, LVI))
+          Dependences[&I].push_back(PrevRef);
 
-      AST.add(&I);
+      MemRefs.push_back(&I);
     }
   }
 
