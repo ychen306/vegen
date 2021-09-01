@@ -98,11 +98,10 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
 
   Value *Acc;
   if (!PartialGathers.empty()) {
-    // 2)uMerge the partial gathers
-    BitVector DefinedBits = PartialGathers[0].DefinedBits;
-    Acc = PartialGathers[0].Gather;
-    for (auto &PG :
-         make_range(PartialGathers.begin() + 1, PartialGathers.end())) {
+    // 2) Merge the partial gathers
+    BitVector DefinedBits = PartialGathers.front().DefinedBits;
+    Acc = PartialGathers.front().Gather;
+    for (auto &PG : drop_begin(PartialGathers)) {
       ShuffleMaskTy Mask = Undefs;
       assert(Mask.size() == NumValues);
       // Select from Acc
@@ -157,16 +156,14 @@ bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
 
   SmallPtrSet<Value *, 8> NewValues;
   for (auto *V : VP.elementValues())
-    if (V)
-      NewValues.insert(V);
+    NewValues.insert(V);
 
   // Do a DFS on the dependence graph starting from VP.
   // We want to see if we can get back to any of VP's values
-  std::vector<const VectorPack *> Worklist{&VP};
+  SmallVector<const VectorPack *> Worklist{&VP};
   DenseSet<const VectorPack *> Visited;
   while (!Worklist.empty()) {
-    auto *VP = Worklist.back();
-    Worklist.pop_back();
+    auto *VP = Worklist.pop_back_val();
 
     bool Inserted = Visited.insert(VP).second;
     if (!Inserted)
@@ -427,12 +424,12 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
   // Delete the dead instructions.
   // Do it the reverse of program order to avoid dangling pointer.
-  for (auto *I : make_range(DeadInsts.rbegin(), DeadInsts.rend())) {
+  for (Instruction *I : reverse(DeadInsts)) {
     auto *Undef = UndefValue::get(I->getType());
     I->replaceAllUsesWith(Undef);
     I->dropAllReferences();
   }
-  for (auto *I : make_range(DeadInsts.rbegin(), DeadInsts.rend())) {
+  for (Instruction *I : reverse(DeadInsts)) {
     assert(!I->isTerminator());
     I->eraseFromParent();
   }
