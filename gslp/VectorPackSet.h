@@ -13,9 +13,8 @@ class Packer;
 class VectorPackSet {
   llvm::Function *F;
   std::vector<const VectorPack *> AllPacks;
-  // FIXME : rename Packs to BB2Packs;
-  llvm::DenseMap<llvm::BasicBlock *, std::vector<const VectorPack *>> Packs;
-  llvm::DenseMap<llvm::BasicBlock *, llvm::BitVector> PackedValues;
+
+  llvm::BitVector PackedValues;
   llvm::DenseMap<llvm::Value *, const VectorPack *> ValueToPackMap;
 
   // This tells us where a value is located in a pack

@@ -142,20 +142,16 @@ static BasicBlock *getBlockForPack(const VectorPack *VP) {
 }
 
 void VectorPackSet::add(const VectorPack *VP) {
-  auto *BB = getBlockForPack(VP);
-  PackedValues[BB] |= VP->getElements();
+  PackedValues |= VP->getElements();
   AllPacks.push_back(VP);
 
   for (Value *V : VP->elementValues())
     ValueToPackMap[V] = VP;
-  Packs[BB].push_back(VP);
 }
 
 bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
-  auto *BB = getBlockForPack(&VP);
   // Abort if one of the value we want to produce is produced by another pack
-  auto It = PackedValues.find(BB);
-  if (It != PackedValues.end() && It->second.anyCommon(VP.getElements())) {
+  if (PackedValues.anyCommon(VP.getElements())) {
     return false;
   }
 
@@ -339,16 +335,20 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
   std::vector<Instruction *> DeadInsts;
 
+  std::map<BasicBlock *, SmallVector<const VectorPack *>> PacksByBlock;
+  for (auto *VP : AllPacks)
+    PacksByBlock[getBlockForPack(VP)].push_back(VP);
+
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
   SmallVector<const VectorPack *> PHIPacks;
   for (BasicBlock *BB : RPO) {
-    if (Packs[BB].empty())
+    if (!PacksByBlock.count(BB))
       continue;
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
-        sortPacksAndScheduleBB(BB, Packs[BB], Pkr.getDA());
+        sortPacksAndScheduleBB(BB, PacksByBlock[BB], Pkr.getDA());
 
     // Now generate code according to the schedule
     for (auto *VP : OrderedPacks) {
