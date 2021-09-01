@@ -41,6 +41,7 @@ private:
   llvm::DenseMap<llvm::Instruction *, unsigned> MemberCounts;
 
 public:
+  AccessLayoutInfo() = default;
   AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG);
   // Get num followers + 1
   unsigned getNumMembers(llvm::Instruction *I) const {
@@ -72,16 +73,8 @@ class Packer {
   GlobalDependenceAnalysis DA;
   MatchManager MM;
 
-  // FIXME: fuse all of these together into a single map
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-      LoadDAGs;
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<ConsecutiveAccessDAG>>
-      StoreDAGs;
-
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<AccessLayoutInfo>>
-      LoadInfo;
-  llvm::DenseMap<llvm::BasicBlock *, std::unique_ptr<AccessLayoutInfo>>
-      StoreInfo;
+  ConsecutiveAccessDAG LoadDAG, StoreDAG;
+  AccessLayoutInfo LoadInfo, StoreInfo;
   llvm::DenseMap<const OperandPack *, OperandProducerInfo> Producers;
 
   std::vector<const InstBinding *> SupportedInsts;
@@ -105,16 +98,10 @@ public:
   }
 
   MatchManager &getMatchManager() { return MM; }
-  ConsecutiveAccessDAG &getLoadDAG(llvm::BasicBlock *BB) {
-    return *LoadDAGs[BB];
-  }
-  ConsecutiveAccessDAG &getStoreDAG(llvm::BasicBlock *BB) {
-    return *StoreDAGs[BB];
-  }
-  AccessLayoutInfo &getLoadInfo(llvm::BasicBlock *BB) { return *LoadInfo[BB]; }
-  AccessLayoutInfo &getStoreInfo(llvm::BasicBlock *BB) {
-    return *StoreInfo[BB];
-  }
+  ConsecutiveAccessDAG &getLoadDAG() { return LoadDAG; }
+  ConsecutiveAccessDAG &getStoreDAG() { return StoreDAG; }
+  AccessLayoutInfo &getLoadInfo() { return LoadInfo; }
+  AccessLayoutInfo &getStoreInfo() { return StoreInfo; }
   GlobalDependenceAnalysis &getDA() { return DA; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }

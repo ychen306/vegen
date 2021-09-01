@@ -53,7 +53,7 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
   auto *VPCtx = Pkr->getContext();
   auto *TTI = Pkr->getTTI();
   bool IsStore = std::is_same<AccessType, StoreInst>::value;
-  auto &AccessDAG = IsStore ? Pkr->getStoreDAG(BB) : Pkr->getLoadDAG(BB);
+  auto &AccessDAG = IsStore ? Pkr->getStoreDAG() : Pkr->getLoadDAG();
 
   std::vector<VectorPack *> Seeds;
 
@@ -99,7 +99,7 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
 std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
   auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
-  auto &LayoutInfo = Pkr->getStoreInfo(BB);
+  auto &LayoutInfo = Pkr->getStoreInfo();
 
   auto *TTI = Pkr->getTTI();
 
@@ -243,7 +243,7 @@ improvePlan(Packer *Pkr, Plan &P,
           for (auto *VP : getSeedMemPacks(Pkr, &BB, SI, VL))
             Seeds.push_back(VP);
 
-    AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo(&BB);
+    AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo();
     std::sort(Seeds.begin(), Seeds.end(),
               [&](const VectorPack *VP1, const VectorPack *VP2) {
                 if (VP1->numElements() != VP2->numElements())

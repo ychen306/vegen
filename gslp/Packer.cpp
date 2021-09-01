@@ -1,6 +1,8 @@
 #include "Packer.h"
+#include "ConsecutiveCheck.h"
 #include "MatchManager.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
@@ -11,19 +13,17 @@ bool isScalarType(Type *Ty) { return Ty->getScalarType() == Ty; }
 // Do a quadratic search to build the access dags
 template <typename MemAccessTy>
 void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
-                    const DataLayout *DL, ScalarEvolution *SE) {
-  using namespace llvm;
+                    const DataLayout *DL, ScalarEvolution *SE, LoopInfo *LI) {
   for (auto *A1 : Accesses) {
     // Get type of the value being acccessed
     auto *Ty =
         cast<PointerType>(A1->getPointerOperand()->getType())->getElementType();
     if (!isScalarType(Ty))
       continue;
-    for (auto *A2 : Accesses) {
+    for (auto *A2 : Accesses)
       if (A1->getType() == A2->getType() &&
-          isConsecutiveAccess(A1, A2, *DL, *SE))
+          isConsecutive(A1, A2, *DL, *SE, *LI))
         DAG[A1].insert(A2);
-    }
   }
 }
 
@@ -55,33 +55,22 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, &F, LVI, &VPCtx), MM(Insts, F),
       SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
 
-  // Setup analyses and determine search space
-  for (auto &BB : F) {
-    std::vector<LoadInst *> Loads;
-    std::vector<StoreInst *> Stores;
-
-    // Find packable instructions
-    for (auto &I : BB) {
-      if (auto *LI = dyn_cast<LoadInst>(&I)) {
-        if (LI->isSimple())
-          Loads.push_back(LI);
-      } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
-        if (SI->isSimple())
-          Stores.push_back(SI);
-      }
+  std::vector<LoadInst *> Loads;
+  std::vector<StoreInst *> Stores;
+  for (auto &I : instructions(&F)) {
+    if (auto *LI = dyn_cast<LoadInst>(&I)) {
+      if (LI->isSimple())
+        Loads.push_back(LI);
+    } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
+      if (SI->isSimple())
+        Stores.push_back(SI);
     }
-
-    auto LoadDAG = std::make_unique<ConsecutiveAccessDAG>();
-    auto StoreDAG = std::make_unique<ConsecutiveAccessDAG>();
-    buildAccessDAG<LoadInst>(*LoadDAG, Loads, DL, SE);
-    buildAccessDAG<StoreInst>(*StoreDAG, Stores, DL, SE);
-
-    LoadInfo[&BB] = std::make_unique<AccessLayoutInfo>(*LoadDAG);
-    StoreInfo[&BB] = std::make_unique<AccessLayoutInfo>(*StoreDAG);
-
-    LoadDAGs[&BB] = std::move(LoadDAG);
-    StoreDAGs[&BB] = std::move(StoreDAG);
   }
+
+  buildAccessDAG<LoadInst>(LoadDAG, Loads, DL, SE, LI);
+  buildAccessDAG<StoreInst>(StoreDAG, Stores, DL, SE, LI);
+  LoadInfo = AccessLayoutInfo(LoadDAG);
+  StoreInfo = AccessLayoutInfo(StoreDAG);
 }
 
 AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
@@ -122,7 +111,7 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
                                    Packer *Pkr,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
   auto *VPCtx = Pkr->getContext();
-  auto &LoadDAG = Pkr->getLoadDAG(BB);
+  auto &LoadDAG = Pkr->getLoadDAG();
   auto &DA = Pkr->getDA();
 
   // The set of loads producing elements of `OP`
@@ -130,8 +119,12 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
   for (auto *V : OP) {
     if (!V)
       continue;
-    if (auto *I = dyn_cast<Instruction>(V))
+    if (auto *I = dyn_cast<Instruction>(V)) {
+      // only pack within a single basic block
+      if (I->getParent() != BB)
+        return;
       LoadSet.insert(I);
+    }
   }
 
   // The loads might jumbled.
