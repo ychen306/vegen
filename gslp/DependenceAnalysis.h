@@ -10,8 +10,23 @@ class LazyValueInfo;
 class ScalarEvolution;
 class DominatorTree;
 class Instruction;
+class DependenceInfo;
 class Function;
 } // namespace llvm
+
+// A wrapper around dependence info that tries to be somewhat context sensitive
+class LazyDependenceAnalysis {
+  llvm::AliasAnalysis &AA;
+  llvm::DependenceInfo &DI;
+  llvm::ScalarEvolution &SE;
+  llvm::DominatorTree &DT;
+  llvm::LazyValueInfo &LVI;
+public:
+  LazyDependenceAnalysis(llvm::AliasAnalysis &AA,
+      llvm::DependenceInfo &DI, llvm::ScalarEvolution &SE, llvm::DominatorTree &DT,
+      llvm::LazyValueInfo &LVI) : AA(AA), DI(DI), SE(SE), DT(DT), LVI(LVI) {}
+  bool depends(llvm::Instruction *I1, llvm::Instruction *I2);
+};
 
 class VectorPackContext;
 
@@ -24,8 +39,8 @@ class GlobalDependenceAnalysis {
 
 public:
   GlobalDependenceAnalysis(llvm::AliasAnalysis &, llvm::ScalarEvolution &,
-                           llvm::DominatorTree &, llvm::Function *,
-                           llvm::LazyValueInfo *, VectorPackContext *);
+                           llvm::DominatorTree &, llvm::LazyValueInfo &, 
+                           llvm::Function *, VectorPackContext *);
 
   const llvm::BitVector &getDepended(llvm::Instruction *I) const {
     auto It = TransitiveClosure.find(I);

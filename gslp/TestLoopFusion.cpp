@@ -101,7 +101,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
       if (DoFusion) {
         for (unsigned i = 1; i < Loops.size(); i++) {
           if (Loop *Fused =
-                  fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI, &LVI))
+                  fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI))
             Loops[0] = Fused;
           else
             llvm_unreachable("failed to fuse fusable loops");

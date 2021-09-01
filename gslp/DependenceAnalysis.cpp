@@ -4,6 +4,7 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -82,10 +83,10 @@ static bool isSimple(Instruction *I) {
 
 static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
                       ScalarEvolution &SE, DominatorTree &DT,
-                      LazyValueInfo *LVI = nullptr) {
+                      LazyValueInfo &LVI) {
   auto *Ptr1 = getLoadStorePointerOperand(I1);
   auto *Ptr2 = getLoadStorePointerOperand(I2);
-  if (LVI && Ptr1 && Ptr2) {
+  if (Ptr1 && Ptr2) {
     auto *Ptr1SCEV = SE.getSCEV(Ptr1);
     auto *Ptr2SCEV = SE.getSCEV(Ptr2);
 
@@ -107,7 +108,7 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
           // and `I2`
           if (!DT.dominates(V, I2) || !DT.dominates(V, I1))
             continue;
-          auto CR = LVI->getConstantRangeOnEdge(V, &BB, Succ);
+          auto CR = LVI.getConstantRangeOnEdge(V, &BB, Succ);
           if (CR.isFullSet())
             continue;
           auto Pair = Ranges.try_emplace(V, CR);
@@ -150,9 +151,23 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
   return Aliased;
 }
 
+bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
+  // No dependence if nobody writes
+  if (!I1->mayWriteToMemory() && !I2->mayWriteToMemory())
+    return false;
+
+  // No dependence if no aliasing
+  if (!isAliased(I1, I2, AA, SE, DT, LVI))
+    return false;
+
+  // Fall back to DependenceInfo
+  auto Dep = DI.depends(I1, I2, true);
+  return Dep && !Dep->isInput();
+}
+
 GlobalDependenceAnalysis::GlobalDependenceAnalysis(
     llvm::AliasAnalysis &AA, llvm::ScalarEvolution &SE, llvm::DominatorTree &DT,
-    llvm::Function *F, llvm::LazyValueInfo *LVI, VectorPackContext *VPCtx) {
+    llvm::LazyValueInfo &LVI, llvm::Function *F, VectorPackContext *VPCtx) {
 
   SmallVector<Instruction *> MemRefs;
 

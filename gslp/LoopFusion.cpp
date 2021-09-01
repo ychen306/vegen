@@ -422,8 +422,7 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-                PostDominatorTree &PDT, ScalarEvolution &SE, DependenceInfo &DI,
-                LazyValueInfo *LVI) {
+                PostDominatorTree &PDT, ScalarEvolution &SE, DependenceInfo &DI) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 
