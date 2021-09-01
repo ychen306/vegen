@@ -10,6 +10,7 @@ set(LIB_PACKING_SRC
   LoopFusion.cpp
   CodeMotionUtil.cpp
   DependenceAnalysis.cpp
+  ConsecutiveCheck.cpp
 
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IntrinsicBuilder.cpp
@@ -36,7 +37,7 @@ if(BUILD_TYPE STREQUAL "RELEASE")
     PROPERTIES COMPILE_FLAGS "-O0")
 endif()
 
-add_library(GSLP MODULE GSLP.cpp TestCodeMotion.cpp)
+add_library(GSLP MODULE GSLP.cpp TestCodeMotion.cpp TestConsecutiveCheck.cpp)
 add_executable(test-loop-fusion TestLoopFusion.cpp)
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis scalaropts)
 
