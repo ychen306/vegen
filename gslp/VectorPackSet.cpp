@@ -1,5 +1,4 @@
 #include "VectorPackSet.h"
-#include "LocalDependenceAnalysis.h"
 #include "Packer.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"

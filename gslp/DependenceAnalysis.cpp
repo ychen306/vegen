@@ -80,19 +80,11 @@ static bool isSimple(Instruction *I) {
   return true;
 }
 
-static Value *getLoadStorePointer(Instruction *I) {
-  if (auto *LI = dyn_cast<LoadInst>(I))
-    return LI->getPointerOperand();
-  if (auto *SI = dyn_cast<StoreInst>(I))
-    return SI->getPointerOperand();
-  return nullptr;
-}
-
 static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
                       ScalarEvolution &SE, DominatorTree &DT,
                       LazyValueInfo *LVI = nullptr) {
-  auto *Ptr1 = getLoadStorePointer(I1);
-  auto *Ptr2 = getLoadStorePointer(I2);
+  auto *Ptr1 = getLoadStorePointerOperand(I1);
+  auto *Ptr2 = getLoadStorePointerOperand(I2);
   if (LVI && Ptr1 && Ptr2) {
     auto *Ptr1SCEV = SE.getSCEV(Ptr1);
     auto *Ptr2SCEV = SE.getSCEV(Ptr2);

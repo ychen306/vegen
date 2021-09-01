@@ -245,7 +245,8 @@ bool GSLP::runOnFunction(Function &F) {
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';
-  Packer Pkr(SupportedIntrinsics, F, AA, DL, SE, DT, PDT, DI, LVI, TTI, BFI);
+  Packer Pkr(SupportedIntrinsics, F, AA, DL, LI, SE, DT, PDT, DI, LVI, TTI,
+             BFI);
 
   VectorPackSet Packs(&F);
   optimizeBottomUp(Packs, &Pkr);

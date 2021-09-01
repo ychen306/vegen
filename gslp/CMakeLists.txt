@@ -17,8 +17,7 @@ set(LIB_PACKING_SRC
   Packer.cpp
   Solver.cpp
   IRVec.cpp
-  MatchManager.cpp
-  LocalDependenceAnalysis.cpp)
+  MatchManager.cpp)
 
 
 if(APPLE)

@@ -8,7 +8,6 @@
 
 #include "VectorPack.h"
 
-class LocalDependenceAnalysis;
 class Packer;
 
 class VectorPackSet {

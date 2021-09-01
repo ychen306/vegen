@@ -20,6 +20,7 @@ class DependenceInfo;
 class DominatorTree;
 class PostDominatorTree;
 class TargetTransformInfo;
+class LoopInfo;
 } // namespace llvm
 
 using ConsecutiveAccessDAG =
@@ -92,7 +93,7 @@ class Packer {
 public:
   Packer(llvm::ArrayRef<const InstBinding *> SupportedInsts, llvm::Function &F,
          llvm::AliasAnalysis *AA, const llvm::DataLayout *DL,
-         llvm::ScalarEvolution *SE, llvm::DominatorTree *DT,
+         llvm::LoopInfo *LI, llvm::ScalarEvolution *SE, llvm::DominatorTree *DT,
          llvm::PostDominatorTree *PDT, llvm::DependenceInfo *DI,
          llvm::LazyValueInfo *LVI, llvm::TargetTransformInfo *TTI,
          llvm::BlockFrequencyInfo *BFI);
