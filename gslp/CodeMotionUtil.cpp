@@ -13,7 +13,6 @@
 
 using namespace llvm;
 
-// FIXME: rewrite this to ignore *all* backedges
 bool comesBefore(BasicBlock *BB1, BasicBlock *BB2, Loop *ParentLoop) {
   SmallPtrSet<BasicBlock *, 8> Visited;
   // mark the loop header as visited to avoid visiting the backedge
@@ -118,10 +117,7 @@ void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
 }
 
 // FIXME: treat reduction as special cases
-// FIXME: ignore cycles backedge coming from phi nodes
 // Find instructions from `Earliest until `I that `I depends on
-// FIXME: rewrite this to ignore *all* backedges (i.e.
-// FIXME: support Earliest being null
 void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
                      DominatorTree &DT, DependenceInfo &DI,
                      SmallPtrSetImpl<Instruction *> &Depended, bool Inclusive) {
@@ -270,7 +266,6 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   }
 }
 
-// FIXME: PHI-node should have a stricter compatibility criterion
 bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
                          DominatorTree &DT, PostDominatorTree &PDT,
                          DependenceInfo &DI, ScalarEvolution *SE) {
@@ -305,7 +300,7 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
   findDependences(I, Dominator, LI, DT, DI, Dependences);
 
-  // FIXME: check for unsafe to hoist things
+  // FIXME: check for unsafe to hoist things like volatile
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
