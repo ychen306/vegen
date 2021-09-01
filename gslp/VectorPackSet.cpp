@@ -324,8 +324,6 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
   return SortedPacks;
 }
 
-// FIXME: maybe we need to do some LICM and CSE for these gathers??
-// LOOK INTO SLP
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
