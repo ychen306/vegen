@@ -1,10 +1,12 @@
 #include "CodeMotionUtil.h"
+#include "DependenceAnalysis.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/InitializePasses.h"
@@ -35,8 +37,10 @@ struct TestCodeMotion : public FunctionPass {
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<DependenceAnalysisWrapperPass>();
+    AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<LazyValueInfoWrapperPass>();
     AU.addRequired<PostDominatorTreeWrapperPass>();
   }
 
@@ -53,6 +57,10 @@ bool TestCodeMotion::runOnFunction(Function &F) {
   auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+  auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
+  auto &LVI = getAnalysis<LazyValueInfoWrapperPass>().getLVI();
+
+  LazyDependenceAnalysis LDA(AA, DI, SE, DT, LI, LVI);
 
   StringMap<Instruction *> NameToInstMap;
   StringMap<StoreInst *> NameToStoreMap;
@@ -84,7 +92,7 @@ bool TestCodeMotion::runOnFunction(Function &F) {
 
     if (!Gather)
       for (auto *I : drop_begin(Insts))
-        hoistTo(I, Insts.front()->getParent(), LI, SE, DT, PDT, DI,
+        hoistTo(I, Insts.front()->getParent(), LI, SE, DT, PDT, LDA,
                 CoupledInsts);
 
     for (auto *I : drop_begin(Insts))
@@ -92,7 +100,7 @@ bool TestCodeMotion::runOnFunction(Function &F) {
   }
 
   if (Gather)
-    gatherInstructions(&F, CoupledInsts, LI, DT, PDT, SE, DI);
+    gatherInstructions(&F, CoupledInsts, LI, DT, PDT, SE, LDA);
 
   return true;
 }
@@ -100,6 +108,7 @@ bool TestCodeMotion::runOnFunction(Function &F) {
 INITIALIZE_PASS_BEGIN(TestCodeMotion, "test-code-motion", "test-code-motion",
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DependenceAnalysisWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)

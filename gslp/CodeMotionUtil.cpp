@@ -1,10 +1,10 @@
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
 #include "LoopFusion.h"
+#include "DependenceAnalysis.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
@@ -119,7 +119,7 @@ void getInBetweenInstructions(Instruction *I, BasicBlock *Earliest,
 // FIXME: treat reduction as special cases
 // Find instructions from `Earliest until `I that `I depends on
 void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
-                     DominatorTree &DT, DependenceInfo &DI,
+                     DominatorTree &DT, LazyDependenceAnalysis &LDA,
                      SmallPtrSetImpl<Instruction *> &Depended, bool Inclusive) {
   SmallPtrSet<Instruction *, 16> InBetweenInsts;
   getInBetweenInstructions(I, Earliest, &LI, InBetweenInsts);
@@ -149,11 +149,9 @@ void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
         Worklist.push_back(OpInst);
     }
 
-    for (auto *I2 : InBetweenInsts) {
-      auto Dep = DI.depends(I2, I, true);
-      if (Dep && !Dep->isInput())
+    for (auto *I2 : InBetweenInsts)
+      if (LDA.depends(I2, I))
         Worklist.push_back(I2);
-    }
   }
 }
 
@@ -176,14 +174,14 @@ static BasicBlock *getIDom(DominatorTree &DT, BasicBlock *BB) {
 BasicBlock *findCompatiblePredecessorsFor(Instruction *I, BasicBlock *BB,
                                           LoopInfo &LI, DominatorTree &DT,
                                           PostDominatorTree &PDT,
-                                          DependenceInfo &DI,
+                                          LazyDependenceAnalysis &LDA,
                                           ScalarEvolution *SE, bool Inclusive) {
   Loop *ParentLoop = findCommonParentLoop(I->getParent(), BB, LI);
   SkipBackEdge SBE(ParentLoop);
   for (BasicBlock *Pred : inverse_depth_first_ext(BB, SBE)) {
     if (!Inclusive && Pred == BB)
       continue;
-    if (isControlCompatible(I, Pred, LI, DT, PDT, DI, SE))
+    if (isControlCompatible(I, Pred, LI, DT, PDT, LDA, SE))
       return Pred;
   }
   return nullptr;
@@ -200,7 +198,7 @@ SmallVector<T> getMembers(const EquivalenceClasses<T> &EC, T X) {
 } // namespace
 
 void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
-             DominatorTree &DT, PostDominatorTree &PDT, DependenceInfo &DI,
+             DominatorTree &DT, PostDominatorTree &PDT, LazyDependenceAnalysis &LDA,
              const EquivalenceClasses<Instruction *> &CoupledInsts) {
   if (I->getParent() == BB)
     return;
@@ -208,9 +206,9 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
   assert(LoopForI == LoopForBB ||
-         !isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, DI, DT, PDT));
+         !isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, LDA, DT, PDT));
   if (LoopForI != LoopForBB)
-    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, SE, DI);
+    fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, SE, LDA);
 
   Loop *L = LI.getLoopFor(I->getParent());
   assert(L == LI.getLoopFor(BB) && "loop-fusion failed");
@@ -219,7 +217,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   SmallPtrSet<Instruction *, 16> Dependences;
   BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
   findDependences(
-      I, Dominator, LI, DT, DI, Dependences,
+      I, Dominator, LI, DT, LDA, Dependences,
       isa<PHINode>(I) /* include the dep found in BB if it's a phi node*/);
 
   for (Instruction *Dep : Dependences) {
@@ -238,14 +236,14 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     for (Instruction *I2 : Coupled) {
       // We need to hoist the dependence of a phi node *before* the target block
       bool Inclusive = !isa<PHINode>(I);
-      Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, DI,
+      Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, LDA,
                                                 &SE, Inclusive);
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
     // Hoist `Dep` and its coupled instructions to the common dominator
     for (Instruction *I2 : Coupled)
-      hoistTo(I2, Dominator, LI, SE, DT, PDT, DI, CoupledInsts);
+      hoistTo(I2, Dominator, LI, SE, DT, PDT, LDA, CoupledInsts);
   }
 
   auto *PN = dyn_cast<PHINode>(I);
@@ -268,7 +266,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
 
 bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
                          DominatorTree &DT, PostDominatorTree &PDT,
-                         DependenceInfo &DI, ScalarEvolution *SE) {
+                         LazyDependenceAnalysis &LDA, ScalarEvolution *SE) {
   if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
     return false;
 
@@ -292,20 +290,20 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   if ((bool)LoopForI ^ (bool)LoopForBB)
     return false;
   if (LoopForI != LoopForBB &&
-      (!SE || isUnsafeToFuse(LoopForI, LoopForBB, LI, *SE, DI, DT, PDT)))
+      (!SE || isUnsafeToFuse(LoopForI, LoopForBB, LI, *SE, LDA, DT, PDT)))
     return false;
 
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
   BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
-  findDependences(I, Dominator, LI, DT, DI, Dependences);
+  findDependences(I, Dominator, LI, DT, LDA, Dependences);
 
   // FIXME: check for unsafe to hoist things like volatile
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
     if (Dep != I &&
-        !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, DI, SE, Inclusive))
+        !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, LDA, SE, Inclusive))
       return false;
   }
 
@@ -314,11 +312,11 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
 
 bool isControlCompatible(Instruction *I1, Instruction *I2, LoopInfo &LI,
                          DominatorTree &DT, PostDominatorTree &PDT,
-                         DependenceInfo &DI, ScalarEvolution *SE) {
+                         LazyDependenceAnalysis &LDA, ScalarEvolution *SE) {
   Loop *ParentLoop = findCommonParentLoop(I1->getParent(), I2->getParent(), LI);
   if (comesBefore(I1, I2, ParentLoop))
     std::swap(I1, I2);
-  return isControlCompatible(I1, I2->getParent(), LI, DT, PDT, DI, SE);
+  return isControlCompatible(I1, I2->getParent(), LI, DT, PDT, LDA, SE);
 }
 
 void fixDefUseDominance(Function *F, DominatorTree &DT) {
@@ -385,7 +383,7 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
 void gatherInstructions(Function *F,
                         const EquivalenceClasses<Instruction *> &EC,
                         LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
-                        ScalarEvolution &SE, DependenceInfo &DI) {
+                        ScalarEvolution &SE, LazyDependenceAnalysis &LDA) {
   // Do a top-sort of the equivalence classes of instructions
   DenseSet<Instruction *> Visited;
   SmallVector<EquivalenceClasses<Instruction *>::iterator> SortedClasses;
@@ -396,7 +394,7 @@ void gatherInstructions(Function *F,
     // Find the dependences of all instructions in the same EC
     SmallPtrSet<Instruction *, 16> Dependences;
     for (Instruction *I2 : getMembers(EC, I))
-      findDependences(I2, &F->getEntryBlock(), LI, DT, DI, Dependences,
+      findDependences(I2, &F->getEntryBlock(), LI, DT, LDA, Dependences,
                       true /*inclusive*/);
 
     for (Instruction *Dep : Dependences)
@@ -427,8 +425,8 @@ void gatherInstructions(Function *F,
         continue;
       assert(
           isControlEquivalent(*I->getParent(), *Leader->getParent(), DT, PDT));
-      assert(isControlCompatible(I, Leader->getParent(), LI, DT, PDT, DI, &SE));
-      hoistTo(I, Leader->getParent(), LI, SE, DT, PDT, DI, CoupledInsts);
+      assert(isControlCompatible(I, Leader->getParent(), LI, DT, PDT, LDA, &SE));
+      hoistTo(I, Leader->getParent(), LI, SE, DT, PDT, LDA, CoupledInsts);
     }
     for (Instruction *I : Members)
       CoupledInsts.unionSets(Leader, I);

@@ -1,10 +1,11 @@
 #include "DependenceAnalysis.h"
 #include "VectorPackContext.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -82,11 +83,15 @@ static bool isSimple(Instruction *I) {
 }
 
 static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
-                      ScalarEvolution &SE, DominatorTree &DT,
+                      ScalarEvolution &SE, DominatorTree &DT, LoopInfo &LI,
                       LazyValueInfo &LVI) {
+  auto *L1 = LI.getLoopFor(I1->getParent());
+  auto *L2 = LI.getLoopFor(I2->getParent());
+  bool InDifferentLoops = L1 && L2 && !L1->contains(L2) && !L2->contains(L1);
+
   auto *Ptr1 = getLoadStorePointerOperand(I1);
   auto *Ptr2 = getLoadStorePointerOperand(I2);
-  if (Ptr1 && Ptr2) {
+  if (Ptr1 && Ptr2 && !InDifferentLoops) {
     auto *Ptr1SCEV = SE.getSCEV(Ptr1);
     auto *Ptr2SCEV = SE.getSCEV(Ptr2);
 
@@ -157,7 +162,7 @@ bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
     return false;
 
   // No dependence if no aliasing
-  if (!isAliased(I1, I2, AA, SE, DT, LVI))
+  if (!isAliased(I1, I2, AA, SE, DT, LI, LVI))
     return false;
 
   // Fall back to DependenceInfo
@@ -165,9 +170,11 @@ bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
   return Dep && !Dep->isInput();
 }
 
+// FIXME: change this to use LazyDependenceAnalysis
 GlobalDependenceAnalysis::GlobalDependenceAnalysis(
     llvm::AliasAnalysis &AA, llvm::ScalarEvolution &SE, llvm::DominatorTree &DT,
-    llvm::LazyValueInfo &LVI, llvm::Function *F, VectorPackContext *VPCtx) {
+    llvm::LoopInfo &LI, llvm::LazyValueInfo &LVI, llvm::Function *F,
+    VectorPackContext *VPCtx) {
 
   SmallVector<Instruction *> MemRefs;
 
@@ -196,7 +203,7 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
 
       for (Instruction *PrevRef : MemRefs)
         if ((PrevRef->mayWriteToMemory() || I.mayWriteToMemory()) &&
-            isAliased(&I, PrevRef, AA, SE, DT, LVI))
+            isAliased(&I, PrevRef, AA, SE, DT, LI, LVI))
           Dependences[&I].push_back(PrevRef);
 
       MemRefs.push_back(&I);

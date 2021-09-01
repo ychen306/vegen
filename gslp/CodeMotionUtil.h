@@ -11,10 +11,11 @@ class BasicBlock;
 class Function;
 class DominatorTree;
 class PostDominatorTree;
-class DependenceInfo;
 class ScalarEvolution;
 template <typename T> class SmallPtrSetImpl;
 } // namespace llvm
+
+class LazyDependenceAnalysis;
 
 // Use this to do DFS without taking the backedge
 struct SkipBackEdge : public llvm::df_iterator_default_set<llvm::BasicBlock *> {
@@ -36,31 +37,31 @@ void getInBetweenInstructions(
 void hoistTo(
     llvm::Instruction *, llvm::BasicBlock *, llvm::LoopInfo &,
     llvm::ScalarEvolution &, llvm::DominatorTree &, llvm::PostDominatorTree &,
-    llvm::DependenceInfo &,
+    LazyDependenceAnalysis &,
     const llvm::EquivalenceClasses<llvm::Instruction *> &CoupledInsts = {});
 
 // Determine if it's possible move an instruction into another basic block
 bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *,
                          llvm::LoopInfo &, llvm::DominatorTree &,
-                         llvm::PostDominatorTree &, llvm::DependenceInfo &,
+                         llvm::PostDominatorTree &, LazyDependenceAnalysis &,
                          llvm::ScalarEvolution *);
 
 bool isControlCompatible(llvm::Instruction *, llvm::Instruction *,
                          llvm::LoopInfo &, llvm::DominatorTree &,
-                         llvm::PostDominatorTree &, llvm::DependenceInfo &,
+                         llvm::PostDominatorTree &, LazyDependenceAnalysis &,
                          llvm::ScalarEvolution *);
 
 // Find a dominator for BB that's also control-compatible for I
 llvm::BasicBlock *
 findCompatiblePredecessorsFor(llvm::Instruction *I, llvm::BasicBlock *BB,
                               llvm::LoopInfo &, llvm::DominatorTree &,
-                              llvm::PostDominatorTree &, llvm::DependenceInfo &,
+                              llvm::PostDominatorTree &, LazyDependenceAnalysis &,
                               llvm::ScalarEvolution *, bool Inclusive = true);
 
 // If want to include dependences found in Earliest, set Inclusive=true
 void findDependences(llvm::Instruction *I, llvm::BasicBlock *Earliest,
                      llvm::LoopInfo &LI, llvm::DominatorTree &DT,
-                     llvm::DependenceInfo &DI,
+                     LazyDependenceAnalysis &LDA,
                      llvm::SmallPtrSetImpl<llvm::Instruction *> &Depended,
                      bool Inclusive = false);
 
@@ -74,6 +75,6 @@ void gatherInstructions(llvm::Function *,
                         const llvm::EquivalenceClasses<llvm::Instruction *> &,
                         llvm::LoopInfo &, llvm::DominatorTree &,
                         llvm::PostDominatorTree &, llvm::ScalarEvolution &,
-                        llvm::DependenceInfo &);
+                        LazyDependenceAnalysis &);
 
 #endif // CODE_MOTION_UTIL_H

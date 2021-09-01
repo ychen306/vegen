@@ -1,5 +1,6 @@
 #include "CodeMotionUtil.h"
 #include "LoopFusion.h"
+#include "DependenceAnalysis.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -49,6 +50,7 @@ struct TestLoopFusion : public FunctionPass {
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<ScalarEvolutionWrapperPass>();
+    AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<DependenceAnalysisWrapperPass>();
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
@@ -69,12 +71,15 @@ bool TestLoopFusion::runOnFunction(Function &F) {
   auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto &DI = getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+  auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto &LVI = getAnalysis<LazyValueInfoWrapperPass>().getLVI();
+
+  LazyDependenceAnalysis LDA(AA, DI, SE, DT, LI, LVI);
 
   auto PrintFusionLegality = [&](Loop *L1, Loop *L2) {
     outs() << "Fusing " << L1->getHeader()->getName() << " and "
            << L2->getHeader()->getName() << " is ";
-    if (isUnsafeToFuse(L1, L2, LI, SE, DI, DT, PDT) && !DoFusion)
+    if (isUnsafeToFuse(L1, L2, LI, SE, LDA, DT, PDT) && !DoFusion)
       outs() << "unsafe\n";
     else
       outs() << "safe\n";
@@ -101,7 +106,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
       if (DoFusion) {
         for (unsigned i = 1; i < Loops.size(); i++) {
           if (Loop *Fused =
-                  fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI))
+                  fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, LDA))
             Loops[0] = Fused;
           else
             llvm_unreachable("failed to fuse fusable loops");
@@ -129,7 +134,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
         continue;
 
       if (DoFusion) {
-        fuseLoops(L1, L2, LI, DT, PDT, SE, DI);
+        fuseLoops(L1, L2, LI, DT, PDT, SE, LDA);
         fixDefUseDominance(&F, DT);
         return true;
       }
@@ -148,6 +153,7 @@ INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LazyValueInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_END(TestLoopFusion, "test-loop-fusion", "test-loop-fusion",
                     false, false)
 

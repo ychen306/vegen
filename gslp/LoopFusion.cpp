@@ -2,9 +2,9 @@
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
 #include "UseDefIterator.h"
+#include "DependenceAnalysis.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/PostOrderIterator.h"
-#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -260,19 +260,19 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 // hoist
 static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
                                 DominatorTree &DT, PostDominatorTree &PDT,
-                                DependenceInfo &DI) {
+                                LazyDependenceAnalysis &LDA) {
   BasicBlock *Preheader = L->getLoopPreheader();
   BasicBlock *Dominator =
       DT.findNearestCommonDominator(I->getParent(), Preheader);
   SmallPtrSet<Instruction *, 16> Dependences;
-  findDependences(I, Dominator, LI, DT, DI, Dependences);
+  findDependences(I, Dominator, LI, DT, LDA, Dependences);
   // Make sure I is not loop-dependent on L
   for (Instruction *Dep : Dependences)
     if (L->contains(Dep->getParent()))
       return false;
   // See if we can find a block before (and including) the preheader to hoist I
   // to
-  return findCompatiblePredecessorsFor(I, Preheader, LI, DT, PDT, DI,
+  return findCompatiblePredecessorsFor(I, Preheader, LI, DT, PDT, LDA,
                                        nullptr /*scalar evolution*/);
 }
 
@@ -294,7 +294,7 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // For the sake of checking there are unsafe memory accesses before L1 and L2,
 // we also assume L1 comes before L2.
 static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
-                             DependenceInfo &DI, DominatorTree &DT,
+                             LazyDependenceAnalysis &LDA, DominatorTree &DT,
                              PostDominatorTree &PDT) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
@@ -323,7 +323,7 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
-      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, LI, DT, PDT, DI))
+      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA))
         return false;
   }
 
@@ -334,8 +334,7 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
       if (ReductionKinds.count(I1) && ReductionKinds.count(I2) &&
           ReductionKinds.lookup(I1) == ReductionKinds.lookup(I2))
         continue;
-      auto Dep = DI.depends(I1, I2, true);
-      if (Dep && !Dep->isInput()) {
+      if (LDA.depends(I1, I2)) {
         errs() << "Detected dependence from " << *I1 << " to " << *I2 << '\n';
         return false;
       }
@@ -344,7 +343,7 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
 }
 
 bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
-                    DependenceInfo &DI, DominatorTree &DT,
+                    LazyDependenceAnalysis &LDA, DominatorTree &DT,
                     PostDominatorTree &PDT) {
   if (!checkLoop(L1) || !checkLoop(L2)) {
     errs() << "Loops don't have the right shape\n";
@@ -370,7 +369,7 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
   // If L1 and L2 are nested inside other loops, those loops also need to be
   // fused
   if (L1Parent != L2Parent) {
-    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, DI, DT,
+    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, LDA, DT,
                        PDT)) {
       errs() << "Parent loops can't be fused\n";
       return true;
@@ -393,8 +392,8 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
-    if ((OneBeforeTwo && !checkDependences(L1, L2, LI, DI, DT, PDT)) ||
-        (!OneBeforeTwo && !checkDependences(L2, L1, LI, DI, DT, PDT))) {
+    if ((OneBeforeTwo && !checkDependences(L1, L2, LI, LDA, DT, PDT)) ||
+        (!OneBeforeTwo && !checkDependences(L2, L1, LI, LDA, DT, PDT))) {
       errs() << "Loops are dependent (memory)\n";
       return true;
     }
@@ -422,7 +421,7 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-                PostDominatorTree &PDT, ScalarEvolution &SE, DependenceInfo &DI) {
+                PostDominatorTree &PDT, ScalarEvolution &SE, LazyDependenceAnalysis &LDA) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 
@@ -431,7 +430,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   auto *L2Parent = L2->getParentLoop();
   if (L1Parent != L2Parent) {
     assert(L1Parent && L2Parent && "L1 and L2 not nested evenly");
-    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, SE, DI);
+    fuseLoops(L1Parent, L2Parent, LI, DT, PDT, SE, LDA);
     L1->verifyLoop();
     L2->verifyLoop();
   }
@@ -469,7 +468,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
-        if (isSafeToHoistBefore(&I, L1, LI, DT, PDT, DI)) {
+        if (isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA)) {
           InstsToHoist.push_back(&I);
           continue;
         }
@@ -570,9 +569,9 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Hoist L2's dependencies
   for (Instruction *I : InstsToHoist) {
     BasicBlock *Dest = findCompatiblePredecessorsFor(
-        I, L1Preheader, LI, DT, PDT, DI, nullptr /*scalar evolution*/);
+        I, L1Preheader, LI, DT, PDT, LDA, nullptr /*scalar evolution*/);
     assert(Dest && "can't find a place to hoist dep of L2");
-    hoistTo(I, Dest, LI, SE, DT, PDT, DI);
+    hoistTo(I, Dest, LI, SE, DT, PDT, LDA);
   }
 
   // Invalidate Scalar Evolution analysis for the fused loops
