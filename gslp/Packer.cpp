@@ -1,5 +1,6 @@
 #include "Packer.h"
 #include "MatchManager.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
 
 using namespace llvm;
 
@@ -26,6 +27,43 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
   }
 }
 
+// Util class to order basic block in reverse post order
+class BlockOrdering {
+  DenseMap<BasicBlock *, unsigned> Order;
+
+public:
+  BlockOrdering(Function *F) {
+    ReversePostOrderTraversal<Function *> RPO(F);
+    unsigned i = 0;
+    for (BasicBlock *BB : RPO)
+      Order[BB] = i++;
+  }
+
+  bool comesBefore(BasicBlock *BB1, BasicBlock *BB2) const {
+    assert(Order.count(BB1) && Order.count(BB2));
+    return Order.lookup(BB1) < Order.lookup(BB2);
+  }
+};
+
+class AddRecLoopRewriter : public SCEVRewriteVisitor<AddRecLoopRewriter> {
+  const DenseMap<const Loop *, const Loop *> &Loops;
+
+public:
+  AddRecLoopRewriter(ScalarEvolution &SE,
+                     const DenseMap<const Loop *, const Loop *> &Loops)
+      : SCEVRewriteVisitor<AddRecLoopRewriter>(SE), Loops(Loops) {}
+
+  const SCEV *visitAddRecExpr(const SCEVAddRecExpr *Expr) {
+    SmallVector<const SCEV *> Operands;
+    for (auto *Op : Expr->operands())
+      Operands.push_back(visit(Op));
+    auto *OldLoop = Expr->getLoop();
+    auto *NewLoop = Loops.lookup(OldLoop);
+    return SE.getAddRecExpr(Operands, NewLoop ? NewLoop : OldLoop,
+                            Expr->getNoWrapFlags());
+  }
+};
+
 } // end anonymous namespace
 
 Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
@@ -35,6 +73,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                BlockFrequencyInfo *BFI)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, &F, LVI, &VPCtx), MM(Insts, F),
       SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
+
   // Setup analyses and determine search space
   for (auto &BB : F) {
     std::vector<LoadInst *> Loads;
