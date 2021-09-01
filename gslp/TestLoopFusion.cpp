@@ -5,10 +5,10 @@
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/GlobalsModRef.h"
+#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/IR/Dominators.h"
@@ -100,7 +100,8 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
       if (DoFusion) {
         for (unsigned i = 1; i < Loops.size(); i++) {
-          if (Loop *Fused = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI, &LVI))
+          if (Loop *Fused =
+                  fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, DI, &LVI))
             Loops[0] = Fused;
           else
             llvm_unreachable("failed to fuse fusable loops");

@@ -1,5 +1,4 @@
 #include "VectorPackSet.h"
-#include "LocalDependenceAnalysis.h"
 #include "Packer.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -135,8 +134,15 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
   return Acc;
 }
 
+static BasicBlock *getBlockForPack(const VectorPack *VP) {
+  for (auto *V : VP->elementValues())
+    if (auto *I = dyn_cast<Instruction>(V))
+      return I->getParent();
+  llvm_unreachable("not block for pack");
+}
+
 void VectorPackSet::add(const VectorPack *VP) {
-  auto *BB = VP->getBasicBlock();
+  auto *BB = getBlockForPack(VP);
   PackedValues[BB] |= VP->getElements();
   AllPacks.push_back(VP);
 
@@ -146,7 +152,7 @@ void VectorPackSet::add(const VectorPack *VP) {
 }
 
 bool VectorPackSet::isCompatibleWith(const VectorPack &VP) const {
-  auto *BB = VP.getBasicBlock();
+  auto *BB = getBlockForPack(&VP);
   // Abort if one of the value we want to produce is produced by another pack
   auto It = PackedValues.find(BB);
   if (It != PackedValues.end() && It->second.anyCommon(VP.getElements())) {
@@ -198,7 +204,7 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
 // instruction that you are replacing.
 static std::vector<const VectorPack *>
 sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
-                       LocalDependenceAnalysis &LDA) {
+                       GlobalDependenceAnalysis &DA) {
   if (Packs.empty())
     return std::vector<const VectorPack *>();
 
@@ -259,7 +265,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
     // Figure out the dependence
     std::vector<Value *> DependedValues;
     if (I) {
-      auto Depended = LDA.getDepended(const_cast<Instruction *>(I));
+      auto Depended = DA.getDepended(const_cast<Instruction *>(I));
       for (auto *V : VPCtx->iter_values(Depended))
         DependedValues.push_back(V);
     } else {
@@ -342,7 +348,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
-        sortPacksAndScheduleBB(BB, Packs[BB], Pkr.getLDA(BB));
+        sortPacksAndScheduleBB(BB, Packs[BB], Pkr.getDA());
 
     // Now generate code according to the schedule
     for (auto *VP : OrderedPacks) {
@@ -358,7 +364,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         if (VP->isPHI())
           Gathered = UndefValue::get(getVectorType(*OP));
         else
-          Gathered = gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
+          Gathered =
+              gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
         Operands.push_back(Gathered);
         OperandId++;
       }
@@ -412,7 +419,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *VP : PHIPacks) {
     ArrayRef<OperandPack *> OPs = VP->getOperandPacks();
     for (unsigned i = 0; i < OPs.size(); i++) {
-      Value *Gathered = gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
+      Value *Gathered =
+          gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
       cast<Instruction>(MaterializedPacks[VP])->setOperand(i, Gathered);
     }
   }

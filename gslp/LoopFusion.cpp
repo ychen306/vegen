@@ -1,7 +1,6 @@
 #include "LoopFusion.h"
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
-#include "DependenceAnalysis.h"
 #include "UseDefIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/PostOrderIterator.h"

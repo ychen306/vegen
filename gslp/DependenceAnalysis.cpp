@@ -1,8 +1,14 @@
-#include "llvm/Analysis/DependenceAnalysis.h"
+#include "DependenceAnalysis.h"
+#include "VectorPackContext.h"
+#include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/IntrinsicInst.h"
 
 using namespace llvm;
 
@@ -55,21 +61,30 @@ public:
 };
 } // namespace
 
-static Value *getLoadStorePointer(Instruction *I) {
-  if (auto *LI = dyn_cast<LoadInst>(I))
-    return LI->getPointerOperand();
-  if (auto *SI = dyn_cast<StoreInst>(I))
-    return SI->getPointerOperand();
-  return nullptr;
+static MemoryLocation getLocation(Instruction *I) {
+  if (StoreInst *SI = dyn_cast<StoreInst>(I))
+    return MemoryLocation::get(SI);
+  if (LoadInst *LI = dyn_cast<LoadInst>(I))
+    return MemoryLocation::get(LI);
+  return MemoryLocation();
 }
 
-bool depends(Instruction *Def, Instruction *Use, DependenceInfo &DI,
-             ScalarEvolution &SE, DominatorTree &DT, LazyValueInfo *LVI) {
-  if (!Def->mayWriteToMemory() && !Use->mayWriteToMemory())
-    return false;
+/// True if the instruction is not a volatile or atomic load/store.
+static bool isSimple(Instruction *I) {
+  if (LoadInst *LI = dyn_cast<LoadInst>(I))
+    return LI->isSimple();
+  if (StoreInst *SI = dyn_cast<StoreInst>(I))
+    return SI->isSimple();
+  if (MemIntrinsic *MI = dyn_cast<MemIntrinsic>(I))
+    return !MI->isVolatile();
+  return true;
+}
 
-  auto *Ptr1 = getLoadStorePointer(Def);
-  auto *Ptr2 = getLoadStorePointer(Use);
+static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
+                      ScalarEvolution &SE, DominatorTree &DT,
+                      LazyValueInfo *LVI = nullptr) {
+  auto *Ptr1 = getLoadStorePointerOperand(I1);
+  auto *Ptr2 = getLoadStorePointerOperand(I2);
   if (LVI && Ptr1 && Ptr2) {
     auto *Ptr1SCEV = SE.getSCEV(Ptr1);
     auto *Ptr2SCEV = SE.getSCEV(Ptr2);
@@ -79,18 +94,18 @@ bool depends(Instruction *Def, Instruction *Use, DependenceInfo &DI,
     UnknownCollector.visit(Ptr1SCEV);
     UnknownCollector.visit(Ptr2SCEV);
 
-    // Scan the function for CFG edges that dominates `Use` gives us range
+    // Scan the function for CFG edges that dominates `I2` gives us range
     // information. Record and intersect those ranges.
-    Function *F = Use->getParent()->getParent();
+    Function *F = I2->getParent()->getParent();
     DenseMap<Value *, ConstantRange> Ranges;
     for (auto &BB : *F) {
       for (auto *Succ : successors(&BB)) {
-        if (!DT.dominates({&BB, Succ}, Use->getParent()))
+        if (!DT.dominates({&BB, Succ}, I2->getParent()))
           continue;
         for (auto *V : Unknowns) {
-          // We only care about the unknown paremeters defined before both `Def`
-          // and `Use`
-          if (!DT.dominates(V, Use) || !DT.dominates(V, Def))
+          // We only care about the unknown paremeters defined before both `I1`
+          // and `I2`
+          if (!DT.dominates(V, I2) || !DT.dominates(V, I1))
             continue;
           auto CR = LVI->getConstantRangeOnEdge(V, &BB, Succ);
           if (CR.isFullSet())
@@ -125,6 +140,82 @@ bool depends(Instruction *Def, Instruction *Use, DependenceInfo &DI,
     }
   }
 
-  auto Dep = DI.depends(Def, Use, true);
-  return Dep && !Dep->isInput();
+  auto Loc1 = getLocation(I1);
+  auto Loc2 = getLocation(I2);
+  bool Aliased = true;
+  if (Loc1.Ptr && Loc2.Ptr && isSimple(I1) && isSimple(I2)) {
+    // Do the alias check.
+    Aliased = AA.alias(Loc1, Loc2);
+  }
+  return Aliased;
+}
+
+GlobalDependenceAnalysis::GlobalDependenceAnalysis(
+    llvm::AliasAnalysis &AA, llvm::ScalarEvolution &SE, llvm::DominatorTree &DT,
+    llvm::Function *F, llvm::LazyValueInfo *LVI, VectorPackContext *VPCtx) {
+
+  SmallVector<Instruction *> MemRefs;
+
+  // Scan the CFG in rpo (pred before succ) to discover the *direct* dependences
+  // Mapping inst -> <users>
+  DenseMap<Instruction *, SmallVector<Instruction *, 8>> Dependences;
+  ReversePostOrderTraversal<Function *> RPO(F);
+  DenseSet<Instruction *> Processed;
+  for (auto *BB : RPO) {
+    for (auto &I : *BB) {
+      Processed.insert(&I);
+      // Get the SSA dependences
+      for (Value *V : I.operand_values()) {
+        auto *OpInst = dyn_cast<Instruction>(V);
+        // Ignore loop carried dependences, which can only come from phi nodes
+        if (OpInst && DT.dominates(&I, OpInst)) {
+          assert(isa<PHINode>(I));
+          continue;
+        }
+        if (OpInst)
+          Dependences[&I].push_back(OpInst);
+      }
+
+      if (!I.mayReadOrWriteMemory())
+        continue;
+
+      for (Instruction *PrevRef : MemRefs)
+        if ((PrevRef->mayWriteToMemory() || I.mayWriteToMemory()) &&
+            isAliased(&I, PrevRef, AA, SE, DT, LVI))
+          Dependences[&I].push_back(PrevRef);
+
+      MemRefs.push_back(&I);
+    }
+  }
+
+#if 1
+  // Cycle detection
+  DenseSet<Instruction *> Processing;
+  DenseSet<Instruction *> Visited;
+  std::function<void(Instruction *)> Visit = [&](Instruction *I) {
+    assert(!Processing.count(I) && "CYCLE DETECTED IN DEP GRAPH");
+    bool Inserted = Visited.insert(I).second;
+    if (!Inserted)
+      return;
+    Processing.insert(I);
+    for (auto *Src : Dependences[I])
+      Visit(Src);
+    Processing.erase(I);
+  };
+  for (auto &I : instructions(F))
+    Visit(&I);
+#endif
+
+  // Now compute transitive closure in topological order
+  for (auto *BB : RPO) {
+    for (auto &I : *BB) {
+      BitVector Depended = BitVector(VPCtx->getNumValues());
+      for (auto *Src : Dependences[&I]) {
+        assert(TransitiveClosure.count(Src));
+        Depended.set(VPCtx->getScalarId(Src));
+        Depended |= TransitiveClosure[Src];
+      }
+      TransitiveClosure[&I] = Depended;
+    }
+  }
 }

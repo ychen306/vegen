@@ -46,7 +46,9 @@ private:
   float getCost(const VectorPack *VP);
 
 public:
-  Heuristic(Packer *Pkr, const std::map<llvm::BasicBlock *, CandidatePackSet> *CandidatesByBlock)
+  Heuristic(
+      Packer *Pkr,
+      const std::map<llvm::BasicBlock *, CandidatePackSet> *CandidatesByBlock)
       : Pkr(Pkr), CandidatesByBlock(CandidatesByBlock) {}
   float getCost(const OperandPack *OP) { return solve(OP).Cost; }
   float getCost(llvm::Value *);

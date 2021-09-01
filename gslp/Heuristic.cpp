@@ -67,13 +67,15 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
     return Solutions[OP] = Solution(BroadcastCost);
   }
 
-  auto *VPCtx = Pkr->getOperandContext(OP);
-  if (!VPCtx)
+  BasicBlock *BB = Pkr->getBlockForOperand(OP);
+  if (!BB)
     return Solutions[OP] = Sol;
+
+  auto *VPCtx = Pkr->getContext();
 
   const OperandPack *Deduped = VPCtx->dedup(OP);
   float ExtraCost = Deduped != OP ? C_Shuffle : 0;
-  auto OPI = Pkr->getProducerInfo(VPCtx, Deduped);
+  auto OPI = Pkr->getProducerInfo(BB, Deduped);
   for (auto *VP : OPI.getProducers()) {
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
   }
@@ -81,7 +83,7 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   if (AllowTranspose) {
     for (unsigned N : {2, 4, 8})
       if (auto *T = transpose(VPCtx, OP, N)) {
-        auto OPI = Pkr->getProducerInfo(VPCtx, T);
+        auto OPI = Pkr->getProducerInfo(BB, T);
         for (auto *VP : OPI.getProducers())
           Sol.update(Solution(getCost(VP) + C_Perm, VP));
       }
@@ -109,7 +111,7 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   if (!CandidatesByBlock)
     return Solutions[OP] = Sol;
 
-  auto &Candidates = CandidatesByBlock->at(VPCtx->getBasicBlock());
+  auto &Candidates = CandidatesByBlock->at(BB);
   DenseSet<const VectorPack *> Visited;
   for (unsigned InstId : OPI.Elements.set_bits()) {
     for (auto *VP : Candidates.Inst2Packs[InstId]) {
