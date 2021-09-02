@@ -52,7 +52,8 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                ScalarEvolution *SE, DominatorTree *DT, PostDominatorTree *PDT,
                DependenceInfo *DI, LazyValueInfo *LVI, TargetTransformInfo *TTI,
                BlockFrequencyInfo *BFI)
-    : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx), MM(Insts, F),
+    : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
+      LDA(*AA, *DI, *SE, *DT, *LI, *LVI), MM(Insts, F),
       SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
 
   std::vector<LoadInst *> Loads;

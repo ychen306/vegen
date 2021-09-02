@@ -71,6 +71,7 @@ class Packer {
   llvm::Function *F;
   VectorPackContext VPCtx;
   GlobalDependenceAnalysis DA;
+  LazyDependenceAnalysis LDA;
   MatchManager MM;
 
   ConsecutiveAccessDAG LoadDAG, StoreDAG;
@@ -103,6 +104,7 @@ public:
   AccessLayoutInfo &getLoadInfo() { return LoadInfo; }
   AccessLayoutInfo &getStoreInfo() { return StoreInfo; }
   GlobalDependenceAnalysis &getDA() { return DA; }
+  LazyDependenceAnalysis &getLDA() { return LDA; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
   const llvm::DataLayout *getDataLayout() const { return DL; }
