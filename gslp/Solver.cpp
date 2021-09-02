@@ -261,13 +261,9 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
   auto *VPCtx = Pkr->getContext();
 
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
-    bool Feasible = false;
     for (auto *OP : OPs)
-      Feasible |= !H.solve(OP).Packs.empty();
-    if (!Feasible)
-      return false;
-    for (auto *OP : OPs)
-      runBottomUpFromOperand(OP, P2, H);
+      if (!H.solve(OP).Packs.empty())
+        runBottomUpFromOperand(OP, P2, H);
     if (P2.cost() < P.cost()) {
       P = P2;
       return true;
