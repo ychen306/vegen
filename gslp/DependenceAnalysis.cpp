@@ -108,10 +108,13 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
       for (auto *Succ : successors(&BB)) {
         if (!DT.dominates({&BB, Succ}, I2->getParent()))
           continue;
-        for (auto *V : Unknowns) {
+        for (Value *V : Unknowns) {
           // We only care about the unknown paremeters defined before both `I1`
           // and `I2`
           if (!DT.dominates(V, I2) || !DT.dominates(V, I1))
+            continue;
+          auto *I = dyn_cast<Instruction>(V);
+          if (I && !DT.dominates(I, &BB))
             continue;
           auto CR = LVI.getConstantRangeOnEdge(V, &BB, Succ);
           if (CR.isFullSet())
