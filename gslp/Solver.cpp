@@ -3,8 +3,8 @@
 #include "Packer.h"
 #include "Plan.h"
 #include "VectorPackSet.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
 
@@ -48,8 +48,8 @@ VectorPack *createMemPack(const VectorPackContext *VPCtx,
 }
 
 template <typename AccessType>
-std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr,
-                                          AccessType *Access, unsigned VL) {
+std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, AccessType *Access,
+                                          unsigned VL) {
   auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto *TTI = Pkr->getTTI();
@@ -238,8 +238,7 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   return Decomposed;
 }
 
-static void
-improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
+static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
   SmallVector<const VectorPack *> Seeds;
   for (Instruction &I : instructions(Pkr->getFunction()))
     if (auto *SI = dyn_cast<StoreInst>(&I))
@@ -248,16 +247,15 @@ improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
           Seeds.push_back(VP);
 
   AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo();
-  std::sort(Seeds.begin(), Seeds.end(),
-      [&](const VectorPack *VP1, const VectorPack *VP2) {
-      if (VP1->numElements() != VP2->numElements())
+  stable_sort(Seeds, [&](const VectorPack *VP1, const VectorPack *VP2) {
+    if (VP1->numElements() != VP2->numElements())
       return VP1->numElements() > VP2->numElements();
-      auto *SI1 = cast<StoreInst>(VP1->getOrderedValues().front());
-      auto *SI2 = cast<StoreInst>(VP2->getOrderedValues().front());
-      auto Info1 = LayoutInfo.get(SI1);
-      auto Info2 = LayoutInfo.get(SI2);
-      return Info1.Id < Info2.Id;
-      });
+    auto *SI1 = cast<StoreInst>(VP1->getOrderedValues().front());
+    auto *SI2 = cast<StoreInst>(VP2->getOrderedValues().front());
+    auto Info1 = LayoutInfo.get(SI1);
+    auto Info2 = LayoutInfo.get(SI2);
+    return Info1.Id < Info2.Id;
+  });
 
   Heuristic H(Pkr, Candidates);
   auto *VPCtx = Pkr->getContext();
