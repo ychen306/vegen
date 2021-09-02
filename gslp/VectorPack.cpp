@@ -95,12 +95,10 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForPhi() {
   unsigned NumIncomings = FirstPHI->getNumIncomingValues();
   // We need as many packs as there are incoming edges
   std::vector<OperandPack> OperandPacks(NumIncomings);
-  for (unsigned i = 0; i < NumIncomings; i++) {
-    auto *BB = FirstPHI->getIncomingBlock(i);
-    // all of the values coming from BB should be packed
+  for (unsigned i = 0; i < NumIncomings; i++)
+    // FIXME: make sure that PH->getIncomingBlock(i) is control-equivalent to FirstPHI->getIncomingBlock(i)
     for (auto *PH : PHIs)
-      OperandPacks[i].push_back(PH->getIncomingValueForBlock(BB));
-  }
+      OperandPacks[i].push_back(PH->getIncomingValue(i));
   return OperandPacks;
 }
 
