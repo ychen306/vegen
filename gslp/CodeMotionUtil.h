@@ -52,11 +52,10 @@ bool isControlCompatible(llvm::Instruction *, llvm::Instruction *,
                          llvm::ScalarEvolution *);
 
 // Find a dominator for BB that's also control-compatible for I
-llvm::BasicBlock *
-findCompatiblePredecessorsFor(llvm::Instruction *I, llvm::BasicBlock *BB,
-                              llvm::LoopInfo &, llvm::DominatorTree &,
-                              llvm::PostDominatorTree &, LazyDependenceAnalysis &,
-                              llvm::ScalarEvolution *, bool Inclusive = true);
+llvm::BasicBlock *findCompatiblePredecessorsFor(
+    llvm::Instruction *I, llvm::BasicBlock *BB, llvm::LoopInfo &,
+    llvm::DominatorTree &, llvm::PostDominatorTree &, LazyDependenceAnalysis &,
+    llvm::ScalarEvolution *, bool Inclusive = true);
 
 // If want to include dependences found in Earliest, set Inclusive=true
 void findDependences(llvm::Instruction *I, llvm::BasicBlock *Earliest,

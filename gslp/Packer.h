@@ -67,12 +67,28 @@ public:
   }
 };
 
+// Util class to remember the RPO of the basic blocks within a function
+class BlockOrdering {
+  // This marks the basic blocks in RPO
+  llvm::DenseMap<llvm::BasicBlock *, unsigned> Order;
+public:
+  BlockOrdering(llvm::Function *F);
+  bool comesBefore(llvm::BasicBlock *BB1, llvm::BasicBlock *BB2) const;
+};
+
 class Packer {
   llvm::Function *F;
   VectorPackContext VPCtx;
   GlobalDependenceAnalysis DA;
-  LazyDependenceAnalysis LDA;
+  // FIXME: make this not mutable
+  mutable LazyDependenceAnalysis LDA;
   MatchManager MM;
+  BlockOrdering BO;
+
+  llvm::ScalarEvolution *SE;
+  llvm::DominatorTree *DT;
+  llvm::PostDominatorTree *PDT;
+  llvm::LoopInfo *LI;
 
   ConsecutiveAccessDAG LoadDAG, StoreDAG;
   AccessLayoutInfo LoadInfo, StoreInfo;
@@ -107,15 +123,22 @@ public:
   LazyDependenceAnalysis &getLDA() { return LDA; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
+
+  llvm::ScalarEvolution &getSE() const { return *SE; }
+  llvm::DominatorTree &getDT() const { return *DT; }
+  llvm::PostDominatorTree &getPDT() const { return *PDT; }
+  llvm::LoopInfo &getLoopInfo() const { return *LI; }
+
   const llvm::DataLayout *getDataLayout() const { return DL; }
 
   llvm::Function *getFunction() const { return F; }
-  const OperandProducerInfo &getProducerInfo(llvm::BasicBlock *,
-                                             const OperandPack *);
+  const OperandProducerInfo &getProducerInfo(const OperandPack *);
   float getScalarCost(llvm::Instruction *);
   // Get the basic block if the operand can be produced within a single basic
   // block
   llvm::BasicBlock *getBlockForOperand(const OperandPack *) const;
+
+  bool isControlCompatible(llvm::Instruction *, llvm::Instruction *) const;
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

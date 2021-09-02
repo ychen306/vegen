@@ -1,5 +1,7 @@
 #include "VectorPackSet.h"
 #include "Packer.h"
+#include "CodeMotionUtil.h"
+#include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/IR/Function.h"
@@ -327,6 +329,22 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
+
+  // Move instructions that we want to pack together into the same basic block
+  EquivalenceClasses<Instruction *> EC;
+  for (auto *VP : AllPacks) {
+    Instruction *Leader = nullptr;
+    for (auto *V : VP->elementValues())
+      if (auto *I = dyn_cast<Instruction>(V)) {
+        if (!Leader) {
+          Leader = I;
+          continue;
+        }
+        EC.unionSets(Leader, I);
+      }
+  }
+  gatherInstructions(F, EC, Pkr.getLoopInfo(), Pkr.getDT(), Pkr.getPDT(),
+                     Pkr.getSE(), Pkr.getLDA());
 
   std::vector<Instruction *> DeadInsts;
 

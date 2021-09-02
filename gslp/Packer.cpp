@@ -1,4 +1,5 @@
 #include "Packer.h"
+#include "CodeMotionUtil.h"
 #include "ConsecutiveCheck.h"
 #include "MatchManager.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -27,25 +28,19 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
   }
 }
 
-// Util class to order basic block in reverse post order
-class BlockOrdering {
-  DenseMap<BasicBlock *, unsigned> Order;
-
-public:
-  BlockOrdering(Function *F) {
-    ReversePostOrderTraversal<Function *> RPO(F);
-    unsigned i = 0;
-    for (BasicBlock *BB : RPO)
-      Order[BB] = i++;
-  }
-
-  bool comesBefore(BasicBlock *BB1, BasicBlock *BB2) const {
-    assert(Order.count(BB1) && Order.count(BB2));
-    return Order.lookup(BB1) < Order.lookup(BB2);
-  }
-};
-
 } // end anonymous namespace
+
+BlockOrdering::BlockOrdering(Function *F) {
+  ReversePostOrderTraversal<Function *> RPO(F);
+  unsigned i = 0;
+  for (BasicBlock *BB : RPO)
+    Order[BB] = i++;
+}
+
+bool BlockOrdering::comesBefore(BasicBlock *BB1, BasicBlock *BB2) const {
+  assert(Order.count(BB1) && Order.count(BB2));
+  return Order.lookup(BB1) < Order.lookup(BB2);
+}
 
 Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, LoopInfo *LI,
@@ -53,8 +48,8 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                DependenceInfo *DI, LazyValueInfo *LVI, TargetTransformInfo *TTI,
                BlockFrequencyInfo *BFI)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
-      LDA(*AA, *DI, *SE, *DT, *LI, *LVI), MM(Insts, F),
-      SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
+      LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F), SE(SE), DT(DT),
+      PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
 
   std::vector<LoadInst *> Loads;
   std::vector<StoreInst *> Stores;
@@ -108,8 +103,7 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
 }
 
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
-static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
-                                   Packer *Pkr,
+static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
   auto *VPCtx = Pkr->getContext();
   auto &LoadDAG = Pkr->getLoadDAG();
@@ -120,12 +114,8 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
   for (auto *V : OP) {
     if (!V)
       continue;
-    if (auto *I = dyn_cast<Instruction>(V)) {
-      // only pack within a single basic block
-      if (I->getParent() != BB)
-        return;
+    if (auto *I = dyn_cast<Instruction>(V))
       LoadSet.insert(I);
-    }
   }
 
   // The loads might jumbled.
@@ -179,8 +169,7 @@ static void findExtendingLoadPacks(const OperandPack &OP, BasicBlock *BB,
   }
 }
 
-const OperandProducerInfo &Packer::getProducerInfo(BasicBlock *BB,
-                                                   const OperandPack *OP) {
+const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;
   OP->OPIValid = true;
@@ -195,6 +184,7 @@ const OperandProducerInfo &Packer::getProducerInfo(BasicBlock *BB,
   bool AllLoads = true;
   bool HasUndef = false;
   bool AllPHIs = true;
+  SmallVector<Instruction *> VisitedInsts;
   for (unsigned i = 0; i < NumLanes; i++) {
     auto *V = (*OP)[i];
 
@@ -212,10 +202,15 @@ const OperandProducerInfo &Packer::getProducerInfo(BasicBlock *BB,
 
     AllPHIs &= isa<PHINode>(V);
 
-    if (!I || I->getParent() != BB) {
+    // We can only pack instructions that are control-compatible
+    auto CompatibleWithI = [&](Instruction *I2) {
+      return isControlCompatible(I, I2);
+    };
+    if (!all_of(VisitedInsts, CompatibleWithI)) {
       OPI.Feasible = false;
       continue;
     }
+    VisitedInsts.push_back(I);
 
     unsigned InstId = VPCtx.getScalarId(I);
     if (!checkIndependence(DA, VPCtx, I, Elements, Depended))
@@ -230,7 +225,7 @@ const OperandProducerInfo &Packer::getProducerInfo(BasicBlock *BB,
     return OPI;
 
   if (AllLoads) {
-    findExtendingLoadPacks(*OP, BB, this, OPI.LoadProducers);
+    findExtendingLoadPacks(*OP, this, OPI.LoadProducers);
     if (OPI.LoadProducers.empty())
       OPI.Feasible = false;
     return OPI;
@@ -313,4 +308,14 @@ BasicBlock *Packer::getBlockForOperand(const OperandPack *OP) const {
       return nullptr;
   }
   return BB;
+}
+
+bool Packer::isControlCompatible(Instruction *I1, Instruction *I2) const {
+  if (I1->getParent() == I2->getParent())
+    return true;
+
+  if (!BO.comesBefore(I1->getParent(), I2->getParent()))
+    std::swap(I1, I2);
+
+  return ::isControlCompatible(I2, I1->getParent(), *LI, *DT, *PDT, LDA, SE);
 }

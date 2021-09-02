@@ -4,6 +4,7 @@
 #include "Plan.h"
 #include "VectorPackSet.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
@@ -47,7 +48,7 @@ VectorPack *createMemPack(const VectorPackContext *VPCtx,
 }
 
 template <typename AccessType>
-std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
+std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr,
                                           AccessType *Access, unsigned VL) {
   auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
@@ -72,9 +73,15 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
         }
         for (auto *Next : It->second) {
           auto *NextAccess = cast<AccessType>(Next);
-          if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended)) {
+          if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
             continue;
-          }
+
+          auto CompatibleWithNext = [&](Instruction *I) {
+            return Pkr->isControlCompatible(I, NextAccess);
+          };
+          if (!all_of(Accesses, CompatibleWithNext))
+            continue;
+
           auto AccessesExt = Accesses;
           auto ElementsExt = Elements;
           auto DependedExt = Depended;
@@ -96,7 +103,7 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, BasicBlock *BB,
   return Seeds;
 }
 
-std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
+std::vector<const VectorPack *> enumerate(Packer *Pkr) {
   auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto &LayoutInfo = Pkr->getStoreInfo();
@@ -105,7 +112,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
 
   auto *DL = Pkr->getDataLayout();
   std::vector<const VectorPack *> Packs;
-  for (auto &I : *BB) {
+  for (Instruction &I : instructions(Pkr->getFunction())) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
       unsigned AS = LI->getPointerAddressSpace();
       unsigned MaxVF =
@@ -113,7 +120,7 @@ std::vector<const VectorPack *> enumerate(BasicBlock *BB, Packer *Pkr) {
       for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
         if (VL > MaxVF)
           continue;
-        for (auto *VP : getSeedMemPacks(Pkr, BB, LI, VL))
+        for (auto *VP : getSeedMemPacks(Pkr, LI, VL))
           Packs.push_back(VP);
       }
     }
@@ -232,31 +239,27 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
 }
 
 static void
-improvePlan(Packer *Pkr, Plan &P,
-            std::map<BasicBlock *, CandidatePackSet> *CandidatesByBlock) {
-  std::map<BasicBlock *, SmallVector<const VectorPack *>> SeedsByBlock;
-  for (auto &BB : *Pkr->getFunction()) {
-    auto &Seeds = SeedsByBlock[&BB];
-    for (auto &I : BB)
-      if (auto *SI = dyn_cast<StoreInst>(&I))
-        for (unsigned VL : {2, 4, 8, 16, 32, 64})
-          for (auto *VP : getSeedMemPacks(Pkr, &BB, SI, VL))
-            Seeds.push_back(VP);
+improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
+  SmallVector<const VectorPack *> Seeds;
+  for (Instruction &I : instructions(Pkr->getFunction()))
+    if (auto *SI = dyn_cast<StoreInst>(&I))
+      for (unsigned VL : {2, 4, 8, 16, 32, 64})
+        for (auto *VP : getSeedMemPacks(Pkr, SI, VL))
+          Seeds.push_back(VP);
 
-    AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo();
-    std::sort(Seeds.begin(), Seeds.end(),
-              [&](const VectorPack *VP1, const VectorPack *VP2) {
-                if (VP1->numElements() != VP2->numElements())
-                  return VP1->numElements() > VP2->numElements();
-                auto *SI1 = cast<StoreInst>(VP1->getOrderedValues().front());
-                auto *SI2 = cast<StoreInst>(VP2->getOrderedValues().front());
-                auto Info1 = LayoutInfo.get(SI1);
-                auto Info2 = LayoutInfo.get(SI2);
-                return Info1.Id < Info2.Id;
-              });
-  }
+  AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo();
+  std::sort(Seeds.begin(), Seeds.end(),
+      [&](const VectorPack *VP1, const VectorPack *VP2) {
+      if (VP1->numElements() != VP2->numElements())
+      return VP1->numElements() > VP2->numElements();
+      auto *SI1 = cast<StoreInst>(VP1->getOrderedValues().front());
+      auto *SI2 = cast<StoreInst>(VP2->getOrderedValues().front());
+      auto Info1 = LayoutInfo.get(SI1);
+      auto Info2 = LayoutInfo.get(SI2);
+      return Info1.Id < Info2.Id;
+      });
 
-  Heuristic H(Pkr, CandidatesByBlock);
+  Heuristic H(Pkr, Candidates);
   auto *VPCtx = Pkr->getContext();
 
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
@@ -277,27 +280,23 @@ improvePlan(Packer *Pkr, Plan &P,
   DenseMap<const VectorPack *, SmallVector<const VectorPack *>>
       DecomposedStores;
 
-  // TODO: maybe do it in post-order of the CFG?
-  for (auto &BB : *Pkr->getFunction()) {
-    auto &Seeds = SeedsByBlock[&BB];
-    for (auto *VP : Seeds)
-      DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
+  for (auto *VP : Seeds)
+    DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
-    BitVector Packed(Pkr->getContext()->getNumValues());
-    for (auto *VP : Seeds) {
-      if (VP->getElements().anyCommon(Packed))
-        continue;
+  BitVector Packed(Pkr->getContext()->getNumValues());
+  for (auto *VP : Seeds) {
+    if (VP->getElements().anyCommon(Packed))
+      continue;
 
-      Plan P2 = P;
-      for (auto *VP2 : DecomposedStores[VP])
-        P2.add(VP2);
-      auto *OP = VP->getOperandPacks().front();
-      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
-          Improve(P2, deinterleave(VPCtx, OP, 8))) {
-        errs() << "~COST: " << P.cost() << '\n';
-        Packed |= VP->getElements();
-      }
+    Plan P2 = P;
+    for (auto *VP2 : DecomposedStores[VP])
+      P2.add(VP2);
+    auto *OP = VP->getOperandPacks().front();
+    if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+        Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+        Improve(P2, deinterleave(VPCtx, OP, 8))) {
+      errs() << "~COST: " << P.cost() << '\n';
+      Packed |= VP->getElements();
     }
   }
 
@@ -326,9 +325,6 @@ improvePlan(Packer *Pkr, Plan &P,
       for (auto J = P.operands_begin(); J != E; ++J) {
         const OperandPack *OP = I->first;
         const OperandPack *OP2 = J->first;
-        auto *BB = Pkr->getBlockForOperand(OP);
-        if (!BB || BB != Pkr->getBlockForOperand(OP2))
-          continue;
         auto *Concat = concat(VPCtx, *OP, *OP2);
         Plan P2 = P;
         if (Improve(P2, {Concat})) {
@@ -342,41 +338,36 @@ improvePlan(Packer *Pkr, Plan &P,
     errs() << "~~~~~~ done\n";
     if (Optimized)
       continue;
-    for (auto &KV : SeedsByBlock) {
-      auto &Seeds = KV.second;
-      for (auto *VP : Seeds) {
-        Plan P2 = P;
-        for (auto *V : VP->elementValues())
-          if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
-            P2.remove(VP2);
-        for (auto *VP2 : DecomposedStores[VP])
-          P2.add(VP2);
-        auto *OP = VP->getOperandPacks().front();
-        if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
-            Improve(P2, deinterleave(VPCtx, OP, 4)) ||
-            Improve(P2, deinterleave(VPCtx, OP, 8))) {
-          Optimized = true;
-          break;
-        }
+
+    for (auto *VP : Seeds) {
+      Plan P2 = P;
+      for (auto *V : VP->elementValues())
+        if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
+          P2.remove(VP2);
+      for (auto *VP2 : DecomposedStores[VP])
+        P2.add(VP2);
+      auto *OP = VP->getOperandPacks().front();
+      if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+          Improve(P2, deinterleave(VPCtx, OP, 8))) {
+        Optimized = true;
+        break;
       }
     }
   } while (Optimized);
 }
 
 float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr) {
-  std::map<BasicBlock *, CandidatePackSet> CandidatesByBlock;
-  for (auto &BB : *Pkr->getFunction()) {
-    auto &CandidateSet = CandidatesByBlock[&BB];
-    CandidateSet.Packs = enumerate(&BB, Pkr);
-    auto *VPCtx = Pkr->getContext();
-    CandidateSet.Inst2Packs.resize(VPCtx->getNumValues());
-    for (auto *VP : CandidateSet.Packs)
-      for (unsigned i : VP->getElements().set_bits())
-        CandidateSet.Inst2Packs[i].push_back(VP);
-  }
+  CandidatePackSet Candidates;
+  Candidates.Packs = enumerate(Pkr);
+  auto *VPCtx = Pkr->getContext();
+  Candidates.Inst2Packs.resize(VPCtx->getNumValues());
+  for (auto *VP : Candidates.Packs)
+    for (unsigned i : VP->getElements().set_bits())
+      Candidates.Inst2Packs[i].push_back(VP);
 
   Plan P(Pkr);
-  improvePlan(Pkr, P, &CandidatesByBlock);
+  improvePlan(Pkr, P, &Candidates);
 
   for (auto *VP : P)
     Packs.tryAdd(VP);

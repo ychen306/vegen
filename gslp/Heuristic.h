@@ -42,14 +42,12 @@ private:
   llvm::DenseMap<llvm::Instruction *, float> ScalarCosts;
 
   Packer *Pkr;
-  const std::map<llvm::BasicBlock *, CandidatePackSet> *CandidatesByBlock;
+  const CandidatePackSet *Candidates;
   float getCost(const VectorPack *VP);
 
 public:
-  Heuristic(
-      Packer *Pkr,
-      const std::map<llvm::BasicBlock *, CandidatePackSet> *CandidatesByBlock)
-      : Pkr(Pkr), CandidatesByBlock(CandidatesByBlock) {}
+  Heuristic(Packer *Pkr, const CandidatePackSet *Candidates)
+      : Pkr(Pkr), Candidates(Candidates) {}
   float getCost(const OperandPack *OP) { return solve(OP).Cost; }
   float getCost(llvm::Value *);
   Solution solve(const OperandPack *OP);
