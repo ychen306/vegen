@@ -17,9 +17,12 @@
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/Support/Debug.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
+
+#define DEBUG_TYPE "vegen-loop-fusion"
 
 namespace {
 template <typename PatternTy, typename ValueTy> struct Capture_match {
@@ -335,7 +338,7 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
           ReductionKinds.lookup(I1) == ReductionKinds.lookup(I2))
         continue;
       if (LDA.depends(I1, I2)) {
-        errs() << "Detected dependence from " << *I1 << " to " << *I2 << '\n';
+        LLVM_DEBUG(dbgs() << "Detected dependence from " << *I1 << " to " << *I2 << '\n');
         return false;
       }
     }
@@ -346,12 +349,12 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
                     LazyDependenceAnalysis &LDA, DominatorTree &DT,
                     PostDominatorTree &PDT) {
   if (!checkLoop(L1) || !checkLoop(L2)) {
-    errs() << "Loops don't have the right shape\n";
+    LLVM_DEBUG(dbgs() << "Loops don't have the right shape\n");
     return true;
   }
 
   if (L1->getLoopDepth() != L2->getLoopDepth()) {
-    errs() << "Loops have different nesting level\n";
+    LLVM_DEBUG(dbgs() << "Loops have different nesting level\n");
     return true;
   }
 
@@ -360,7 +363,7 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
   const SCEV *TripCount2 = SE.getBackedgeTakenCount(L2);
   if (isa<SCEVCouldNotCompute>(TripCount1) ||
       isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2) {
-    errs() << "Loops may have divergent trip count\n";
+    LLVM_DEBUG(dbgs() << "Loops may have divergent trip count\n");
     return true;
   }
 
@@ -371,7 +374,7 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
   if (L1Parent != L2Parent) {
     if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, LDA, DT,
                        PDT)) {
-      errs() << "Parent loops can't be fused\n";
+      LLVM_DEBUG(dbgs() << "Parent loops can't be fused\n");
       return true;
     }
     // TODO: maybe support convergent control flow?
@@ -381,20 +384,20 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
                              *getLoopEntry(L1), DT, PDT) ||
         !isControlEquivalent(*L2->getParentLoop()->getHeader(),
                              *getLoopEntry(L2), DT, PDT)) {
-      errs() << "Can't fuse conditional nested loop\n";
+      LLVM_DEBUG(dbgs() << "Can't fuse conditional nested loop\n");
       return true;
     }
   } else {
     if (!isControlEquivalent(*L1->getLoopPreheader(), *L2->getLoopPreheader(),
                              DT, PDT)) {
-      errs() << "Loops are not control flow equivalent\n";
+      LLVM_DEBUG(dbgs() << "Loops are not control flow equivalent\n");
       return true;
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
     if ((OneBeforeTwo && !checkDependences(L1, L2, LI, LDA, DT, PDT)) ||
         (!OneBeforeTwo && !checkDependences(L2, L1, LI, LDA, DT, PDT))) {
-      errs() << "Loops are dependent (memory)\n";
+      LLVM_DEBUG(dbgs() << "Loops are dependent (memory)\n");
       return true;
     }
   }
@@ -403,13 +406,13 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
   for (auto *BB : L1->blocks())
     for (auto &I : *BB)
       if (isUsedByLoop(&I, L2)) {
-        errs() << "Loops are dependent (ssa)\n";
+        LLVM_DEBUG(dbgs() << "Loops are dependent (ssa)\n");
         return true;
       }
   for (auto *BB : L2->blocks())
     for (auto &I : *BB)
       if (isUsedByLoop(&I, L1)) {
-        errs() << "Loops are dependent (ssa)\n";
+        LLVM_DEBUG(dbgs() << "Loops are dependent (ssa)\n");
         return true;
       }
 

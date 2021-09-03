@@ -205,11 +205,6 @@ static void balanceReductionTree(Function &F) {
           Ignore.insert(I2);
           I2->eraseFromParent();
         }
-
-        // errs() << "MATCHED AND BALANCED REDUCTION : (\n";
-        // for (auto *V : Elems)
-        //  errs() << *V << '\n';
-        // errs() << ")\n";
       }
     }
   }
@@ -219,7 +214,6 @@ bool GSLP::runOnFunction(Function &F) {
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
   balanceReductionTree(F);
-  errs() << F << '\n';
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
 
@@ -254,8 +248,6 @@ bool GSLP::runOnFunction(Function &F) {
   IntrinsicBuilder Builder(*InstWrappers);
   errs() << "Generating vector code\n";
   Packs.codegen(Builder, Pkr);
-
-  errs() << F << '\n';
 
   assert(!verifyFunction(F, &errs()));
   return true;
