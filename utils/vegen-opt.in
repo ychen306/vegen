@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+exec opt -load @CMAKE_BINARY_DIR@/gslp/libGSLP.so\
+       --wrappers-dir=@CMAKE_BINARY_DIR@\
+       $@
