@@ -114,16 +114,16 @@ std::vector<const VectorPack *> enumerate(Packer *Pkr) {
   std::vector<const VectorPack *> Packs;
   for (Instruction &I : instructions(Pkr->getFunction())) {
     auto *LI = dyn_cast<LoadInst>(&I);
-    if (LI && !LI->getType()->isVectorTy()) {
-      unsigned AS = LI->getPointerAddressSpace();
-      unsigned MaxVF =
-          TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI, DL);
-      for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
-        if (VL > MaxVF)
-          continue;
-        for (auto *VP : getSeedMemPacks(Pkr, LI, VL))
-          Packs.push_back(VP);
-      }
+    // Only pack scalar load
+    if (!LI || LI->getType()->isVectorTy())
+      continue;
+    unsigned AS = LI->getPointerAddressSpace();
+    unsigned MaxVF = TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI, DL);
+    for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+      if (VL > MaxVF)
+        continue;
+      for (auto *VP : getSeedMemPacks(Pkr, LI, VL))
+        Packs.push_back(VP);
     }
   }
   return Packs;
@@ -241,11 +241,15 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
 
 static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
   SmallVector<const VectorPack *> Seeds;
-  for (Instruction &I : instructions(Pkr->getFunction()))
-    if (auto *SI = dyn_cast<StoreInst>(&I))
-      for (unsigned VL : {2, 4, 8, 16, 32, 64})
-        for (auto *VP : getSeedMemPacks(Pkr, SI, VL))
-          Seeds.push_back(VP);
+  for (Instruction &I : instructions(Pkr->getFunction())) {
+    auto *SI = dyn_cast<StoreInst>(&I);
+    // Only pack scalar store
+    if (!SI || SI->getValueOperand()->getType()->isVectorTy())
+      continue;
+    for (unsigned VL : {2, 4, 8, 16, 32, 64})
+      for (auto *VP : getSeedMemPacks(Pkr, SI, VL))
+        Seeds.push_back(VP);
+  }
 
   AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo();
   stable_sort(Seeds, [&](const VectorPack *VP1, const VectorPack *VP2) {
