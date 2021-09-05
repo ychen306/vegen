@@ -113,7 +113,8 @@ std::vector<const VectorPack *> enumerate(Packer *Pkr) {
   auto *DL = Pkr->getDataLayout();
   std::vector<const VectorPack *> Packs;
   for (Instruction &I : instructions(Pkr->getFunction())) {
-    if (auto *LI = dyn_cast<LoadInst>(&I)) {
+    auto *LI = dyn_cast<LoadInst>(&I);
+    if (LI && !LI->getType()->isVectorTy()) {
       unsigned AS = LI->getPointerAddressSpace();
       unsigned MaxVF =
           TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI, DL);
