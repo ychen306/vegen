@@ -71,6 +71,7 @@ public:
 class BlockOrdering {
   // This marks the basic blocks in RPO
   llvm::DenseMap<llvm::BasicBlock *, unsigned> Order;
+
 public:
   BlockOrdering(llvm::Function *F);
   bool comesBefore(llvm::BasicBlock *, llvm::BasicBlock *) const;

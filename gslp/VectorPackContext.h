@@ -4,8 +4,8 @@
 #include "InstSema.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
-#include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/EquivalenceClasses.h"
+#include "llvm/ADT/Hashing.h"
 #include <vector>
 
 class VectorPack;
