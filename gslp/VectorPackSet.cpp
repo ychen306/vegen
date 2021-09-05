@@ -451,10 +451,14 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   }
 
   // Another pass to delete trivially dead instructions
-  SmallVector<Instruction *> ReallyDeadInsts;
-  for (Instruction &I : instructions(F))
-    if (isInstructionTriviallyDead(&I))
-      ReallyDeadInsts.push_back(&I);
-  for (auto *I : ReallyDeadInsts)
-    I->eraseFromParent();
+  bool Changed;
+  do {
+    SmallVector<Instruction *> ReallyDeadInsts;
+    for (Instruction &I : instructions(F))
+      if (isInstructionTriviallyDead(&I))
+        ReallyDeadInsts.push_back(&I);
+    for (auto *I : ReallyDeadInsts)
+      I->eraseFromParent();
+    Changed = !ReallyDeadInsts.empty();
+  } while (Changed);
 }
