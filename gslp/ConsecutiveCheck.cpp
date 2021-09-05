@@ -1,6 +1,6 @@
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
-#include "llvm/Analysis/LoopInfo.h"
 
 using namespace llvm;
 
@@ -49,10 +49,42 @@ public:
   }
 };
 
+bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE,
+                  LoopInfo &LI) {
+  if (SE.getSCEV(PtrA) == SE.getSCEV(PtrB))
+    return true;
+
+  auto *A = dyn_cast<Instruction>(PtrA);
+  auto *B = dyn_cast<Instruction>(PtrB);
+  if (!A || !B)
+    return false;
+
+  auto LoopNest1 = getLoopNest(LI, A);
+  auto LoopNest2 = getLoopNest(LI, B);
+  if (LoopNest1.size() != LoopNest2.size())
+    return false;
+
+  const Loop *L1, *L2;
+  AddRecLoopRewriter::LoopToLoopMap Loops;
+  for (const auto &Pair : zip(LoopNest1, LoopNest2)) {
+    std::tie(L1, L2) = Pair;
+    if (SE.getBackedgeTakenCount(L1) != SE.getBackedgeTakenCount(L2))
+      return false;
+    Loops[L2] = L1;
+  }
+
+  const SCEV *PtrSCEVA = SE.getSCEV(PtrA);
+  const SCEV *PtrSCEVB =
+      AddRecLoopRewriter::rewrite(SE, SE.getSCEV(PtrB), Loops);
+  return PtrSCEVA == PtrSCEVB;
+}
+
+// FIXME: get the loopnest of the *pointer*, not the loads
+
 // llvm::isConsecutiveAccess modified to work for when A and B are in two
 // separate loop nest
 bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
-                          ScalarEvolution &SE, LoopInfo &LI) {
+                   ScalarEvolution &SE, LoopInfo &LI) {
   auto LoopNest1 = getLoopNest(LI, A);
   auto LoopNest2 = getLoopNest(LI, B);
   if (LoopNest1.size() != LoopNest2.size())

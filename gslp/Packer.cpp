@@ -42,6 +42,12 @@ bool BlockOrdering::comesBefore(BasicBlock *BB1, BasicBlock *BB2) const {
   return Order.lookup(BB1) < Order.lookup(BB2);
 }
 
+bool BlockOrdering::comesBefore(Instruction *I1, Instruction *I2) const {
+  if (I1->getParent() == I2->getParent())
+    return I1->comesBefore(I2);
+  return comesBefore(I1->getParent(), I2->getParent());
+}
+
 Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, const DataLayout *DL, LoopInfo *LI,
                ScalarEvolution *SE, DominatorTree *DT, PostDominatorTree *PDT,
@@ -67,6 +73,33 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
   buildAccessDAG<StoreInst>(StoreDAG, Stores, DL, SE, LI);
   LoadInfo = AccessLayoutInfo(LoadDAG);
   StoreInfo = AccessLayoutInfo(StoreDAG);
+
+  // TODO: find more equivalent instructions based on the equivalent loads
+  // Find equivalent loads
+  EquivalenceClasses<Value *> EquivalentValues;
+  for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I) {
+    auto *L1 = dyn_cast<LoadInst>(&*I);
+    if (!L1)
+      continue;
+    for (auto J = std::next(I); J != E; ++J) {
+      auto *L2 = dyn_cast<LoadInst>(&*J);
+      if (!L2)
+        continue;
+
+      if (!isEquivalent(L1->getPointerOperand(), L2->getPointerOperand(), *SE,
+                        *LI))
+        continue;
+
+      if (BO.comesBefore(L2, L1))
+        std::swap(L1, L2);
+
+      if (!DA.getDepended(L2).test(VPCtx.getScalarId(L1))) {
+        errs() << "Found equivalent loads: " << *L1 << ", " << *L2 << '\n';
+        EquivalentValues.unionSets(L1, L2);
+      }
+    }
+  }
+  VPCtx.registerEquivalentValues(std::move(EquivalentValues));
 }
 
 AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {

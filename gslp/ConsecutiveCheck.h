@@ -3,6 +3,7 @@
 
 namespace llvm {
 class Instruction;
+class Value;
 class DataLayout;
 class ScalarEvolution;
 class LoopInfo;
@@ -11,5 +12,9 @@ class LoopInfo;
 bool isConsecutive(llvm::Instruction *A, llvm::Instruction *B,
                    const llvm::DataLayout &DL, llvm::ScalarEvolution &SE,
                    llvm::LoopInfo &LI);
+
+// Check if two pointers are equivalent
+bool isEquivalent(llvm::Value *PtrA, llvm::Value *PtrB,
+                  llvm::ScalarEvolution &, llvm::LoopInfo &);
 
 #endif

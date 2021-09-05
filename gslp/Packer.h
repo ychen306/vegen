@@ -73,7 +73,8 @@ class BlockOrdering {
   llvm::DenseMap<llvm::BasicBlock *, unsigned> Order;
 public:
   BlockOrdering(llvm::Function *F);
-  bool comesBefore(llvm::BasicBlock *BB1, llvm::BasicBlock *BB2) const;
+  bool comesBefore(llvm::BasicBlock *, llvm::BasicBlock *) const;
+  bool comesBefore(llvm::Instruction *, llvm::Instruction *) const;
 };
 
 class Packer {

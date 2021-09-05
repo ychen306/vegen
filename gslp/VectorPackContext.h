@@ -5,6 +5,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/Hashing.h"
+#include "llvm/ADT/EquivalenceClasses.h"
 #include <vector>
 
 class VectorPack;
@@ -37,6 +38,7 @@ class VectorPackContext {
   llvm::Function *F;
   std::vector<llvm::Value *> Scalars;
   llvm::DenseMap<llvm::Value *, unsigned> ScalarToIdMap;
+  llvm::EquivalenceClasses<llvm::Value *> EquivalentValues;
 
   std::unique_ptr<VectorPackCache> PackCache;
   mutable llvm::DenseMap<llvm::ArrayRef<llvm::Value *>,
@@ -46,6 +48,10 @@ class VectorPackContext {
 public:
   VectorPackContext(llvm::Function *F);
   ~VectorPackContext();
+
+  void registerEquivalentValues(llvm::EquivalenceClasses<llvm::Value *> &&EC) {
+    EquivalentValues = EC;
+  }
 
   // Create a "General" vector pack
   VectorPack *createVectorPack(std::vector<const Operation::Match *> Matches,
