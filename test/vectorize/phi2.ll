@@ -1,22 +1,21 @@
 ; RUN: %opt -gslp %s -o - -S | FileCheck %s
 
 ; CHECK: for.body.lr.ph:
-; CHECK-NEXT:   %0 = bitcast i32* %s to <2 x i32>*
-; CHECK-NEXT:   %1 = load <2 x i32>, <2 x i32>* %0, align 4
-; CHECK-NEXT:   %2 = sext i32 %n to i64
-; CHECK-NEXT:   br label %for.body
+; CHECK-NEXT:   [[S_ADDR:%.*]] = bitcast i32* %s to <2 x i32>*
+; CHECK-NEXT:   [[S:%.*]] = load <2 x i32>, <2 x i32>* [[S_ADDR]]
+; CHECK:   br label %for.body
 
 ; CHECK: for.cond.for.cond.cleanup_crit_edge:
-; CHECK-NEXT:   %3 = bitcast i32* %s to <2 x i32>*
-; CHECK-NEXT:   store <2 x i32> %8, <2 x i32>* %3, align 4, !tbaa !3
+; CHECK-NEXT:   [[S_ADDR2:%.*]] = bitcast i32* %s to <2 x i32>*
+; CHECK-NEXT:   store <2 x i32> [[ADD:%.*]], <2 x i32>* [[S_ADDR2]]
 ; CHECK-NEXT:   br label %for.cond.cleanup
 
 ; CHECK: for.body:
-; CHECK-NEXT:   %4 = phi <2 x i32> [ %1, %for.body.lr.ph ], [ %8, %for.body ]
+; CHECK-NEXT:   [[PHI:%.*]] = phi <2 x i32> [ [[S]], %for.body.lr.ph ], [ [[ADD]], %for.body ]
 
-; CHECK:   %6 = bitcast i32* %arrayidx to <2 x i32>*
-; CHECK-NEXT:   %7 = load <2 x i32>, <2 x i32>* %6, align 4, !tbaa !3
-; CHECK-NEXT:   %8 = add <2 x i32> %4, %7
+; CHECK:        [[ADDR:%.*]] = bitcast i32* %arrayidx to <2 x i32>*
+; CHECK-NEXT:   [[TMP:%.*]] = load <2 x i32>, <2 x i32>* [[ADDR]], align 4, !tbaa !3
+; CHECK-NEXT:   [[ADD]] = add <2 x i32> [[PHI]], [[TMP]]
 
 target triple = "x86_64-apple-macosx10.15.0"
 
