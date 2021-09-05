@@ -75,14 +75,7 @@ public:
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
                             llvm::TargetTransformInfo *TTI) const;
 
-  // TODO: clean this up...
-  OperandPack *getCanonicalOperandPack(OperandPack OP) const {
-    auto It = OperandCache.find(OP);
-    if (It != OperandCache.end())
-      return It->second.get();
-    auto NewOP = std::make_unique<OperandPack>(OP);
-    return (OperandCache[*NewOP] = std::move(NewOP)).get();
-  }
+  OperandPack *getCanonicalOperandPack(OperandPack OP) const;
 
   // Remove duplicate elements in OP
   const OperandPack *dedup(const OperandPack *) const;
