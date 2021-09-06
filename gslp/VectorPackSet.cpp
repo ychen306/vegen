@@ -1,6 +1,6 @@
 #include "VectorPackSet.h"
-#include "Packer.h"
 #include "CodeMotionUtil.h"
+#include "Packer.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
