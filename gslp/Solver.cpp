@@ -234,7 +234,6 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
     }
     Decomposed.push_back(
         VPCtx->createStorePack(Stores, Elements, Depended, TTI));
-    errs() << "\t" << *Decomposed.back();
   }
   return Decomposed;
 }

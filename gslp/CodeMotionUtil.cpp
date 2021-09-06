@@ -1,7 +1,8 @@
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
-#include "LoopFusion.h"
 #include "DependenceAnalysis.h"
+#include "LoopFusion.h"
+#include "VectorPackContext.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/STLExtras.h"
@@ -198,7 +199,8 @@ SmallVector<T> getMembers(const EquivalenceClasses<T> &EC, T X) {
 } // namespace
 
 void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
-             DominatorTree &DT, PostDominatorTree &PDT, LazyDependenceAnalysis &LDA,
+             DominatorTree &DT, PostDominatorTree &PDT,
+             LazyDependenceAnalysis &LDA,
              const EquivalenceClasses<Instruction *> &CoupledInsts) {
   if (I->getParent() == BB)
     return;
@@ -302,8 +304,8 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
-    if (Dep != I &&
-        !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, LDA, SE, Inclusive))
+    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, LDA,
+                                                   SE, Inclusive))
       return false;
   }
 
@@ -383,7 +385,9 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
 void gatherInstructions(Function *F,
                         const EquivalenceClasses<Instruction *> &EC,
                         LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
-                        ScalarEvolution &SE, LazyDependenceAnalysis &LDA) {
+                        ScalarEvolution &SE, LazyDependenceAnalysis &LDA,
+                        GlobalDependenceAnalysis *DA,
+                        const VectorPackContext *VPCtx) {
   // Do a top-sort of the equivalence classes of instructions
   DenseSet<Instruction *> Visited;
   SmallVector<EquivalenceClasses<Instruction *>::iterator> SortedClasses;
@@ -393,12 +397,20 @@ void gatherInstructions(Function *F,
 
     // Find the dependences of all instructions in the same EC
     SmallPtrSet<Instruction *, 16> Dependences;
-    for (Instruction *I2 : getMembers(EC, I))
-      findDependences(I2, &F->getEntryBlock(), LI, DT, LDA, Dependences,
-                      true /*inclusive*/);
 
-    for (Instruction *Dep : Dependences)
-      Visit(Dep);
+    if (!DA) {
+      for (Instruction *I2 : getMembers(EC, I))
+        findDependences(I2, &F->getEntryBlock(), LI, DT, LDA, Dependences,
+                        true /*inclusive*/);
+
+      for (Instruction *Dep : Dependences)
+        Visit(Dep);
+    } else {
+      assert(VPCtx);
+      for (Instruction *I2 : getMembers(EC, I))
+        for (Value *Dep : VPCtx->iter_values(DA->getDepended(I2)))
+          Visit(cast<Instruction>(Dep));
+    }
 
     auto It = EC.findValue(I);
     if (It != EC.end() && It->isLeader())
@@ -425,7 +437,8 @@ void gatherInstructions(Function *F,
         continue;
       assert(
           isControlEquivalent(*I->getParent(), *Leader->getParent(), DT, PDT));
-      assert(isControlCompatible(I, Leader->getParent(), LI, DT, PDT, LDA, &SE));
+      assert(
+          isControlCompatible(I, Leader->getParent(), LI, DT, PDT, LDA, &SE));
       hoistTo(I, Leader->getParent(), LI, SE, DT, PDT, LDA, CoupledInsts);
     }
     for (Instruction *I : Members)

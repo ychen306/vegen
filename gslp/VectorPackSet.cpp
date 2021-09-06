@@ -344,7 +344,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       }
   }
   gatherInstructions(F, EC, Pkr.getLoopInfo(), Pkr.getDT(), Pkr.getPDT(),
-                     Pkr.getSE(), Pkr.getLDA());
+                     Pkr.getSE(), Pkr.getLDA(), &Pkr.getDA(), Pkr.getContext());
 
   std::vector<Instruction *> DeadInsts;
 

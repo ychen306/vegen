@@ -68,12 +68,17 @@ bool comesBefore(llvm::BasicBlock *, llvm::BasicBlock *, llvm::Loop *);
 
 void fixDefUseDominance(llvm::Function *, llvm::DominatorTree &);
 
+class GlobalDependenceAnalysis;
+class VectorPackContext;
+
 // Move code around so that instructions in the same equivalence class end up in
 // the same basic block
 void gatherInstructions(llvm::Function *,
                         const llvm::EquivalenceClasses<llvm::Instruction *> &,
                         llvm::LoopInfo &, llvm::DominatorTree &,
                         llvm::PostDominatorTree &, llvm::ScalarEvolution &,
-                        LazyDependenceAnalysis &);
+                        LazyDependenceAnalysis &,
+                        GlobalDependenceAnalysis *DA = nullptr,
+                        const VectorPackContext *VPCtx = nullptr);
 
 #endif // CODE_MOTION_UTIL_H
