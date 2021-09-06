@@ -49,7 +49,7 @@ bool BlockOrdering::comesBefore(Instruction *I1, Instruction *I2) const {
 }
 
 Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
-               AliasAnalysis *AA, const DataLayout *DL, LoopInfo *LI,
+               AliasAnalysis *AA, LoopInfo *LI,
                ScalarEvolution *SE, DominatorTree *DT, PostDominatorTree *PDT,
                DependenceInfo *DI, LazyValueInfo *LVI, TargetTransformInfo *TTI,
                BlockFrequencyInfo *BFI)
@@ -69,8 +69,8 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
     }
   }
 
-  buildAccessDAG<LoadInst>(LoadDAG, Loads, DL, SE, LI);
-  buildAccessDAG<StoreInst>(StoreDAG, Stores, DL, SE, LI);
+  buildAccessDAG<LoadInst>(LoadDAG, Loads, getDataLayout(), SE, LI);
+  buildAccessDAG<StoreInst>(StoreDAG, Stores, getDataLayout(), SE, LI);
   LoadInfo = AccessLayoutInfo(LoadDAG);
   StoreInfo = AccessLayoutInfo(StoreDAG);
 

@@ -100,15 +100,13 @@ class Packer {
 
   llvm::TargetTransformInfo *TTI;
   llvm::BlockFrequencyInfo *BFI;
-  const llvm::DataLayout *DL;
 
 public:
   Packer(llvm::ArrayRef<const InstBinding *> SupportedInsts, llvm::Function &F,
-         llvm::AliasAnalysis *AA, const llvm::DataLayout *DL,
-         llvm::LoopInfo *LI, llvm::ScalarEvolution *SE, llvm::DominatorTree *DT,
-         llvm::PostDominatorTree *PDT, llvm::DependenceInfo *DI,
-         llvm::LazyValueInfo *LVI, llvm::TargetTransformInfo *TTI,
-         llvm::BlockFrequencyInfo *BFI);
+         llvm::AliasAnalysis *AA, llvm::LoopInfo *LI, llvm::ScalarEvolution *SE,
+         llvm::DominatorTree *DT, llvm::PostDominatorTree *PDT,
+         llvm::DependenceInfo *DI, llvm::LazyValueInfo *LVI,
+         llvm::TargetTransformInfo *TTI, llvm::BlockFrequencyInfo *BFI);
 
   const VectorPackContext *getContext() const { return &VPCtx; }
 
@@ -131,7 +129,9 @@ public:
   llvm::PostDominatorTree &getPDT() const { return *PDT; }
   llvm::LoopInfo &getLoopInfo() const { return *LI; }
 
-  const llvm::DataLayout *getDataLayout() const { return DL; }
+  const llvm::DataLayout *getDataLayout() const {
+    return &F->getParent()->getDataLayout();
+  }
 
   llvm::Function *getFunction() const { return F; }
   const OperandProducerInfo &getProducerInfo(const OperandPack *);

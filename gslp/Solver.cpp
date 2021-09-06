@@ -110,7 +110,6 @@ std::vector<const VectorPack *> enumerate(Packer *Pkr) {
 
   auto *TTI = Pkr->getTTI();
 
-  auto *DL = Pkr->getDataLayout();
   std::vector<const VectorPack *> Packs;
   for (Instruction &I : instructions(Pkr->getFunction())) {
     auto *LI = dyn_cast<LoadInst>(&I);
@@ -118,7 +117,8 @@ std::vector<const VectorPack *> enumerate(Packer *Pkr) {
     if (!LI || LI->getType()->isVectorTy())
       continue;
     unsigned AS = LI->getPointerAddressSpace();
-    unsigned MaxVF = TTI->getLoadStoreVecRegBitWidth(AS) / getBitWidth(LI, DL);
+    unsigned MaxVF = TTI->getLoadStoreVecRegBitWidth(AS) /
+                     getBitWidth(LI, Pkr->getDataLayout());
     for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
       if (VL > MaxVF)
         continue;
