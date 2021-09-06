@@ -205,10 +205,9 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
 
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
-  for (auto *VP : Packs) {
+  for (auto *VP : Packs)
     for (Value *V : VP->elementValues())
       ValueToPackMap[V] = VP;
-  }
 
   // Sort the packs by dependence
   std::vector<const VectorPack *> SortedPacks;
@@ -432,6 +431,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *VP : PHIPacks) {
     ArrayRef<OperandPack *> OPs = VP->getOperandPacks();
     for (unsigned i = 0; i < OPs.size(); i++) {
+      VP->setOperandGatherPoint(i, Builder);
       Value *Gathered =
           gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
       cast<Instruction>(MaterializedPacks[VP])->setOperand(i, Gathered);
