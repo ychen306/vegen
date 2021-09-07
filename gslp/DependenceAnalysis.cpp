@@ -91,6 +91,16 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
 
   auto *Ptr1 = getLoadStorePointerOperand(I1);
   auto *Ptr2 = getLoadStorePointerOperand(I2);
+
+  auto Loc1 = getLocation(I1);
+  auto Loc2 = getLocation(I2);
+  if (Loc1.Ptr && Loc2.Ptr && isSimple(I1) && isSimple(I2)) {
+    // Do the alias check.
+    auto Result = AA.alias(Loc1, Loc2);
+    if (Result != MayAlias)
+      return Result;
+  }
+
   if (Ptr1 && Ptr2 && !InDifferentLoops) {
     auto *Ptr1SCEV = SE.getSCEV(Ptr1);
     auto *Ptr2SCEV = SE.getSCEV(Ptr2);
@@ -149,14 +159,7 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
     }
   }
 
-  auto Loc1 = getLocation(I1);
-  auto Loc2 = getLocation(I2);
-  bool Aliased = true;
-  if (Loc1.Ptr && Loc2.Ptr && isSimple(I1) && isSimple(I2)) {
-    // Do the alias check.
-    Aliased = AA.alias(Loc1, Loc2);
-  }
-  return Aliased;
+  return true;
 }
 
 bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
@@ -213,7 +216,7 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
     }
   }
 
-#if 1
+#ifndef NDEBUG
   // Cycle detection
   DenseSet<Instruction *> Processing;
   DenseSet<Instruction *> Visited;
