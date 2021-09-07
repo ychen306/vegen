@@ -79,6 +79,8 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   AddRecLoopRewriter::LoopToLoopMap Loops;
   for (const auto &Pair : zip(LoopNest1, LoopNest2)) {
     std::tie(L1, L2) = Pair;
+    if (L1->getLoopDepth() != L2->getLoopDepth())
+      return false;
     if (SE.getBackedgeTakenCount(L1) != SE.getBackedgeTakenCount(L2))
       return false;
     Loops[L2] = L1;
@@ -105,7 +107,12 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
   AddRecLoopRewriter::LoopToLoopMap Loops;
   for (const auto &Pair : zip(LoopNest1, LoopNest2)) {
     std::tie(L1, L2) = Pair;
-    if (SE.getBackedgeTakenCount(L1) != SE.getBackedgeTakenCount(L2))
+    if (L1 == L2)
+      continue;
+    const SCEV *TripCount1 = SE.getBackedgeTakenCount(L1);
+    const SCEV *TripCount2 = SE.getBackedgeTakenCount(L2);
+    if (isa<SCEVCouldNotCompute>(TripCount1) ||
+        isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2)
       return false;
     Loops[L2] = L1;
   }
