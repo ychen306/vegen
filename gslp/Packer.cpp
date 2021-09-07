@@ -94,10 +94,8 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
       if (BO.comesBefore(L2, L1))
         std::swap(L1, L2);
 
-      if (!DA.getDepended(L2).test(VPCtx.getScalarId(L1))) {
-        errs() << "Found equivalent loads: " << *L1 << ", " << *L2 << '\n';
+      if (!DA.getDepended(L2).test(VPCtx.getScalarId(L1)))
         EquivalentValues.unionSets(L1, L2);
-      }
     }
   }
   VPCtx.registerEquivalentValues(std::move(EquivalentValues));
