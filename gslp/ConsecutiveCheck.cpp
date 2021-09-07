@@ -112,14 +112,14 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
 
   Value *PtrA = getLoadStorePointerOperand(A);
   Value *PtrB = getLoadStorePointerOperand(B);
-  if (PtrA->getType() != PtrB->getType())
-    return false;
-
   unsigned ASA = getAddressSpaceOperand(A);
   unsigned ASB = getAddressSpaceOperand(B);
 
   // Check that the address spaces match and that the pointers are valid.
   if (!PtrA || !PtrB || (ASA != ASB))
+    return false;
+
+  if (PtrA->getType() != PtrB->getType())
     return false;
 
   // Make sure that A and B are different pointers.
