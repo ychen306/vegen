@@ -37,6 +37,7 @@ BlockOrdering::BlockOrdering(Function *F) {
     Order[BB] = i++;
 }
 
+// FIXME: this is broken (comesBefore is *not* a total relation!)
 bool BlockOrdering::comesBefore(BasicBlock *BB1, BasicBlock *BB2) const {
   assert(Order.count(BB1) && Order.count(BB2));
   return Order.lookup(BB1) < Order.lookup(BB2);
