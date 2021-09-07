@@ -27,10 +27,12 @@ public:
 
 private:
   const LoopToLoopMap &Loops;
+  bool Success;
 
 public:
   AddRecLoopRewriter(ScalarEvolution &SE, const LoopToLoopMap &Loops)
-      : SCEVRewriteVisitor<AddRecLoopRewriter>(SE), Loops(Loops) {}
+      : SCEVRewriteVisitor<AddRecLoopRewriter>(SE), Loops(Loops),
+        Success(true) {}
 
   static const SCEV *rewrite(ScalarEvolution &SE, const SCEV *Expr,
                              const LoopToLoopMap &Loops) {
@@ -39,18 +41,27 @@ public:
   }
 
   const SCEV *visitAddRecExpr(const SCEVAddRecExpr *Expr) {
-    SmallVector<const SCEV *> Operands;
-    for (auto *Op : Expr->operands())
-      Operands.push_back(visit(Op));
+    if (!Success)
+      return Expr;
+
     auto *OldLoop = Expr->getLoop();
-    auto *NewLoop = Loops.lookup(OldLoop);
-    return SE.getAddRecExpr(Operands, NewLoop ? NewLoop : OldLoop,
-                            Expr->getNoWrapFlags());
+    auto It = Loops.find(OldLoop);
+    auto *NewLoop = It == Loops.end() ? OldLoop : It->second;
+
+    SmallVector<const SCEV *> Operands;
+    for (auto *Op : Expr->operands()) {
+      Operands.push_back(visit(Op));
+      if (!SE.isLoopInvariant(Operands.back(), NewLoop)) {
+        Success = false;
+        return Expr;
+      }
+    }
+
+    return SE.getAddRecExpr(Operands, NewLoop, Expr->getNoWrapFlags());
   }
 };
 
-bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE,
-                  LoopInfo &LI) {
+bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   if (SE.getSCEV(PtrA) == SE.getSCEV(PtrB))
     return true;
 
