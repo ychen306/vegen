@@ -4,7 +4,11 @@
 
 using namespace llvm;
 
-static SmallVector<const Loop *, 4> getLoopNest(LoopInfo &LI, Instruction *I) {
+static SmallVector<const Loop *, 4> getLoopNest(LoopInfo &LI, Value *V) {
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I)
+    return {};
+
   SmallVector<const Loop *, 4> LoopNest;
   for (auto *L = LI.getLoopFor(I->getParent()); L; L = L->getParentLoop())
     LoopNest.push_back(L);
@@ -99,14 +103,17 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   return PtrSCEVA == PtrSCEVB;
 }
 
-// FIXME: get the loopnest of the *pointer*, not the loads
-
 // llvm::isConsecutiveAccess modified to work for when A and B are in two
 // separate loop nest
 bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
                    ScalarEvolution &SE, LoopInfo &LI) {
-  auto LoopNest1 = getLoopNest(LI, A);
-  auto LoopNest2 = getLoopNest(LI, B);
+  Value *PtrA = getLoadStorePointerOperand(A);
+  Value *PtrB = getLoadStorePointerOperand(B);
+  unsigned ASA = getAddressSpaceOperand(A);
+  unsigned ASB = getAddressSpaceOperand(B);
+
+  auto LoopNest1 = getLoopNest(LI, PtrA);
+  auto LoopNest2 = getLoopNest(LI, PtrB);
   if (LoopNest1.size() != LoopNest2.size())
     return false;
 
@@ -123,11 +130,6 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
       return false;
     Loops[L2] = L1;
   }
-
-  Value *PtrA = getLoadStorePointerOperand(A);
-  Value *PtrB = getLoadStorePointerOperand(B);
-  unsigned ASA = getAddressSpaceOperand(A);
-  unsigned ASB = getAddressSpaceOperand(B);
 
   // Check that the address spaces match and that the pointers are valid.
   if (!PtrA || !PtrB || (ASA != ASB))
