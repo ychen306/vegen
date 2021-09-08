@@ -55,7 +55,7 @@ public:
     SmallVector<const SCEV *> Operands;
     for (auto *Op : Expr->operands()) {
       Operands.push_back(visit(Op));
-      if (!SE.isLoopInvariant(Operands.back(), NewLoop)) {
+      if (!SE.isAvailableAtLoopEntry(Operands.back(), NewLoop)) {
         Success = false;
         return Expr;
       }
