@@ -144,7 +144,8 @@ collectReductionElements(Instruction *I,
 
     // if not an Add then found a leave
     Value *A, *B;
-    if (!match(V, m_OneUse(m_Add(m_Value(A), m_Value(B))))) {
+    if (!isa<Instruction>(V) || 
+        !match(V, m_OneUse(m_Add(m_Value(A), m_Value(B))))) {
       Elems.push_back(V);
       continue;
     }
