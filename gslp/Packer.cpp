@@ -9,7 +9,9 @@ using namespace llvm;
 
 namespace {
 
-bool isScalarType(Type *Ty) { return Ty->getScalarType() == Ty; }
+bool isScalarType(Type *Ty) {
+  return !Ty->isStructTy() && Ty->getScalarType() == Ty;
+}
 
 // Do a quadratic search to build the access dags
 template <typename MemAccessTy>
@@ -50,9 +52,9 @@ bool BlockOrdering::comesBefore(Instruction *I1, Instruction *I2) const {
 }
 
 Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
-               AliasAnalysis *AA, LoopInfo *LI,
-               ScalarEvolution *SE, DominatorTree *DT, PostDominatorTree *PDT,
-               DependenceInfo *DI, LazyValueInfo *LVI, TargetTransformInfo *TTI,
+               AliasAnalysis *AA, LoopInfo *LI, ScalarEvolution *SE,
+               DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
+               LazyValueInfo *LVI, TargetTransformInfo *TTI,
                BlockFrequencyInfo *BFI)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
       LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F), SE(SE), DT(DT),
@@ -314,6 +316,8 @@ float Packer::getScalarCost(Instruction *I) {
         TTI::TCK_RecipThroughput, SI);
   if (isa<GetElementPtrInst>(I) || isa<PHINode>(I))
     return 0;
+  if (!isScalarType(I->getType()))
+    return 1;
   if (!isa<BinaryOperator>(I) && !isa<CmpInst>(I) && !isa<SelectInst>(I))
     return 1;
   SmallVector<const Value *, 4> Operands(I->operand_values());
