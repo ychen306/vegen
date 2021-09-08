@@ -20,6 +20,11 @@ static cl::opt<bool> UseLVI(
     cl::desc("use lazy value info to improve dependence analysis precision"),
     cl::init(false));
 
+static cl::opt<bool> UseDA(
+    "use-da",
+    cl::desc("use dependence info"),
+    cl::init(false));
+
 static bool isLessThan(ScalarEvolution &SE, const SCEV *A, const SCEV *B) {
   return SE.isKnownNegative(SE.getMinusSCEV(A, B));
 }
@@ -204,6 +209,12 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
 }
 
 bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
+  if (!I1->mayReadOrWriteMemory())
+    return false;
+
+  if (!I2->mayReadOrWriteMemory())
+    return false;
+
   // No dependence if nobody writes
   if (!I1->mayWriteToMemory() && !I2->mayWriteToMemory())
     return false;
@@ -211,6 +222,9 @@ bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
   // No dependence if no aliasing
   if (!isAliased(I1, I2, AA, SE, DT, LI, LVI))
     return false;
+
+  if (!UseDA)
+    return true;
 
   // Fall back to DependenceInfo
   auto Dep = DI.depends(I1, I2, true);
