@@ -73,6 +73,7 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   if (PtrA->getType() != PtrB->getType())
     return false;
 
+  // FIXME: factor this part out of isEquivalent and isConsecutive
   auto LoopNest1 = getLoopNest(LI, A);
   auto LoopNest2 = getLoopNest(LI, B);
   if (LoopNest1.size() != LoopNest2.size())

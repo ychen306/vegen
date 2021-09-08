@@ -312,10 +312,9 @@ float Packer::getScalarCost(Instruction *I) {
     return TTI->getMemoryOpCost(
         Instruction::Store, SI->getValueOperand()->getType(), SI->getAlign(), 0,
         TTI::TCK_RecipThroughput, SI);
-  if (isa<GetElementPtrInst>(I))
+  if (isa<GetElementPtrInst>(I) || isa<PHINode>(I))
     return 0;
-  if (isa<PHINode>(I) || isa<CallInst>(I) || isa<ReturnInst>(I) ||
-      I->isTerminator() || isa<AllocaInst>(I))
+  if (!isa<BinaryOperator>(I) && !isa<CmpInst>(I) && !isa<SelectInst>(I))
     return 1;
   SmallVector<const Value *, 4> Operands(I->operand_values());
   return TTI->getArithmeticInstrCost(
