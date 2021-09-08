@@ -70,6 +70,9 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   if (!A || !B)
     return false;
 
+  if (PtrA->getType() != PtrB->getType())
+    return false;
+
   auto LoopNest1 = getLoopNest(LI, A);
   auto LoopNest2 = getLoopNest(LI, B);
   if (LoopNest1.size() != LoopNest2.size())
@@ -79,9 +82,12 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   AddRecLoopRewriter::LoopToLoopMap Loops;
   for (const auto &Pair : zip(LoopNest1, LoopNest2)) {
     std::tie(L1, L2) = Pair;
-    if (L1->getLoopDepth() != L2->getLoopDepth())
-      return false;
-    if (SE.getBackedgeTakenCount(L1) != SE.getBackedgeTakenCount(L2))
+    if (L1 == L2)
+      continue;
+    const SCEV *TripCount1 = SE.getBackedgeTakenCount(L1);
+    const SCEV *TripCount2 = SE.getBackedgeTakenCount(L2);
+    if (isa<SCEVCouldNotCompute>(TripCount1) ||
+        isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2)
       return false;
     Loops[L2] = L1;
   }
