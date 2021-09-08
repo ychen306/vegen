@@ -11,8 +11,14 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+
+static cl::opt<bool> UseLVI(
+    "use-lvi",
+    cl::desc("use lazy value info to improve dependence analysis precision"),
+    cl::init(false));
 
 static bool isLessThan(ScalarEvolution &SE, const SCEV *A, const SCEV *B) {
   return SE.isKnownNegative(SE.getMinusSCEV(A, B));
@@ -100,6 +106,9 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
     if (Result != MayAlias)
       return Result;
   }
+
+  if (!UseLVI)
+    return true;
 
   auto *Ptr1 = getLoadStorePointerOperand(I1);
   auto *Ptr2 = getLoadStorePointerOperand(I2);
