@@ -17,6 +17,30 @@ template <typename T> class SmallPtrSetImpl;
 
 class LazyDependenceAnalysis;
 
+class ControlCompatibilityChecker {
+  llvm::LoopInfo &LI;
+  llvm::DominatorTree &DT;
+  llvm::PostDominatorTree &PDT;
+  LazyDependenceAnalysis &LDA;
+  llvm::ScalarEvolution *SE;
+
+  mutable llvm::DenseMap<std::pair<llvm::Instruction *, llvm::BasicBlock *>,
+                         bool>
+      Memo;
+
+public:
+  ControlCompatibilityChecker(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
+                              llvm::PostDominatorTree &PDT,
+                              LazyDependenceAnalysis &LDA,
+                              llvm::ScalarEvolution *SE = nullptr)
+      : LI(LI), DT(DT), PDT(PDT), LDA(LDA), SE(SE) {}
+
+  bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *) const;
+  llvm::BasicBlock *findCompatiblePredecessorsFor(llvm::Instruction *,
+                                                  llvm::BasicBlock *,
+                                                  bool Inclusive) const;
+};
+
 // Use this to do DFS without taking the backedge
 struct SkipBackEdge : public llvm::df_iterator_default_set<llvm::BasicBlock *> {
   SkipBackEdge(llvm::Loop *L) {

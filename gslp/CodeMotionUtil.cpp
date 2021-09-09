@@ -172,20 +172,26 @@ static BasicBlock *getIDom(DominatorTree &DT, BasicBlock *BB) {
   return Node->getIDom()->getBlock();
 }
 
-BasicBlock *findCompatiblePredecessorsFor(Instruction *I, BasicBlock *BB,
-                                          LoopInfo &LI, DominatorTree &DT,
-                                          PostDominatorTree &PDT,
-                                          LazyDependenceAnalysis &LDA,
-                                          ScalarEvolution *SE, bool Inclusive) {
+BasicBlock *ControlCompatibilityChecker::findCompatiblePredecessorsFor(
+    Instruction *I, BasicBlock *BB, bool Inclusive) const {
   Loop *ParentLoop = findCommonParentLoop(I->getParent(), BB, LI);
   SkipBackEdge SBE(ParentLoop);
   for (BasicBlock *Pred : inverse_depth_first_ext(BB, SBE)) {
     if (!Inclusive && Pred == BB)
       continue;
-    if (isControlCompatible(I, Pred, LI, DT, PDT, LDA, SE))
+    if (isControlCompatible(I, Pred))
       return Pred;
   }
   return nullptr;
+}
+
+BasicBlock *findCompatiblePredecessorsFor(Instruction *I, BasicBlock *BB,
+                                          LoopInfo &LI, DominatorTree &DT,
+                                          PostDominatorTree &PDT,
+                                          LazyDependenceAnalysis &LDA,
+                                          ScalarEvolution *SE, bool Inclusive) {
+  ControlCompatibilityChecker Checker(LI, DT, PDT, LDA, SE);
+  return Checker.findCompatiblePredecessorsFor(I, BB, Inclusive);
 }
 
 namespace {
@@ -266,9 +272,8 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   }
 }
 
-bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
-                         DominatorTree &DT, PostDominatorTree &PDT,
-                         LazyDependenceAnalysis &LDA, ScalarEvolution *SE) {
+bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
+                                                      BasicBlock *BB) const {
   if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
     return false;
 
@@ -304,12 +309,18 @@ bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
-    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, LI, DT, PDT, LDA,
-                                                   SE, Inclusive))
+    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive))
       return false;
   }
 
   return true;
+}
+
+bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
+                         DominatorTree &DT, PostDominatorTree &PDT,
+                         LazyDependenceAnalysis &LDA, ScalarEvolution *SE) {
+  ControlCompatibilityChecker Checker(LI, DT, PDT, LDA, SE);
+  return Checker.isControlCompatible(I, BB);
 }
 
 bool isControlCompatible(Instruction *I1, Instruction *I2, LoopInfo &LI,
