@@ -5,6 +5,7 @@
 #include "InstSema.h"
 #include "MatchManager.h"
 #include "VectorPackContext.h"
+#include "CodeMotionUtil.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -86,6 +87,7 @@ class Packer {
   mutable LazyDependenceAnalysis LDA;
   MatchManager MM;
   BlockOrdering BO;
+  ControlCompatibilityChecker CompatChecker;
 
   llvm::ScalarEvolution *SE;
   llvm::DominatorTree *DT;

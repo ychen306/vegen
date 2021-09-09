@@ -57,8 +57,9 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                LazyValueInfo *LVI, TargetTransformInfo *TTI,
                BlockFrequencyInfo *BFI)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
-      LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F), SE(SE), DT(DT),
-      PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
+      LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F),
+      CompatChecker(*LI, *DT, *PDT, LDA, SE), SE(SE), DT(DT), PDT(PDT), LI(LI),
+      SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
 
   std::vector<LoadInst *> Loads;
   std::vector<StoreInst *> Stores;
@@ -352,5 +353,5 @@ bool Packer::isControlCompatible(Instruction *I1, Instruction *I2) const {
   if (!BO.comesBefore(I1->getParent(), I2->getParent()))
     std::swap(I1, I2);
 
-  return ::isControlCompatible(I2, I1->getParent(), *LI, *DT, *PDT, LDA, SE);
+  return CompatChecker.isControlCompatible(I2, I1->getParent());
 }
