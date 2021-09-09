@@ -274,31 +274,36 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
 
 bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
                                                       BasicBlock *BB) const {
+  auto MemoKey = std::make_pair(I, BB);
+  auto It = Memo.find(MemoKey);
+  if (It != Memo.end())
+    return It->second;
+
   if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
-    return false;
+    return Memo[MemoKey] = false;
 
   // PHI nodes needs to have their incoming blocks equivalent to some
   // predecessor of BB
   if (auto *PN = dyn_cast<PHINode>(I)) {
     if (PN->getNumIncomingValues() != pred_size(BB))
-      return false;
+      return Memo[MemoKey] = false;
 
     for (BasicBlock *Incoming : PN->blocks()) {
       auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
         return isControlEquivalent(*Incoming, *Pred, DT, PDT);
       });
       if (PredIt == pred_end(BB))
-        return false;
+        return Memo[MemoKey] = false;
     }
   }
 
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
   if ((bool)LoopForI ^ (bool)LoopForBB)
-    return false;
+    return Memo[MemoKey] = false;
   if (LoopForI != LoopForBB &&
       (!SE || isUnsafeToFuse(LoopForI, LoopForBB, LI, *SE, LDA, DT, PDT)))
-    return false;
+    return Memo[MemoKey] = false;
 
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
@@ -310,10 +315,10 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
     if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive))
-      return false;
+      return Memo[MemoKey] = false;
   }
 
-  return true;
+  return Memo[MemoKey] = true;
 }
 
 bool isControlCompatible(Instruction *I, BasicBlock *BB, LoopInfo &LI,
