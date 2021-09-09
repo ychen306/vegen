@@ -237,21 +237,19 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
     AllPHIs &= isa<PHINode>(V);
 
+    unsigned InstId = VPCtx.getScalarId(I);
+    if (!OPI.Feasible || !checkIndependence(DA, VPCtx, I, Elements, Depended))
+      OPI.Feasible = false;
+    Elements.set(InstId);
+    Depended |= DA.getDepended(I);
+
     // We can only pack instructions that are control-compatible
     auto CompatibleWithI = [&](Instruction *I2) {
       return isControlCompatible(I, I2);
     };
-    if (!all_of(VisitedInsts, CompatibleWithI)) {
+    if (!OPI.Feasible || !all_of(VisitedInsts, CompatibleWithI))
       OPI.Feasible = false;
-      continue;
-    }
     VisitedInsts.push_back(I);
-
-    unsigned InstId = VPCtx.getScalarId(I);
-    if (!checkIndependence(DA, VPCtx, I, Elements, Depended))
-      OPI.Feasible = false;
-    Elements.set(InstId);
-    Depended |= DA.getDepended(I);
   }
 
   OPI.Elements = std::move(Elements);
