@@ -16,6 +16,8 @@ template <typename T> class SmallPtrSetImpl;
 } // namespace llvm
 
 class LazyDependenceAnalysis;
+class GlobalDependenceAnalysis;
+class VectorPackContext;
 
 class ControlCompatibilityChecker {
   llvm::LoopInfo &LI;
@@ -23,6 +25,10 @@ class ControlCompatibilityChecker {
   llvm::PostDominatorTree &PDT;
   LazyDependenceAnalysis &LDA;
   llvm::ScalarEvolution *SE;
+
+  // Alternative to lazy DA
+  VectorPackContext *VPCtx;
+  GlobalDependenceAnalysis *DA;
 
   mutable llvm::DenseMap<std::pair<llvm::Instruction *, llvm::BasicBlock *>,
                          bool>
@@ -32,8 +38,10 @@ public:
   ControlCompatibilityChecker(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
                               llvm::PostDominatorTree &PDT,
                               LazyDependenceAnalysis &LDA,
-                              llvm::ScalarEvolution *SE = nullptr)
-      : LI(LI), DT(DT), PDT(PDT), LDA(LDA), SE(SE) {}
+                              llvm::ScalarEvolution *SE,
+                              VectorPackContext *VPCtx = nullptr,
+                              GlobalDependenceAnalysis *DA = nullptr)
+      : LI(LI), DT(DT), PDT(PDT), LDA(LDA), SE(SE), VPCtx(VPCtx), DA(DA) {}
 
   bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *) const;
   llvm::BasicBlock *findCompatiblePredecessorsFor(llvm::Instruction *,

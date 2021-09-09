@@ -307,8 +307,16 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
 
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
-  BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
-  findDependences(I, Dominator, LI, DT, LDA, Dependences);
+  if (DA && VPCtx) {
+    for (Value *V : VPCtx->iter_values(DA->getDepended(I))) {
+      auto *Dep = cast<Instruction>(V);
+      if (!DT.properlyDominates(Dep->getParent(), BB))
+        Dependences.insert(Dep);
+    }
+  } else {
+    BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
+    findDependences(I, Dominator, LI, DT, LDA, Dependences);
+  }
 
   // FIXME: check for unsafe to hoist things like volatile
   for (Instruction *Dep : Dependences) {
