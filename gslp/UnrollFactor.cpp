@@ -63,7 +63,7 @@ public:
     Result.addAAResult(GlobalsResult);
   }
 
-  AAResults *getResult() { return &Result; }
+  AAResults &getResult() { return Result; }
 };
 } // namespace
 
@@ -88,11 +88,11 @@ void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
   // Re-do the alias analysis pipline for the clone
   auto GetTLI = [&TLIWrapper](Function &F) { return TLIWrapper.getTLI(F); };
   AAResultsBuilder AABuilder(*M, *F, GetTLI, AC, DT, LI);
-  auto *AA = AABuilder.getResult();
-  DependenceInfo DI(F, AA, &SE, &LI);
+  AAResults &AA = AABuilder.getResult();
+  DependenceInfo DI(F, &AA, &SE, &LI);
 
   // Wrap all the analysis in the packer
-  Packer Pkr(OrigPkr->getInsts(), *F, AA, &LI, &SE, &DT, &PDT, &DI, LVI,
+  Packer Pkr(OrigPkr->getInsts(), *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI,
              OrigPkr->getTTI(), OrigPkr->getBFI());
 
   // Mapping the old loops to the cloned loops
