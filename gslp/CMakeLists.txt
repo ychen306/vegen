@@ -13,6 +13,7 @@ set(LIB_PACKING_SRC
   ConsecutiveCheck.cpp
 
   LoopUnrolling.cpp
+  UnrollFactor.cpp
 
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IntrinsicBuilder.cpp
