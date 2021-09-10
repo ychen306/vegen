@@ -109,10 +109,10 @@ void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
 
   // Now compute the unrolling factor on the cloned function, which we are free
   // to modify
-  DenseMap<Loop *, unsigned> UnrolledFactors;
-  computeUnrollFactorImpl(&Pkr, F, UnrolledFactors);
+  DenseMap<Loop *, unsigned> UnrollFactors;
+  computeUnrollFactorImpl(&Pkr, F, UnrollFactors);
 
-  for (auto KV : UnrolledFactors) {
+  for (auto KV : UnrollFactors) {
     Loop *L = KV.first;
     unsigned UF = KV.second;
     assert(LoopMap.count(L));
