@@ -67,6 +67,10 @@ public:
 };
 } // namespace
 
+static void computeUnrollFactorImpl(Packer *Pkr, Function *F,
+                                    DenseMap<Loop *, unsigned> &UFs) {
+}
+
 void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
                          const LoopInfo &OrigLI,
                          DenseMap<const Loop *, unsigned> &UFs) {
@@ -85,7 +89,7 @@ void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
   // LazyValueInfo is fully lazy, so we can reuse it.
   auto *LVI = &OrigPkr->getLVI();
 
-  // Re-do the alias analysis pipline for the clone
+  // Re-do the alias analysis pipline for the cloned funtion
   auto GetTLI = [&TLIWrapper](Function &F) { return TLIWrapper.getTLI(F); };
   AAResultsBuilder AABuilder(*M, *F, GetTLI, AC, DT, LI);
   AAResults &AA = AABuilder.getResult();
@@ -102,5 +106,16 @@ void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
     Loop *OrigL = OrigLI.getLoopFor(&OrigBB);
     Loop *L = LI.getLoopFor(BB);
     LoopMap.try_emplace(OrigL, L);
+  }
+
+  // Now compute the unrolling factor on the cloned function, which we are free to modify
+  DenseMap<Loop *, unsigned> UnrolledFactors;
+  computeUnrollFactorImpl(&Pkr, F, UnrolledFactors);
+
+  for (auto KV : UnrolledFactors) {
+    Loop *L = KV.first;
+    unsigned UF = KV.second;
+    assert(LoopMap.count(L));
+    UFs.try_emplace(LoopMap.lookup(L), UF);
   }
 }
