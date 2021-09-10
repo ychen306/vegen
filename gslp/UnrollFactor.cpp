@@ -68,8 +68,7 @@ public:
 } // namespace
 
 static void computeUnrollFactorImpl(Packer *Pkr, Function *F,
-                                    DenseMap<Loop *, unsigned> &UFs) {
-}
+                                    DenseMap<Loop *, unsigned> &UFs) {}
 
 void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
                          const LoopInfo &OrigLI,
@@ -108,7 +107,8 @@ void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
     LoopMap.try_emplace(OrigL, L);
   }
 
-  // Now compute the unrolling factor on the cloned function, which we are free to modify
+  // Now compute the unrolling factor on the cloned function, which we are free
+  // to modify
   DenseMap<Loop *, unsigned> UnrolledFactors;
   computeUnrollFactorImpl(&Pkr, F, UnrolledFactors);
 
