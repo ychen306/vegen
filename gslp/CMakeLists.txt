@@ -12,6 +12,8 @@ set(LIB_PACKING_SRC
   DependenceAnalysis.cpp
   ConsecutiveCheck.cpp
 
+  LoopUnrolling.cpp
+
   VectorPack.cpp VectorPackContext.cpp VectorPackSet.cpp
   IntrinsicBuilder.cpp
   Heuristic.cpp
