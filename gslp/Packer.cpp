@@ -59,7 +59,8 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
       LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F),
       CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA), SE(SE), DT(DT),
-      PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), TTI(TTI), BFI(BFI) {
+      PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI), TTI(TTI),
+      BFI(BFI) {
 
   std::vector<LoadInst *> Loads;
   std::vector<StoreInst *> Stores;

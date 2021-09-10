@@ -9,9 +9,12 @@ class Loop;
 class LoopInfo;
 } // namespace llvm
 
+class Packer;
+
 // Compute the the unroll factors
 // for all loop-nests in F that best benefit vectorization
-void computeUnrollFactor(const llvm::Function *F, const llvm::LoopInfo &LI,
+void computeUnrollFactor(Packer *Pkr, const llvm::Function *F,
+                         const llvm::LoopInfo &LI,
                          llvm::DenseMap<const llvm::Loop *, unsigned> &UFs);
 
 #endif // UNROLL_FACTOR_H

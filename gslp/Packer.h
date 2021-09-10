@@ -100,6 +100,7 @@ class Packer {
 
   std::vector<const InstBinding *> SupportedInsts;
 
+  llvm::LazyValueInfo *LVI;
   llvm::TargetTransformInfo *TTI;
   llvm::BlockFrequencyInfo *BFI;
 
@@ -130,6 +131,7 @@ public:
   llvm::DominatorTree &getDT() const { return *DT; }
   llvm::PostDominatorTree &getPDT() const { return *PDT; }
   llvm::LoopInfo &getLoopInfo() const { return *LI; }
+  llvm::LazyValueInfo &getLVI() const { return *LVI; }
 
   const llvm::DataLayout *getDataLayout() const {
     return &F->getParent()->getDataLayout();
