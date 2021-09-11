@@ -12,6 +12,7 @@ struct CandidatePackSet {
 
 class Packer;
 class VectorPackSet;
+float optimizeBottomUp(std::vector<const VectorPack *> &, Packer *);
 float optimizeBottomUp(VectorPackSet &, Packer *);
 
 #endif

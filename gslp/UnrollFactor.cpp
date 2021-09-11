@@ -1,6 +1,7 @@
 #include "UnrollFactor.h"
 #include "LoopUnrolling.h"
 #include "Packer.h"
+#include "Solver.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -18,18 +19,6 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 
 using namespace llvm;
-
-static Function *clone(const Function *F, ValueToValueMapTy &VMap) {
-  auto FCopy = Function::Create(F->getFunctionType(), F->getLinkage(),
-                                F->getAddressSpace());
-
-  for (auto Pair : zip(F->args(), FCopy->args()))
-    VMap[&std::get<0>(Pair)] = &std::get<1>(Pair);
-
-  SmallVector<ReturnInst *> Returns;
-  CloneFunctionInto(FCopy, F, VMap, false /*module level change*/, Returns);
-  return FCopy;
-}
 
 namespace {
 class AAResultsBuilder {
@@ -65,38 +54,121 @@ public:
 
   AAResults &getResult() { return Result; }
 };
+
+class UnrollInfo {
+  struct UnrollRecord {
+    Loop *L;
+    unsigned Iter; // < UF
+    UnrollRecord(Loop *L, unsigned Iter = 0) : L(L), Iter(Iter) {}
+  };
+
+  std::map<const Instruction *, SmallVector<UnrollRecord, 4>> InstToRecords;
+
+public:
+  UnrollInfo(Function *F, LoopInfo &LI);
+  // `Unrolled` is the `Iter`'th version of Orig after unrolling `L`
+  void trackUnrolledInst(const Instruction *Orig, const Instruction *Unrolled,
+                         Loop *L, unsigned Iter);
+};
+
 } // namespace
 
-static void computeUnrollFactorImpl(Packer *Pkr, Function *F,
-                                    DenseMap<Loop *, unsigned> &UFs) {}
+UnrollInfo::UnrollInfo(Function *F, LoopInfo &LI) {
+  for (auto &BB : *F) {
+    SmallVector<Loop *> LoopNest;
+    for (auto *L = LI.getLoopFor(&BB); L; L = L->getParentLoop())
+      LoopNest.push_back(L);
+    for (auto &I : BB)
+      for (auto *L : reverse(LoopNest))
+        InstToRecords[&I].emplace_back(L);
+  }
+}
 
-void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
-                         const LoopInfo &OrigLI,
-                         DenseMap<const Loop *, unsigned> &UFs) {
-  ValueToValueMapTy VMap;
-  Function *F = clone(OrigF, VMap);
+void UnrollInfo::trackUnrolledInst(const Instruction *Orig,
+                                   const Instruction *Unrolled, Loop *L,
+                                   unsigned Iter) {
+  if (InstToRecords.count(Orig))
+    return;
+  assert(!InstToRecords.count(Unrolled));
+  auto &Records = InstToRecords[Unrolled] = InstToRecords[Orig];
+  for (auto &Record : Records)
+    if (Record.L == L) {
+      Record.Iter = Iter;
+      break;
+    }
+}
 
-  Module *M = const_cast<Module *>(OrigF->getParent());
-
-  // (Re)build the analysis for the clone
-  TargetLibraryInfoWrapperPass TLIWrapper(Triple(M->getTargetTriple()));
-  DominatorTree DT(*F);
-  PostDominatorTree PDT(*F);
-  LoopInfo LI(DT);
+static void
+computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
+                        ArrayRef<const InstBinding *> Insts, LazyValueInfo *LVI,
+                        TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
+                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 8) {
+  // Compute some analysis for the unroller
+  Module *M = F->getParent();
   AssumptionCache AC(*F);
+  TargetLibraryInfoWrapperPass TLIWrapper(Triple(M->getTargetTriple()));
   ScalarEvolution SE(*F, TLIWrapper.getTLI(*F), AC, DT, LI);
-  // LazyValueInfo is fully lazy, so we can reuse it.
-  auto *LVI = &OrigPkr->getLVI();
 
-  // Re-do the alias analysis pipline for the cloned funtion
+  // Unroll *all* loops
+  UnrollInfo UI(F, LI);
+  auto LoopsInPreorder = LI.getLoopsInPreorder();
+  for (Loop *L : reverse(LoopsInPreorder)) {
+    unsigned UF = MaxUF;
+    unsigned TripCount = SE.getSmallConstantMaxTripCount(L);
+    if (TripCount && TripCount < UF)
+      TripCount = UF;
+
+    UnrollLoopOptions ULO;
+    ULO.TripCount = 0;
+    ULO.Count = UF;
+    ULO.Force = true;
+    ULO.PeelCount = 0;
+    ULO.TripMultiple = SE.getSmallConstantTripMultiple(L);
+    ULO.AllowRuntime = true;
+    ULO.AllowExpensiveTripCount = true;
+    ULO.ForgetAllSCEV = false;
+    ULO.UnrollRemainder = false;
+    ULO.PreserveOnlyFirst = false;
+    ULO.PreserveCondBr = false;
+
+    bool PreserveLCSSA = L->isLCSSAForm(DT);
+
+    ValueMap<const Value *, UnrolledValue> UnrollToOrigMap;
+    UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, PreserveLCSSA,
+                       UnrollToOrigMap, nullptr /*remainder loop*/);
+    for (const auto &KV : UnrollToOrigMap) {
+      unsigned Iter = KV.second.Iter;
+      assert(Iter > 0);
+      const Value *OrigV = KV.second.V;
+      auto *OrigI = dyn_cast<Instruction>(OrigV);
+      if (!OrigI)
+        continue;
+      auto *I = cast<Instruction>(KV.first);
+      UI.trackUnrolledInst(OrigI, I, L, Iter);
+    }
+  }
+
+
+  // Re-do the alias analysis pipline
   auto GetTLI = [&TLIWrapper](Function &F) { return TLIWrapper.getTLI(F); };
   AAResultsBuilder AABuilder(*M, *F, GetTLI, AC, DT, LI);
   AAResults &AA = AABuilder.getResult();
   DependenceInfo DI(F, &AA, &SE, &LI);
 
   // Wrap all the analysis in the packer
-  Packer Pkr(OrigPkr->getInsts(), *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI,
-             OrigPkr->getTTI(), OrigPkr->getBFI());
+  PostDominatorTree PDT(*F);
+  Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI);
+  // Run the solver to find packs
+  std::vector<const VectorPack *> Packs;
+  optimizeBottomUp(Packs, &Pkr);
+}
+
+void computeUnrollFactor(Packer *Pkr, Function *OrigF, const LoopInfo &OrigLI,
+                         DenseMap<const Loop *, unsigned> &UFs) {
+  ValueToValueMapTy VMap;
+  Function *F = CloneFunction(OrigF, VMap);
+  DominatorTree DT(*F);
+  LoopInfo LI(DT);
 
   // Mapping the old loops to the cloned loops
   DenseMap<const Loop *, Loop *> LoopMap;
@@ -110,7 +182,8 @@ void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
   // Now compute the unrolling factor on the cloned function, which we are free
   // to modify
   DenseMap<Loop *, unsigned> UnrollFactors;
-  computeUnrollFactorImpl(&Pkr, F, UnrollFactors);
+  computeUnrollFactorImpl(F, DT, LI, Pkr->getInsts(), &Pkr->getLVI(), Pkr->getTTI(),
+                          Pkr->getBFI(), UnrollFactors);
 
   for (auto KV : UnrollFactors) {
     Loop *L = KV.first;
@@ -118,4 +191,7 @@ void computeUnrollFactor(Packer *OrigPkr, const Function *OrigF,
     assert(LoopMap.count(L));
     UFs.try_emplace(LoopMap.lookup(L), UF);
   }
+
+  // Erase the clone after we are done
+  F->eraseFromParent();
 }

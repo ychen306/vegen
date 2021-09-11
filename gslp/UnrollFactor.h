@@ -13,7 +13,7 @@ class Packer;
 
 // Compute the the unroll factors
 // for all loop-nests in F that best benefit vectorization
-void computeUnrollFactor(Packer *Pkr, const llvm::Function *F,
+void computeUnrollFactor(Packer *Pkr, llvm::Function *F,
                          const llvm::LoopInfo &LI,
                          llvm::DenseMap<const llvm::Loop *, unsigned> &UFs);
 

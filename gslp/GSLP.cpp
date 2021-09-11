@@ -2,6 +2,7 @@
 #include "InstSema.h"
 #include "Packer.h"
 #include "Solver.h"
+#include "UnrollFactor.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -240,6 +241,8 @@ bool GSLP::runOnFunction(Function &F) {
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';
   Packer Pkr(SupportedIntrinsics, F, AA, LI, SE, DT, PDT, DI, LVI, TTI, BFI);
+  DenseMap<const Loop *, unsigned> UFs;
+  computeUnrollFactor(&Pkr, &F, *LI, UFs);
 
   VectorPackSet Packs(&F);
   optimizeBottomUp(Packs, &Pkr);

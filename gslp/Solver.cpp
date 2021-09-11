@@ -355,7 +355,7 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
   } while (Optimized);
 }
 
-float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr) {
+float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr) {
   CandidatePackSet Candidates;
   Candidates.Packs = enumerate(Pkr);
   auto *VPCtx = Pkr->getContext();
@@ -366,8 +366,14 @@ float optimizeBottomUp(VectorPackSet &Packs, Packer *Pkr) {
 
   Plan P(Pkr);
   improvePlan(Pkr, P, &Candidates);
-
-  for (auto *VP : P)
-    Packs.tryAdd(VP);
+  Packs.insert(Packs.end(), P.begin(), P.end());
   return P.cost();
+}
+
+float optimizeBottomUp(VectorPackSet &PackSet, Packer *Pkr) {
+  std::vector<const VectorPack *> Packs;
+  float Cost = optimizeBottomUp(Packs, Pkr);
+  for (auto *VP : Packs)
+    PackSet.tryAdd(VP);
+  return Cost;
 }
