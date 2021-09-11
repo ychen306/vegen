@@ -105,15 +105,13 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
                       LazyValueInfo &LVI) {
   auto Loc1 = getLocation(I1);
   auto Loc2 = getLocation(I2);
+  Function *F = I1->getParent()->getParent();
   if (Loc1.Ptr && Loc2.Ptr && isSimple(I1) && isSimple(I2)) {
     // Do the alias check.
     auto Result = AA.alias(Loc1, Loc2);
     if (Result != MayAlias)
       return Result;
   }
-
-  if (!UseLVI)
-    return true;
 
   auto *Ptr1 = getLoadStorePointerOperand(I1);
   auto *Ptr2 = getLoadStorePointerOperand(I2);
@@ -123,69 +121,70 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
   auto *Ptr1SCEV = SE.getSCEV(Ptr1);
   auto *Ptr2SCEV = SE.getSCEV(Ptr2);
 
-  // The check below assumes that the loops used by the two SCEVs are totally
-  // ordered. Check it!
-  struct FindUsedLoops {
-    FindUsedLoops(SmallVectorImpl<const Loop *> &LoopsUsed)
+  if (!UseLVI) {
+    // The check below assumes that the loops used by the two SCEVs are totally
+    // ordered. Check it!
+    struct FindUsedLoops {
+      FindUsedLoops(SmallVectorImpl<const Loop *> &LoopsUsed)
         : LoopsUsed(LoopsUsed) {}
-    SmallVectorImpl<const Loop *> &LoopsUsed;
-    bool follow(const SCEV *S) {
-      if (auto *AR = dyn_cast<SCEVAddRecExpr>(S))
-        LoopsUsed.push_back(AR->getLoop());
-      return true;
-    }
+      SmallVectorImpl<const Loop *> &LoopsUsed;
+      bool follow(const SCEV *S) {
+        if (auto *AR = dyn_cast<SCEVAddRecExpr>(S))
+          LoopsUsed.push_back(AR->getLoop());
+        return true;
+      }
 
-    bool isDone() const { return false; }
-  };
-  SmallVector<const Loop *> Loops;
-  FindUsedLoops LoopFinder(Loops);
-  SCEVTraversal<FindUsedLoops> LoopCollector(LoopFinder);
+      bool isDone() const { return false; }
+    };
+    SmallVector<const Loop *> Loops;
+    FindUsedLoops LoopFinder(Loops);
+    SCEVTraversal<FindUsedLoops> LoopCollector(LoopFinder);
 
-  LoopCollector.visitAll(Ptr1SCEV);
-  LoopCollector.visitAll(Ptr2SCEV);
+    LoopCollector.visitAll(Ptr1SCEV);
+    LoopCollector.visitAll(Ptr2SCEV);
 
-  auto CompareLoops = [&DT](const Loop *L1, const Loop *L2) {
-    return L1 == L2 || L1->contains(L2);
-  };
-  stable_sort(Loops, CompareLoops);
-  for (int i = 0; i < (int)Loops.size() - 1; i++)
-    if (!CompareLoops(Loops[i], Loops[i + 1]))
-      return true;
+    auto CompareLoops = [&DT](const Loop *L1, const Loop *L2) {
+      return L1 == L2 || L1->contains(L2);
+    };
+    stable_sort(Loops, CompareLoops);
+    for (int i = 0; i < (int)Loops.size() - 1; i++)
+      if (!CompareLoops(Loops[i], Loops[i + 1]))
+        return true;
 
-  SmallPtrSet<Value *, 16> Unknowns;
-  UnknownSCEVCollector UnknownCollector(SE, Unknowns);
-  UnknownCollector.visit(Ptr1SCEV);
-  UnknownCollector.visit(Ptr2SCEV);
+    SmallPtrSet<Value *, 16> Unknowns;
+    UnknownSCEVCollector UnknownCollector(SE, Unknowns);
+    UnknownCollector.visit(Ptr1SCEV);
+    UnknownCollector.visit(Ptr2SCEV);
 
-  // Scan the function for CFG edges that dominates `I2` gives us range
-  // information. Record and intersect those ranges.
-  Function *F = I2->getParent()->getParent();
-  DenseMap<Value *, ConstantRange> Ranges;
-  for (auto &BB : *F) {
-    for (auto *Succ : successors(&BB)) {
-      if (!DT.dominates({&BB, Succ}, I2->getParent()))
-        continue;
-      for (Value *V : Unknowns) {
-        // We only care about the unknown paremeters defined before both `I1`
-        // and `I2`
-        if (!DT.dominates(V, I2) || !DT.dominates(V, I1))
+    // Scan the function for CFG edges that dominates `I2` gives us range
+    // information. Record and intersect those ranges.
+    DenseMap<Value *, ConstantRange> Ranges;
+    for (auto &BB : *F) {
+      for (auto *Succ : successors(&BB)) {
+        if (!DT.dominates({&BB, Succ}, I2->getParent()))
           continue;
-        auto *I = dyn_cast<Instruction>(V);
-        if (I && !DT.dominates(I, &BB))
-          continue;
-        auto CR = LVI.getConstantRangeOnEdge(V, &BB, Succ);
-        if (CR.isFullSet())
-          continue;
-        auto Pair = Ranges.try_emplace(V, CR);
-        if (!Pair.second) {
-          ConstantRange &OldRange = Pair.first->second;
-          OldRange = OldRange.intersectWith(CR);
+        for (Value *V : Unknowns) {
+          // We only care about the unknown paremeters defined before both `I1`
+          // and `I2`
+          if (!DT.dominates(V, I2) || !DT.dominates(V, I1))
+            continue;
+          auto *I = dyn_cast<Instruction>(V);
+          if (I && !DT.dominates(I, &BB))
+            continue;
+          auto CR = LVI.getConstantRangeOnEdge(V, &BB, Succ);
+          if (CR.isFullSet())
+            continue;
+          auto Pair = Ranges.try_emplace(V, CR);
+          if (!Pair.second) {
+            ConstantRange &OldRange = Pair.first->second;
+            OldRange = OldRange.intersectWith(CR);
+          }
         }
       }
     }
+    Ptr1SCEV = refineWithRanges(SE, Ptr1SCEV, Ranges);
+    Ptr2SCEV = refineWithRanges(SE, Ptr2SCEV, Ranges);
   }
-  Ptr1SCEV = refineWithRanges(SE, Ptr1SCEV, Ranges);
-  Ptr2SCEV = refineWithRanges(SE, Ptr2SCEV, Ranges);
 
   bool Lt = isLessThan(SE, Ptr1SCEV, Ptr2SCEV);
   bool Gt = isLessThan(SE, Ptr2SCEV, Ptr1SCEV);

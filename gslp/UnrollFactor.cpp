@@ -2,6 +2,8 @@
 #include "LoopUnrolling.h"
 #include "Packer.h"
 #include "Solver.h"
+#include "VectorPackContext.h"
+#include "VectorPack.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -17,6 +19,7 @@
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
 
 using namespace llvm;
 
@@ -102,7 +105,7 @@ static void
 computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
                         ArrayRef<const InstBinding *> Insts, LazyValueInfo *LVI,
                         TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
-                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 8) {
+                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 2) {
   // Compute some analysis for the unroller
   Module *M = F->getParent();
   AssumptionCache AC(*F);
@@ -116,7 +119,7 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     unsigned UF = MaxUF;
     unsigned TripCount = SE.getSmallConstantMaxTripCount(L);
     if (TripCount && TripCount < UF)
-      TripCount = UF;
+      UF = TripCount;
 
     UnrollLoopOptions ULO;
     ULO.TripCount = 0;
@@ -148,7 +151,6 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     }
   }
 
-
   // Re-do the alias analysis pipline
   auto GetTLI = [&TLIWrapper](Function &F) { return TLIWrapper.getTLI(F); };
   AAResultsBuilder AABuilder(*M, *F, GetTLI, AC, DT, LI);
@@ -158,9 +160,12 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
   Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI);
+
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
   optimizeBottomUp(Packs, &Pkr);
+  for (auto *VP : Packs)
+    errs() << *VP << '\n';
 }
 
 void computeUnrollFactor(Packer *Pkr, Function *OrigF, const LoopInfo &OrigLI,
@@ -175,6 +180,8 @@ void computeUnrollFactor(Packer *Pkr, Function *OrigF, const LoopInfo &OrigLI,
   for (auto &OrigBB : *OrigF) {
     auto *BB = cast<BasicBlock>(VMap[&OrigBB]);
     Loop *OrigL = OrigLI.getLoopFor(&OrigBB);
+    if (!OrigL)
+      continue;
     Loop *L = LI.getLoopFor(BB);
     LoopMap.try_emplace(OrigL, L);
   }
