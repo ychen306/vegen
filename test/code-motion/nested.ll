@@ -2,8 +2,10 @@
 ; RUN: %opt -test-code-motion -gather -inst-group=STORE:add,STORE:add.1 %s -o %t -S && %check-function  3 'int matvec(int, int, int, int*, int*, int*)' 'matvec(30, 15, 3, %%s, %%s, %%s)' %t %s
 
 ; CHECK: for.cond5.for.cond.cleanup7_crit_edge:
-; CHECK-NEXT: store i32 %add, i32* %arrayidx18
-; CHECK-NEXT: store i32 %add.1, i32* %arrayidx18.1
+; CHECK-NOT: br
+; CHECK: store i32 %add, i32* %arrayidx18
+; CHECK-NOT: br
+; CHECK: store i32 %add.1, i32* %arrayidx18.1
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
 define dso_local void @matvec(i32 %n, i32 %m, i32 %l, i32* noalias nocapture readonly %A, i32* noalias nocapture readonly %B, i32* noalias nocapture %C) local_unnamed_addr #0 {

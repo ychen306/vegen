@@ -4,7 +4,7 @@
 ; CHECK-NEXT:   %arrayidx1 = getelementptr inbounds i32, i32* %a, i64 0
 ; CHECK-NEXT:   [[A_ADDR:%.*]] = bitcast i32* %arrayidx1 to <2 x i32>*
 ; CHECK-NEXT:   [[A_INIT:%.*]] = load <2 x i32>, <2 x i32>* [[A_ADDR]]
-; CHECK-NEXT:   br label %for.body6.lr.ph
+; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.for.cond.cleanup_crit_edge:
 ; CHECK-NEXT:   [[A_OUT:%.*]] = phi <2 x i32> [ [[A_NEXT:%.*]], %for.inc13 ]
@@ -13,18 +13,15 @@
 ; CHECK-NEXT:   br label %for.cond.cleanup
 
 ; CHECK: for.body:
-; CHECK-NEXT:   [[A_PHI:%.*]] = phi <2 x i32> [ [[A_INIT]], %for.body6.lr.ph ], [ [[A_NEXT]], %for.inc13 ]
-; CHECK-NEXT:   %i.04 = phi i32 [ 0, %for.body6.lr.ph ], [ %inc, %for.inc13 ]
-; CHECK-NEXT:   %i2.02 = phi i32 [ 0, %for.body6.lr.ph ], [ %inc14, %for.inc13 ]
+; CHECK-NEXT:   [[A_PHI:%.*]] = phi <2 x i32> [ [[A_INIT]], %for.body.lr.ph ], [ [[A_NEXT]], %for.inc13 ]
+; CHECK-NEXT:   %i.04 = phi i32 [ 0, %for.body.lr.ph ], [ %inc, %for.inc13 ]
+; CHECK-NEXT:   %i2.02 = phi i32 [ 0, %for.body.lr.ph ], [ %inc14, %for.inc13 ]
 
 ; CHECK:        %arrayidx = getelementptr inbounds i32, i32* %b, i64 %idxprom
 ; CHECK:        [[B_ADDR:%.*]] = bitcast i32* %arrayidx to <2 x i32>*
 ; CHECK-NEXT:   [[B:%.*]] = load <2 x i32>, <2 x i32>* [[B_ADDR]]
 ; CHECK-NEXT:   [[A_NEXT]] = add <2 x i32> [[A_PHI]], [[B]]
 ; CHECK-NEXT:   br label %for.inc
-
-; CHECK: for.body6.lr.ph:
-; CHECK-NEXT:   br label %for.body
 
 
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"

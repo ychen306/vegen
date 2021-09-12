@@ -282,14 +282,27 @@ static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
 static void
 getIntermediateBlocks(Loop *L1, Loop *L2,
                       SmallVectorImpl<BasicBlock *> &IntermediateBlocks) {
-  auto *ParentLoop = L1->getParentLoop();
-  DenseSet<BasicBlock *> ReachesL2;
-  SkipBackEdge SBE(ParentLoop);
-  for (auto *BB : inverse_depth_first_ext(L2->getLoopPreheader(), SBE))
-    ReachesL2.insert(BB);
+  auto *L1Exit = L1->getExitBlock();
+  auto *L2Preheader = L2->getLoopPreheader();
 
-  for (auto *BB : ReversePostOrderTraversal<BasicBlock *>(L1->getExitBlock()))
-    if (ReachesL2.count(BB))
+  DenseSet<std::pair<BasicBlock *, BasicBlock *>> BackEdges;
+  for (Loop *L = L1; L; L = L->getParentLoop()) {
+    assert(L->getLoopLatch() && "loop doesn't have unique latch");
+    BackEdges.insert({L->getLoopLatch(), L->getHeader()});
+  }
+  for (Loop *L = L2; L; L = L->getParentLoop()) {
+    assert(L->getLoopLatch() && "loop doesn't have unique latch");
+    BackEdges.insert({L->getLoopLatch(), L->getHeader()});
+  }
+
+  SmallPtrSet<BasicBlock *, 16> ReachableFromL1, CanReachL2;
+  getBlocksReachableFrom(L1Exit, ReachableFromL1, BackEdges);
+  getBlocksReaching(L2Preheader, CanReachL2, BackEdges);
+
+  IntermediateBlocks.push_back(L1Exit);
+  IntermediateBlocks.push_back(L2Preheader);
+  for (auto *BB : ReachableFromL1)
+    if (CanReachL2.count(BB))
       IntermediateBlocks.push_back(BB);
 }
 
@@ -464,6 +477,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Find the blocks that run after L1 and before L2
   SmallVector<BasicBlock *, 8> IntermediateBlocks;
   getIntermediateBlocks(L1, L2, IntermediateBlocks);
+
   SmallVector<Instruction *> InstsToHoist;
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
@@ -521,24 +535,6 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
 
   LLVMContext &Ctx = L1Preheader->getContext();
   Function *F = L1Preheader->getParent();
-  // Create a placeholder block that will replace the loop header of L2
-  BasicBlock *L2Placeholder =
-      BasicBlock::Create(Ctx, L2Preheader->getName() + ".placeholder", F);
-  BranchInst::Create(L2Exit /*to*/, L2Placeholder /*from*/);
-  CFGUpdates.emplace_back(cfg::UpdateKind::Insert, L2Exit, L2Placeholder);
-
-  assert(getNumPHIs(L1Preheader) == 0 && getNumPHIs(L2Preheader) == 0);
-
-  // Rewrire all edges going into L2's preheader to, instead, go to
-  // a dedicated placeholder for L2 that directly jumps to the L2's exit
-  SmallVector<BasicBlock *, 4> Preds(pred_begin(L2Preheader),
-                                     pred_end(L2Preheader));
-  for (auto *BB : Preds)
-    ReplaceBranchTarget(BB, L2Preheader, L2Placeholder);
-
-  // Run L2's preheader after L1's preheader
-  ReplaceBranchTarget(L1Preheader, L1Header, L2Preheader);
-  ReplaceBranchTarget(L2Preheader, L2Header, L1Header);
 
   // Run one iteration L2 after we are done with one iteration of L1
   assert(cast<BranchInst>(L1Latch->getTerminator())->isConditional());
@@ -548,18 +544,20 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   CFGUpdates.emplace_back(cfg::UpdateKind::Insert, L1Latch, L2Header);
 
   // hoist the PHI nodes in L2Header to L1Header
+  L2Header->replacePhiUsesWith(L2Preheader, L1Preheader);
   while (auto *L2PHI = dyn_cast<PHINode>(&L2Header->front()))
     L2PHI->moveBefore(&*L1Header->getFirstInsertionPt());
 
-  L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
+  //L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
   L1Header->replacePhiUsesWith(L1Latch, L2Latch);
 
   ReplaceBranchTarget(L2Latch, L2Header, L1Header);
   ReplaceBranchTarget(L2Latch, L2Exit, L1Exit);
+  ReplaceBranchTarget(L2Preheader, L2Header, L2Exit);
 
   // Fix the PHIs contorlling the exit values
   L1Exit->replacePhiUsesWith(L1Latch, L2Latch);
-  L2Exit->replacePhiUsesWith(L2Latch, L2Placeholder);
+  L2Exit->replacePhiUsesWith(L2Latch, L2Preheader);
 
   // Fix the dominance info, which we need to determine how to hoist L2's
   // dependencies.
@@ -593,11 +591,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
     L1->addChildLoop(ChildLoop);
   }
   LI.erase(L2);
-  // Add the placeholder block to the parent loop
-  if (L1Parent)
-    L1Parent->addBasicBlockToLoop(L2Placeholder, LI);
 
-  assert(L1->getLoopPreheader() == L2Preheader);
   assert(L1->getHeader() == L1Header);
   assert(L1->getLoopLatch() == L2Latch);
   assert(L1->getExitBlock() == L1Exit);

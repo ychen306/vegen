@@ -6,8 +6,8 @@
 ; CHECK: Fusing for.body5 and for.body27 is safe
 
 ; DO_FUSION: for.body:
-; DO_FUSION-NEXT:   %indvars.iv67 = phi i64 [ 0, %for.body16.preheader ], [ %indvars.iv.next68, %for.body16 ]
-; DO_FUSION-NEXT:   %indvars.iv59 = phi i64 [ 0, %for.body16.preheader ], [ %indvars.iv.next60, %for.body16 ]
+; DO_FUSION-NEXT:   %indvars.iv67 = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next68, %for.body16 ]
+; DO_FUSION-NEXT:   %indvars.iv59 = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next60, %for.body16 ]
 
 ; DO_FUSION-NEXT:   %arrayidx = getelementptr inbounds i32, i32* %x, i64 %indvars.iv67
 ; DO_FUSION-NEXT:   %0 = load i32, i32* %arrayidx, align 4
@@ -18,8 +18,8 @@
 ; DO_FUSION-NEXT:   br label %for.body16
 
 ; DO_FUSION: for.body5:
-; DO_FUSION-NEXT:   %indvars.iv63 = phi i64 [ 0, %for.body27.preheader ], [ %indvars.iv.next64, %for.body27 ]
-; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body27.preheader ], [ %indvars.iv.next, %for.body27 ]
+; DO_FUSION-NEXT:   %indvars.iv63 = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next64, %for.body27 ]
+; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body27 ]
 
 ; DO_FUSION-NEXT:   %arrayidx7 = getelementptr inbounds i32, i32* %y, i64 %indvars.iv63
 ; DO_FUSION-NEXT:   %1 = load i32, i32* %arrayidx7, align 4

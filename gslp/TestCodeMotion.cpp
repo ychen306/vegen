@@ -106,6 +106,8 @@ bool TestCodeMotion::runOnFunction(Function &F) {
 
   if (Gather)
     gatherInstructions(&F, CoupledInsts, LI, DT, PDT, SE, LDA);
+  else
+    fixDefUseDominance(&F, DT);
 
   return true;
 }

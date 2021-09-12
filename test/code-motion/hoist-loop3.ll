@@ -1,8 +1,8 @@
 ; RUN: %opt -test-code-motion -inst-group=a,b %s -o - -S | FileCheck %s
 
 ; CHECK: {{^}}header:
-; CHECK-NEXT:   %x0 = phi i32 [ 0, %preheader2 ], [ %x0.next, %header2 ]
-; CHECK-NEXT:   %y0 = phi i32 [ 0, %preheader2 ], [ %y0.next, %header2 ]
+; CHECK-NEXT:   %x0 = phi i32 [ 0, %preheader ], [ %x0.next, %header2 ]
+; CHECK-NEXT:   %y0 = phi i32 [ 0, %preheader ], [ %y0.next, %header2 ]
 ; CHECK-NEXT:   %t0 = load i32, i32* undef
 ; CHECK-NEXT:   %t1 = add i32 %t0, 1
 ; CHECK-NEXT:   %x0.next = add i32 %x0, %t1

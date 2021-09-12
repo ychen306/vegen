@@ -17,6 +17,8 @@
 
 using namespace llvm;
 
+#undef NDEBUG
+
 bool comesBefore(BasicBlock *BB1, BasicBlock *BB2, Loop *ParentLoop) {
   SmallPtrSet<BasicBlock *, 8> Visited;
   // mark the loop header as visited to avoid visiting the backedge
@@ -45,7 +47,7 @@ static bool comesBefore(Instruction *I1, Instruction *I2, Loop *ParentLoop) {
   return comesBefore(BB1, BB2, ParentLoop);
 }
 
-static void getBlocksReachableFrom(
+void getBlocksReachableFrom(
     BasicBlock *Earliest, SmallPtrSetImpl<BasicBlock *> &Reachable,
     const DenseSet<std::pair<BasicBlock *, BasicBlock *>> &BackEdges) {
   SmallVector<BasicBlock *> Worklist;
@@ -63,7 +65,7 @@ static void getBlocksReachableFrom(
   }
 }
 
-static void getBlocksReaching(
+void getBlocksReaching(
     BasicBlock *Latest, SmallPtrSetImpl<BasicBlock *> &CanComeFrom,
     const DenseSet<std::pair<BasicBlock *, BasicBlock *>> &BackEdges) {
   SmallVector<BasicBlock *> Worklist;
@@ -127,9 +129,15 @@ void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
                      SmallPtrSetImpl<Instruction *> &Depended, bool Inclusive) {
   SmallPtrSet<Instruction *, 16> InBetweenInsts;
   getInBetweenInstructions(I, Earliest, &LI, InBetweenInsts);
+
+  auto *TheInst = I;
   SmallVector<Instruction *> Worklist{I};
   while (!Worklist.empty()) {
     Instruction *I = Worklist.pop_back_val();
+
+    //if (I != TheInst && !InBetweenInsts.count(I))
+    //  if (!Inclusive || I->getParent() != Earliest)
+    //    continue;
 
     if (!Inclusive && DT.dominates(I, Earliest->getTerminator()))
       continue;
@@ -210,6 +218,8 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
              DominatorTree &DT, PostDominatorTree &PDT,
              LazyDependenceAnalysis &LDA,
              const EquivalenceClasses<Instruction *> &CoupledInsts) {
+  if (!isControlCompatible(I, BB, LI, DT, PDT, LDA, &SE))
+    abort();
   if (I->getParent() == BB)
     return;
   // If I and BB are not in the same inner-loop, fuse the loops first
@@ -248,6 +258,8 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
       bool Inclusive = !isa<PHINode>(I);
       Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, LDA,
                                                 &SE, Inclusive);
+      if (!Dominator)
+        abort();
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
@@ -328,7 +340,7 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
     }
   } else {
     BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
-    findDependences(I, Dominator, LI, DT, LDA, Dependences);
+    findDependences(I, Dominator, LI, DT, LDA, Dependences, isa<PHINode>(I));
   }
 
   // FIXME: check for unsafe to hoist things like volatile

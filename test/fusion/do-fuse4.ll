@@ -5,9 +5,9 @@
 ; CHECK: {{[[:space:]]+}}safe
 
 ; DO_FUSION: for.body:
-; DO_FUSION-NEXT:   %indvars.iv25 = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next26, %for.body5 ]
-; DO_FUSION-NEXT:   %s.023 = phi i32 [ 0, %for.body5.preheader ], [ %add, %for.body5 ]
-; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body5.preheader ], [ %indvars.iv.next, %for.body5 ]
+; DO_FUSION-NEXT:   %indvars.iv25 = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next26, %for.body5 ]
+; DO_FUSION-NEXT:   %s.023 = phi i32 [ 0, %for.body.preheader ], [ %add, %for.body5 ]
+; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next, %for.body5 ]
 
 ; DO_FUSION-NEXT:   %arrayidx = getelementptr inbounds i32, i32* %x, i64 %indvars.iv25
 ; DO_FUSION-NEXT:   %1 = load i32, i32* %arrayidx, align 4

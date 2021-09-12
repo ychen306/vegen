@@ -92,7 +92,6 @@ public:
   }
 
   unsigned getScalarId(const llvm::Value *V) const {
-    assert(llvm::cast<llvm::Instruction>(V)->getParent() == BB);
     auto It = ScalarToIdMap.find(V);
     assert(It != ScalarToIdMap.end());
     return It->second;

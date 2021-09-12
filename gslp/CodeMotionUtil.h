@@ -118,4 +118,12 @@ void gatherInstructions(llvm::Function *,
 bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,
                              llvm::ScalarEvolution &);
 
+void getBlocksReachableFrom(
+    llvm::BasicBlock *Earliest, llvm::SmallPtrSetImpl<llvm::BasicBlock *> &Reachable,
+    const llvm::DenseSet<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>> &BackEdges);
+
+void getBlocksReaching(
+    llvm::BasicBlock *Latest, llvm::SmallPtrSetImpl<llvm::BasicBlock *> &CanComeFrom,
+    const llvm::DenseSet<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>> &BackEdges);
+
 #endif // CODE_MOTION_UTIL_H

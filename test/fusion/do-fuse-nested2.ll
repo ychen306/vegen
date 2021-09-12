@@ -5,8 +5,8 @@
 ; CHECK: {{[[:space:]]+}}safe
 
 ; DO_FUSION: for.body8:
-; DO_FUSION-NEXT:   %indvars.iv101 = phi i64 [ 0, %for.body33.lr.ph ], [ %indvars.iv.next102, %for.body33 ]
-; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body33.lr.ph ], [ %indvars.iv.next, %for.body33 ]
+; DO_FUSION-NEXT:   %indvars.iv101 = phi i64 [ 0, %for.body8.lr.ph ], [ %indvars.iv.next102, %for.body33 ]
+; DO_FUSION-NEXT:   %indvars.iv = phi i64 [ 0, %for.body8.lr.ph ], [ %indvars.iv.next, %for.body33 ]
 ; DO_FUSION-NEXT:   %arrayidx12 = getelementptr inbounds i32, i32* %arrayidx10, i64 %indvars.iv101
 ; DO_FUSION-NEXT:   [[TMP1:%.*]] = load i32, i32* %arrayidx12, align 4
 ; DO_FUSION-NEXT:   %mul = mul nsw i32 [[TMP1]], 42
