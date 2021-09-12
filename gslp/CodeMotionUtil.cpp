@@ -135,7 +135,7 @@ void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
   while (!Worklist.empty()) {
     Instruction *I = Worklist.pop_back_val();
 
-    //if (I != TheInst && !InBetweenInsts.count(I))
+    // if (I != TheInst && !InBetweenInsts.count(I))
     //  if (!Inclusive || I->getParent() != Earliest)
     //    continue;
 
@@ -304,27 +304,21 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   if (It != Memo.end())
     return It->second;
 
-  if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT)) {
+  if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
     return Memo[MemoKey] = false;
-  }
-    //errs() << "Found control equivalent block : " << *I << " and " << BB->getName() << '\n';
 
   // PHI nodes needs to have their incoming blocks equivalent to some
   // predecessor of BB
   if (auto *PN = dyn_cast<PHINode>(I)) {
-    if (PN->getNumIncomingValues() != pred_size(BB)) {
-      //errs() << "different incomings for phi\n";
+    if (PN->getNumIncomingValues() != pred_size(BB))
       return Memo[MemoKey] = false;
-    }
 
     for (BasicBlock *Incoming : PN->blocks()) {
       auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
         return isControlEquivalent(*Incoming, *Pred, DT, PDT);
       });
-      if (PredIt == pred_end(BB)) {
-        //errs() << "phi incomings not equivalent\n";
+      if (PredIt == pred_end(BB))
         return Memo[MemoKey] = false;
-      }
     }
   }
 
@@ -332,11 +326,8 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   Loop *LoopForBB = LI.getLoopFor(BB);
   if ((bool)LoopForI ^ (bool)LoopForBB)
     return Memo[MemoKey] = false;
-  if (LoopForI != LoopForBB &&
-      (!SE || isUnsafeToFuse(LoopForI, LoopForBB))) {
-    //errs() << "Unsafe to fuse\n";
+  if (LoopForI != LoopForBB && (!SE || isUnsafeToFuse(LoopForI, LoopForBB)))
     return Memo[MemoKey] = false;
-  }
 
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
@@ -355,10 +346,8 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
-    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive)) {
-      errs() << "Can't find block to hoist dep " << *Dep << " before " << BB->getName() << '\n';
+    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive))
       return Memo[MemoKey] = false;
-    }
   }
 
   return Memo[MemoKey] = true;

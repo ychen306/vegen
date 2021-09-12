@@ -1,8 +1,8 @@
 #include "LoopFusion.h"
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
-#include "UseDefIterator.h"
 #include "DependenceAnalysis.h"
+#include "UseDefIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/IVDescriptors.h" // RecurKind
@@ -16,16 +16,13 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "vegen-loop-fusion"
-
-#undef LLVM_DEBUG
-#define LLVM_DEBUG(x) x
 
 namespace {
 template <typename PatternTy, typename ValueTy> struct Capture_match {
@@ -266,7 +263,8 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 // hoist
 static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
                                 DominatorTree &DT, PostDominatorTree &PDT,
-                                LazyDependenceAnalysis &LDA, ScalarEvolution &SE) {
+                                LazyDependenceAnalysis &LDA,
+                                ScalarEvolution &SE) {
   BasicBlock *Preheader = L->getLoopPreheader();
   BasicBlock *Dominator =
       DT.findNearestCommonDominator(I->getParent(), Preheader);
@@ -343,7 +341,8 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
-      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA, SE))
+      if (isUsedByLoop(&I, L2) &&
+          !isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA, SE))
         return false;
   }
 
@@ -355,7 +354,8 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
           ReductionKinds.lookup(I1) == ReductionKinds.lookup(I2))
         continue;
       if (LDA.depends(I1, I2)) {
-        LLVM_DEBUG(dbgs() << "Detected dependence from " << *I1 << " to " << *I2 << '\n');
+        LLVM_DEBUG(dbgs() << "Detected dependence from " << *I1 << " to " << *I2
+                          << '\n');
         return false;
       }
     }
@@ -386,8 +386,8 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
   // If L1 and L2 are nested inside other loops, those loops also need to be
   // fused
   if (L1Parent != L2Parent) {
-    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, LDA, DT,
-                       PDT)) {
+    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, LDA,
+                       DT, PDT)) {
       LLVM_DEBUG(dbgs() << "Parent loops can't be fused\n");
       return true;
     }
@@ -438,7 +438,8 @@ static bool getNumPHIs(BasicBlock *BB) {
 }
 
 Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
-                PostDominatorTree &PDT, ScalarEvolution &SE, LazyDependenceAnalysis &LDA) {
+                PostDominatorTree &PDT, ScalarEvolution &SE,
+                LazyDependenceAnalysis &LDA) {
   if (!checkLoop(L1) || !checkLoop(L2))
     return nullptr;
 
@@ -552,7 +553,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   while (auto *L2PHI = dyn_cast<PHINode>(&L2Header->front()))
     L2PHI->moveBefore(&*L1Header->getFirstInsertionPt());
 
-  //L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
+  // L1Header->replacePhiUsesWith(L1Preheader, L2Preheader);
   L1Header->replacePhiUsesWith(L1Latch, L2Latch);
 
   ReplaceBranchTarget(L2Latch, L2Header, L1Header);

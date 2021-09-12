@@ -1,6 +1,6 @@
 #include "CodeMotionUtil.h"
-#include "LoopFusion.h"
 #include "DependenceAnalysis.h"
+#include "LoopFusion.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -105,8 +105,7 @@ bool TestLoopFusion::runOnFunction(Function &F) {
 
       if (DoFusion) {
         for (unsigned i = 1; i < Loops.size(); i++) {
-          if (Loop *Fused =
-                  fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, LDA))
+          if (Loop *Fused = fuseLoops(Loops[0], Loops[i], LI, DT, PDT, SE, LDA))
             Loops[0] = Fused;
           else
             llvm_unreachable("failed to fuse fusable loops");
