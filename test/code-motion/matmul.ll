@@ -1,5 +1,6 @@
 ; RUN: %opt -test-code-motion -gather -inst-group=STORE:add.lcssa,STORE:add.lcssa.1 %s
-
+; ModuleID = 'matmul.ll'
+source_filename = "matmul.ll"
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.15.0"
 
@@ -34,14 +35,21 @@ for.cond5.preheader.lr.ph.new:                    ; preds = %for.cond1.preheader
   %unroll_iter71 = and i32 %n, -4
   br label %for.cond5.preheader
 
-for.cond.cleanup.loopexit.unr-lcssa:              ; preds = %for.cond.cleanup3.3, %for.cond1.preheader.lr.ph
-  %indvars.iv94.unr = phi i64 [ 0, %for.cond1.preheader.lr.ph ], [ %indvars.iv.next95.3, %for.cond.cleanup3.3 ]
-  %lcmp.mod169.not = icmp eq i32 %xtraiter97, 0
-  br i1 %lcmp.mod169.not, label %for.cond.cleanup, label %for.cond1.preheader.epil
+for.cond.cleanup.loopexit.unr-lcssa.loopexit:     ; preds = %for.cond.cleanup3.3
+  %indvars.iv.next95.3.lcssa = phi i64 [ %indvars.iv.next95.3, %for.cond.cleanup3.3 ]
+  br label %for.cond.cleanup.loopexit.unr-lcssa
 
-for.cond1.preheader.epil:                         ; preds = %for.cond.cleanup.loopexit.unr-lcssa, %for.cond.cleanup3.epil
-  %indvars.iv94.epil = phi i64 [ %indvars.iv.next95.epil, %for.cond.cleanup3.epil ], [ %indvars.iv94.unr, %for.cond.cleanup.loopexit.unr-lcssa ]
-  %epil.iter168 = phi i32 [ %epil.iter168.sub, %for.cond.cleanup3.epil ], [ %xtraiter97, %for.cond.cleanup.loopexit.unr-lcssa ]
+for.cond.cleanup.loopexit.unr-lcssa:              ; preds = %for.cond.cleanup.loopexit.unr-lcssa.loopexit, %for.cond1.preheader.lr.ph
+  %indvars.iv94.unr = phi i64 [ 0, %for.cond1.preheader.lr.ph ], [ %indvars.iv.next95.3.lcssa, %for.cond.cleanup.loopexit.unr-lcssa.loopexit ]
+  %lcmp.mod169.not = icmp eq i32 %xtraiter97, 0
+  br i1 %lcmp.mod169.not, label %for.cond.cleanup, label %for.cond1.preheader.epil.preheader
+
+for.cond1.preheader.epil.preheader:               ; preds = %for.cond.cleanup.loopexit.unr-lcssa
+  br label %for.cond1.preheader.epil
+
+for.cond1.preheader.epil:                         ; preds = %for.cond1.preheader.epil.preheader, %for.cond.cleanup3.epil
+  %indvars.iv94.epil = phi i64 [ %indvars.iv.next95.epil, %for.cond.cleanup3.epil ], [ %indvars.iv94.unr, %for.cond1.preheader.epil.preheader ]
+  %epil.iter168 = phi i32 [ %epil.iter168.sub, %for.cond.cleanup3.epil ], [ %xtraiter97, %for.cond1.preheader.epil.preheader ]
   %5 = mul nuw nsw i64 %indvars.iv94.epil, %0
   %arrayidx.epil = getelementptr inbounds float, float* %a, i64 %5
   %arrayidx16.epil = getelementptr inbounds float, float* %c, i64 %5
@@ -108,19 +116,27 @@ for.body8.epil107:                                ; preds = %for.body8.epil107, 
   %indvars.iv.next.3.epil137 = add nuw nsw i64 %indvars.iv.epil108, 4
   %niter.nsub.3.epil138 = add i32 %niter.epil110, -4
   %niter.ncmp.3.epil139.not = icmp eq i32 %niter.nsub.3.epil138, 0
-  br i1 %niter.ncmp.3.epil139.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144, label %for.body8.epil107, !llvm.loop !7
+  br i1 %niter.ncmp.3.epil139.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144.loopexit, label %for.body8.epil107, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144: ; preds = %for.body8.epil107, %for.cond5.preheader.epil98
-  %add.lcssa.ph.epil145 = phi float [ undef, %for.cond5.preheader.epil98 ], [ %add.3.epil136, %for.body8.epil107 ]
-  %indvars.iv.unr.epil146 = phi i64 [ 0, %for.cond5.preheader.epil98 ], [ %indvars.iv.next.3.epil137, %for.body8.epil107 ]
-  %add53.unr.epil147 = phi float [ %arrayidx18.promoted.epil102, %for.cond5.preheader.epil98 ], [ %add.3.epil136, %for.body8.epil107 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144.loopexit: ; preds = %for.body8.epil107
+  %add.3.epil136.lcssa = phi float [ %add.3.epil136, %for.body8.epil107 ]
+  %indvars.iv.next.3.epil137.lcssa = phi i64 [ %indvars.iv.next.3.epil137, %for.body8.epil107 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144.loopexit, %for.cond5.preheader.epil98
+  %add.lcssa.ph.epil145 = phi float [ undef, %for.cond5.preheader.epil98 ], [ %add.3.epil136.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144.loopexit ]
+  %indvars.iv.unr.epil146 = phi i64 [ 0, %for.cond5.preheader.epil98 ], [ %indvars.iv.next.3.epil137.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144.loopexit ]
+  %add53.unr.epil147 = phi float [ %arrayidx18.promoted.epil102, %for.cond5.preheader.epil98 ], [ %add.3.epil136.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144.loopexit ]
   %lcmp.mod.epil148.not = icmp eq i32 %xtraiter.epil104, 0
-  br i1 %lcmp.mod.epil148.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil164, label %for.body8.epil.epil150
+  br i1 %lcmp.mod.epil148.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil164, label %for.body8.epil.epil150.preheader
 
-for.body8.epil.epil150:                           ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144, %for.body8.epil.epil150
-  %indvars.iv.epil.epil151 = phi i64 [ %indvars.iv.next.epil.epil159, %for.body8.epil.epil150 ], [ %indvars.iv.unr.epil146, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144 ]
-  %add53.epil.epil152 = phi float [ %add.epil.epil158, %for.body8.epil.epil150 ], [ %add53.unr.epil147, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144 ]
-  %epil.iter.epil153 = phi i32 [ %epil.iter.sub.epil160, %for.body8.epil.epil150 ], [ %xtraiter.epil104, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144 ]
+for.body8.epil.epil150.preheader:                 ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144
+  br label %for.body8.epil.epil150
+
+for.body8.epil.epil150:                           ; preds = %for.body8.epil.epil150.preheader, %for.body8.epil.epil150
+  %indvars.iv.epil.epil151 = phi i64 [ %indvars.iv.next.epil.epil159, %for.body8.epil.epil150 ], [ %indvars.iv.unr.epil146, %for.body8.epil.epil150.preheader ]
+  %add53.epil.epil152 = phi float [ %add.epil.epil158, %for.body8.epil.epil150 ], [ %add53.unr.epil147, %for.body8.epil.epil150.preheader ]
+  %epil.iter.epil153 = phi i32 [ %epil.iter.sub.epil160, %for.body8.epil.epil150 ], [ %xtraiter.epil104, %for.body8.epil.epil150.preheader ]
   %arrayidx10.epil.epil154 = getelementptr inbounds float, float* %arrayidx.epil, i64 %indvars.iv.epil.epil151
   %20 = load float, float* %arrayidx10.epil.epil154, align 4, !tbaa !3
   %21 = mul nuw nsw i64 %indvars.iv.epil.epil151, %0
@@ -132,10 +148,14 @@ for.body8.epil.epil150:                           ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.epil159 = add nuw nsw i64 %indvars.iv.epil.epil151, 1
   %epil.iter.sub.epil160 = add i32 %epil.iter.epil153, -1
   %epil.iter.cmp.epil161.not = icmp eq i32 %epil.iter.sub.epil160, 0
-  br i1 %epil.iter.cmp.epil161.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil164, label %for.body8.epil.epil150, !llvm.loop !10
+  br i1 %epil.iter.cmp.epil161.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil164.loopexit, label %for.body8.epil.epil150, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.epil164:    ; preds = %for.body8.epil.epil150, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144
-  %add.lcssa.epil165 = phi float [ %add.lcssa.ph.epil145, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144 ], [ %add.epil.epil158, %for.body8.epil.epil150 ]
+for.cond5.for.cond.cleanup7_crit_edge.epil164.loopexit: ; preds = %for.body8.epil.epil150
+  %add.epil.epil158.lcssa = phi float [ %add.epil.epil158, %for.body8.epil.epil150 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.epil164
+
+for.cond5.for.cond.cleanup7_crit_edge.epil164:    ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil164.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144
+  %add.lcssa.epil165 = phi float [ %add.lcssa.ph.epil145, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil144 ], [ %add.epil.epil158.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.epil164.loopexit ]
   store float %add.lcssa.epil165, float* %arrayidx18.epil101, align 4, !tbaa !3
   %indvars.iv.next56.epil167 = or i64 %indvars.iv55.epil99, 1
   %arrayidx18.1.epil = getelementptr inbounds float, float* %arrayidx16.epil, i64 %indvars.iv.next56.epil167
@@ -190,19 +210,27 @@ for.body8.1.epil:                                 ; preds = %for.body8.1.epil, %
   %indvars.iv.next.3.1.epil = add nuw nsw i64 %indvars.iv.1.epil, 4
   %niter.nsub.3.1.epil = add i32 %niter.1.epil, -4
   %niter.ncmp.3.1.epil.not = icmp eq i32 %niter.nsub.3.1.epil, 0
-  br i1 %niter.ncmp.3.1.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil, label %for.body8.1.epil, !llvm.loop !7
+  br i1 %niter.ncmp.3.1.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil.loopexit, label %for.body8.1.epil, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil: ; preds = %for.body8.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil164
-  %add.lcssa.ph.1.epil = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.epil164 ], [ %add.3.1.epil, %for.body8.1.epil ]
-  %indvars.iv.unr.1.epil = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.epil164 ], [ %indvars.iv.next.3.1.epil, %for.body8.1.epil ]
-  %add53.unr.1.epil = phi float [ %arrayidx18.promoted.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil164 ], [ %add.3.1.epil, %for.body8.1.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil.loopexit: ; preds = %for.body8.1.epil
+  %add.3.1.epil.lcssa = phi float [ %add.3.1.epil, %for.body8.1.epil ]
+  %indvars.iv.next.3.1.epil.lcssa = phi i64 [ %indvars.iv.next.3.1.epil, %for.body8.1.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.epil164
+  %add.lcssa.ph.1.epil = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.epil164 ], [ %add.3.1.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil.loopexit ]
+  %indvars.iv.unr.1.epil = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.epil164 ], [ %indvars.iv.next.3.1.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil.loopexit ]
+  %add53.unr.1.epil = phi float [ %arrayidx18.promoted.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil164 ], [ %add.3.1.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil.loopexit ]
   %lcmp.mod.1.epil.not = icmp eq i32 %xtraiter.1.epil, 0
-  br i1 %lcmp.mod.1.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.epil, label %for.body8.epil.1.epil
+  br i1 %lcmp.mod.1.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.epil, label %for.body8.epil.1.epil.preheader
 
-for.body8.epil.1.epil:                            ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil, %for.body8.epil.1.epil
-  %indvars.iv.epil.1.epil = phi i64 [ %indvars.iv.next.epil.1.epil, %for.body8.epil.1.epil ], [ %indvars.iv.unr.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil ]
-  %add53.epil.1.epil = phi float [ %add.epil.1.epil, %for.body8.epil.1.epil ], [ %add53.unr.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil ]
-  %epil.iter.1.epil = phi i32 [ %epil.iter.sub.1.epil, %for.body8.epil.1.epil ], [ %xtraiter.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil ]
+for.body8.epil.1.epil.preheader:                  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil
+  br label %for.body8.epil.1.epil
+
+for.body8.epil.1.epil:                            ; preds = %for.body8.epil.1.epil.preheader, %for.body8.epil.1.epil
+  %indvars.iv.epil.1.epil = phi i64 [ %indvars.iv.next.epil.1.epil, %for.body8.epil.1.epil ], [ %indvars.iv.unr.1.epil, %for.body8.epil.1.epil.preheader ]
+  %add53.epil.1.epil = phi float [ %add.epil.1.epil, %for.body8.epil.1.epil ], [ %add53.unr.1.epil, %for.body8.epil.1.epil.preheader ]
+  %epil.iter.1.epil = phi i32 [ %epil.iter.sub.1.epil, %for.body8.epil.1.epil ], [ %xtraiter.1.epil, %for.body8.epil.1.epil.preheader ]
   %arrayidx10.epil.1.epil = getelementptr inbounds float, float* %arrayidx.epil, i64 %indvars.iv.epil.1.epil
   %36 = load float, float* %arrayidx10.epil.1.epil, align 4, !tbaa !3
   %37 = mul nuw nsw i64 %indvars.iv.epil.1.epil, %0
@@ -214,10 +242,14 @@ for.body8.epil.1.epil:                            ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.1.epil = add nuw nsw i64 %indvars.iv.epil.1.epil, 1
   %epil.iter.sub.1.epil = add i32 %epil.iter.1.epil, -1
   %epil.iter.cmp.1.epil.not = icmp eq i32 %epil.iter.sub.1.epil, 0
-  br i1 %epil.iter.cmp.1.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.epil, label %for.body8.epil.1.epil, !llvm.loop !10
+  br i1 %epil.iter.cmp.1.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.epil.loopexit, label %for.body8.epil.1.epil, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.1.epil:     ; preds = %for.body8.epil.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil
-  %add.lcssa.1.epil = phi float [ %add.lcssa.ph.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil ], [ %add.epil.1.epil, %for.body8.epil.1.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.1.epil.loopexit: ; preds = %for.body8.epil.1.epil
+  %add.epil.1.epil.lcssa = phi float [ %add.epil.1.epil, %for.body8.epil.1.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.1.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.1.epil:     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.1.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil
+  %add.lcssa.1.epil = phi float [ %add.lcssa.ph.1.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.epil ], [ %add.epil.1.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.1.epil.loopexit ]
   store float %add.lcssa.1.epil, float* %arrayidx18.1.epil, align 4, !tbaa !3
   %indvars.iv.next56.1.epil = or i64 %indvars.iv55.epil99, 2
   %arrayidx18.2.epil = getelementptr inbounds float, float* %arrayidx16.epil, i64 %indvars.iv.next56.1.epil
@@ -272,19 +304,27 @@ for.body8.2.epil:                                 ; preds = %for.body8.2.epil, %
   %indvars.iv.next.3.2.epil = add nuw nsw i64 %indvars.iv.2.epil, 4
   %niter.nsub.3.2.epil = add i32 %niter.2.epil, -4
   %niter.ncmp.3.2.epil.not = icmp eq i32 %niter.nsub.3.2.epil, 0
-  br i1 %niter.ncmp.3.2.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil, label %for.body8.2.epil, !llvm.loop !7
+  br i1 %niter.ncmp.3.2.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil.loopexit, label %for.body8.2.epil, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil: ; preds = %for.body8.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.1.epil
-  %add.lcssa.ph.2.epil = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.epil ], [ %add.3.2.epil, %for.body8.2.epil ]
-  %indvars.iv.unr.2.epil = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.epil ], [ %indvars.iv.next.3.2.epil, %for.body8.2.epil ]
-  %add53.unr.2.epil = phi float [ %arrayidx18.promoted.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.1.epil ], [ %add.3.2.epil, %for.body8.2.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil.loopexit: ; preds = %for.body8.2.epil
+  %add.3.2.epil.lcssa = phi float [ %add.3.2.epil, %for.body8.2.epil ]
+  %indvars.iv.next.3.2.epil.lcssa = phi i64 [ %indvars.iv.next.3.2.epil, %for.body8.2.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.1.epil
+  %add.lcssa.ph.2.epil = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.epil ], [ %add.3.2.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil.loopexit ]
+  %indvars.iv.unr.2.epil = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.epil ], [ %indvars.iv.next.3.2.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil.loopexit ]
+  %add53.unr.2.epil = phi float [ %arrayidx18.promoted.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.1.epil ], [ %add.3.2.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil.loopexit ]
   %lcmp.mod.2.epil.not = icmp eq i32 %xtraiter.2.epil, 0
-  br i1 %lcmp.mod.2.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.epil, label %for.body8.epil.2.epil
+  br i1 %lcmp.mod.2.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.epil, label %for.body8.epil.2.epil.preheader
 
-for.body8.epil.2.epil:                            ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil, %for.body8.epil.2.epil
-  %indvars.iv.epil.2.epil = phi i64 [ %indvars.iv.next.epil.2.epil, %for.body8.epil.2.epil ], [ %indvars.iv.unr.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil ]
-  %add53.epil.2.epil = phi float [ %add.epil.2.epil, %for.body8.epil.2.epil ], [ %add53.unr.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil ]
-  %epil.iter.2.epil = phi i32 [ %epil.iter.sub.2.epil, %for.body8.epil.2.epil ], [ %xtraiter.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil ]
+for.body8.epil.2.epil.preheader:                  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil
+  br label %for.body8.epil.2.epil
+
+for.body8.epil.2.epil:                            ; preds = %for.body8.epil.2.epil.preheader, %for.body8.epil.2.epil
+  %indvars.iv.epil.2.epil = phi i64 [ %indvars.iv.next.epil.2.epil, %for.body8.epil.2.epil ], [ %indvars.iv.unr.2.epil, %for.body8.epil.2.epil.preheader ]
+  %add53.epil.2.epil = phi float [ %add.epil.2.epil, %for.body8.epil.2.epil ], [ %add53.unr.2.epil, %for.body8.epil.2.epil.preheader ]
+  %epil.iter.2.epil = phi i32 [ %epil.iter.sub.2.epil, %for.body8.epil.2.epil ], [ %xtraiter.2.epil, %for.body8.epil.2.epil.preheader ]
   %arrayidx10.epil.2.epil = getelementptr inbounds float, float* %arrayidx.epil, i64 %indvars.iv.epil.2.epil
   %52 = load float, float* %arrayidx10.epil.2.epil, align 4, !tbaa !3
   %53 = mul nuw nsw i64 %indvars.iv.epil.2.epil, %0
@@ -296,10 +336,14 @@ for.body8.epil.2.epil:                            ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.2.epil = add nuw nsw i64 %indvars.iv.epil.2.epil, 1
   %epil.iter.sub.2.epil = add i32 %epil.iter.2.epil, -1
   %epil.iter.cmp.2.epil.not = icmp eq i32 %epil.iter.sub.2.epil, 0
-  br i1 %epil.iter.cmp.2.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.epil, label %for.body8.epil.2.epil, !llvm.loop !10
+  br i1 %epil.iter.cmp.2.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.epil.loopexit, label %for.body8.epil.2.epil, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.2.epil:     ; preds = %for.body8.epil.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil
-  %add.lcssa.2.epil = phi float [ %add.lcssa.ph.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil ], [ %add.epil.2.epil, %for.body8.epil.2.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.2.epil.loopexit: ; preds = %for.body8.epil.2.epil
+  %add.epil.2.epil.lcssa = phi float [ %add.epil.2.epil, %for.body8.epil.2.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.2.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.2.epil:     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.2.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil
+  %add.lcssa.2.epil = phi float [ %add.lcssa.ph.2.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.epil ], [ %add.epil.2.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.2.epil.loopexit ]
   store float %add.lcssa.2.epil, float* %arrayidx18.2.epil, align 4, !tbaa !3
   %indvars.iv.next56.2.epil = or i64 %indvars.iv55.epil99, 3
   %arrayidx18.3.epil = getelementptr inbounds float, float* %arrayidx16.epil, i64 %indvars.iv.next56.2.epil
@@ -354,19 +398,27 @@ for.body8.3.epil:                                 ; preds = %for.body8.3.epil, %
   %indvars.iv.next.3.3.epil = add nuw nsw i64 %indvars.iv.3.epil, 4
   %niter.nsub.3.3.epil = add i32 %niter.3.epil, -4
   %niter.ncmp.3.3.epil.not = icmp eq i32 %niter.nsub.3.3.epil, 0
-  br i1 %niter.ncmp.3.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil, label %for.body8.3.epil, !llvm.loop !7
+  br i1 %niter.ncmp.3.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil.loopexit, label %for.body8.3.epil, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil: ; preds = %for.body8.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.2.epil
-  %add.lcssa.ph.3.epil = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.epil ], [ %add.3.3.epil, %for.body8.3.epil ]
-  %indvars.iv.unr.3.epil = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.epil ], [ %indvars.iv.next.3.3.epil, %for.body8.3.epil ]
-  %add53.unr.3.epil = phi float [ %arrayidx18.promoted.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.2.epil ], [ %add.3.3.epil, %for.body8.3.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil.loopexit: ; preds = %for.body8.3.epil
+  %add.3.3.epil.lcssa = phi float [ %add.3.3.epil, %for.body8.3.epil ]
+  %indvars.iv.next.3.3.epil.lcssa = phi i64 [ %indvars.iv.next.3.3.epil, %for.body8.3.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.2.epil
+  %add.lcssa.ph.3.epil = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.epil ], [ %add.3.3.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil.loopexit ]
+  %indvars.iv.unr.3.epil = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.epil ], [ %indvars.iv.next.3.3.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil.loopexit ]
+  %add53.unr.3.epil = phi float [ %arrayidx18.promoted.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.2.epil ], [ %add.3.3.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil.loopexit ]
   %lcmp.mod.3.epil.not = icmp eq i32 %xtraiter.3.epil, 0
-  br i1 %lcmp.mod.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.epil, label %for.body8.epil.3.epil
+  br i1 %lcmp.mod.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.epil, label %for.body8.epil.3.epil.preheader
 
-for.body8.epil.3.epil:                            ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil, %for.body8.epil.3.epil
-  %indvars.iv.epil.3.epil = phi i64 [ %indvars.iv.next.epil.3.epil, %for.body8.epil.3.epil ], [ %indvars.iv.unr.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil ]
-  %add53.epil.3.epil = phi float [ %add.epil.3.epil, %for.body8.epil.3.epil ], [ %add53.unr.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil ]
-  %epil.iter.3.epil = phi i32 [ %epil.iter.sub.3.epil, %for.body8.epil.3.epil ], [ %xtraiter.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil ]
+for.body8.epil.3.epil.preheader:                  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil
+  br label %for.body8.epil.3.epil
+
+for.body8.epil.3.epil:                            ; preds = %for.body8.epil.3.epil.preheader, %for.body8.epil.3.epil
+  %indvars.iv.epil.3.epil = phi i64 [ %indvars.iv.next.epil.3.epil, %for.body8.epil.3.epil ], [ %indvars.iv.unr.3.epil, %for.body8.epil.3.epil.preheader ]
+  %add53.epil.3.epil = phi float [ %add.epil.3.epil, %for.body8.epil.3.epil ], [ %add53.unr.3.epil, %for.body8.epil.3.epil.preheader ]
+  %epil.iter.3.epil = phi i32 [ %epil.iter.sub.3.epil, %for.body8.epil.3.epil ], [ %xtraiter.3.epil, %for.body8.epil.3.epil.preheader ]
   %arrayidx10.epil.3.epil = getelementptr inbounds float, float* %arrayidx.epil, i64 %indvars.iv.epil.3.epil
   %68 = load float, float* %arrayidx10.epil.3.epil, align 4, !tbaa !3
   %69 = mul nuw nsw i64 %indvars.iv.epil.3.epil, %0
@@ -378,24 +430,35 @@ for.body8.epil.3.epil:                            ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.3.epil = add nuw nsw i64 %indvars.iv.epil.3.epil, 1
   %epil.iter.sub.3.epil = add i32 %epil.iter.3.epil, -1
   %epil.iter.cmp.3.epil.not = icmp eq i32 %epil.iter.sub.3.epil, 0
-  br i1 %epil.iter.cmp.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.epil, label %for.body8.epil.3.epil, !llvm.loop !10
+  br i1 %epil.iter.cmp.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.epil.loopexit, label %for.body8.epil.3.epil, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.3.epil:     ; preds = %for.body8.epil.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil
-  %add.lcssa.3.epil = phi float [ %add.lcssa.ph.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil ], [ %add.epil.3.epil, %for.body8.epil.3.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.3.epil.loopexit: ; preds = %for.body8.epil.3.epil
+  %add.epil.3.epil.lcssa = phi float [ %add.epil.3.epil, %for.body8.epil.3.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.3.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.3.epil:     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil
+  %add.lcssa.3.epil = phi float [ %add.lcssa.ph.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.epil ], [ %add.epil.3.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.3.epil.loopexit ]
   store float %add.lcssa.3.epil, float* %arrayidx18.3.epil, align 4, !tbaa !3
   %indvars.iv.next56.3.epil = add nuw nsw i64 %indvars.iv55.epil99, 4
   %niter72.nsub.3.epil = add i32 %niter72.epil, -4
   %niter72.ncmp.3.epil.not = icmp eq i32 %niter72.nsub.3.epil, 0
-  br i1 %niter72.ncmp.3.epil.not, label %for.cond.cleanup3.loopexit.unr-lcssa.epil, label %for.cond5.preheader.epil98, !llvm.loop !11
+  br i1 %niter72.ncmp.3.epil.not, label %for.cond.cleanup3.loopexit.unr-lcssa.epil.loopexit, label %for.cond5.preheader.epil98, !llvm.loop !11
 
-for.cond.cleanup3.loopexit.unr-lcssa.epil:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.epil, %for.cond1.preheader.epil
-  %indvars.iv55.unr.epil = phi i64 [ 0, %for.cond1.preheader.epil ], [ %indvars.iv.next56.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.3.epil ]
+for.cond.cleanup3.loopexit.unr-lcssa.epil.loopexit: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.epil
+  %indvars.iv.next56.3.epil.lcssa = phi i64 [ %indvars.iv.next56.3.epil, %for.cond5.for.cond.cleanup7_crit_edge.3.epil ]
+  br label %for.cond.cleanup3.loopexit.unr-lcssa.epil
+
+for.cond.cleanup3.loopexit.unr-lcssa.epil:        ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.epil.loopexit, %for.cond1.preheader.epil
+  %indvars.iv55.unr.epil = phi i64 [ 0, %for.cond1.preheader.epil ], [ %indvars.iv.next56.3.epil.lcssa, %for.cond.cleanup3.loopexit.unr-lcssa.epil.loopexit ]
   %lcmp.mod70.epil.not = icmp eq i32 %xtraiter58.epil, 0
-  br i1 %lcmp.mod70.epil.not, label %for.cond.cleanup3.epil, label %for.cond5.preheader.epil.epil
+  br i1 %lcmp.mod70.epil.not, label %for.cond.cleanup3.epil, label %for.cond5.preheader.epil.epil.preheader
 
-for.cond5.preheader.epil.epil:                    ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil.epil
-  %indvars.iv55.epil.epil = phi i64 [ %indvars.iv.next56.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil.epil ], [ %indvars.iv55.unr.epil, %for.cond.cleanup3.loopexit.unr-lcssa.epil ]
-  %epil.iter69.epil = phi i32 [ %epil.iter69.sub.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil.epil ], [ %xtraiter58.epil, %for.cond.cleanup3.loopexit.unr-lcssa.epil ]
+for.cond5.preheader.epil.epil.preheader:          ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.epil
+  br label %for.cond5.preheader.epil.epil
+
+for.cond5.preheader.epil.epil:                    ; preds = %for.cond5.preheader.epil.epil.preheader, %for.cond5.for.cond.cleanup7_crit_edge.epil.epil
+  %indvars.iv55.epil.epil = phi i64 [ %indvars.iv.next56.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil.epil ], [ %indvars.iv55.unr.epil, %for.cond5.preheader.epil.epil.preheader ]
+  %epil.iter69.epil = phi i32 [ %epil.iter69.sub.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil.epil ], [ %xtraiter58.epil, %for.cond5.preheader.epil.epil.preheader ]
   %arrayidx18.epil.epil = getelementptr inbounds float, float* %arrayidx16.epil, i64 %indvars.iv55.epil.epil
   %arrayidx18.promoted.epil.epil = load float, float* %arrayidx18.epil.epil, align 4, !tbaa !3
   %xtraiter.epil.epil = and i32 %n, 3
@@ -448,19 +511,27 @@ for.body8.epil59.epil:                            ; preds = %for.body8.epil59.ep
   %indvars.iv.next.3.epil.epil = add nuw nsw i64 %indvars.iv.epil60.epil, 4
   %niter.nsub.3.epil.epil = add i32 %niter.epil.epil, -4
   %niter.ncmp.3.epil.epil.not = icmp eq i32 %niter.nsub.3.epil.epil, 0
-  br i1 %niter.ncmp.3.epil.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil, label %for.body8.epil59.epil, !llvm.loop !7
+  br i1 %niter.ncmp.3.epil.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil.loopexit, label %for.body8.epil59.epil, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil: ; preds = %for.body8.epil59.epil, %for.cond5.preheader.epil.epil
-  %add.lcssa.ph.epil.epil = phi float [ undef, %for.cond5.preheader.epil.epil ], [ %add.3.epil.epil, %for.body8.epil59.epil ]
-  %indvars.iv.unr.epil.epil = phi i64 [ 0, %for.cond5.preheader.epil.epil ], [ %indvars.iv.next.3.epil.epil, %for.body8.epil59.epil ]
-  %add53.unr.epil.epil = phi float [ %arrayidx18.promoted.epil.epil, %for.cond5.preheader.epil.epil ], [ %add.3.epil.epil, %for.body8.epil59.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil.loopexit: ; preds = %for.body8.epil59.epil
+  %add.3.epil.epil.lcssa = phi float [ %add.3.epil.epil, %for.body8.epil59.epil ]
+  %indvars.iv.next.3.epil.epil.lcssa = phi i64 [ %indvars.iv.next.3.epil.epil, %for.body8.epil59.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil.loopexit, %for.cond5.preheader.epil.epil
+  %add.lcssa.ph.epil.epil = phi float [ undef, %for.cond5.preheader.epil.epil ], [ %add.3.epil.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil.loopexit ]
+  %indvars.iv.unr.epil.epil = phi i64 [ 0, %for.cond5.preheader.epil.epil ], [ %indvars.iv.next.3.epil.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil.loopexit ]
+  %add53.unr.epil.epil = phi float [ %arrayidx18.promoted.epil.epil, %for.cond5.preheader.epil.epil ], [ %add.3.epil.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil.loopexit ]
   %lcmp.mod.epil.epil.not = icmp eq i32 %xtraiter.epil.epil, 0
-  br i1 %lcmp.mod.epil.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.epil, label %for.body8.epil.epil.epil
+  br i1 %lcmp.mod.epil.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.epil, label %for.body8.epil.epil.epil.preheader
 
-for.body8.epil.epil.epil:                         ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil, %for.body8.epil.epil.epil
-  %indvars.iv.epil.epil.epil = phi i64 [ %indvars.iv.next.epil.epil.epil, %for.body8.epil.epil.epil ], [ %indvars.iv.unr.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil ]
-  %add53.epil.epil.epil = phi float [ %add.epil.epil.epil, %for.body8.epil.epil.epil ], [ %add53.unr.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil ]
-  %epil.iter.epil.epil = phi i32 [ %epil.iter.sub.epil.epil, %for.body8.epil.epil.epil ], [ %xtraiter.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil ]
+for.body8.epil.epil.epil.preheader:               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil
+  br label %for.body8.epil.epil.epil
+
+for.body8.epil.epil.epil:                         ; preds = %for.body8.epil.epil.epil.preheader, %for.body8.epil.epil.epil
+  %indvars.iv.epil.epil.epil = phi i64 [ %indvars.iv.next.epil.epil.epil, %for.body8.epil.epil.epil ], [ %indvars.iv.unr.epil.epil, %for.body8.epil.epil.epil.preheader ]
+  %add53.epil.epil.epil = phi float [ %add.epil.epil.epil, %for.body8.epil.epil.epil ], [ %add53.unr.epil.epil, %for.body8.epil.epil.epil.preheader ]
+  %epil.iter.epil.epil = phi i32 [ %epil.iter.sub.epil.epil, %for.body8.epil.epil.epil ], [ %xtraiter.epil.epil, %for.body8.epil.epil.epil.preheader ]
   %arrayidx10.epil.epil.epil = getelementptr inbounds float, float* %arrayidx.epil, i64 %indvars.iv.epil.epil.epil
   %84 = load float, float* %arrayidx10.epil.epil.epil, align 4, !tbaa !3
   %85 = mul nuw nsw i64 %indvars.iv.epil.epil.epil, %0
@@ -472,23 +543,33 @@ for.body8.epil.epil.epil:                         ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.epil.epil = add nuw nsw i64 %indvars.iv.epil.epil.epil, 1
   %epil.iter.sub.epil.epil = add i32 %epil.iter.epil.epil, -1
   %epil.iter.cmp.epil.epil.not = icmp eq i32 %epil.iter.sub.epil.epil, 0
-  br i1 %epil.iter.cmp.epil.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.epil, label %for.body8.epil.epil.epil, !llvm.loop !10
+  br i1 %epil.iter.cmp.epil.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.epil.loopexit, label %for.body8.epil.epil.epil, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.epil.epil:  ; preds = %for.body8.epil.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil
-  %add.lcssa.epil.epil = phi float [ %add.lcssa.ph.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil ], [ %add.epil.epil.epil, %for.body8.epil.epil.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.epil.epil.loopexit: ; preds = %for.body8.epil.epil.epil
+  %add.epil.epil.epil.lcssa = phi float [ %add.epil.epil.epil, %for.body8.epil.epil.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.epil.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.epil.epil:  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil
+  %add.lcssa.epil.epil = phi float [ %add.lcssa.ph.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.epil ], [ %add.epil.epil.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.epil.epil.loopexit ]
   store float %add.lcssa.epil.epil, float* %arrayidx18.epil.epil, align 4, !tbaa !3
   %indvars.iv.next56.epil.epil = add nuw nsw i64 %indvars.iv55.epil.epil, 1
   %epil.iter69.sub.epil = add i32 %epil.iter69.epil, -1
   %epil.iter69.cmp.epil.not = icmp eq i32 %epil.iter69.sub.epil, 0
-  br i1 %epil.iter69.cmp.epil.not, label %for.cond.cleanup3.epil, label %for.cond5.preheader.epil.epil, !llvm.loop !12
+  br i1 %epil.iter69.cmp.epil.not, label %for.cond.cleanup3.epil.loopexit, label %for.cond5.preheader.epil.epil, !llvm.loop !12
 
-for.cond.cleanup3.epil:                           ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.epil, %for.cond.cleanup3.loopexit.unr-lcssa.epil
+for.cond.cleanup3.epil.loopexit:                  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.epil
+  br label %for.cond.cleanup3.epil
+
+for.cond.cleanup3.epil:                           ; preds = %for.cond.cleanup3.epil.loopexit, %for.cond.cleanup3.loopexit.unr-lcssa.epil
   %indvars.iv.next95.epil = add nuw nsw i64 %indvars.iv94.epil, 1
   %epil.iter168.sub = add i32 %epil.iter168, -1
   %epil.iter168.cmp.not = icmp eq i32 %epil.iter168.sub, 0
-  br i1 %epil.iter168.cmp.not, label %for.cond.cleanup, label %for.cond1.preheader.epil, !llvm.loop !13
+  br i1 %epil.iter168.cmp.not, label %for.cond.cleanup.loopexit, label %for.cond1.preheader.epil, !llvm.loop !13
 
-for.cond.cleanup:                                 ; preds = %for.cond.cleanup3.epil, %for.cond.cleanup.loopexit.unr-lcssa, %entry
+for.cond.cleanup.loopexit:                        ; preds = %for.cond.cleanup3.epil
+  br label %for.cond.cleanup
+
+for.cond.cleanup:                                 ; preds = %for.cond.cleanup.loopexit, %for.cond.cleanup.loopexit.unr-lcssa, %entry
   ret void
 
 for.cond5.preheader:                              ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3, %for.cond5.preheader.lr.ph.new
@@ -504,14 +585,21 @@ for.body8.lr.ph.new:                              ; preds = %for.cond5.preheader
   %unroll_iter = and i32 %n, -4
   br label %for.body8
 
-for.cond.cleanup3.loopexit.unr-lcssa:             ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3, %for.cond1.preheader
-  %indvars.iv55.unr = phi i64 [ 0, %for.cond1.preheader ], [ %indvars.iv.next56.3, %for.cond5.for.cond.cleanup7_crit_edge.3 ]
-  %lcmp.mod70.not = icmp eq i32 %xtraiter58, 0
-  br i1 %lcmp.mod70.not, label %for.cond5.preheader.lr.ph.1, label %for.cond5.preheader.epil
+for.cond.cleanup3.loopexit.unr-lcssa.loopexit:    ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3
+  %indvars.iv.next56.3.lcssa = phi i64 [ %indvars.iv.next56.3, %for.cond5.for.cond.cleanup7_crit_edge.3 ]
+  br label %for.cond.cleanup3.loopexit.unr-lcssa
 
-for.cond5.preheader.epil:                         ; preds = %for.cond.cleanup3.loopexit.unr-lcssa, %for.cond5.for.cond.cleanup7_crit_edge.epil
-  %indvars.iv55.epil = phi i64 [ %indvars.iv.next56.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil ], [ %indvars.iv55.unr, %for.cond.cleanup3.loopexit.unr-lcssa ]
-  %epil.iter69 = phi i32 [ %epil.iter69.sub, %for.cond5.for.cond.cleanup7_crit_edge.epil ], [ %xtraiter58, %for.cond.cleanup3.loopexit.unr-lcssa ]
+for.cond.cleanup3.loopexit.unr-lcssa:             ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.loopexit, %for.cond1.preheader
+  %indvars.iv55.unr = phi i64 [ 0, %for.cond1.preheader ], [ %indvars.iv.next56.3.lcssa, %for.cond.cleanup3.loopexit.unr-lcssa.loopexit ]
+  %lcmp.mod70.not = icmp eq i32 %xtraiter58, 0
+  br i1 %lcmp.mod70.not, label %for.cond5.preheader.lr.ph.1, label %for.cond5.preheader.epil.preheader
+
+for.cond5.preheader.epil.preheader:               ; preds = %for.cond.cleanup3.loopexit.unr-lcssa
+  br label %for.cond5.preheader.epil
+
+for.cond5.preheader.epil:                         ; preds = %for.cond5.preheader.epil.preheader, %for.cond5.for.cond.cleanup7_crit_edge.epil
+  %indvars.iv55.epil = phi i64 [ %indvars.iv.next56.epil, %for.cond5.for.cond.cleanup7_crit_edge.epil ], [ %indvars.iv55.unr, %for.cond5.preheader.epil.preheader ]
+  %epil.iter69 = phi i32 [ %epil.iter69.sub, %for.cond5.for.cond.cleanup7_crit_edge.epil ], [ %xtraiter58, %for.cond5.preheader.epil.preheader ]
   %arrayidx18.epil = getelementptr inbounds float, float* %arrayidx16, i64 %indvars.iv55.epil
   %arrayidx18.promoted.epil = load float, float* %arrayidx18.epil, align 4, !tbaa !3
   %xtraiter.epil = and i32 %n, 3
@@ -564,19 +652,27 @@ for.body8.epil59:                                 ; preds = %for.body8.epil59, %
   %indvars.iv.next.3.epil = add nuw nsw i64 %indvars.iv.epil60, 4
   %niter.nsub.3.epil = add i32 %niter.epil, -4
   %niter.ncmp.3.epil.not = icmp eq i32 %niter.nsub.3.epil, 0
-  br i1 %niter.ncmp.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil, label %for.body8.epil59, !llvm.loop !7
+  br i1 %niter.ncmp.3.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.loopexit, label %for.body8.epil59, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil: ; preds = %for.body8.epil59, %for.cond5.preheader.epil
-  %add.lcssa.ph.epil = phi float [ undef, %for.cond5.preheader.epil ], [ %add.3.epil, %for.body8.epil59 ]
-  %indvars.iv.unr.epil = phi i64 [ 0, %for.cond5.preheader.epil ], [ %indvars.iv.next.3.epil, %for.body8.epil59 ]
-  %add53.unr.epil = phi float [ %arrayidx18.promoted.epil, %for.cond5.preheader.epil ], [ %add.3.epil, %for.body8.epil59 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.loopexit: ; preds = %for.body8.epil59
+  %add.3.epil.lcssa = phi float [ %add.3.epil, %for.body8.epil59 ]
+  %indvars.iv.next.3.epil.lcssa = phi i64 [ %indvars.iv.next.3.epil, %for.body8.epil59 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.loopexit, %for.cond5.preheader.epil
+  %add.lcssa.ph.epil = phi float [ undef, %for.cond5.preheader.epil ], [ %add.3.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.loopexit ]
+  %indvars.iv.unr.epil = phi i64 [ 0, %for.cond5.preheader.epil ], [ %indvars.iv.next.3.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.loopexit ]
+  %add53.unr.epil = phi float [ %arrayidx18.promoted.epil, %for.cond5.preheader.epil ], [ %add.3.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.loopexit ]
   %lcmp.mod.epil.not = icmp eq i32 %xtraiter.epil, 0
-  br i1 %lcmp.mod.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil, label %for.body8.epil.epil
+  br i1 %lcmp.mod.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil, label %for.body8.epil.epil.preheader
 
-for.body8.epil.epil:                              ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil, %for.body8.epil.epil
-  %indvars.iv.epil.epil = phi i64 [ %indvars.iv.next.epil.epil, %for.body8.epil.epil ], [ %indvars.iv.unr.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil ]
-  %add53.epil.epil = phi float [ %add.epil.epil, %for.body8.epil.epil ], [ %add53.unr.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil ]
-  %epil.iter.epil = phi i32 [ %epil.iter.sub.epil, %for.body8.epil.epil ], [ %xtraiter.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil ]
+for.body8.epil.epil.preheader:                    ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil
+  br label %for.body8.epil.epil
+
+for.body8.epil.epil:                              ; preds = %for.body8.epil.epil.preheader, %for.body8.epil.epil
+  %indvars.iv.epil.epil = phi i64 [ %indvars.iv.next.epil.epil, %for.body8.epil.epil ], [ %indvars.iv.unr.epil, %for.body8.epil.epil.preheader ]
+  %add53.epil.epil = phi float [ %add.epil.epil, %for.body8.epil.epil ], [ %add53.unr.epil, %for.body8.epil.epil.preheader ]
+  %epil.iter.epil = phi i32 [ %epil.iter.sub.epil, %for.body8.epil.epil ], [ %xtraiter.epil, %for.body8.epil.epil.preheader ]
   %arrayidx10.epil.epil = getelementptr inbounds float, float* %arrayidx, i64 %indvars.iv.epil.epil
   %101 = load float, float* %arrayidx10.epil.epil, align 4, !tbaa !3
   %102 = mul nuw nsw i64 %indvars.iv.epil.epil, %0
@@ -588,27 +684,39 @@ for.body8.epil.epil:                              ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.epil = add nuw nsw i64 %indvars.iv.epil.epil, 1
   %epil.iter.sub.epil = add i32 %epil.iter.epil, -1
   %epil.iter.cmp.epil.not = icmp eq i32 %epil.iter.sub.epil, 0
-  br i1 %epil.iter.cmp.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil, label %for.body8.epil.epil, !llvm.loop !10
+  br i1 %epil.iter.cmp.epil.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.loopexit, label %for.body8.epil.epil, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.epil:       ; preds = %for.body8.epil.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil
-  %add.lcssa.epil = phi float [ %add.lcssa.ph.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil ], [ %add.epil.epil, %for.body8.epil.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.epil.loopexit: ; preds = %for.body8.epil.epil
+  %add.epil.epil.lcssa = phi float [ %add.epil.epil, %for.body8.epil.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.epil
+
+for.cond5.for.cond.cleanup7_crit_edge.epil:       ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil
+  %add.lcssa.epil = phi float [ %add.lcssa.ph.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil ], [ %add.epil.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.epil.loopexit ]
   store float %add.lcssa.epil, float* %arrayidx18.epil, align 4, !tbaa !3
   %indvars.iv.next56.epil = add nuw nsw i64 %indvars.iv55.epil, 1
   %epil.iter69.sub = add i32 %epil.iter69, -1
   %epil.iter69.cmp.not = icmp eq i32 %epil.iter69.sub, 0
-  br i1 %epil.iter69.cmp.not, label %for.cond5.preheader.lr.ph.1, label %for.cond5.preheader.epil, !llvm.loop !12
+  br i1 %epil.iter69.cmp.not, label %for.cond5.preheader.lr.ph.1.loopexit, label %for.cond5.preheader.epil, !llvm.loop !12
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa:  ; preds = %for.body8, %for.cond5.preheader
-  %add.lcssa.ph = phi float [ undef, %for.cond5.preheader ], [ %add.3, %for.body8 ]
-  %indvars.iv.unr = phi i64 [ 0, %for.cond5.preheader ], [ %indvars.iv.next.3, %for.body8 ]
-  %add53.unr = phi float [ %arrayidx18.promoted, %for.cond5.preheader ], [ %add.3, %for.body8 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.loopexit: ; preds = %for.body8
+  %add.3.lcssa = phi float [ %add.3, %for.body8 ]
+  %indvars.iv.next.3.lcssa = phi i64 [ %indvars.iv.next.3, %for.body8 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa:  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.loopexit, %for.cond5.preheader
+  %add.lcssa.ph = phi float [ undef, %for.cond5.preheader ], [ %add.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.loopexit ]
+  %indvars.iv.unr = phi i64 [ 0, %for.cond5.preheader ], [ %indvars.iv.next.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.loopexit ]
+  %add53.unr = phi float [ %arrayidx18.promoted, %for.cond5.preheader ], [ %add.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.loopexit ]
   %lcmp.mod.not = icmp eq i32 %xtraiter, 0
-  br i1 %lcmp.mod.not, label %for.cond5.for.cond.cleanup7_crit_edge, label %for.body8.epil
+  br i1 %lcmp.mod.not, label %for.cond5.for.cond.cleanup7_crit_edge, label %for.body8.epil.preheader
 
-for.body8.epil:                                   ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa, %for.body8.epil
-  %indvars.iv.epil = phi i64 [ %indvars.iv.next.epil, %for.body8.epil ], [ %indvars.iv.unr, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa ]
-  %add53.epil = phi float [ %add.epil, %for.body8.epil ], [ %add53.unr, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa ]
-  %epil.iter = phi i32 [ %epil.iter.sub, %for.body8.epil ], [ %xtraiter, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa ]
+for.body8.epil.preheader:                         ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa
+  br label %for.body8.epil
+
+for.body8.epil:                                   ; preds = %for.body8.epil.preheader, %for.body8.epil
+  %indvars.iv.epil = phi i64 [ %indvars.iv.next.epil, %for.body8.epil ], [ %indvars.iv.unr, %for.body8.epil.preheader ]
+  %add53.epil = phi float [ %add.epil, %for.body8.epil ], [ %add53.unr, %for.body8.epil.preheader ]
+  %epil.iter = phi i32 [ %epil.iter.sub, %for.body8.epil ], [ %xtraiter, %for.body8.epil.preheader ]
   %arrayidx10.epil = getelementptr inbounds float, float* %arrayidx, i64 %indvars.iv.epil
   %104 = load float, float* %arrayidx10.epil, align 4, !tbaa !3
   %105 = mul nuw nsw i64 %indvars.iv.epil, %0
@@ -620,10 +728,14 @@ for.body8.epil:                                   ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil = add nuw nsw i64 %indvars.iv.epil, 1
   %epil.iter.sub = add i32 %epil.iter, -1
   %epil.iter.cmp.not = icmp eq i32 %epil.iter.sub, 0
-  br i1 %epil.iter.cmp.not, label %for.cond5.for.cond.cleanup7_crit_edge, label %for.body8.epil, !llvm.loop !10
+  br i1 %epil.iter.cmp.not, label %for.cond5.for.cond.cleanup7_crit_edge.loopexit, label %for.body8.epil, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge:            ; preds = %for.body8.epil, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa
-  %add.lcssa = phi float [ %add.lcssa.ph, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa ], [ %add.epil, %for.body8.epil ]
+for.cond5.for.cond.cleanup7_crit_edge.loopexit:   ; preds = %for.body8.epil
+  %add.epil.lcssa = phi float [ %add.epil, %for.body8.epil ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge
+
+for.cond5.for.cond.cleanup7_crit_edge:            ; preds = %for.cond5.for.cond.cleanup7_crit_edge.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa
+  %add.lcssa = phi float [ %add.lcssa.ph, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa ], [ %add.epil.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.loopexit ]
   store float %add.lcssa, float* %arrayidx18, align 4, !tbaa !3
   %indvars.iv.next56 = or i64 %indvars.iv55, 1
   %arrayidx18.1 = getelementptr inbounds float, float* %arrayidx16, i64 %indvars.iv.next56
@@ -674,7 +786,7 @@ for.body8:                                        ; preds = %for.body8, %for.bod
   %indvars.iv.next.3 = add nuw nsw i64 %indvars.iv, 4
   %niter.nsub.3 = add i32 %niter, -4
   %niter.ncmp.3.not = icmp eq i32 %niter.nsub.3, 0
-  br i1 %niter.ncmp.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa, label %for.body8, !llvm.loop !7
+  br i1 %niter.ncmp.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.loopexit, label %for.body8, !llvm.loop !7
 
 for.body8.lr.ph.new.1:                            ; preds = %for.cond5.for.cond.cleanup7_crit_edge
   %unroll_iter.1 = and i32 %n, -4
@@ -722,19 +834,27 @@ for.body8.1:                                      ; preds = %for.body8.1, %for.b
   %indvars.iv.next.3.1 = add nuw nsw i64 %indvars.iv.1, 4
   %niter.nsub.3.1 = add i32 %niter.1, -4
   %niter.ncmp.3.1.not = icmp eq i32 %niter.nsub.3.1, 0
-  br i1 %niter.ncmp.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1, label %for.body8.1, !llvm.loop !7
+  br i1 %niter.ncmp.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.loopexit, label %for.body8.1, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1: ; preds = %for.body8.1, %for.cond5.for.cond.cleanup7_crit_edge
-  %add.lcssa.ph.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge ], [ %add.3.1, %for.body8.1 ]
-  %indvars.iv.unr.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge ], [ %indvars.iv.next.3.1, %for.body8.1 ]
-  %add53.unr.1 = phi float [ %arrayidx18.promoted.1, %for.cond5.for.cond.cleanup7_crit_edge ], [ %add.3.1, %for.body8.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.loopexit: ; preds = %for.body8.1
+  %add.3.1.lcssa = phi float [ %add.3.1, %for.body8.1 ]
+  %indvars.iv.next.3.1.lcssa = phi i64 [ %indvars.iv.next.3.1, %for.body8.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge
+  %add.lcssa.ph.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge ], [ %add.3.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.loopexit ]
+  %indvars.iv.unr.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge ], [ %indvars.iv.next.3.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.loopexit ]
+  %add53.unr.1 = phi float [ %arrayidx18.promoted.1, %for.cond5.for.cond.cleanup7_crit_edge ], [ %add.3.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.loopexit ]
   %lcmp.mod.1.not = icmp eq i32 %xtraiter.1, 0
-  br i1 %lcmp.mod.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1, label %for.body8.epil.1
+  br i1 %lcmp.mod.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1, label %for.body8.epil.1.preheader
 
-for.body8.epil.1:                                 ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1, %for.body8.epil.1
-  %indvars.iv.epil.1 = phi i64 [ %indvars.iv.next.epil.1, %for.body8.epil.1 ], [ %indvars.iv.unr.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1 ]
-  %add53.epil.1 = phi float [ %add.epil.1, %for.body8.epil.1 ], [ %add53.unr.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1 ]
-  %epil.iter.1 = phi i32 [ %epil.iter.sub.1, %for.body8.epil.1 ], [ %xtraiter.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1 ]
+for.body8.epil.1.preheader:                       ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1
+  br label %for.body8.epil.1
+
+for.body8.epil.1:                                 ; preds = %for.body8.epil.1.preheader, %for.body8.epil.1
+  %indvars.iv.epil.1 = phi i64 [ %indvars.iv.next.epil.1, %for.body8.epil.1 ], [ %indvars.iv.unr.1, %for.body8.epil.1.preheader ]
+  %add53.epil.1 = phi float [ %add.epil.1, %for.body8.epil.1 ], [ %add53.unr.1, %for.body8.epil.1.preheader ]
+  %epil.iter.1 = phi i32 [ %epil.iter.sub.1, %for.body8.epil.1 ], [ %xtraiter.1, %for.body8.epil.1.preheader ]
   %arrayidx10.epil.1 = getelementptr inbounds float, float* %arrayidx, i64 %indvars.iv.epil.1
   %132 = load float, float* %arrayidx10.epil.1, align 4, !tbaa !3
   %133 = mul nuw nsw i64 %indvars.iv.epil.1, %0
@@ -746,10 +866,14 @@ for.body8.epil.1:                                 ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.1 = add nuw nsw i64 %indvars.iv.epil.1, 1
   %epil.iter.sub.1 = add i32 %epil.iter.1, -1
   %epil.iter.cmp.1.not = icmp eq i32 %epil.iter.sub.1, 0
-  br i1 %epil.iter.cmp.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1, label %for.body8.epil.1, !llvm.loop !10
+  br i1 %epil.iter.cmp.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.loopexit, label %for.body8.epil.1, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.1:          ; preds = %for.body8.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1
-  %add.lcssa.1 = phi float [ %add.lcssa.ph.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1 ], [ %add.epil.1, %for.body8.epil.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.1.loopexit: ; preds = %for.body8.epil.1
+  %add.epil.1.lcssa = phi float [ %add.epil.1, %for.body8.epil.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.1
+
+for.cond5.for.cond.cleanup7_crit_edge.1:          ; preds = %for.cond5.for.cond.cleanup7_crit_edge.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1
+  %add.lcssa.1 = phi float [ %add.lcssa.ph.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1 ], [ %add.epil.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.1.loopexit ]
   store float %add.lcssa.1, float* %arrayidx18.1, align 4, !tbaa !3
   %indvars.iv.next56.1 = or i64 %indvars.iv55, 2
   %arrayidx18.2 = getelementptr inbounds float, float* %arrayidx16, i64 %indvars.iv.next56.1
@@ -804,19 +928,27 @@ for.body8.2:                                      ; preds = %for.body8.2, %for.b
   %indvars.iv.next.3.2 = add nuw nsw i64 %indvars.iv.2, 4
   %niter.nsub.3.2 = add i32 %niter.2, -4
   %niter.ncmp.3.2.not = icmp eq i32 %niter.nsub.3.2, 0
-  br i1 %niter.ncmp.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2, label %for.body8.2, !llvm.loop !7
+  br i1 %niter.ncmp.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.loopexit, label %for.body8.2, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2: ; preds = %for.body8.2, %for.cond5.for.cond.cleanup7_crit_edge.1
-  %add.lcssa.ph.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1 ], [ %add.3.2, %for.body8.2 ]
-  %indvars.iv.unr.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1 ], [ %indvars.iv.next.3.2, %for.body8.2 ]
-  %add53.unr.2 = phi float [ %arrayidx18.promoted.2, %for.cond5.for.cond.cleanup7_crit_edge.1 ], [ %add.3.2, %for.body8.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.loopexit: ; preds = %for.body8.2
+  %add.3.2.lcssa = phi float [ %add.3.2, %for.body8.2 ]
+  %indvars.iv.next.3.2.lcssa = phi i64 [ %indvars.iv.next.3.2, %for.body8.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.1
+  %add.lcssa.ph.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1 ], [ %add.3.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.loopexit ]
+  %indvars.iv.unr.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1 ], [ %indvars.iv.next.3.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.loopexit ]
+  %add53.unr.2 = phi float [ %arrayidx18.promoted.2, %for.cond5.for.cond.cleanup7_crit_edge.1 ], [ %add.3.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.loopexit ]
   %lcmp.mod.2.not = icmp eq i32 %xtraiter.2, 0
-  br i1 %lcmp.mod.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2, label %for.body8.epil.2
+  br i1 %lcmp.mod.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2, label %for.body8.epil.2.preheader
 
-for.body8.epil.2:                                 ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2, %for.body8.epil.2
-  %indvars.iv.epil.2 = phi i64 [ %indvars.iv.next.epil.2, %for.body8.epil.2 ], [ %indvars.iv.unr.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2 ]
-  %add53.epil.2 = phi float [ %add.epil.2, %for.body8.epil.2 ], [ %add53.unr.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2 ]
-  %epil.iter.2 = phi i32 [ %epil.iter.sub.2, %for.body8.epil.2 ], [ %xtraiter.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2 ]
+for.body8.epil.2.preheader:                       ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2
+  br label %for.body8.epil.2
+
+for.body8.epil.2:                                 ; preds = %for.body8.epil.2.preheader, %for.body8.epil.2
+  %indvars.iv.epil.2 = phi i64 [ %indvars.iv.next.epil.2, %for.body8.epil.2 ], [ %indvars.iv.unr.2, %for.body8.epil.2.preheader ]
+  %add53.epil.2 = phi float [ %add.epil.2, %for.body8.epil.2 ], [ %add53.unr.2, %for.body8.epil.2.preheader ]
+  %epil.iter.2 = phi i32 [ %epil.iter.sub.2, %for.body8.epil.2 ], [ %xtraiter.2, %for.body8.epil.2.preheader ]
   %arrayidx10.epil.2 = getelementptr inbounds float, float* %arrayidx, i64 %indvars.iv.epil.2
   %148 = load float, float* %arrayidx10.epil.2, align 4, !tbaa !3
   %149 = mul nuw nsw i64 %indvars.iv.epil.2, %0
@@ -828,10 +960,14 @@ for.body8.epil.2:                                 ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.2 = add nuw nsw i64 %indvars.iv.epil.2, 1
   %epil.iter.sub.2 = add i32 %epil.iter.2, -1
   %epil.iter.cmp.2.not = icmp eq i32 %epil.iter.sub.2, 0
-  br i1 %epil.iter.cmp.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2, label %for.body8.epil.2, !llvm.loop !10
+  br i1 %epil.iter.cmp.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.loopexit, label %for.body8.epil.2, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.2:          ; preds = %for.body8.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2
-  %add.lcssa.2 = phi float [ %add.lcssa.ph.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2 ], [ %add.epil.2, %for.body8.epil.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.2.loopexit: ; preds = %for.body8.epil.2
+  %add.epil.2.lcssa = phi float [ %add.epil.2, %for.body8.epil.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.2
+
+for.cond5.for.cond.cleanup7_crit_edge.2:          ; preds = %for.cond5.for.cond.cleanup7_crit_edge.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2
+  %add.lcssa.2 = phi float [ %add.lcssa.ph.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2 ], [ %add.epil.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.2.loopexit ]
   store float %add.lcssa.2, float* %arrayidx18.2, align 4, !tbaa !3
   %indvars.iv.next56.2 = or i64 %indvars.iv55, 3
   %arrayidx18.3 = getelementptr inbounds float, float* %arrayidx16, i64 %indvars.iv.next56.2
@@ -886,19 +1022,27 @@ for.body8.3:                                      ; preds = %for.body8.3, %for.b
   %indvars.iv.next.3.3 = add nuw nsw i64 %indvars.iv.3, 4
   %niter.nsub.3.3 = add i32 %niter.3, -4
   %niter.ncmp.3.3.not = icmp eq i32 %niter.nsub.3.3, 0
-  br i1 %niter.ncmp.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3, label %for.body8.3, !llvm.loop !7
+  br i1 %niter.ncmp.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.loopexit, label %for.body8.3, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3: ; preds = %for.body8.3, %for.cond5.for.cond.cleanup7_crit_edge.2
-  %add.lcssa.ph.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2 ], [ %add.3.3, %for.body8.3 ]
-  %indvars.iv.unr.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2 ], [ %indvars.iv.next.3.3, %for.body8.3 ]
-  %add53.unr.3 = phi float [ %arrayidx18.promoted.3, %for.cond5.for.cond.cleanup7_crit_edge.2 ], [ %add.3.3, %for.body8.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.loopexit: ; preds = %for.body8.3
+  %add.3.3.lcssa = phi float [ %add.3.3, %for.body8.3 ]
+  %indvars.iv.next.3.3.lcssa = phi i64 [ %indvars.iv.next.3.3, %for.body8.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.2
+  %add.lcssa.ph.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2 ], [ %add.3.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.loopexit ]
+  %indvars.iv.unr.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2 ], [ %indvars.iv.next.3.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.loopexit ]
+  %add53.unr.3 = phi float [ %arrayidx18.promoted.3, %for.cond5.for.cond.cleanup7_crit_edge.2 ], [ %add.3.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.loopexit ]
   %lcmp.mod.3.not = icmp eq i32 %xtraiter.3, 0
-  br i1 %lcmp.mod.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3, label %for.body8.epil.3
+  br i1 %lcmp.mod.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3, label %for.body8.epil.3.preheader
 
-for.body8.epil.3:                                 ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3, %for.body8.epil.3
-  %indvars.iv.epil.3 = phi i64 [ %indvars.iv.next.epil.3, %for.body8.epil.3 ], [ %indvars.iv.unr.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3 ]
-  %add53.epil.3 = phi float [ %add.epil.3, %for.body8.epil.3 ], [ %add53.unr.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3 ]
-  %epil.iter.3 = phi i32 [ %epil.iter.sub.3, %for.body8.epil.3 ], [ %xtraiter.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3 ]
+for.body8.epil.3.preheader:                       ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3
+  br label %for.body8.epil.3
+
+for.body8.epil.3:                                 ; preds = %for.body8.epil.3.preheader, %for.body8.epil.3
+  %indvars.iv.epil.3 = phi i64 [ %indvars.iv.next.epil.3, %for.body8.epil.3 ], [ %indvars.iv.unr.3, %for.body8.epil.3.preheader ]
+  %add53.epil.3 = phi float [ %add.epil.3, %for.body8.epil.3 ], [ %add53.unr.3, %for.body8.epil.3.preheader ]
+  %epil.iter.3 = phi i32 [ %epil.iter.sub.3, %for.body8.epil.3 ], [ %xtraiter.3, %for.body8.epil.3.preheader ]
   %arrayidx10.epil.3 = getelementptr inbounds float, float* %arrayidx, i64 %indvars.iv.epil.3
   %164 = load float, float* %arrayidx10.epil.3, align 4, !tbaa !3
   %165 = mul nuw nsw i64 %indvars.iv.epil.3, %0
@@ -910,17 +1054,24 @@ for.body8.epil.3:                                 ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.3 = add nuw nsw i64 %indvars.iv.epil.3, 1
   %epil.iter.sub.3 = add i32 %epil.iter.3, -1
   %epil.iter.cmp.3.not = icmp eq i32 %epil.iter.sub.3, 0
-  br i1 %epil.iter.cmp.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3, label %for.body8.epil.3, !llvm.loop !10
+  br i1 %epil.iter.cmp.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.loopexit, label %for.body8.epil.3, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.3:          ; preds = %for.body8.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3
-  %add.lcssa.3 = phi float [ %add.lcssa.ph.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3 ], [ %add.epil.3, %for.body8.epil.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.3.loopexit: ; preds = %for.body8.epil.3
+  %add.epil.3.lcssa = phi float [ %add.epil.3, %for.body8.epil.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.3
+
+for.cond5.for.cond.cleanup7_crit_edge.3:          ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3
+  %add.lcssa.3 = phi float [ %add.lcssa.ph.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3 ], [ %add.epil.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.3.loopexit ]
   store float %add.lcssa.3, float* %arrayidx18.3, align 4, !tbaa !3
   %indvars.iv.next56.3 = add nuw nsw i64 %indvars.iv55, 4
   %niter72.nsub.3 = add i32 %niter72, -4
   %niter72.ncmp.3.not = icmp eq i32 %niter72.nsub.3, 0
-  br i1 %niter72.ncmp.3.not, label %for.cond.cleanup3.loopexit.unr-lcssa, label %for.cond5.preheader, !llvm.loop !11
+  br i1 %niter72.ncmp.3.not, label %for.cond.cleanup3.loopexit.unr-lcssa.loopexit, label %for.cond5.preheader, !llvm.loop !11
 
-for.cond5.preheader.lr.ph.1:                      ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil, %for.cond.cleanup3.loopexit.unr-lcssa
+for.cond5.preheader.lr.ph.1.loopexit:             ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil
+  br label %for.cond5.preheader.lr.ph.1
+
+for.cond5.preheader.lr.ph.1:                      ; preds = %for.cond5.preheader.lr.ph.1.loopexit, %for.cond.cleanup3.loopexit.unr-lcssa
   %indvars.iv.next95 = or i64 %indvars.iv94, 1
   %167 = mul nuw nsw i64 %indvars.iv.next95, %0
   %arrayidx.1 = getelementptr inbounds float, float* %a, i64 %167
@@ -988,19 +1139,27 @@ for.body8.1211:                                   ; preds = %for.body8.1211, %fo
   %indvars.iv.next.3.1208 = add nuw nsw i64 %indvars.iv.1179, 4
   %niter.nsub.3.1209 = add i32 %niter.1181, -4
   %niter.ncmp.3.1210.not = icmp eq i32 %niter.nsub.3.1209, 0
-  br i1 %niter.ncmp.3.1210.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220, label %for.body8.1211, !llvm.loop !7
+  br i1 %niter.ncmp.3.1210.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220.loopexit, label %for.body8.1211, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220: ; preds = %for.body8.1211, %for.cond5.preheader.1
-  %add.lcssa.ph.1216 = phi float [ undef, %for.cond5.preheader.1 ], [ %add.3.1207, %for.body8.1211 ]
-  %indvars.iv.unr.1217 = phi i64 [ 0, %for.cond5.preheader.1 ], [ %indvars.iv.next.3.1208, %for.body8.1211 ]
-  %add53.unr.1218 = phi float [ %arrayidx18.promoted.1173, %for.cond5.preheader.1 ], [ %add.3.1207, %for.body8.1211 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220.loopexit: ; preds = %for.body8.1211
+  %add.3.1207.lcssa = phi float [ %add.3.1207, %for.body8.1211 ]
+  %indvars.iv.next.3.1208.lcssa = phi i64 [ %indvars.iv.next.3.1208, %for.body8.1211 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220.loopexit, %for.cond5.preheader.1
+  %add.lcssa.ph.1216 = phi float [ undef, %for.cond5.preheader.1 ], [ %add.3.1207.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220.loopexit ]
+  %indvars.iv.unr.1217 = phi i64 [ 0, %for.cond5.preheader.1 ], [ %indvars.iv.next.3.1208.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220.loopexit ]
+  %add53.unr.1218 = phi float [ %arrayidx18.promoted.1173, %for.cond5.preheader.1 ], [ %add.3.1207.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220.loopexit ]
   %lcmp.mod.1219.not = icmp eq i32 %xtraiter.1175, 0
-  br i1 %lcmp.mod.1219.not, label %for.cond5.for.cond.cleanup7_crit_edge.1237, label %for.body8.epil.1233
+  br i1 %lcmp.mod.1219.not, label %for.cond5.for.cond.cleanup7_crit_edge.1237, label %for.body8.epil.1233.preheader
 
-for.body8.epil.1233:                              ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220, %for.body8.epil.1233
-  %indvars.iv.epil.1222 = phi i64 [ %indvars.iv.next.epil.1230, %for.body8.epil.1233 ], [ %indvars.iv.unr.1217, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220 ]
-  %add53.epil.1223 = phi float [ %add.epil.1229, %for.body8.epil.1233 ], [ %add53.unr.1218, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220 ]
-  %epil.iter.1224 = phi i32 [ %epil.iter.sub.1231, %for.body8.epil.1233 ], [ %xtraiter.1175, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220 ]
+for.body8.epil.1233.preheader:                    ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220
+  br label %for.body8.epil.1233
+
+for.body8.epil.1233:                              ; preds = %for.body8.epil.1233.preheader, %for.body8.epil.1233
+  %indvars.iv.epil.1222 = phi i64 [ %indvars.iv.next.epil.1230, %for.body8.epil.1233 ], [ %indvars.iv.unr.1217, %for.body8.epil.1233.preheader ]
+  %add53.epil.1223 = phi float [ %add.epil.1229, %for.body8.epil.1233 ], [ %add53.unr.1218, %for.body8.epil.1233.preheader ]
+  %epil.iter.1224 = phi i32 [ %epil.iter.sub.1231, %for.body8.epil.1233 ], [ %xtraiter.1175, %for.body8.epil.1233.preheader ]
   %arrayidx10.epil.1225 = getelementptr inbounds float, float* %arrayidx.1, i64 %indvars.iv.epil.1222
   %182 = load float, float* %arrayidx10.epil.1225, align 4, !tbaa !3
   %183 = mul nuw nsw i64 %indvars.iv.epil.1222, %0
@@ -1012,10 +1171,14 @@ for.body8.epil.1233:                              ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.1230 = add nuw nsw i64 %indvars.iv.epil.1222, 1
   %epil.iter.sub.1231 = add i32 %epil.iter.1224, -1
   %epil.iter.cmp.1232.not = icmp eq i32 %epil.iter.sub.1231, 0
-  br i1 %epil.iter.cmp.1232.not, label %for.cond5.for.cond.cleanup7_crit_edge.1237, label %for.body8.epil.1233, !llvm.loop !10
+  br i1 %epil.iter.cmp.1232.not, label %for.cond5.for.cond.cleanup7_crit_edge.1237.loopexit, label %for.body8.epil.1233, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.1237:       ; preds = %for.body8.epil.1233, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220
-  %add.lcssa.1236 = phi float [ %add.lcssa.ph.1216, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220 ], [ %add.epil.1229, %for.body8.epil.1233 ]
+for.cond5.for.cond.cleanup7_crit_edge.1237.loopexit: ; preds = %for.body8.epil.1233
+  %add.epil.1229.lcssa = phi float [ %add.epil.1229, %for.body8.epil.1233 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.1237
+
+for.cond5.for.cond.cleanup7_crit_edge.1237:       ; preds = %for.cond5.for.cond.cleanup7_crit_edge.1237.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220
+  %add.lcssa.1236 = phi float [ %add.lcssa.ph.1216, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1220 ], [ %add.epil.1229.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.1237.loopexit ]
   store float %add.lcssa.1236, float* %arrayidx18.1172, align 4, !tbaa !3
   %indvars.iv.next56.1238 = or i64 %indvars.iv55.1, 1
   %arrayidx18.1.1 = getelementptr inbounds float, float* %arrayidx16.1, i64 %indvars.iv.next56.1238
@@ -1070,19 +1233,27 @@ for.body8.1.1:                                    ; preds = %for.body8.1.1, %for
   %indvars.iv.next.3.1.1 = add nuw nsw i64 %indvars.iv.1.1, 4
   %niter.nsub.3.1.1 = add i32 %niter.1.1, -4
   %niter.ncmp.3.1.1.not = icmp eq i32 %niter.nsub.3.1.1, 0
-  br i1 %niter.ncmp.3.1.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1, label %for.body8.1.1, !llvm.loop !7
+  br i1 %niter.ncmp.3.1.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1.loopexit, label %for.body8.1.1, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1: ; preds = %for.body8.1.1, %for.cond5.for.cond.cleanup7_crit_edge.1237
-  %add.lcssa.ph.1.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1237 ], [ %add.3.1.1, %for.body8.1.1 ]
-  %indvars.iv.unr.1.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1237 ], [ %indvars.iv.next.3.1.1, %for.body8.1.1 ]
-  %add53.unr.1.1 = phi float [ %arrayidx18.promoted.1.1, %for.cond5.for.cond.cleanup7_crit_edge.1237 ], [ %add.3.1.1, %for.body8.1.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1.loopexit: ; preds = %for.body8.1.1
+  %add.3.1.1.lcssa = phi float [ %add.3.1.1, %for.body8.1.1 ]
+  %indvars.iv.next.3.1.1.lcssa = phi i64 [ %indvars.iv.next.3.1.1, %for.body8.1.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.1237
+  %add.lcssa.ph.1.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1237 ], [ %add.3.1.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1.loopexit ]
+  %indvars.iv.unr.1.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1237 ], [ %indvars.iv.next.3.1.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1.loopexit ]
+  %add53.unr.1.1 = phi float [ %arrayidx18.promoted.1.1, %for.cond5.for.cond.cleanup7_crit_edge.1237 ], [ %add.3.1.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1.loopexit ]
   %lcmp.mod.1.1.not = icmp eq i32 %xtraiter.1.1, 0
-  br i1 %lcmp.mod.1.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.1, label %for.body8.epil.1.1
+  br i1 %lcmp.mod.1.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.1, label %for.body8.epil.1.1.preheader
 
-for.body8.epil.1.1:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1, %for.body8.epil.1.1
-  %indvars.iv.epil.1.1 = phi i64 [ %indvars.iv.next.epil.1.1, %for.body8.epil.1.1 ], [ %indvars.iv.unr.1.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1 ]
-  %add53.epil.1.1 = phi float [ %add.epil.1.1, %for.body8.epil.1.1 ], [ %add53.unr.1.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1 ]
-  %epil.iter.1.1 = phi i32 [ %epil.iter.sub.1.1, %for.body8.epil.1.1 ], [ %xtraiter.1.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1 ]
+for.body8.epil.1.1.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1
+  br label %for.body8.epil.1.1
+
+for.body8.epil.1.1:                               ; preds = %for.body8.epil.1.1.preheader, %for.body8.epil.1.1
+  %indvars.iv.epil.1.1 = phi i64 [ %indvars.iv.next.epil.1.1, %for.body8.epil.1.1 ], [ %indvars.iv.unr.1.1, %for.body8.epil.1.1.preheader ]
+  %add53.epil.1.1 = phi float [ %add.epil.1.1, %for.body8.epil.1.1 ], [ %add53.unr.1.1, %for.body8.epil.1.1.preheader ]
+  %epil.iter.1.1 = phi i32 [ %epil.iter.sub.1.1, %for.body8.epil.1.1 ], [ %xtraiter.1.1, %for.body8.epil.1.1.preheader ]
   %arrayidx10.epil.1.1 = getelementptr inbounds float, float* %arrayidx.1, i64 %indvars.iv.epil.1.1
   %198 = load float, float* %arrayidx10.epil.1.1, align 4, !tbaa !3
   %199 = mul nuw nsw i64 %indvars.iv.epil.1.1, %0
@@ -1094,10 +1265,14 @@ for.body8.epil.1.1:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.1.1 = add nuw nsw i64 %indvars.iv.epil.1.1, 1
   %epil.iter.sub.1.1 = add i32 %epil.iter.1.1, -1
   %epil.iter.cmp.1.1.not = icmp eq i32 %epil.iter.sub.1.1, 0
-  br i1 %epil.iter.cmp.1.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.1, label %for.body8.epil.1.1, !llvm.loop !10
+  br i1 %epil.iter.cmp.1.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.1.loopexit, label %for.body8.epil.1.1, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.1.1:        ; preds = %for.body8.epil.1.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1
-  %add.lcssa.1.1 = phi float [ %add.lcssa.ph.1.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1 ], [ %add.epil.1.1, %for.body8.epil.1.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.1.1.loopexit: ; preds = %for.body8.epil.1.1
+  %add.epil.1.1.lcssa = phi float [ %add.epil.1.1, %for.body8.epil.1.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.1.1
+
+for.cond5.for.cond.cleanup7_crit_edge.1.1:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.1.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1
+  %add.lcssa.1.1 = phi float [ %add.lcssa.ph.1.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.1 ], [ %add.epil.1.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.1.1.loopexit ]
   store float %add.lcssa.1.1, float* %arrayidx18.1.1, align 4, !tbaa !3
   %indvars.iv.next56.1.1 = or i64 %indvars.iv55.1, 2
   %arrayidx18.2.1 = getelementptr inbounds float, float* %arrayidx16.1, i64 %indvars.iv.next56.1.1
@@ -1152,19 +1327,27 @@ for.body8.2.1:                                    ; preds = %for.body8.2.1, %for
   %indvars.iv.next.3.2.1 = add nuw nsw i64 %indvars.iv.2.1, 4
   %niter.nsub.3.2.1 = add i32 %niter.2.1, -4
   %niter.ncmp.3.2.1.not = icmp eq i32 %niter.nsub.3.2.1, 0
-  br i1 %niter.ncmp.3.2.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1, label %for.body8.2.1, !llvm.loop !7
+  br i1 %niter.ncmp.3.2.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1.loopexit, label %for.body8.2.1, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1: ; preds = %for.body8.2.1, %for.cond5.for.cond.cleanup7_crit_edge.1.1
-  %add.lcssa.ph.2.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.1 ], [ %add.3.2.1, %for.body8.2.1 ]
-  %indvars.iv.unr.2.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.1 ], [ %indvars.iv.next.3.2.1, %for.body8.2.1 ]
-  %add53.unr.2.1 = phi float [ %arrayidx18.promoted.2.1, %for.cond5.for.cond.cleanup7_crit_edge.1.1 ], [ %add.3.2.1, %for.body8.2.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1.loopexit: ; preds = %for.body8.2.1
+  %add.3.2.1.lcssa = phi float [ %add.3.2.1, %for.body8.2.1 ]
+  %indvars.iv.next.3.2.1.lcssa = phi i64 [ %indvars.iv.next.3.2.1, %for.body8.2.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.1.1
+  %add.lcssa.ph.2.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.1 ], [ %add.3.2.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1.loopexit ]
+  %indvars.iv.unr.2.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.1 ], [ %indvars.iv.next.3.2.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1.loopexit ]
+  %add53.unr.2.1 = phi float [ %arrayidx18.promoted.2.1, %for.cond5.for.cond.cleanup7_crit_edge.1.1 ], [ %add.3.2.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1.loopexit ]
   %lcmp.mod.2.1.not = icmp eq i32 %xtraiter.2.1, 0
-  br i1 %lcmp.mod.2.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.1, label %for.body8.epil.2.1
+  br i1 %lcmp.mod.2.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.1, label %for.body8.epil.2.1.preheader
 
-for.body8.epil.2.1:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1, %for.body8.epil.2.1
-  %indvars.iv.epil.2.1 = phi i64 [ %indvars.iv.next.epil.2.1, %for.body8.epil.2.1 ], [ %indvars.iv.unr.2.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1 ]
-  %add53.epil.2.1 = phi float [ %add.epil.2.1, %for.body8.epil.2.1 ], [ %add53.unr.2.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1 ]
-  %epil.iter.2.1 = phi i32 [ %epil.iter.sub.2.1, %for.body8.epil.2.1 ], [ %xtraiter.2.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1 ]
+for.body8.epil.2.1.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1
+  br label %for.body8.epil.2.1
+
+for.body8.epil.2.1:                               ; preds = %for.body8.epil.2.1.preheader, %for.body8.epil.2.1
+  %indvars.iv.epil.2.1 = phi i64 [ %indvars.iv.next.epil.2.1, %for.body8.epil.2.1 ], [ %indvars.iv.unr.2.1, %for.body8.epil.2.1.preheader ]
+  %add53.epil.2.1 = phi float [ %add.epil.2.1, %for.body8.epil.2.1 ], [ %add53.unr.2.1, %for.body8.epil.2.1.preheader ]
+  %epil.iter.2.1 = phi i32 [ %epil.iter.sub.2.1, %for.body8.epil.2.1 ], [ %xtraiter.2.1, %for.body8.epil.2.1.preheader ]
   %arrayidx10.epil.2.1 = getelementptr inbounds float, float* %arrayidx.1, i64 %indvars.iv.epil.2.1
   %214 = load float, float* %arrayidx10.epil.2.1, align 4, !tbaa !3
   %215 = mul nuw nsw i64 %indvars.iv.epil.2.1, %0
@@ -1176,10 +1359,14 @@ for.body8.epil.2.1:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.2.1 = add nuw nsw i64 %indvars.iv.epil.2.1, 1
   %epil.iter.sub.2.1 = add i32 %epil.iter.2.1, -1
   %epil.iter.cmp.2.1.not = icmp eq i32 %epil.iter.sub.2.1, 0
-  br i1 %epil.iter.cmp.2.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.1, label %for.body8.epil.2.1, !llvm.loop !10
+  br i1 %epil.iter.cmp.2.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.1.loopexit, label %for.body8.epil.2.1, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.2.1:        ; preds = %for.body8.epil.2.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1
-  %add.lcssa.2.1 = phi float [ %add.lcssa.ph.2.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1 ], [ %add.epil.2.1, %for.body8.epil.2.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.2.1.loopexit: ; preds = %for.body8.epil.2.1
+  %add.epil.2.1.lcssa = phi float [ %add.epil.2.1, %for.body8.epil.2.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.2.1
+
+for.cond5.for.cond.cleanup7_crit_edge.2.1:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.2.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1
+  %add.lcssa.2.1 = phi float [ %add.lcssa.ph.2.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.1 ], [ %add.epil.2.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.2.1.loopexit ]
   store float %add.lcssa.2.1, float* %arrayidx18.2.1, align 4, !tbaa !3
   %indvars.iv.next56.2.1 = or i64 %indvars.iv55.1, 3
   %arrayidx18.3.1 = getelementptr inbounds float, float* %arrayidx16.1, i64 %indvars.iv.next56.2.1
@@ -1234,19 +1421,27 @@ for.body8.3.1:                                    ; preds = %for.body8.3.1, %for
   %indvars.iv.next.3.3.1 = add nuw nsw i64 %indvars.iv.3.1, 4
   %niter.nsub.3.3.1 = add i32 %niter.3.1, -4
   %niter.ncmp.3.3.1.not = icmp eq i32 %niter.nsub.3.3.1, 0
-  br i1 %niter.ncmp.3.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1, label %for.body8.3.1, !llvm.loop !7
+  br i1 %niter.ncmp.3.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1.loopexit, label %for.body8.3.1, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1: ; preds = %for.body8.3.1, %for.cond5.for.cond.cleanup7_crit_edge.2.1
-  %add.lcssa.ph.3.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.1 ], [ %add.3.3.1, %for.body8.3.1 ]
-  %indvars.iv.unr.3.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.1 ], [ %indvars.iv.next.3.3.1, %for.body8.3.1 ]
-  %add53.unr.3.1 = phi float [ %arrayidx18.promoted.3.1, %for.cond5.for.cond.cleanup7_crit_edge.2.1 ], [ %add.3.3.1, %for.body8.3.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1.loopexit: ; preds = %for.body8.3.1
+  %add.3.3.1.lcssa = phi float [ %add.3.3.1, %for.body8.3.1 ]
+  %indvars.iv.next.3.3.1.lcssa = phi i64 [ %indvars.iv.next.3.3.1, %for.body8.3.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.2.1
+  %add.lcssa.ph.3.1 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.1 ], [ %add.3.3.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1.loopexit ]
+  %indvars.iv.unr.3.1 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.1 ], [ %indvars.iv.next.3.3.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1.loopexit ]
+  %add53.unr.3.1 = phi float [ %arrayidx18.promoted.3.1, %for.cond5.for.cond.cleanup7_crit_edge.2.1 ], [ %add.3.3.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1.loopexit ]
   %lcmp.mod.3.1.not = icmp eq i32 %xtraiter.3.1, 0
-  br i1 %lcmp.mod.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.1, label %for.body8.epil.3.1
+  br i1 %lcmp.mod.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.1, label %for.body8.epil.3.1.preheader
 
-for.body8.epil.3.1:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1, %for.body8.epil.3.1
-  %indvars.iv.epil.3.1 = phi i64 [ %indvars.iv.next.epil.3.1, %for.body8.epil.3.1 ], [ %indvars.iv.unr.3.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1 ]
-  %add53.epil.3.1 = phi float [ %add.epil.3.1, %for.body8.epil.3.1 ], [ %add53.unr.3.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1 ]
-  %epil.iter.3.1 = phi i32 [ %epil.iter.sub.3.1, %for.body8.epil.3.1 ], [ %xtraiter.3.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1 ]
+for.body8.epil.3.1.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1
+  br label %for.body8.epil.3.1
+
+for.body8.epil.3.1:                               ; preds = %for.body8.epil.3.1.preheader, %for.body8.epil.3.1
+  %indvars.iv.epil.3.1 = phi i64 [ %indvars.iv.next.epil.3.1, %for.body8.epil.3.1 ], [ %indvars.iv.unr.3.1, %for.body8.epil.3.1.preheader ]
+  %add53.epil.3.1 = phi float [ %add.epil.3.1, %for.body8.epil.3.1 ], [ %add53.unr.3.1, %for.body8.epil.3.1.preheader ]
+  %epil.iter.3.1 = phi i32 [ %epil.iter.sub.3.1, %for.body8.epil.3.1 ], [ %xtraiter.3.1, %for.body8.epil.3.1.preheader ]
   %arrayidx10.epil.3.1 = getelementptr inbounds float, float* %arrayidx.1, i64 %indvars.iv.epil.3.1
   %230 = load float, float* %arrayidx10.epil.3.1, align 4, !tbaa !3
   %231 = mul nuw nsw i64 %indvars.iv.epil.3.1, %0
@@ -1258,24 +1453,35 @@ for.body8.epil.3.1:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.3.1 = add nuw nsw i64 %indvars.iv.epil.3.1, 1
   %epil.iter.sub.3.1 = add i32 %epil.iter.3.1, -1
   %epil.iter.cmp.3.1.not = icmp eq i32 %epil.iter.sub.3.1, 0
-  br i1 %epil.iter.cmp.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.1, label %for.body8.epil.3.1, !llvm.loop !10
+  br i1 %epil.iter.cmp.3.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.1.loopexit, label %for.body8.epil.3.1, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.3.1:        ; preds = %for.body8.epil.3.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1
-  %add.lcssa.3.1 = phi float [ %add.lcssa.ph.3.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1 ], [ %add.epil.3.1, %for.body8.epil.3.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.3.1.loopexit: ; preds = %for.body8.epil.3.1
+  %add.epil.3.1.lcssa = phi float [ %add.epil.3.1, %for.body8.epil.3.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.3.1
+
+for.cond5.for.cond.cleanup7_crit_edge.3.1:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1
+  %add.lcssa.3.1 = phi float [ %add.lcssa.ph.3.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.1 ], [ %add.epil.3.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.3.1.loopexit ]
   store float %add.lcssa.3.1, float* %arrayidx18.3.1, align 4, !tbaa !3
   %indvars.iv.next56.3.1 = add nuw nsw i64 %indvars.iv55.1, 4
   %niter72.nsub.3.1 = add i32 %niter72.1, -4
   %niter72.ncmp.3.1.not = icmp eq i32 %niter72.nsub.3.1, 0
-  br i1 %niter72.ncmp.3.1.not, label %for.cond.cleanup3.loopexit.unr-lcssa.1, label %for.cond5.preheader.1, !llvm.loop !11
+  br i1 %niter72.ncmp.3.1.not, label %for.cond.cleanup3.loopexit.unr-lcssa.1.loopexit, label %for.cond5.preheader.1, !llvm.loop !11
 
-for.cond.cleanup3.loopexit.unr-lcssa.1:           ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.1, %for.cond5.preheader.lr.ph.1
-  %indvars.iv55.unr.1 = phi i64 [ 0, %for.cond5.preheader.lr.ph.1 ], [ %indvars.iv.next56.3.1, %for.cond5.for.cond.cleanup7_crit_edge.3.1 ]
+for.cond.cleanup3.loopexit.unr-lcssa.1.loopexit:  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.1
+  %indvars.iv.next56.3.1.lcssa = phi i64 [ %indvars.iv.next56.3.1, %for.cond5.for.cond.cleanup7_crit_edge.3.1 ]
+  br label %for.cond.cleanup3.loopexit.unr-lcssa.1
+
+for.cond.cleanup3.loopexit.unr-lcssa.1:           ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.1.loopexit, %for.cond5.preheader.lr.ph.1
+  %indvars.iv55.unr.1 = phi i64 [ 0, %for.cond5.preheader.lr.ph.1 ], [ %indvars.iv.next56.3.1.lcssa, %for.cond.cleanup3.loopexit.unr-lcssa.1.loopexit ]
   %lcmp.mod70.1.not = icmp eq i32 %xtraiter58.1, 0
-  br i1 %lcmp.mod70.1.not, label %for.cond5.preheader.lr.ph.2, label %for.cond5.preheader.epil.1
+  br i1 %lcmp.mod70.1.not, label %for.cond5.preheader.lr.ph.2, label %for.cond5.preheader.epil.1.preheader
 
-for.cond5.preheader.epil.1:                       ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.1, %for.cond5.for.cond.cleanup7_crit_edge.epil.1
-  %indvars.iv55.epil.1 = phi i64 [ %indvars.iv.next56.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.epil.1 ], [ %indvars.iv55.unr.1, %for.cond.cleanup3.loopexit.unr-lcssa.1 ]
-  %epil.iter69.1 = phi i32 [ %epil.iter69.sub.1, %for.cond5.for.cond.cleanup7_crit_edge.epil.1 ], [ %xtraiter58.1, %for.cond.cleanup3.loopexit.unr-lcssa.1 ]
+for.cond5.preheader.epil.1.preheader:             ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.1
+  br label %for.cond5.preheader.epil.1
+
+for.cond5.preheader.epil.1:                       ; preds = %for.cond5.preheader.epil.1.preheader, %for.cond5.for.cond.cleanup7_crit_edge.epil.1
+  %indvars.iv55.epil.1 = phi i64 [ %indvars.iv.next56.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.epil.1 ], [ %indvars.iv55.unr.1, %for.cond5.preheader.epil.1.preheader ]
+  %epil.iter69.1 = phi i32 [ %epil.iter69.sub.1, %for.cond5.for.cond.cleanup7_crit_edge.epil.1 ], [ %xtraiter58.1, %for.cond5.preheader.epil.1.preheader ]
   %arrayidx18.epil.1 = getelementptr inbounds float, float* %arrayidx16.1, i64 %indvars.iv55.epil.1
   %arrayidx18.promoted.epil.1 = load float, float* %arrayidx18.epil.1, align 4, !tbaa !3
   %xtraiter.epil.1 = and i32 %n, 3
@@ -1328,19 +1534,27 @@ for.body8.epil59.1:                               ; preds = %for.body8.epil59.1,
   %indvars.iv.next.3.epil.1 = add nuw nsw i64 %indvars.iv.epil60.1, 4
   %niter.nsub.3.epil.1 = add i32 %niter.epil.1, -4
   %niter.ncmp.3.epil.1.not = icmp eq i32 %niter.nsub.3.epil.1, 0
-  br i1 %niter.ncmp.3.epil.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1, label %for.body8.epil59.1, !llvm.loop !7
+  br i1 %niter.ncmp.3.epil.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1.loopexit, label %for.body8.epil59.1, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1: ; preds = %for.body8.epil59.1, %for.cond5.preheader.epil.1
-  %add.lcssa.ph.epil.1 = phi float [ undef, %for.cond5.preheader.epil.1 ], [ %add.3.epil.1, %for.body8.epil59.1 ]
-  %indvars.iv.unr.epil.1 = phi i64 [ 0, %for.cond5.preheader.epil.1 ], [ %indvars.iv.next.3.epil.1, %for.body8.epil59.1 ]
-  %add53.unr.epil.1 = phi float [ %arrayidx18.promoted.epil.1, %for.cond5.preheader.epil.1 ], [ %add.3.epil.1, %for.body8.epil59.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1.loopexit: ; preds = %for.body8.epil59.1
+  %add.3.epil.1.lcssa = phi float [ %add.3.epil.1, %for.body8.epil59.1 ]
+  %indvars.iv.next.3.epil.1.lcssa = phi i64 [ %indvars.iv.next.3.epil.1, %for.body8.epil59.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1.loopexit, %for.cond5.preheader.epil.1
+  %add.lcssa.ph.epil.1 = phi float [ undef, %for.cond5.preheader.epil.1 ], [ %add.3.epil.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1.loopexit ]
+  %indvars.iv.unr.epil.1 = phi i64 [ 0, %for.cond5.preheader.epil.1 ], [ %indvars.iv.next.3.epil.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1.loopexit ]
+  %add53.unr.epil.1 = phi float [ %arrayidx18.promoted.epil.1, %for.cond5.preheader.epil.1 ], [ %add.3.epil.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1.loopexit ]
   %lcmp.mod.epil.1.not = icmp eq i32 %xtraiter.epil.1, 0
-  br i1 %lcmp.mod.epil.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.1, label %for.body8.epil.epil.1
+  br i1 %lcmp.mod.epil.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.1, label %for.body8.epil.epil.1.preheader
 
-for.body8.epil.epil.1:                            ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1, %for.body8.epil.epil.1
-  %indvars.iv.epil.epil.1 = phi i64 [ %indvars.iv.next.epil.epil.1, %for.body8.epil.epil.1 ], [ %indvars.iv.unr.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1 ]
-  %add53.epil.epil.1 = phi float [ %add.epil.epil.1, %for.body8.epil.epil.1 ], [ %add53.unr.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1 ]
-  %epil.iter.epil.1 = phi i32 [ %epil.iter.sub.epil.1, %for.body8.epil.epil.1 ], [ %xtraiter.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1 ]
+for.body8.epil.epil.1.preheader:                  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1
+  br label %for.body8.epil.epil.1
+
+for.body8.epil.epil.1:                            ; preds = %for.body8.epil.epil.1.preheader, %for.body8.epil.epil.1
+  %indvars.iv.epil.epil.1 = phi i64 [ %indvars.iv.next.epil.epil.1, %for.body8.epil.epil.1 ], [ %indvars.iv.unr.epil.1, %for.body8.epil.epil.1.preheader ]
+  %add53.epil.epil.1 = phi float [ %add.epil.epil.1, %for.body8.epil.epil.1 ], [ %add53.unr.epil.1, %for.body8.epil.epil.1.preheader ]
+  %epil.iter.epil.1 = phi i32 [ %epil.iter.sub.epil.1, %for.body8.epil.epil.1 ], [ %xtraiter.epil.1, %for.body8.epil.epil.1.preheader ]
   %arrayidx10.epil.epil.1 = getelementptr inbounds float, float* %arrayidx.1, i64 %indvars.iv.epil.epil.1
   %246 = load float, float* %arrayidx10.epil.epil.1, align 4, !tbaa !3
   %247 = mul nuw nsw i64 %indvars.iv.epil.epil.1, %0
@@ -1352,17 +1566,24 @@ for.body8.epil.epil.1:                            ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.epil.1 = add nuw nsw i64 %indvars.iv.epil.epil.1, 1
   %epil.iter.sub.epil.1 = add i32 %epil.iter.epil.1, -1
   %epil.iter.cmp.epil.1.not = icmp eq i32 %epil.iter.sub.epil.1, 0
-  br i1 %epil.iter.cmp.epil.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.1, label %for.body8.epil.epil.1, !llvm.loop !10
+  br i1 %epil.iter.cmp.epil.1.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.1.loopexit, label %for.body8.epil.epil.1, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.epil.1:     ; preds = %for.body8.epil.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1
-  %add.lcssa.epil.1 = phi float [ %add.lcssa.ph.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1 ], [ %add.epil.epil.1, %for.body8.epil.epil.1 ]
+for.cond5.for.cond.cleanup7_crit_edge.epil.1.loopexit: ; preds = %for.body8.epil.epil.1
+  %add.epil.epil.1.lcssa = phi float [ %add.epil.epil.1, %for.body8.epil.epil.1 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.epil.1
+
+for.cond5.for.cond.cleanup7_crit_edge.epil.1:     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.1.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1
+  %add.lcssa.epil.1 = phi float [ %add.lcssa.ph.epil.1, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.1 ], [ %add.epil.epil.1.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.epil.1.loopexit ]
   store float %add.lcssa.epil.1, float* %arrayidx18.epil.1, align 4, !tbaa !3
   %indvars.iv.next56.epil.1 = add nuw nsw i64 %indvars.iv55.epil.1, 1
   %epil.iter69.sub.1 = add i32 %epil.iter69.1, -1
   %epil.iter69.cmp.1.not = icmp eq i32 %epil.iter69.sub.1, 0
-  br i1 %epil.iter69.cmp.1.not, label %for.cond5.preheader.lr.ph.2, label %for.cond5.preheader.epil.1, !llvm.loop !12
+  br i1 %epil.iter69.cmp.1.not, label %for.cond5.preheader.lr.ph.2.loopexit, label %for.cond5.preheader.epil.1, !llvm.loop !12
 
-for.cond5.preheader.lr.ph.2:                      ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.1, %for.cond.cleanup3.loopexit.unr-lcssa.1
+for.cond5.preheader.lr.ph.2.loopexit:             ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.1
+  br label %for.cond5.preheader.lr.ph.2
+
+for.cond5.preheader.lr.ph.2:                      ; preds = %for.cond5.preheader.lr.ph.2.loopexit, %for.cond.cleanup3.loopexit.unr-lcssa.1
   %indvars.iv.next95.1 = or i64 %indvars.iv94, 2
   %249 = mul nuw nsw i64 %indvars.iv.next95.1, %0
   %arrayidx.2 = getelementptr inbounds float, float* %a, i64 %249
@@ -1430,19 +1651,27 @@ for.body8.2280:                                   ; preds = %for.body8.2280, %fo
   %indvars.iv.next.3.2277 = add nuw nsw i64 %indvars.iv.2248, 4
   %niter.nsub.3.2278 = add i32 %niter.2250, -4
   %niter.ncmp.3.2279.not = icmp eq i32 %niter.nsub.3.2278, 0
-  br i1 %niter.ncmp.3.2279.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289, label %for.body8.2280, !llvm.loop !7
+  br i1 %niter.ncmp.3.2279.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289.loopexit, label %for.body8.2280, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289: ; preds = %for.body8.2280, %for.cond5.preheader.2
-  %add.lcssa.ph.2285 = phi float [ undef, %for.cond5.preheader.2 ], [ %add.3.2276, %for.body8.2280 ]
-  %indvars.iv.unr.2286 = phi i64 [ 0, %for.cond5.preheader.2 ], [ %indvars.iv.next.3.2277, %for.body8.2280 ]
-  %add53.unr.2287 = phi float [ %arrayidx18.promoted.2242, %for.cond5.preheader.2 ], [ %add.3.2276, %for.body8.2280 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289.loopexit: ; preds = %for.body8.2280
+  %add.3.2276.lcssa = phi float [ %add.3.2276, %for.body8.2280 ]
+  %indvars.iv.next.3.2277.lcssa = phi i64 [ %indvars.iv.next.3.2277, %for.body8.2280 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289.loopexit, %for.cond5.preheader.2
+  %add.lcssa.ph.2285 = phi float [ undef, %for.cond5.preheader.2 ], [ %add.3.2276.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289.loopexit ]
+  %indvars.iv.unr.2286 = phi i64 [ 0, %for.cond5.preheader.2 ], [ %indvars.iv.next.3.2277.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289.loopexit ]
+  %add53.unr.2287 = phi float [ %arrayidx18.promoted.2242, %for.cond5.preheader.2 ], [ %add.3.2276.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289.loopexit ]
   %lcmp.mod.2288.not = icmp eq i32 %xtraiter.2244, 0
-  br i1 %lcmp.mod.2288.not, label %for.cond5.for.cond.cleanup7_crit_edge.2306, label %for.body8.epil.2302
+  br i1 %lcmp.mod.2288.not, label %for.cond5.for.cond.cleanup7_crit_edge.2306, label %for.body8.epil.2302.preheader
 
-for.body8.epil.2302:                              ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289, %for.body8.epil.2302
-  %indvars.iv.epil.2291 = phi i64 [ %indvars.iv.next.epil.2299, %for.body8.epil.2302 ], [ %indvars.iv.unr.2286, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289 ]
-  %add53.epil.2292 = phi float [ %add.epil.2298, %for.body8.epil.2302 ], [ %add53.unr.2287, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289 ]
-  %epil.iter.2293 = phi i32 [ %epil.iter.sub.2300, %for.body8.epil.2302 ], [ %xtraiter.2244, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289 ]
+for.body8.epil.2302.preheader:                    ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289
+  br label %for.body8.epil.2302
+
+for.body8.epil.2302:                              ; preds = %for.body8.epil.2302.preheader, %for.body8.epil.2302
+  %indvars.iv.epil.2291 = phi i64 [ %indvars.iv.next.epil.2299, %for.body8.epil.2302 ], [ %indvars.iv.unr.2286, %for.body8.epil.2302.preheader ]
+  %add53.epil.2292 = phi float [ %add.epil.2298, %for.body8.epil.2302 ], [ %add53.unr.2287, %for.body8.epil.2302.preheader ]
+  %epil.iter.2293 = phi i32 [ %epil.iter.sub.2300, %for.body8.epil.2302 ], [ %xtraiter.2244, %for.body8.epil.2302.preheader ]
   %arrayidx10.epil.2294 = getelementptr inbounds float, float* %arrayidx.2, i64 %indvars.iv.epil.2291
   %264 = load float, float* %arrayidx10.epil.2294, align 4, !tbaa !3
   %265 = mul nuw nsw i64 %indvars.iv.epil.2291, %0
@@ -1454,10 +1683,14 @@ for.body8.epil.2302:                              ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.2299 = add nuw nsw i64 %indvars.iv.epil.2291, 1
   %epil.iter.sub.2300 = add i32 %epil.iter.2293, -1
   %epil.iter.cmp.2301.not = icmp eq i32 %epil.iter.sub.2300, 0
-  br i1 %epil.iter.cmp.2301.not, label %for.cond5.for.cond.cleanup7_crit_edge.2306, label %for.body8.epil.2302, !llvm.loop !10
+  br i1 %epil.iter.cmp.2301.not, label %for.cond5.for.cond.cleanup7_crit_edge.2306.loopexit, label %for.body8.epil.2302, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.2306:       ; preds = %for.body8.epil.2302, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289
-  %add.lcssa.2305 = phi float [ %add.lcssa.ph.2285, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289 ], [ %add.epil.2298, %for.body8.epil.2302 ]
+for.cond5.for.cond.cleanup7_crit_edge.2306.loopexit: ; preds = %for.body8.epil.2302
+  %add.epil.2298.lcssa = phi float [ %add.epil.2298, %for.body8.epil.2302 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.2306
+
+for.cond5.for.cond.cleanup7_crit_edge.2306:       ; preds = %for.cond5.for.cond.cleanup7_crit_edge.2306.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289
+  %add.lcssa.2305 = phi float [ %add.lcssa.ph.2285, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2289 ], [ %add.epil.2298.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.2306.loopexit ]
   store float %add.lcssa.2305, float* %arrayidx18.2241, align 4, !tbaa !3
   %indvars.iv.next56.2307 = or i64 %indvars.iv55.2, 1
   %arrayidx18.1.2 = getelementptr inbounds float, float* %arrayidx16.2, i64 %indvars.iv.next56.2307
@@ -1512,19 +1745,27 @@ for.body8.1.2:                                    ; preds = %for.body8.1.2, %for
   %indvars.iv.next.3.1.2 = add nuw nsw i64 %indvars.iv.1.2, 4
   %niter.nsub.3.1.2 = add i32 %niter.1.2, -4
   %niter.ncmp.3.1.2.not = icmp eq i32 %niter.nsub.3.1.2, 0
-  br i1 %niter.ncmp.3.1.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2, label %for.body8.1.2, !llvm.loop !7
+  br i1 %niter.ncmp.3.1.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2.loopexit, label %for.body8.1.2, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2: ; preds = %for.body8.1.2, %for.cond5.for.cond.cleanup7_crit_edge.2306
-  %add.lcssa.ph.1.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2306 ], [ %add.3.1.2, %for.body8.1.2 ]
-  %indvars.iv.unr.1.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2306 ], [ %indvars.iv.next.3.1.2, %for.body8.1.2 ]
-  %add53.unr.1.2 = phi float [ %arrayidx18.promoted.1.2, %for.cond5.for.cond.cleanup7_crit_edge.2306 ], [ %add.3.1.2, %for.body8.1.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2.loopexit: ; preds = %for.body8.1.2
+  %add.3.1.2.lcssa = phi float [ %add.3.1.2, %for.body8.1.2 ]
+  %indvars.iv.next.3.1.2.lcssa = phi i64 [ %indvars.iv.next.3.1.2, %for.body8.1.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.2306
+  %add.lcssa.ph.1.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2306 ], [ %add.3.1.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2.loopexit ]
+  %indvars.iv.unr.1.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2306 ], [ %indvars.iv.next.3.1.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2.loopexit ]
+  %add53.unr.1.2 = phi float [ %arrayidx18.promoted.1.2, %for.cond5.for.cond.cleanup7_crit_edge.2306 ], [ %add.3.1.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2.loopexit ]
   %lcmp.mod.1.2.not = icmp eq i32 %xtraiter.1.2, 0
-  br i1 %lcmp.mod.1.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.2, label %for.body8.epil.1.2
+  br i1 %lcmp.mod.1.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.2, label %for.body8.epil.1.2.preheader
 
-for.body8.epil.1.2:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2, %for.body8.epil.1.2
-  %indvars.iv.epil.1.2 = phi i64 [ %indvars.iv.next.epil.1.2, %for.body8.epil.1.2 ], [ %indvars.iv.unr.1.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2 ]
-  %add53.epil.1.2 = phi float [ %add.epil.1.2, %for.body8.epil.1.2 ], [ %add53.unr.1.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2 ]
-  %epil.iter.1.2 = phi i32 [ %epil.iter.sub.1.2, %for.body8.epil.1.2 ], [ %xtraiter.1.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2 ]
+for.body8.epil.1.2.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2
+  br label %for.body8.epil.1.2
+
+for.body8.epil.1.2:                               ; preds = %for.body8.epil.1.2.preheader, %for.body8.epil.1.2
+  %indvars.iv.epil.1.2 = phi i64 [ %indvars.iv.next.epil.1.2, %for.body8.epil.1.2 ], [ %indvars.iv.unr.1.2, %for.body8.epil.1.2.preheader ]
+  %add53.epil.1.2 = phi float [ %add.epil.1.2, %for.body8.epil.1.2 ], [ %add53.unr.1.2, %for.body8.epil.1.2.preheader ]
+  %epil.iter.1.2 = phi i32 [ %epil.iter.sub.1.2, %for.body8.epil.1.2 ], [ %xtraiter.1.2, %for.body8.epil.1.2.preheader ]
   %arrayidx10.epil.1.2 = getelementptr inbounds float, float* %arrayidx.2, i64 %indvars.iv.epil.1.2
   %280 = load float, float* %arrayidx10.epil.1.2, align 4, !tbaa !3
   %281 = mul nuw nsw i64 %indvars.iv.epil.1.2, %0
@@ -1536,10 +1777,14 @@ for.body8.epil.1.2:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.1.2 = add nuw nsw i64 %indvars.iv.epil.1.2, 1
   %epil.iter.sub.1.2 = add i32 %epil.iter.1.2, -1
   %epil.iter.cmp.1.2.not = icmp eq i32 %epil.iter.sub.1.2, 0
-  br i1 %epil.iter.cmp.1.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.2, label %for.body8.epil.1.2, !llvm.loop !10
+  br i1 %epil.iter.cmp.1.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.2.loopexit, label %for.body8.epil.1.2, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.1.2:        ; preds = %for.body8.epil.1.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2
-  %add.lcssa.1.2 = phi float [ %add.lcssa.ph.1.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2 ], [ %add.epil.1.2, %for.body8.epil.1.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.1.2.loopexit: ; preds = %for.body8.epil.1.2
+  %add.epil.1.2.lcssa = phi float [ %add.epil.1.2, %for.body8.epil.1.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.1.2
+
+for.cond5.for.cond.cleanup7_crit_edge.1.2:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.1.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2
+  %add.lcssa.1.2 = phi float [ %add.lcssa.ph.1.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.2 ], [ %add.epil.1.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.1.2.loopexit ]
   store float %add.lcssa.1.2, float* %arrayidx18.1.2, align 4, !tbaa !3
   %indvars.iv.next56.1.2 = or i64 %indvars.iv55.2, 2
   %arrayidx18.2.2 = getelementptr inbounds float, float* %arrayidx16.2, i64 %indvars.iv.next56.1.2
@@ -1594,19 +1839,27 @@ for.body8.2.2:                                    ; preds = %for.body8.2.2, %for
   %indvars.iv.next.3.2.2 = add nuw nsw i64 %indvars.iv.2.2, 4
   %niter.nsub.3.2.2 = add i32 %niter.2.2, -4
   %niter.ncmp.3.2.2.not = icmp eq i32 %niter.nsub.3.2.2, 0
-  br i1 %niter.ncmp.3.2.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2, label %for.body8.2.2, !llvm.loop !7
+  br i1 %niter.ncmp.3.2.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2.loopexit, label %for.body8.2.2, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2: ; preds = %for.body8.2.2, %for.cond5.for.cond.cleanup7_crit_edge.1.2
-  %add.lcssa.ph.2.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.2 ], [ %add.3.2.2, %for.body8.2.2 ]
-  %indvars.iv.unr.2.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.2 ], [ %indvars.iv.next.3.2.2, %for.body8.2.2 ]
-  %add53.unr.2.2 = phi float [ %arrayidx18.promoted.2.2, %for.cond5.for.cond.cleanup7_crit_edge.1.2 ], [ %add.3.2.2, %for.body8.2.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2.loopexit: ; preds = %for.body8.2.2
+  %add.3.2.2.lcssa = phi float [ %add.3.2.2, %for.body8.2.2 ]
+  %indvars.iv.next.3.2.2.lcssa = phi i64 [ %indvars.iv.next.3.2.2, %for.body8.2.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.1.2
+  %add.lcssa.ph.2.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.2 ], [ %add.3.2.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2.loopexit ]
+  %indvars.iv.unr.2.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.2 ], [ %indvars.iv.next.3.2.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2.loopexit ]
+  %add53.unr.2.2 = phi float [ %arrayidx18.promoted.2.2, %for.cond5.for.cond.cleanup7_crit_edge.1.2 ], [ %add.3.2.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2.loopexit ]
   %lcmp.mod.2.2.not = icmp eq i32 %xtraiter.2.2, 0
-  br i1 %lcmp.mod.2.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.2, label %for.body8.epil.2.2
+  br i1 %lcmp.mod.2.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.2, label %for.body8.epil.2.2.preheader
 
-for.body8.epil.2.2:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2, %for.body8.epil.2.2
-  %indvars.iv.epil.2.2 = phi i64 [ %indvars.iv.next.epil.2.2, %for.body8.epil.2.2 ], [ %indvars.iv.unr.2.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2 ]
-  %add53.epil.2.2 = phi float [ %add.epil.2.2, %for.body8.epil.2.2 ], [ %add53.unr.2.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2 ]
-  %epil.iter.2.2 = phi i32 [ %epil.iter.sub.2.2, %for.body8.epil.2.2 ], [ %xtraiter.2.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2 ]
+for.body8.epil.2.2.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2
+  br label %for.body8.epil.2.2
+
+for.body8.epil.2.2:                               ; preds = %for.body8.epil.2.2.preheader, %for.body8.epil.2.2
+  %indvars.iv.epil.2.2 = phi i64 [ %indvars.iv.next.epil.2.2, %for.body8.epil.2.2 ], [ %indvars.iv.unr.2.2, %for.body8.epil.2.2.preheader ]
+  %add53.epil.2.2 = phi float [ %add.epil.2.2, %for.body8.epil.2.2 ], [ %add53.unr.2.2, %for.body8.epil.2.2.preheader ]
+  %epil.iter.2.2 = phi i32 [ %epil.iter.sub.2.2, %for.body8.epil.2.2 ], [ %xtraiter.2.2, %for.body8.epil.2.2.preheader ]
   %arrayidx10.epil.2.2 = getelementptr inbounds float, float* %arrayidx.2, i64 %indvars.iv.epil.2.2
   %296 = load float, float* %arrayidx10.epil.2.2, align 4, !tbaa !3
   %297 = mul nuw nsw i64 %indvars.iv.epil.2.2, %0
@@ -1618,10 +1871,14 @@ for.body8.epil.2.2:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.2.2 = add nuw nsw i64 %indvars.iv.epil.2.2, 1
   %epil.iter.sub.2.2 = add i32 %epil.iter.2.2, -1
   %epil.iter.cmp.2.2.not = icmp eq i32 %epil.iter.sub.2.2, 0
-  br i1 %epil.iter.cmp.2.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.2, label %for.body8.epil.2.2, !llvm.loop !10
+  br i1 %epil.iter.cmp.2.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.2.loopexit, label %for.body8.epil.2.2, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.2.2:        ; preds = %for.body8.epil.2.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2
-  %add.lcssa.2.2 = phi float [ %add.lcssa.ph.2.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2 ], [ %add.epil.2.2, %for.body8.epil.2.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.2.2.loopexit: ; preds = %for.body8.epil.2.2
+  %add.epil.2.2.lcssa = phi float [ %add.epil.2.2, %for.body8.epil.2.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.2.2
+
+for.cond5.for.cond.cleanup7_crit_edge.2.2:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.2.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2
+  %add.lcssa.2.2 = phi float [ %add.lcssa.ph.2.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.2 ], [ %add.epil.2.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.2.2.loopexit ]
   store float %add.lcssa.2.2, float* %arrayidx18.2.2, align 4, !tbaa !3
   %indvars.iv.next56.2.2 = or i64 %indvars.iv55.2, 3
   %arrayidx18.3.2 = getelementptr inbounds float, float* %arrayidx16.2, i64 %indvars.iv.next56.2.2
@@ -1676,19 +1933,27 @@ for.body8.3.2:                                    ; preds = %for.body8.3.2, %for
   %indvars.iv.next.3.3.2 = add nuw nsw i64 %indvars.iv.3.2, 4
   %niter.nsub.3.3.2 = add i32 %niter.3.2, -4
   %niter.ncmp.3.3.2.not = icmp eq i32 %niter.nsub.3.3.2, 0
-  br i1 %niter.ncmp.3.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2, label %for.body8.3.2, !llvm.loop !7
+  br i1 %niter.ncmp.3.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2.loopexit, label %for.body8.3.2, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2: ; preds = %for.body8.3.2, %for.cond5.for.cond.cleanup7_crit_edge.2.2
-  %add.lcssa.ph.3.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.2 ], [ %add.3.3.2, %for.body8.3.2 ]
-  %indvars.iv.unr.3.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.2 ], [ %indvars.iv.next.3.3.2, %for.body8.3.2 ]
-  %add53.unr.3.2 = phi float [ %arrayidx18.promoted.3.2, %for.cond5.for.cond.cleanup7_crit_edge.2.2 ], [ %add.3.3.2, %for.body8.3.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2.loopexit: ; preds = %for.body8.3.2
+  %add.3.3.2.lcssa = phi float [ %add.3.3.2, %for.body8.3.2 ]
+  %indvars.iv.next.3.3.2.lcssa = phi i64 [ %indvars.iv.next.3.3.2, %for.body8.3.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.2.2
+  %add.lcssa.ph.3.2 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.2 ], [ %add.3.3.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2.loopexit ]
+  %indvars.iv.unr.3.2 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.2 ], [ %indvars.iv.next.3.3.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2.loopexit ]
+  %add53.unr.3.2 = phi float [ %arrayidx18.promoted.3.2, %for.cond5.for.cond.cleanup7_crit_edge.2.2 ], [ %add.3.3.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2.loopexit ]
   %lcmp.mod.3.2.not = icmp eq i32 %xtraiter.3.2, 0
-  br i1 %lcmp.mod.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.2, label %for.body8.epil.3.2
+  br i1 %lcmp.mod.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.2, label %for.body8.epil.3.2.preheader
 
-for.body8.epil.3.2:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2, %for.body8.epil.3.2
-  %indvars.iv.epil.3.2 = phi i64 [ %indvars.iv.next.epil.3.2, %for.body8.epil.3.2 ], [ %indvars.iv.unr.3.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2 ]
-  %add53.epil.3.2 = phi float [ %add.epil.3.2, %for.body8.epil.3.2 ], [ %add53.unr.3.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2 ]
-  %epil.iter.3.2 = phi i32 [ %epil.iter.sub.3.2, %for.body8.epil.3.2 ], [ %xtraiter.3.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2 ]
+for.body8.epil.3.2.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2
+  br label %for.body8.epil.3.2
+
+for.body8.epil.3.2:                               ; preds = %for.body8.epil.3.2.preheader, %for.body8.epil.3.2
+  %indvars.iv.epil.3.2 = phi i64 [ %indvars.iv.next.epil.3.2, %for.body8.epil.3.2 ], [ %indvars.iv.unr.3.2, %for.body8.epil.3.2.preheader ]
+  %add53.epil.3.2 = phi float [ %add.epil.3.2, %for.body8.epil.3.2 ], [ %add53.unr.3.2, %for.body8.epil.3.2.preheader ]
+  %epil.iter.3.2 = phi i32 [ %epil.iter.sub.3.2, %for.body8.epil.3.2 ], [ %xtraiter.3.2, %for.body8.epil.3.2.preheader ]
   %arrayidx10.epil.3.2 = getelementptr inbounds float, float* %arrayidx.2, i64 %indvars.iv.epil.3.2
   %312 = load float, float* %arrayidx10.epil.3.2, align 4, !tbaa !3
   %313 = mul nuw nsw i64 %indvars.iv.epil.3.2, %0
@@ -1700,24 +1965,35 @@ for.body8.epil.3.2:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.3.2 = add nuw nsw i64 %indvars.iv.epil.3.2, 1
   %epil.iter.sub.3.2 = add i32 %epil.iter.3.2, -1
   %epil.iter.cmp.3.2.not = icmp eq i32 %epil.iter.sub.3.2, 0
-  br i1 %epil.iter.cmp.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.2, label %for.body8.epil.3.2, !llvm.loop !10
+  br i1 %epil.iter.cmp.3.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.2.loopexit, label %for.body8.epil.3.2, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.3.2:        ; preds = %for.body8.epil.3.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2
-  %add.lcssa.3.2 = phi float [ %add.lcssa.ph.3.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2 ], [ %add.epil.3.2, %for.body8.epil.3.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.3.2.loopexit: ; preds = %for.body8.epil.3.2
+  %add.epil.3.2.lcssa = phi float [ %add.epil.3.2, %for.body8.epil.3.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.3.2
+
+for.cond5.for.cond.cleanup7_crit_edge.3.2:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2
+  %add.lcssa.3.2 = phi float [ %add.lcssa.ph.3.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.2 ], [ %add.epil.3.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.3.2.loopexit ]
   store float %add.lcssa.3.2, float* %arrayidx18.3.2, align 4, !tbaa !3
   %indvars.iv.next56.3.2 = add nuw nsw i64 %indvars.iv55.2, 4
   %niter72.nsub.3.2 = add i32 %niter72.2, -4
   %niter72.ncmp.3.2.not = icmp eq i32 %niter72.nsub.3.2, 0
-  br i1 %niter72.ncmp.3.2.not, label %for.cond.cleanup3.loopexit.unr-lcssa.2, label %for.cond5.preheader.2, !llvm.loop !11
+  br i1 %niter72.ncmp.3.2.not, label %for.cond.cleanup3.loopexit.unr-lcssa.2.loopexit, label %for.cond5.preheader.2, !llvm.loop !11
 
-for.cond.cleanup3.loopexit.unr-lcssa.2:           ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.2, %for.cond5.preheader.lr.ph.2
-  %indvars.iv55.unr.2 = phi i64 [ 0, %for.cond5.preheader.lr.ph.2 ], [ %indvars.iv.next56.3.2, %for.cond5.for.cond.cleanup7_crit_edge.3.2 ]
+for.cond.cleanup3.loopexit.unr-lcssa.2.loopexit:  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.2
+  %indvars.iv.next56.3.2.lcssa = phi i64 [ %indvars.iv.next56.3.2, %for.cond5.for.cond.cleanup7_crit_edge.3.2 ]
+  br label %for.cond.cleanup3.loopexit.unr-lcssa.2
+
+for.cond.cleanup3.loopexit.unr-lcssa.2:           ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.2.loopexit, %for.cond5.preheader.lr.ph.2
+  %indvars.iv55.unr.2 = phi i64 [ 0, %for.cond5.preheader.lr.ph.2 ], [ %indvars.iv.next56.3.2.lcssa, %for.cond.cleanup3.loopexit.unr-lcssa.2.loopexit ]
   %lcmp.mod70.2.not = icmp eq i32 %xtraiter58.2, 0
-  br i1 %lcmp.mod70.2.not, label %for.cond5.preheader.lr.ph.3, label %for.cond5.preheader.epil.2
+  br i1 %lcmp.mod70.2.not, label %for.cond5.preheader.lr.ph.3, label %for.cond5.preheader.epil.2.preheader
 
-for.cond5.preheader.epil.2:                       ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.2, %for.cond5.for.cond.cleanup7_crit_edge.epil.2
-  %indvars.iv55.epil.2 = phi i64 [ %indvars.iv.next56.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.epil.2 ], [ %indvars.iv55.unr.2, %for.cond.cleanup3.loopexit.unr-lcssa.2 ]
-  %epil.iter69.2 = phi i32 [ %epil.iter69.sub.2, %for.cond5.for.cond.cleanup7_crit_edge.epil.2 ], [ %xtraiter58.2, %for.cond.cleanup3.loopexit.unr-lcssa.2 ]
+for.cond5.preheader.epil.2.preheader:             ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.2
+  br label %for.cond5.preheader.epil.2
+
+for.cond5.preheader.epil.2:                       ; preds = %for.cond5.preheader.epil.2.preheader, %for.cond5.for.cond.cleanup7_crit_edge.epil.2
+  %indvars.iv55.epil.2 = phi i64 [ %indvars.iv.next56.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.epil.2 ], [ %indvars.iv55.unr.2, %for.cond5.preheader.epil.2.preheader ]
+  %epil.iter69.2 = phi i32 [ %epil.iter69.sub.2, %for.cond5.for.cond.cleanup7_crit_edge.epil.2 ], [ %xtraiter58.2, %for.cond5.preheader.epil.2.preheader ]
   %arrayidx18.epil.2 = getelementptr inbounds float, float* %arrayidx16.2, i64 %indvars.iv55.epil.2
   %arrayidx18.promoted.epil.2 = load float, float* %arrayidx18.epil.2, align 4, !tbaa !3
   %xtraiter.epil.2 = and i32 %n, 3
@@ -1770,19 +2046,27 @@ for.body8.epil59.2:                               ; preds = %for.body8.epil59.2,
   %indvars.iv.next.3.epil.2 = add nuw nsw i64 %indvars.iv.epil60.2, 4
   %niter.nsub.3.epil.2 = add i32 %niter.epil.2, -4
   %niter.ncmp.3.epil.2.not = icmp eq i32 %niter.nsub.3.epil.2, 0
-  br i1 %niter.ncmp.3.epil.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2, label %for.body8.epil59.2, !llvm.loop !7
+  br i1 %niter.ncmp.3.epil.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2.loopexit, label %for.body8.epil59.2, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2: ; preds = %for.body8.epil59.2, %for.cond5.preheader.epil.2
-  %add.lcssa.ph.epil.2 = phi float [ undef, %for.cond5.preheader.epil.2 ], [ %add.3.epil.2, %for.body8.epil59.2 ]
-  %indvars.iv.unr.epil.2 = phi i64 [ 0, %for.cond5.preheader.epil.2 ], [ %indvars.iv.next.3.epil.2, %for.body8.epil59.2 ]
-  %add53.unr.epil.2 = phi float [ %arrayidx18.promoted.epil.2, %for.cond5.preheader.epil.2 ], [ %add.3.epil.2, %for.body8.epil59.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2.loopexit: ; preds = %for.body8.epil59.2
+  %add.3.epil.2.lcssa = phi float [ %add.3.epil.2, %for.body8.epil59.2 ]
+  %indvars.iv.next.3.epil.2.lcssa = phi i64 [ %indvars.iv.next.3.epil.2, %for.body8.epil59.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2.loopexit, %for.cond5.preheader.epil.2
+  %add.lcssa.ph.epil.2 = phi float [ undef, %for.cond5.preheader.epil.2 ], [ %add.3.epil.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2.loopexit ]
+  %indvars.iv.unr.epil.2 = phi i64 [ 0, %for.cond5.preheader.epil.2 ], [ %indvars.iv.next.3.epil.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2.loopexit ]
+  %add53.unr.epil.2 = phi float [ %arrayidx18.promoted.epil.2, %for.cond5.preheader.epil.2 ], [ %add.3.epil.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2.loopexit ]
   %lcmp.mod.epil.2.not = icmp eq i32 %xtraiter.epil.2, 0
-  br i1 %lcmp.mod.epil.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.2, label %for.body8.epil.epil.2
+  br i1 %lcmp.mod.epil.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.2, label %for.body8.epil.epil.2.preheader
 
-for.body8.epil.epil.2:                            ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2, %for.body8.epil.epil.2
-  %indvars.iv.epil.epil.2 = phi i64 [ %indvars.iv.next.epil.epil.2, %for.body8.epil.epil.2 ], [ %indvars.iv.unr.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2 ]
-  %add53.epil.epil.2 = phi float [ %add.epil.epil.2, %for.body8.epil.epil.2 ], [ %add53.unr.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2 ]
-  %epil.iter.epil.2 = phi i32 [ %epil.iter.sub.epil.2, %for.body8.epil.epil.2 ], [ %xtraiter.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2 ]
+for.body8.epil.epil.2.preheader:                  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2
+  br label %for.body8.epil.epil.2
+
+for.body8.epil.epil.2:                            ; preds = %for.body8.epil.epil.2.preheader, %for.body8.epil.epil.2
+  %indvars.iv.epil.epil.2 = phi i64 [ %indvars.iv.next.epil.epil.2, %for.body8.epil.epil.2 ], [ %indvars.iv.unr.epil.2, %for.body8.epil.epil.2.preheader ]
+  %add53.epil.epil.2 = phi float [ %add.epil.epil.2, %for.body8.epil.epil.2 ], [ %add53.unr.epil.2, %for.body8.epil.epil.2.preheader ]
+  %epil.iter.epil.2 = phi i32 [ %epil.iter.sub.epil.2, %for.body8.epil.epil.2 ], [ %xtraiter.epil.2, %for.body8.epil.epil.2.preheader ]
   %arrayidx10.epil.epil.2 = getelementptr inbounds float, float* %arrayidx.2, i64 %indvars.iv.epil.epil.2
   %328 = load float, float* %arrayidx10.epil.epil.2, align 4, !tbaa !3
   %329 = mul nuw nsw i64 %indvars.iv.epil.epil.2, %0
@@ -1794,17 +2078,24 @@ for.body8.epil.epil.2:                            ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.epil.2 = add nuw nsw i64 %indvars.iv.epil.epil.2, 1
   %epil.iter.sub.epil.2 = add i32 %epil.iter.epil.2, -1
   %epil.iter.cmp.epil.2.not = icmp eq i32 %epil.iter.sub.epil.2, 0
-  br i1 %epil.iter.cmp.epil.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.2, label %for.body8.epil.epil.2, !llvm.loop !10
+  br i1 %epil.iter.cmp.epil.2.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.2.loopexit, label %for.body8.epil.epil.2, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.epil.2:     ; preds = %for.body8.epil.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2
-  %add.lcssa.epil.2 = phi float [ %add.lcssa.ph.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2 ], [ %add.epil.epil.2, %for.body8.epil.epil.2 ]
+for.cond5.for.cond.cleanup7_crit_edge.epil.2.loopexit: ; preds = %for.body8.epil.epil.2
+  %add.epil.epil.2.lcssa = phi float [ %add.epil.epil.2, %for.body8.epil.epil.2 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.epil.2
+
+for.cond5.for.cond.cleanup7_crit_edge.epil.2:     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.2.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2
+  %add.lcssa.epil.2 = phi float [ %add.lcssa.ph.epil.2, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.2 ], [ %add.epil.epil.2.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.epil.2.loopexit ]
   store float %add.lcssa.epil.2, float* %arrayidx18.epil.2, align 4, !tbaa !3
   %indvars.iv.next56.epil.2 = add nuw nsw i64 %indvars.iv55.epil.2, 1
   %epil.iter69.sub.2 = add i32 %epil.iter69.2, -1
   %epil.iter69.cmp.2.not = icmp eq i32 %epil.iter69.sub.2, 0
-  br i1 %epil.iter69.cmp.2.not, label %for.cond5.preheader.lr.ph.3, label %for.cond5.preheader.epil.2, !llvm.loop !12
+  br i1 %epil.iter69.cmp.2.not, label %for.cond5.preheader.lr.ph.3.loopexit, label %for.cond5.preheader.epil.2, !llvm.loop !12
 
-for.cond5.preheader.lr.ph.3:                      ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.2, %for.cond.cleanup3.loopexit.unr-lcssa.2
+for.cond5.preheader.lr.ph.3.loopexit:             ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.2
+  br label %for.cond5.preheader.lr.ph.3
+
+for.cond5.preheader.lr.ph.3:                      ; preds = %for.cond5.preheader.lr.ph.3.loopexit, %for.cond.cleanup3.loopexit.unr-lcssa.2
   %indvars.iv.next95.2 = or i64 %indvars.iv94, 3
   %331 = mul nuw nsw i64 %indvars.iv.next95.2, %0
   %arrayidx.3 = getelementptr inbounds float, float* %a, i64 %331
@@ -1872,19 +2163,27 @@ for.body8.3349:                                   ; preds = %for.body8.3349, %fo
   %indvars.iv.next.3.3346 = add nuw nsw i64 %indvars.iv.3317, 4
   %niter.nsub.3.3347 = add i32 %niter.3319, -4
   %niter.ncmp.3.3348.not = icmp eq i32 %niter.nsub.3.3347, 0
-  br i1 %niter.ncmp.3.3348.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358, label %for.body8.3349, !llvm.loop !7
+  br i1 %niter.ncmp.3.3348.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358.loopexit, label %for.body8.3349, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358: ; preds = %for.body8.3349, %for.cond5.preheader.3
-  %add.lcssa.ph.3354 = phi float [ undef, %for.cond5.preheader.3 ], [ %add.3.3345, %for.body8.3349 ]
-  %indvars.iv.unr.3355 = phi i64 [ 0, %for.cond5.preheader.3 ], [ %indvars.iv.next.3.3346, %for.body8.3349 ]
-  %add53.unr.3356 = phi float [ %arrayidx18.promoted.3311, %for.cond5.preheader.3 ], [ %add.3.3345, %for.body8.3349 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358.loopexit: ; preds = %for.body8.3349
+  %add.3.3345.lcssa = phi float [ %add.3.3345, %for.body8.3349 ]
+  %indvars.iv.next.3.3346.lcssa = phi i64 [ %indvars.iv.next.3.3346, %for.body8.3349 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358.loopexit, %for.cond5.preheader.3
+  %add.lcssa.ph.3354 = phi float [ undef, %for.cond5.preheader.3 ], [ %add.3.3345.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358.loopexit ]
+  %indvars.iv.unr.3355 = phi i64 [ 0, %for.cond5.preheader.3 ], [ %indvars.iv.next.3.3346.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358.loopexit ]
+  %add53.unr.3356 = phi float [ %arrayidx18.promoted.3311, %for.cond5.preheader.3 ], [ %add.3.3345.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358.loopexit ]
   %lcmp.mod.3357.not = icmp eq i32 %xtraiter.3313, 0
-  br i1 %lcmp.mod.3357.not, label %for.cond5.for.cond.cleanup7_crit_edge.3375, label %for.body8.epil.3371
+  br i1 %lcmp.mod.3357.not, label %for.cond5.for.cond.cleanup7_crit_edge.3375, label %for.body8.epil.3371.preheader
 
-for.body8.epil.3371:                              ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358, %for.body8.epil.3371
-  %indvars.iv.epil.3360 = phi i64 [ %indvars.iv.next.epil.3368, %for.body8.epil.3371 ], [ %indvars.iv.unr.3355, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358 ]
-  %add53.epil.3361 = phi float [ %add.epil.3367, %for.body8.epil.3371 ], [ %add53.unr.3356, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358 ]
-  %epil.iter.3362 = phi i32 [ %epil.iter.sub.3369, %for.body8.epil.3371 ], [ %xtraiter.3313, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358 ]
+for.body8.epil.3371.preheader:                    ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358
+  br label %for.body8.epil.3371
+
+for.body8.epil.3371:                              ; preds = %for.body8.epil.3371.preheader, %for.body8.epil.3371
+  %indvars.iv.epil.3360 = phi i64 [ %indvars.iv.next.epil.3368, %for.body8.epil.3371 ], [ %indvars.iv.unr.3355, %for.body8.epil.3371.preheader ]
+  %add53.epil.3361 = phi float [ %add.epil.3367, %for.body8.epil.3371 ], [ %add53.unr.3356, %for.body8.epil.3371.preheader ]
+  %epil.iter.3362 = phi i32 [ %epil.iter.sub.3369, %for.body8.epil.3371 ], [ %xtraiter.3313, %for.body8.epil.3371.preheader ]
   %arrayidx10.epil.3363 = getelementptr inbounds float, float* %arrayidx.3, i64 %indvars.iv.epil.3360
   %346 = load float, float* %arrayidx10.epil.3363, align 4, !tbaa !3
   %347 = mul nuw nsw i64 %indvars.iv.epil.3360, %0
@@ -1896,10 +2195,14 @@ for.body8.epil.3371:                              ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.3368 = add nuw nsw i64 %indvars.iv.epil.3360, 1
   %epil.iter.sub.3369 = add i32 %epil.iter.3362, -1
   %epil.iter.cmp.3370.not = icmp eq i32 %epil.iter.sub.3369, 0
-  br i1 %epil.iter.cmp.3370.not, label %for.cond5.for.cond.cleanup7_crit_edge.3375, label %for.body8.epil.3371, !llvm.loop !10
+  br i1 %epil.iter.cmp.3370.not, label %for.cond5.for.cond.cleanup7_crit_edge.3375.loopexit, label %for.body8.epil.3371, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.3375:       ; preds = %for.body8.epil.3371, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358
-  %add.lcssa.3374 = phi float [ %add.lcssa.ph.3354, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358 ], [ %add.epil.3367, %for.body8.epil.3371 ]
+for.cond5.for.cond.cleanup7_crit_edge.3375.loopexit: ; preds = %for.body8.epil.3371
+  %add.epil.3367.lcssa = phi float [ %add.epil.3367, %for.body8.epil.3371 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.3375
+
+for.cond5.for.cond.cleanup7_crit_edge.3375:       ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3375.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358
+  %add.lcssa.3374 = phi float [ %add.lcssa.ph.3354, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3358 ], [ %add.epil.3367.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.3375.loopexit ]
   store float %add.lcssa.3374, float* %arrayidx18.3310, align 4, !tbaa !3
   %indvars.iv.next56.3376 = or i64 %indvars.iv55.3, 1
   %arrayidx18.1.3 = getelementptr inbounds float, float* %arrayidx16.3, i64 %indvars.iv.next56.3376
@@ -1954,19 +2257,27 @@ for.body8.1.3:                                    ; preds = %for.body8.1.3, %for
   %indvars.iv.next.3.1.3 = add nuw nsw i64 %indvars.iv.1.3, 4
   %niter.nsub.3.1.3 = add i32 %niter.1.3, -4
   %niter.ncmp.3.1.3.not = icmp eq i32 %niter.nsub.3.1.3, 0
-  br i1 %niter.ncmp.3.1.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3, label %for.body8.1.3, !llvm.loop !7
+  br i1 %niter.ncmp.3.1.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3.loopexit, label %for.body8.1.3, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3: ; preds = %for.body8.1.3, %for.cond5.for.cond.cleanup7_crit_edge.3375
-  %add.lcssa.ph.1.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.3375 ], [ %add.3.1.3, %for.body8.1.3 ]
-  %indvars.iv.unr.1.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.3375 ], [ %indvars.iv.next.3.1.3, %for.body8.1.3 ]
-  %add53.unr.1.3 = phi float [ %arrayidx18.promoted.1.3, %for.cond5.for.cond.cleanup7_crit_edge.3375 ], [ %add.3.1.3, %for.body8.1.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3.loopexit: ; preds = %for.body8.1.3
+  %add.3.1.3.lcssa = phi float [ %add.3.1.3, %for.body8.1.3 ]
+  %indvars.iv.next.3.1.3.lcssa = phi i64 [ %indvars.iv.next.3.1.3, %for.body8.1.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.3375
+  %add.lcssa.ph.1.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.3375 ], [ %add.3.1.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3.loopexit ]
+  %indvars.iv.unr.1.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.3375 ], [ %indvars.iv.next.3.1.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3.loopexit ]
+  %add53.unr.1.3 = phi float [ %arrayidx18.promoted.1.3, %for.cond5.for.cond.cleanup7_crit_edge.3375 ], [ %add.3.1.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3.loopexit ]
   %lcmp.mod.1.3.not = icmp eq i32 %xtraiter.1.3, 0
-  br i1 %lcmp.mod.1.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.3, label %for.body8.epil.1.3
+  br i1 %lcmp.mod.1.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.3, label %for.body8.epil.1.3.preheader
 
-for.body8.epil.1.3:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3, %for.body8.epil.1.3
-  %indvars.iv.epil.1.3 = phi i64 [ %indvars.iv.next.epil.1.3, %for.body8.epil.1.3 ], [ %indvars.iv.unr.1.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3 ]
-  %add53.epil.1.3 = phi float [ %add.epil.1.3, %for.body8.epil.1.3 ], [ %add53.unr.1.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3 ]
-  %epil.iter.1.3 = phi i32 [ %epil.iter.sub.1.3, %for.body8.epil.1.3 ], [ %xtraiter.1.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3 ]
+for.body8.epil.1.3.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3
+  br label %for.body8.epil.1.3
+
+for.body8.epil.1.3:                               ; preds = %for.body8.epil.1.3.preheader, %for.body8.epil.1.3
+  %indvars.iv.epil.1.3 = phi i64 [ %indvars.iv.next.epil.1.3, %for.body8.epil.1.3 ], [ %indvars.iv.unr.1.3, %for.body8.epil.1.3.preheader ]
+  %add53.epil.1.3 = phi float [ %add.epil.1.3, %for.body8.epil.1.3 ], [ %add53.unr.1.3, %for.body8.epil.1.3.preheader ]
+  %epil.iter.1.3 = phi i32 [ %epil.iter.sub.1.3, %for.body8.epil.1.3 ], [ %xtraiter.1.3, %for.body8.epil.1.3.preheader ]
   %arrayidx10.epil.1.3 = getelementptr inbounds float, float* %arrayidx.3, i64 %indvars.iv.epil.1.3
   %362 = load float, float* %arrayidx10.epil.1.3, align 4, !tbaa !3
   %363 = mul nuw nsw i64 %indvars.iv.epil.1.3, %0
@@ -1978,10 +2289,14 @@ for.body8.epil.1.3:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.1.3 = add nuw nsw i64 %indvars.iv.epil.1.3, 1
   %epil.iter.sub.1.3 = add i32 %epil.iter.1.3, -1
   %epil.iter.cmp.1.3.not = icmp eq i32 %epil.iter.sub.1.3, 0
-  br i1 %epil.iter.cmp.1.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.3, label %for.body8.epil.1.3, !llvm.loop !10
+  br i1 %epil.iter.cmp.1.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.1.3.loopexit, label %for.body8.epil.1.3, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.1.3:        ; preds = %for.body8.epil.1.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3
-  %add.lcssa.1.3 = phi float [ %add.lcssa.ph.1.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3 ], [ %add.epil.1.3, %for.body8.epil.1.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.1.3.loopexit: ; preds = %for.body8.epil.1.3
+  %add.epil.1.3.lcssa = phi float [ %add.epil.1.3, %for.body8.epil.1.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.1.3
+
+for.cond5.for.cond.cleanup7_crit_edge.1.3:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.1.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3
+  %add.lcssa.1.3 = phi float [ %add.lcssa.ph.1.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.1.3 ], [ %add.epil.1.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.1.3.loopexit ]
   store float %add.lcssa.1.3, float* %arrayidx18.1.3, align 4, !tbaa !3
   %indvars.iv.next56.1.3 = or i64 %indvars.iv55.3, 2
   %arrayidx18.2.3 = getelementptr inbounds float, float* %arrayidx16.3, i64 %indvars.iv.next56.1.3
@@ -2036,19 +2351,27 @@ for.body8.2.3:                                    ; preds = %for.body8.2.3, %for
   %indvars.iv.next.3.2.3 = add nuw nsw i64 %indvars.iv.2.3, 4
   %niter.nsub.3.2.3 = add i32 %niter.2.3, -4
   %niter.ncmp.3.2.3.not = icmp eq i32 %niter.nsub.3.2.3, 0
-  br i1 %niter.ncmp.3.2.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3, label %for.body8.2.3, !llvm.loop !7
+  br i1 %niter.ncmp.3.2.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3.loopexit, label %for.body8.2.3, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3: ; preds = %for.body8.2.3, %for.cond5.for.cond.cleanup7_crit_edge.1.3
-  %add.lcssa.ph.2.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.3 ], [ %add.3.2.3, %for.body8.2.3 ]
-  %indvars.iv.unr.2.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.3 ], [ %indvars.iv.next.3.2.3, %for.body8.2.3 ]
-  %add53.unr.2.3 = phi float [ %arrayidx18.promoted.2.3, %for.cond5.for.cond.cleanup7_crit_edge.1.3 ], [ %add.3.2.3, %for.body8.2.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3.loopexit: ; preds = %for.body8.2.3
+  %add.3.2.3.lcssa = phi float [ %add.3.2.3, %for.body8.2.3 ]
+  %indvars.iv.next.3.2.3.lcssa = phi i64 [ %indvars.iv.next.3.2.3, %for.body8.2.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.1.3
+  %add.lcssa.ph.2.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.1.3 ], [ %add.3.2.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3.loopexit ]
+  %indvars.iv.unr.2.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.1.3 ], [ %indvars.iv.next.3.2.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3.loopexit ]
+  %add53.unr.2.3 = phi float [ %arrayidx18.promoted.2.3, %for.cond5.for.cond.cleanup7_crit_edge.1.3 ], [ %add.3.2.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3.loopexit ]
   %lcmp.mod.2.3.not = icmp eq i32 %xtraiter.2.3, 0
-  br i1 %lcmp.mod.2.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.3, label %for.body8.epil.2.3
+  br i1 %lcmp.mod.2.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.3, label %for.body8.epil.2.3.preheader
 
-for.body8.epil.2.3:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3, %for.body8.epil.2.3
-  %indvars.iv.epil.2.3 = phi i64 [ %indvars.iv.next.epil.2.3, %for.body8.epil.2.3 ], [ %indvars.iv.unr.2.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3 ]
-  %add53.epil.2.3 = phi float [ %add.epil.2.3, %for.body8.epil.2.3 ], [ %add53.unr.2.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3 ]
-  %epil.iter.2.3 = phi i32 [ %epil.iter.sub.2.3, %for.body8.epil.2.3 ], [ %xtraiter.2.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3 ]
+for.body8.epil.2.3.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3
+  br label %for.body8.epil.2.3
+
+for.body8.epil.2.3:                               ; preds = %for.body8.epil.2.3.preheader, %for.body8.epil.2.3
+  %indvars.iv.epil.2.3 = phi i64 [ %indvars.iv.next.epil.2.3, %for.body8.epil.2.3 ], [ %indvars.iv.unr.2.3, %for.body8.epil.2.3.preheader ]
+  %add53.epil.2.3 = phi float [ %add.epil.2.3, %for.body8.epil.2.3 ], [ %add53.unr.2.3, %for.body8.epil.2.3.preheader ]
+  %epil.iter.2.3 = phi i32 [ %epil.iter.sub.2.3, %for.body8.epil.2.3 ], [ %xtraiter.2.3, %for.body8.epil.2.3.preheader ]
   %arrayidx10.epil.2.3 = getelementptr inbounds float, float* %arrayidx.3, i64 %indvars.iv.epil.2.3
   %378 = load float, float* %arrayidx10.epil.2.3, align 4, !tbaa !3
   %379 = mul nuw nsw i64 %indvars.iv.epil.2.3, %0
@@ -2060,10 +2383,14 @@ for.body8.epil.2.3:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.2.3 = add nuw nsw i64 %indvars.iv.epil.2.3, 1
   %epil.iter.sub.2.3 = add i32 %epil.iter.2.3, -1
   %epil.iter.cmp.2.3.not = icmp eq i32 %epil.iter.sub.2.3, 0
-  br i1 %epil.iter.cmp.2.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.3, label %for.body8.epil.2.3, !llvm.loop !10
+  br i1 %epil.iter.cmp.2.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.2.3.loopexit, label %for.body8.epil.2.3, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.2.3:        ; preds = %for.body8.epil.2.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3
-  %add.lcssa.2.3 = phi float [ %add.lcssa.ph.2.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3 ], [ %add.epil.2.3, %for.body8.epil.2.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.2.3.loopexit: ; preds = %for.body8.epil.2.3
+  %add.epil.2.3.lcssa = phi float [ %add.epil.2.3, %for.body8.epil.2.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.2.3
+
+for.cond5.for.cond.cleanup7_crit_edge.2.3:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.2.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3
+  %add.lcssa.2.3 = phi float [ %add.lcssa.ph.2.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.2.3 ], [ %add.epil.2.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.2.3.loopexit ]
   store float %add.lcssa.2.3, float* %arrayidx18.2.3, align 4, !tbaa !3
   %indvars.iv.next56.2.3 = or i64 %indvars.iv55.3, 3
   %arrayidx18.3.3 = getelementptr inbounds float, float* %arrayidx16.3, i64 %indvars.iv.next56.2.3
@@ -2118,19 +2445,27 @@ for.body8.3.3:                                    ; preds = %for.body8.3.3, %for
   %indvars.iv.next.3.3.3 = add nuw nsw i64 %indvars.iv.3.3, 4
   %niter.nsub.3.3.3 = add i32 %niter.3.3, -4
   %niter.ncmp.3.3.3.not = icmp eq i32 %niter.nsub.3.3.3, 0
-  br i1 %niter.ncmp.3.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3, label %for.body8.3.3, !llvm.loop !7
+  br i1 %niter.ncmp.3.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3.loopexit, label %for.body8.3.3, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3: ; preds = %for.body8.3.3, %for.cond5.for.cond.cleanup7_crit_edge.2.3
-  %add.lcssa.ph.3.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.3 ], [ %add.3.3.3, %for.body8.3.3 ]
-  %indvars.iv.unr.3.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.3 ], [ %indvars.iv.next.3.3.3, %for.body8.3.3 ]
-  %add53.unr.3.3 = phi float [ %arrayidx18.promoted.3.3, %for.cond5.for.cond.cleanup7_crit_edge.2.3 ], [ %add.3.3.3, %for.body8.3.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3.loopexit: ; preds = %for.body8.3.3
+  %add.3.3.3.lcssa = phi float [ %add.3.3.3, %for.body8.3.3 ]
+  %indvars.iv.next.3.3.3.lcssa = phi i64 [ %indvars.iv.next.3.3.3, %for.body8.3.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.2.3
+  %add.lcssa.ph.3.3 = phi float [ undef, %for.cond5.for.cond.cleanup7_crit_edge.2.3 ], [ %add.3.3.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3.loopexit ]
+  %indvars.iv.unr.3.3 = phi i64 [ 0, %for.cond5.for.cond.cleanup7_crit_edge.2.3 ], [ %indvars.iv.next.3.3.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3.loopexit ]
+  %add53.unr.3.3 = phi float [ %arrayidx18.promoted.3.3, %for.cond5.for.cond.cleanup7_crit_edge.2.3 ], [ %add.3.3.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3.loopexit ]
   %lcmp.mod.3.3.not = icmp eq i32 %xtraiter.3.3, 0
-  br i1 %lcmp.mod.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.3, label %for.body8.epil.3.3
+  br i1 %lcmp.mod.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.3, label %for.body8.epil.3.3.preheader
 
-for.body8.epil.3.3:                               ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3, %for.body8.epil.3.3
-  %indvars.iv.epil.3.3 = phi i64 [ %indvars.iv.next.epil.3.3, %for.body8.epil.3.3 ], [ %indvars.iv.unr.3.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3 ]
-  %add53.epil.3.3 = phi float [ %add.epil.3.3, %for.body8.epil.3.3 ], [ %add53.unr.3.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3 ]
-  %epil.iter.3.3 = phi i32 [ %epil.iter.sub.3.3, %for.body8.epil.3.3 ], [ %xtraiter.3.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3 ]
+for.body8.epil.3.3.preheader:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3
+  br label %for.body8.epil.3.3
+
+for.body8.epil.3.3:                               ; preds = %for.body8.epil.3.3.preheader, %for.body8.epil.3.3
+  %indvars.iv.epil.3.3 = phi i64 [ %indvars.iv.next.epil.3.3, %for.body8.epil.3.3 ], [ %indvars.iv.unr.3.3, %for.body8.epil.3.3.preheader ]
+  %add53.epil.3.3 = phi float [ %add.epil.3.3, %for.body8.epil.3.3 ], [ %add53.unr.3.3, %for.body8.epil.3.3.preheader ]
+  %epil.iter.3.3 = phi i32 [ %epil.iter.sub.3.3, %for.body8.epil.3.3 ], [ %xtraiter.3.3, %for.body8.epil.3.3.preheader ]
   %arrayidx10.epil.3.3 = getelementptr inbounds float, float* %arrayidx.3, i64 %indvars.iv.epil.3.3
   %394 = load float, float* %arrayidx10.epil.3.3, align 4, !tbaa !3
   %395 = mul nuw nsw i64 %indvars.iv.epil.3.3, %0
@@ -2142,24 +2477,35 @@ for.body8.epil.3.3:                               ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.3.3 = add nuw nsw i64 %indvars.iv.epil.3.3, 1
   %epil.iter.sub.3.3 = add i32 %epil.iter.3.3, -1
   %epil.iter.cmp.3.3.not = icmp eq i32 %epil.iter.sub.3.3, 0
-  br i1 %epil.iter.cmp.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.3, label %for.body8.epil.3.3, !llvm.loop !10
+  br i1 %epil.iter.cmp.3.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.3.3.loopexit, label %for.body8.epil.3.3, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.3.3:        ; preds = %for.body8.epil.3.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3
-  %add.lcssa.3.3 = phi float [ %add.lcssa.ph.3.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3 ], [ %add.epil.3.3, %for.body8.epil.3.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.3.3.loopexit: ; preds = %for.body8.epil.3.3
+  %add.epil.3.3.lcssa = phi float [ %add.epil.3.3, %for.body8.epil.3.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.3.3
+
+for.cond5.for.cond.cleanup7_crit_edge.3.3:        ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3
+  %add.lcssa.3.3 = phi float [ %add.lcssa.ph.3.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.3.3 ], [ %add.epil.3.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.3.3.loopexit ]
   store float %add.lcssa.3.3, float* %arrayidx18.3.3, align 4, !tbaa !3
   %indvars.iv.next56.3.3 = add nuw nsw i64 %indvars.iv55.3, 4
   %niter72.nsub.3.3 = add i32 %niter72.3, -4
   %niter72.ncmp.3.3.not = icmp eq i32 %niter72.nsub.3.3, 0
-  br i1 %niter72.ncmp.3.3.not, label %for.cond.cleanup3.loopexit.unr-lcssa.3, label %for.cond5.preheader.3, !llvm.loop !11
+  br i1 %niter72.ncmp.3.3.not, label %for.cond.cleanup3.loopexit.unr-lcssa.3.loopexit, label %for.cond5.preheader.3, !llvm.loop !11
 
-for.cond.cleanup3.loopexit.unr-lcssa.3:           ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.3, %for.cond5.preheader.lr.ph.3
-  %indvars.iv55.unr.3 = phi i64 [ 0, %for.cond5.preheader.lr.ph.3 ], [ %indvars.iv.next56.3.3, %for.cond5.for.cond.cleanup7_crit_edge.3.3 ]
+for.cond.cleanup3.loopexit.unr-lcssa.3.loopexit:  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.3.3
+  %indvars.iv.next56.3.3.lcssa = phi i64 [ %indvars.iv.next56.3.3, %for.cond5.for.cond.cleanup7_crit_edge.3.3 ]
+  br label %for.cond.cleanup3.loopexit.unr-lcssa.3
+
+for.cond.cleanup3.loopexit.unr-lcssa.3:           ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.3.loopexit, %for.cond5.preheader.lr.ph.3
+  %indvars.iv55.unr.3 = phi i64 [ 0, %for.cond5.preheader.lr.ph.3 ], [ %indvars.iv.next56.3.3.lcssa, %for.cond.cleanup3.loopexit.unr-lcssa.3.loopexit ]
   %lcmp.mod70.3.not = icmp eq i32 %xtraiter58.3, 0
-  br i1 %lcmp.mod70.3.not, label %for.cond.cleanup3.3, label %for.cond5.preheader.epil.3
+  br i1 %lcmp.mod70.3.not, label %for.cond.cleanup3.3, label %for.cond5.preheader.epil.3.preheader
 
-for.cond5.preheader.epil.3:                       ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.3, %for.cond5.for.cond.cleanup7_crit_edge.epil.3
-  %indvars.iv55.epil.3 = phi i64 [ %indvars.iv.next56.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.epil.3 ], [ %indvars.iv55.unr.3, %for.cond.cleanup3.loopexit.unr-lcssa.3 ]
-  %epil.iter69.3 = phi i32 [ %epil.iter69.sub.3, %for.cond5.for.cond.cleanup7_crit_edge.epil.3 ], [ %xtraiter58.3, %for.cond.cleanup3.loopexit.unr-lcssa.3 ]
+for.cond5.preheader.epil.3.preheader:             ; preds = %for.cond.cleanup3.loopexit.unr-lcssa.3
+  br label %for.cond5.preheader.epil.3
+
+for.cond5.preheader.epil.3:                       ; preds = %for.cond5.preheader.epil.3.preheader, %for.cond5.for.cond.cleanup7_crit_edge.epil.3
+  %indvars.iv55.epil.3 = phi i64 [ %indvars.iv.next56.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.epil.3 ], [ %indvars.iv55.unr.3, %for.cond5.preheader.epil.3.preheader ]
+  %epil.iter69.3 = phi i32 [ %epil.iter69.sub.3, %for.cond5.for.cond.cleanup7_crit_edge.epil.3 ], [ %xtraiter58.3, %for.cond5.preheader.epil.3.preheader ]
   %arrayidx18.epil.3 = getelementptr inbounds float, float* %arrayidx16.3, i64 %indvars.iv55.epil.3
   %arrayidx18.promoted.epil.3 = load float, float* %arrayidx18.epil.3, align 4, !tbaa !3
   %xtraiter.epil.3 = and i32 %n, 3
@@ -2212,19 +2558,27 @@ for.body8.epil59.3:                               ; preds = %for.body8.epil59.3,
   %indvars.iv.next.3.epil.3 = add nuw nsw i64 %indvars.iv.epil60.3, 4
   %niter.nsub.3.epil.3 = add i32 %niter.epil.3, -4
   %niter.ncmp.3.epil.3.not = icmp eq i32 %niter.nsub.3.epil.3, 0
-  br i1 %niter.ncmp.3.epil.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3, label %for.body8.epil59.3, !llvm.loop !7
+  br i1 %niter.ncmp.3.epil.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3.loopexit, label %for.body8.epil59.3, !llvm.loop !7
 
-for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3: ; preds = %for.body8.epil59.3, %for.cond5.preheader.epil.3
-  %add.lcssa.ph.epil.3 = phi float [ undef, %for.cond5.preheader.epil.3 ], [ %add.3.epil.3, %for.body8.epil59.3 ]
-  %indvars.iv.unr.epil.3 = phi i64 [ 0, %for.cond5.preheader.epil.3 ], [ %indvars.iv.next.3.epil.3, %for.body8.epil59.3 ]
-  %add53.unr.epil.3 = phi float [ %arrayidx18.promoted.epil.3, %for.cond5.preheader.epil.3 ], [ %add.3.epil.3, %for.body8.epil59.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3.loopexit: ; preds = %for.body8.epil59.3
+  %add.3.epil.3.lcssa = phi float [ %add.3.epil.3, %for.body8.epil59.3 ]
+  %indvars.iv.next.3.epil.3.lcssa = phi i64 [ %indvars.iv.next.3.epil.3, %for.body8.epil59.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3
+
+for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3: ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3.loopexit, %for.cond5.preheader.epil.3
+  %add.lcssa.ph.epil.3 = phi float [ undef, %for.cond5.preheader.epil.3 ], [ %add.3.epil.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3.loopexit ]
+  %indvars.iv.unr.epil.3 = phi i64 [ 0, %for.cond5.preheader.epil.3 ], [ %indvars.iv.next.3.epil.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3.loopexit ]
+  %add53.unr.epil.3 = phi float [ %arrayidx18.promoted.epil.3, %for.cond5.preheader.epil.3 ], [ %add.3.epil.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3.loopexit ]
   %lcmp.mod.epil.3.not = icmp eq i32 %xtraiter.epil.3, 0
-  br i1 %lcmp.mod.epil.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.3, label %for.body8.epil.epil.3
+  br i1 %lcmp.mod.epil.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.3, label %for.body8.epil.epil.3.preheader
 
-for.body8.epil.epil.3:                            ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3, %for.body8.epil.epil.3
-  %indvars.iv.epil.epil.3 = phi i64 [ %indvars.iv.next.epil.epil.3, %for.body8.epil.epil.3 ], [ %indvars.iv.unr.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3 ]
-  %add53.epil.epil.3 = phi float [ %add.epil.epil.3, %for.body8.epil.epil.3 ], [ %add53.unr.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3 ]
-  %epil.iter.epil.3 = phi i32 [ %epil.iter.sub.epil.3, %for.body8.epil.epil.3 ], [ %xtraiter.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3 ]
+for.body8.epil.epil.3.preheader:                  ; preds = %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3
+  br label %for.body8.epil.epil.3
+
+for.body8.epil.epil.3:                            ; preds = %for.body8.epil.epil.3.preheader, %for.body8.epil.epil.3
+  %indvars.iv.epil.epil.3 = phi i64 [ %indvars.iv.next.epil.epil.3, %for.body8.epil.epil.3 ], [ %indvars.iv.unr.epil.3, %for.body8.epil.epil.3.preheader ]
+  %add53.epil.epil.3 = phi float [ %add.epil.epil.3, %for.body8.epil.epil.3 ], [ %add53.unr.epil.3, %for.body8.epil.epil.3.preheader ]
+  %epil.iter.epil.3 = phi i32 [ %epil.iter.sub.epil.3, %for.body8.epil.epil.3 ], [ %xtraiter.epil.3, %for.body8.epil.epil.3.preheader ]
   %arrayidx10.epil.epil.3 = getelementptr inbounds float, float* %arrayidx.3, i64 %indvars.iv.epil.epil.3
   %410 = load float, float* %arrayidx10.epil.epil.3, align 4, !tbaa !3
   %411 = mul nuw nsw i64 %indvars.iv.epil.epil.3, %0
@@ -2236,21 +2590,28 @@ for.body8.epil.epil.3:                            ; preds = %for.cond5.for.cond.
   %indvars.iv.next.epil.epil.3 = add nuw nsw i64 %indvars.iv.epil.epil.3, 1
   %epil.iter.sub.epil.3 = add i32 %epil.iter.epil.3, -1
   %epil.iter.cmp.epil.3.not = icmp eq i32 %epil.iter.sub.epil.3, 0
-  br i1 %epil.iter.cmp.epil.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.3, label %for.body8.epil.epil.3, !llvm.loop !10
+  br i1 %epil.iter.cmp.epil.3.not, label %for.cond5.for.cond.cleanup7_crit_edge.epil.3.loopexit, label %for.body8.epil.epil.3, !llvm.loop !10
 
-for.cond5.for.cond.cleanup7_crit_edge.epil.3:     ; preds = %for.body8.epil.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3
-  %add.lcssa.epil.3 = phi float [ %add.lcssa.ph.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3 ], [ %add.epil.epil.3, %for.body8.epil.epil.3 ]
+for.cond5.for.cond.cleanup7_crit_edge.epil.3.loopexit: ; preds = %for.body8.epil.epil.3
+  %add.epil.epil.3.lcssa = phi float [ %add.epil.epil.3, %for.body8.epil.epil.3 ]
+  br label %for.cond5.for.cond.cleanup7_crit_edge.epil.3
+
+for.cond5.for.cond.cleanup7_crit_edge.epil.3:     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.3.loopexit, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3
+  %add.lcssa.epil.3 = phi float [ %add.lcssa.ph.epil.3, %for.cond5.for.cond.cleanup7_crit_edge.unr-lcssa.epil.3 ], [ %add.epil.epil.3.lcssa, %for.cond5.for.cond.cleanup7_crit_edge.epil.3.loopexit ]
   store float %add.lcssa.epil.3, float* %arrayidx18.epil.3, align 4, !tbaa !3
   %indvars.iv.next56.epil.3 = add nuw nsw i64 %indvars.iv55.epil.3, 1
   %epil.iter69.sub.3 = add i32 %epil.iter69.3, -1
   %epil.iter69.cmp.3.not = icmp eq i32 %epil.iter69.sub.3, 0
-  br i1 %epil.iter69.cmp.3.not, label %for.cond.cleanup3.3, label %for.cond5.preheader.epil.3, !llvm.loop !12
+  br i1 %epil.iter69.cmp.3.not, label %for.cond.cleanup3.3.loopexit, label %for.cond5.preheader.epil.3, !llvm.loop !12
 
-for.cond.cleanup3.3:                              ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.3, %for.cond.cleanup3.loopexit.unr-lcssa.3
+for.cond.cleanup3.3.loopexit:                     ; preds = %for.cond5.for.cond.cleanup7_crit_edge.epil.3
+  br label %for.cond.cleanup3.3
+
+for.cond.cleanup3.3:                              ; preds = %for.cond.cleanup3.3.loopexit, %for.cond.cleanup3.loopexit.unr-lcssa.3
   %indvars.iv.next95.3 = add nuw nsw i64 %indvars.iv94, 4
   %niter171.nsub.3 = add i32 %niter171, -4
   %niter171.ncmp.3.not = icmp eq i32 %niter171.nsub.3, 0
-  br i1 %niter171.ncmp.3.not, label %for.cond.cleanup.loopexit.unr-lcssa, label %for.cond1.preheader, !llvm.loop !14
+  br i1 %niter171.ncmp.3.not, label %for.cond.cleanup.loopexit.unr-lcssa.loopexit, label %for.cond1.preheader, !llvm.loop !14
 }
 
 attributes #0 = { nofree norecurse nounwind ssp uwtable "disable-tail-calls"="false" "frame-pointer"="all" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+cx8,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "tune-cpu"="generic" "unsafe-fp-math"="false" "use-soft-float"="false" }

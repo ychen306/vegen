@@ -24,6 +24,9 @@ using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "vegen-loop-fusion"
 
+#undef LLVM_DEBUG
+#define LLVM_DEBUG(x) x
+
 namespace {
 template <typename PatternTy, typename ValueTy> struct Capture_match {
   PatternTy P;
@@ -263,7 +266,7 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 // hoist
 static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
                                 DominatorTree &DT, PostDominatorTree &PDT,
-                                LazyDependenceAnalysis &LDA) {
+                                LazyDependenceAnalysis &LDA, ScalarEvolution &SE) {
   BasicBlock *Preheader = L->getLoopPreheader();
   BasicBlock *Dominator =
       DT.findNearestCommonDominator(I->getParent(), Preheader);
@@ -271,12 +274,13 @@ static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
   findDependences(I, Dominator, LI, DT, LDA, Dependences);
   // Make sure I is not loop-dependent on L
   for (Instruction *Dep : Dependences)
-    if (L->contains(Dep->getParent()))
+    if (L->contains(Dep->getParent())) {
       return false;
+    }
+
   // See if we can find a block before (and including) the preheader to hoist I
   // to
-  return findCompatiblePredecessorsFor(I, Preheader, LI, DT, PDT, LDA,
-                                       nullptr /*scalar evolution*/);
+  return findCompatiblePredecessorsFor(I, Preheader, LI, DT, PDT, LDA, &SE);
 }
 
 static void
@@ -311,7 +315,7 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // we also assume L1 comes before L2.
 static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
                              LazyDependenceAnalysis &LDA, DominatorTree &DT,
-                             PostDominatorTree &PDT) {
+                             PostDominatorTree &PDT, ScalarEvolution &SE) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
@@ -339,7 +343,7 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
     if (UnsafeToFuse)
       return false;
     for (auto &I : *BB)
-      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA))
+      if (isUsedByLoop(&I, L2) && !isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA, SE))
         return false;
   }
 
@@ -405,8 +409,8 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
-    if ((OneBeforeTwo && !checkDependences(L1, L2, LI, LDA, DT, PDT)) ||
-        (!OneBeforeTwo && !checkDependences(L2, L1, LI, LDA, DT, PDT))) {
+    if ((OneBeforeTwo && !checkDependences(L1, L2, LI, LDA, DT, PDT, SE)) ||
+        (!OneBeforeTwo && !checkDependences(L2, L1, LI, LDA, DT, PDT, SE))) {
       LLVM_DEBUG(dbgs() << "Loops are dependent (memory)\n");
       return true;
     }
@@ -482,7 +486,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   for (auto *BB : IntermediateBlocks) {
     for (auto &I : *BB) {
       if (isUsedByLoop(&I, L2)) {
-        if (isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA)) {
+        if (isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA, SE)) {
           InstsToHoist.push_back(&I);
           continue;
         }

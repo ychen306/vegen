@@ -304,21 +304,27 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   if (It != Memo.end())
     return It->second;
 
-  if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
+  if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT)) {
     return Memo[MemoKey] = false;
+  }
+    //errs() << "Found control equivalent block : " << *I << " and " << BB->getName() << '\n';
 
   // PHI nodes needs to have their incoming blocks equivalent to some
   // predecessor of BB
   if (auto *PN = dyn_cast<PHINode>(I)) {
-    if (PN->getNumIncomingValues() != pred_size(BB))
+    if (PN->getNumIncomingValues() != pred_size(BB)) {
+      //errs() << "different incomings for phi\n";
       return Memo[MemoKey] = false;
+    }
 
     for (BasicBlock *Incoming : PN->blocks()) {
       auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
         return isControlEquivalent(*Incoming, *Pred, DT, PDT);
       });
-      if (PredIt == pred_end(BB))
+      if (PredIt == pred_end(BB)) {
+        //errs() << "phi incomings not equivalent\n";
         return Memo[MemoKey] = false;
+      }
     }
   }
 
@@ -327,8 +333,10 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   if ((bool)LoopForI ^ (bool)LoopForBB)
     return Memo[MemoKey] = false;
   if (LoopForI != LoopForBB &&
-      (!SE || isUnsafeToFuse(LoopForI, LoopForBB)))
+      (!SE || isUnsafeToFuse(LoopForI, LoopForBB))) {
+    //errs() << "Unsafe to fuse\n";
     return Memo[MemoKey] = false;
+  }
 
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   SmallPtrSet<Instruction *, 16> Dependences;
@@ -347,8 +355,10 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
-    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive))
+    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive)) {
+      errs() << "Can't find block to hoist dep " << *Dep << " before " << BB->getName() << '\n';
       return Memo[MemoKey] = false;
+    }
   }
 
   return Memo[MemoKey] = true;
