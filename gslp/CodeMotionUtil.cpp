@@ -135,10 +135,6 @@ void findDependences(Instruction *I, BasicBlock *Earliest, LoopInfo &LI,
   while (!Worklist.empty()) {
     Instruction *I = Worklist.pop_back_val();
 
-    // if (I != TheInst && !InBetweenInsts.count(I))
-    //  if (!Inclusive || I->getParent() != Earliest)
-    //    continue;
-
     if (!Inclusive && DT.dominates(I, Earliest->getTerminator()))
       continue;
 
