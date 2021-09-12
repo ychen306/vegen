@@ -3,10 +3,10 @@
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
+#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/InitializePasses.h"
@@ -91,9 +91,14 @@ bool TestCodeMotion::runOnFunction(Function &F) {
     }
 
     if (!Gather)
-      for (auto *I : drop_begin(Insts))
+      for (auto *I : drop_begin(Insts)) {
+        if (!isControlCompatible(I, Insts.front()->getParent(), LI, DT, PDT,
+                                 LDA, &SE))
+          report_fatal_error(
+              "Attempting to hoist instruction to incompatible block");
         hoistTo(I, Insts.front()->getParent(), LI, SE, DT, PDT, LDA,
                 CoupledInsts);
+      }
 
     for (auto *I : drop_begin(Insts))
       CoupledInsts.unionSets(I, Insts.front());

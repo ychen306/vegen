@@ -359,11 +359,7 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
   }
 
   // Make sure the two loops have constant trip counts
-  const SCEV *TripCount1 = SE.getBackedgeTakenCount(L1);
-  const SCEV *TripCount2 = SE.getBackedgeTakenCount(L2);
-  if (isa<SCEVCouldNotCompute>(TripCount1) ||
-      isa<SCEVCouldNotCompute>(TripCount2) || TripCount1 != TripCount2) {
-    errs() << *TripCount1 << ", " << *TripCount2 << '\n';
+  if (!haveIdenticalTripCounts(L1, L2, SE)) {
     LLVM_DEBUG(dbgs() << "Loops may have divergent trip count\n");
     return true;
   }

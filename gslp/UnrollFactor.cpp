@@ -2,8 +2,8 @@
 #include "LoopUnrolling.h"
 #include "Packer.h"
 #include "Solver.h"
-#include "VectorPackContext.h"
 #include "VectorPack.h"
+#include "VectorPackContext.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -105,7 +105,7 @@ static void
 computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
                         ArrayRef<const InstBinding *> Insts, LazyValueInfo *LVI,
                         TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
-                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 2) {
+                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 4) {
   // Compute some analysis for the unroller
   Module *M = F->getParent();
   AssumptionCache AC(*F);
@@ -126,7 +126,7 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     ULO.Count = UF;
     ULO.Force = true;
     ULO.PeelCount = 0;
-    ULO.TripMultiple = SE.getSmallConstantTripMultiple(L);
+    ULO.TripMultiple = UF;// SE.getSmallConstantTripMultiple(L);
     ULO.AllowRuntime = true;
     ULO.AllowExpensiveTripCount = true;
     ULO.ForgetAllSCEV = false;
@@ -170,6 +170,7 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
 
 void computeUnrollFactor(Packer *Pkr, Function *OrigF, const LoopInfo &OrigLI,
                          DenseMap<const Loop *, unsigned> &UFs) {
+  return;
   ValueToValueMapTy VMap;
   Function *F = CloneFunction(OrigF, VMap);
   DominatorTree DT(*F);
@@ -189,8 +190,8 @@ void computeUnrollFactor(Packer *Pkr, Function *OrigF, const LoopInfo &OrigLI,
   // Now compute the unrolling factor on the cloned function, which we are free
   // to modify
   DenseMap<Loop *, unsigned> UnrollFactors;
-  computeUnrollFactorImpl(F, DT, LI, Pkr->getInsts(), &Pkr->getLVI(), Pkr->getTTI(),
-                          Pkr->getBFI(), UnrollFactors);
+  computeUnrollFactorImpl(F, DT, LI, Pkr->getInsts(), &Pkr->getLVI(),
+                          Pkr->getTTI(), Pkr->getBFI(), UnrollFactors);
 
   for (auto KV : UnrollFactors) {
     Loop *L = KV.first;

@@ -34,6 +34,8 @@ class ControlCompatibilityChecker {
                          bool>
       Memo;
 
+  mutable llvm::DenseMap<std::pair<llvm::Loop *, llvm::Loop *>, bool> FusionMemo;
+  bool isUnsafeToFuse(llvm::Loop *, llvm::Loop *) const;
 public:
   ControlCompatibilityChecker(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
                               llvm::PostDominatorTree &PDT,
@@ -112,5 +114,8 @@ void gatherInstructions(llvm::Function *,
                         LazyDependenceAnalysis &,
                         GlobalDependenceAnalysis *DA = nullptr,
                         const VectorPackContext *VPCtx = nullptr);
+
+bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,
+                             llvm::ScalarEvolution &);
 
 #endif // CODE_MOTION_UTIL_H
