@@ -214,9 +214,6 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
              DominatorTree &DT, PostDominatorTree &PDT,
              LazyDependenceAnalysis &LDA,
              const EquivalenceClasses<Instruction *> &CoupledInsts) {
-  if (!isControlCompatible(I, BB, LI, DT, PDT, LDA, &SE))
-    abort();
-
   // If I and BB are not in the same inner-loop, fuse the loops first
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
@@ -335,15 +332,19 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
     return Memo[MemoKey] = false;
 
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
+  BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
   SmallPtrSet<Instruction *, 16> Dependences;
   if (DA && VPCtx) {
+    bool Inclusive = isa<PHINode>(I);
     for (Value *V : VPCtx->iter_values(DA->getDepended(I))) {
       auto *Dep = cast<Instruction>(V);
-      if (!DT.properlyDominates(Dep->getParent(), BB))
-        Dependences.insert(Dep);
+      if (!Inclusive && DT.dominates(Dep, Dominator->getTerminator()))
+        continue;
+      if (Inclusive && DT.properlyDominates(Dep->getParent(), Dominator))
+        continue;
+      Dependences.insert(Dep);
     }
   } else {
-    BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
     findDependences(I, Dominator, LI, DT, LDA, Dependences, isa<PHINode>(I));
   }
 

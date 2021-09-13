@@ -126,7 +126,7 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     ULO.Count = UF;
     ULO.Force = true;
     ULO.PeelCount = 0;
-    ULO.TripMultiple = UF;// SE.getSmallConstantTripMultiple(L);
+    ULO.TripMultiple = SE.getSmallConstantTripMultiple(L);
     ULO.AllowRuntime = true;
     ULO.AllowExpensiveTripCount = true;
     ULO.ForgetAllSCEV = false;
@@ -170,7 +170,6 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
 
 void computeUnrollFactor(Packer *Pkr, Function *OrigF, const LoopInfo &OrigLI,
                          DenseMap<const Loop *, unsigned> &UFs) {
-  return;
   ValueToValueMapTy VMap;
   Function *F = CloneFunction(OrigF, VMap);
   DominatorTree DT(*F);
