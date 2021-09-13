@@ -126,7 +126,8 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
         continue;
       auto *OrigBB = cast<BasicBlock>(KV.second.V);
       auto *NewLoop = LI.getLoopFor(BB);
-      DupToOrigLoopMap.try_emplace(NewLoop, GetOrigLoop(LI.getLoopFor(OrigBB)), KV.second.Iter);
+      DupToOrigLoopMap.try_emplace(NewLoop, GetOrigLoop(LI.getLoopFor(OrigBB)),
+                                   KV.second.Iter);
     }
 
     // Unroll the sub loops
