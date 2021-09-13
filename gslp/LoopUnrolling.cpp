@@ -138,7 +138,7 @@ LoopUnrollResult
 UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
                    ScalarEvolution *SE, DominatorTree *DT, AssumptionCache *AC,
                    const TargetTransformInfo *TTI, bool PreserveLCSSA,
-                   ValueMap<const Value *, UnrolledValue> &UnrollToOrigMap,
+                   ValueMap<Value *, UnrolledValue> &UnrollToOrigMap,
                    Loop **RemainderLoop) {
 
   if (!L->getLoopPreheader())
@@ -355,6 +355,8 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
       ValueToValueMapTy VMap;
       BasicBlock *New = CloneBasicBlock(*BB, VMap, "." + Twine(It));
       Header->getParent()->getBasicBlockList().push_back(New);
+
+      UnrollToOrigMap[New] = UnrolledValue{It, *BB};
 
       assert((*BB != Header || LI->getLoopFor(*BB) == L) &&
              "Header should not be in a sub-loop");

@@ -58,48 +58,7 @@ public:
   AAResults &getResult() { return Result; }
 };
 
-class UnrollInfo {
-  struct UnrollRecord {
-    Loop *L;
-    unsigned Iter; // < UF
-    UnrollRecord(Loop *L, unsigned Iter = 0) : L(L), Iter(Iter) {}
-  };
-
-  std::map<const Instruction *, SmallVector<UnrollRecord, 4>> InstToRecords;
-
-public:
-  UnrollInfo(Function *F, LoopInfo &LI);
-  // `Unrolled` is the `Iter`'th version of Orig after unrolling `L`
-  void trackUnrolledInst(const Instruction *Orig, const Instruction *Unrolled,
-                         Loop *L, unsigned Iter);
-};
-
 } // namespace
-
-UnrollInfo::UnrollInfo(Function *F, LoopInfo &LI) {
-  for (auto &BB : *F) {
-    SmallVector<Loop *> LoopNest;
-    for (auto *L = LI.getLoopFor(&BB); L; L = L->getParentLoop())
-      LoopNest.push_back(L);
-    for (auto &I : BB)
-      for (auto *L : reverse(LoopNest))
-        InstToRecords[&I].emplace_back(L);
-  }
-}
-
-void UnrollInfo::trackUnrolledInst(const Instruction *Orig,
-                                   const Instruction *Unrolled, Loop *L,
-                                   unsigned Iter) {
-  if (InstToRecords.count(Orig))
-    return;
-  assert(!InstToRecords.count(Unrolled));
-  auto &Records = InstToRecords[Unrolled] = InstToRecords[Orig];
-  for (auto &Record : Records)
-    if (Record.L == L) {
-      Record.Iter = Iter;
-      break;
-    }
-}
 
 static void
 computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
@@ -112,10 +71,30 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
   TargetLibraryInfoWrapperPass TLIWrapper(Triple(M->getTargetTriple()));
   ScalarEvolution SE(*F, TLIWrapper.getTLI(*F), AC, DT, LI);
 
-  // Unroll *all* loops
-  UnrollInfo UI(F, LI);
-  auto LoopsInPreorder = LI.getLoopsInPreorder();
-  for (Loop *L : reverse(LoopsInPreorder)) {
+  // Mapping duplicated (inner) loops to the original loops
+  struct UnrolledLoopTy {
+    Loop *OrigLoop;
+    unsigned Iter;
+    UnrolledLoopTy() = default;
+    UnrolledLoopTy(Loop *L, unsigned I) : OrigLoop(L), Iter(I) {}
+  };
+  DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
+#ifndef NDEBUG
+  DenseSet<Loop *> OrigLoops;
+  for (auto *L : LI.getLoopsInPreorder())
+    OrigLoops.insert(L);
+#endif
+
+  auto GetOrigLoop = [&](Loop *L) {
+    assert(OrigLoops.count(L) || DupToOrigLoopMap.count(L));
+    return OrigLoops.count(L) ? L : DupToOrigLoopMap.lookup(L).OrigLoop;
+  };
+
+  SmallVector<Loop *, 8> Worklist;
+  Worklist.assign(LI.begin(), LI.end());
+  while (!Worklist.empty()) {
+    auto *L = Worklist.pop_back_val();
+
     unsigned UF = MaxUF;
     unsigned TripCount = SE.getSmallConstantMaxTripCount(L);
     if (TripCount && TripCount < UF)
@@ -136,19 +115,22 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
 
     bool PreserveLCSSA = L->isLCSSAForm(DT);
 
-    ValueMap<const Value *, UnrolledValue> UnrollToOrigMap;
+    ValueMap<Value *, UnrolledValue> UnrollToOrigMap;
     UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, PreserveLCSSA,
                        UnrollToOrigMap, nullptr /*remainder loop*/);
-    for (const auto &KV : UnrollToOrigMap) {
-      unsigned Iter = KV.second.Iter;
-      assert(Iter > 0);
-      const Value *OrigV = KV.second.V;
-      auto *OrigI = dyn_cast<Instruction>(OrigV);
-      if (!OrigI)
+
+    // Map the cloned sub loops back to original loops
+    for (auto KV : UnrollToOrigMap) {
+      auto *BB = dyn_cast<BasicBlock>(KV.first);
+      if (!BB || !LI.isLoopHeader(BB))
         continue;
-      auto *I = cast<Instruction>(KV.first);
-      UI.trackUnrolledInst(OrigI, I, L, Iter);
+      auto *OrigBB = cast<BasicBlock>(KV.second.V);
+      auto *NewLoop = LI.getLoopFor(BB);
+      DupToOrigLoopMap.try_emplace(NewLoop, GetOrigLoop(LI.getLoopFor(OrigBB)), KV.second.Iter);
     }
+
+    // Unroll the sub loops
+    Worklist.append(L->begin(), L->end());
   }
 
   // Re-do the alias analysis pipline

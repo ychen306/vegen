@@ -15,5 +15,5 @@ llvm::LoopUnrollResult UnrollLoopWithVMap(
     llvm::Loop *, llvm::UnrollLoopOptions, llvm::LoopInfo *,
     llvm::ScalarEvolution *, llvm::DominatorTree *, llvm::AssumptionCache *,
     const llvm::TargetTransformInfo *, bool PreserveLCSSA,
-    llvm::ValueMap<const llvm::Value *, UnrolledValue> &, llvm::Loop **);
+    llvm::ValueMap<llvm::Value *, UnrolledValue> &, llvm::Loop **);
 #endif // LOOP_UNROLLING_H
