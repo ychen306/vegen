@@ -52,6 +52,9 @@ class Plan {
 
   void updateCostOfVectorUses(llvm::ArrayRef<llvm::Value *>);
 
+  void addImpl(const VectorPack *);
+  void removeImpl(const VectorPack *);
+
 public:
   Plan() = delete;
   Plan(Packer *);
@@ -67,8 +70,15 @@ public:
   OperandIterator operands_begin() const { return NumVectorUses.begin(); }
   OperandIterator operands_end() const { return NumVectorUses.end(); }
 
-  void add(const VectorPack *);
-  void remove(const VectorPack *);
+  void add(const VectorPack *VP) {
+    addImpl(VP);
+    assert(verifyCost());
+  }
+  void remove(const VectorPack *VP) {
+    removeImpl(VP);
+    assert(verifyCost());
+  }
+
   float cost() const { return Cost; }
   bool verifyCost() const;
   const VectorPack *getProducer(llvm::Instruction *I) const {

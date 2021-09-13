@@ -10,8 +10,9 @@ using namespace llvm;
 
 Plan::Plan(Packer *Pkr) : Pkr(Pkr), Cost(0) {
   for (auto &I : instructions(Pkr->getFunction())) {
-    Cost += Pkr->getScalarCost(&I);
     NumScalarUses[&I] = I.getNumUses();
+    if (isAlive(&I))
+      Cost += Pkr->getScalarCost(&I);
   }
 }
 
@@ -151,7 +152,7 @@ void Plan::kill(Instruction *I) {
         break;
       }
     if (AllDead)
-      remove(VP);
+      removeImpl(VP);
   } else {
     Cost -= Pkr->getScalarCost(I);
     for (Value *O : I->operands())
@@ -211,7 +212,7 @@ bool Plan::verifyCost() const {
   return Ok;
 }
 
-void Plan::add(const VectorPack *VP) {
+void Plan::addImpl(const VectorPack *VP) {
   Packs.insert(VP);
   Cost += VP->getProducingCost();
   for (auto *OP : VP->getOperandPacks())
@@ -248,7 +249,7 @@ void Plan::add(const VectorPack *VP) {
 }
 
 // FIXME: update cost
-void Plan::remove(const VectorPack *VP) {
+void Plan::removeImpl(const VectorPack *VP) {
   assert(Packs.count(VP));
   Packs.erase(VP);
   Cost -= VP->getProducingCost();
