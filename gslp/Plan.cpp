@@ -248,7 +248,6 @@ void Plan::addImpl(const VectorPack *VP) {
     }
 }
 
-// FIXME: update cost
 void Plan::removeImpl(const VectorPack *VP) {
   assert(Packs.count(VP));
   Packs.erase(VP);
