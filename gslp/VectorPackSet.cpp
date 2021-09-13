@@ -278,26 +278,22 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
     }
 
 #ifndef NDEBUG
-    for (auto *V : DependedValues) {
-      if (auto *I2 = dyn_cast<Instruction>(V)) {
-        if (I2->getParent() == BB) {
+    for (auto *V : DependedValues)
+      if (auto *I2 = dyn_cast<Instruction>(V))
+        if (I2->getParent() == BB)
           assert(std::count(ReorderedInsts.begin(), ReorderedInsts.end(), I2));
-        }
-      }
-    }
 #endif
 
     // Now finalize ordering of this (pack of) instruction(s)
     if (I) {
       ReorderedInsts.push_back(I);
-    } else {
-      assert(VP);
-      for (auto *V : VP->getOrderedValues()) {
-        if (V)
-          if (auto *I = dyn_cast<Instruction>(V))
-            ReorderedInsts.push_back(I);
-      }
+      return;
     }
+
+    assert(VP);
+    for (auto *V : VP->getOrderedValues())
+      if (auto *I = dyn_cast_or_null<Instruction>(V))
+        ReorderedInsts.push_back(I);
   };
 
   // Sort the packs first
