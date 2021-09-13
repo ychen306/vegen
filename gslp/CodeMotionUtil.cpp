@@ -216,8 +216,7 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
              const EquivalenceClasses<Instruction *> &CoupledInsts) {
   if (!isControlCompatible(I, BB, LI, DT, PDT, LDA, &SE))
     abort();
-  if (I->getParent() == BB)
-    return;
+
   // If I and BB are not in the same inner-loop, fuse the loops first
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
@@ -225,6 +224,10 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
          !isUnsafeToFuse(LoopForI, LoopForBB, LI, SE, LDA, DT, PDT));
   if (LoopForI != LoopForBB)
     fuseLoops(LoopForI, LoopForBB, LI, DT, PDT, SE, LDA);
+
+  // Sometimes the loop fuser does the job
+  if (I->getParent() == BB)
+    return;
 
   Loop *L = LI.getLoopFor(I->getParent());
   assert(L == LI.getLoopFor(BB) && "loop-fusion failed");
@@ -273,11 +276,17 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
   PN->moveBefore(BB->getFirstNonPHI());
   // Replace the old incoming blocks with the control-equivalent preds of BB
   for (BasicBlock *Incoming : PN->blocks()) {
+    auto *IncomingInst =
+        dyn_cast<Instruction>(PN->getIncomingValueForBlock(Incoming));
     auto PredIt = find_if(predecessors(BB), [&](BasicBlock *Pred) {
-      return isControlEquivalent(*Incoming, *Pred, DT, PDT);
+      return (!IncomingInst ||
+              comesBefore(IncomingInst, Pred->getTerminator(), L)) &&
+             isControlEquivalent(*Incoming, *Pred, DT, PDT);
     });
     assert(PredIt != pred_end(BB) &&
            "can't find equivalent incoming for hoisted phi");
+    errs() << "Replacing " << Incoming->getName() << " with "
+           << (*PredIt)->getName() << " for " << *PN << '\n';
     PN->replaceIncomingBlockWith(Incoming, *PredIt);
   }
 }
@@ -423,7 +432,7 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
   }
 
   PromoteMemToReg(Allocas, DT);
-  //assert(!verifyFunction(*F, &errs()));
+  assert(!verifyFunction(*F, &errs()));
 }
 
 void gatherInstructions(Function *F,
