@@ -244,7 +244,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
       // we must just inserted it for packed PHIs.
       // Don't even bother with checking dependence,
       // because these instructions are right before the terminator.
-      assert(isa<ShuffleVectorInst>(I) || isa<InsertElementInst>(I));
+      assert(isa<ShuffleVectorInst>(I) || isa<InsertElementInst>(I) || isa<BranchInst>(I));
       assert(!ValueToPackMap.count(I));
       ReorderedInsts.push_back(I);
       return;

@@ -271,10 +271,9 @@ static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
   SmallPtrSet<Instruction *, 16> Dependences;
   findDependences(I, Dominator, LI, DT, LDA, Dependences);
   // Make sure I is not loop-dependent on L
-  for (Instruction *Dep : Dependences)
-    if (L->contains(Dep->getParent())) {
-      return false;
-    }
+  if (any_of(Dependences,
+             [L](auto *Dep) { return L->contains(Dep->getParent()); }))
+    return false;
 
   // See if we can find a block before (and including) the preheader to hoist I
   // to
@@ -572,7 +571,7 @@ Loop *fuseLoops(Loop *L1, Loop *L2, LoopInfo &LI, DominatorTree &DT,
   // Hoist L2's dependencies
   for (Instruction *I : InstsToHoist) {
     BasicBlock *Dest = findCompatiblePredecessorsFor(
-        I, L1Preheader, LI, DT, PDT, LDA, nullptr /*scalar evolution*/);
+        I, L1Preheader, LI, DT, PDT, LDA, &SE);
     assert(Dest && "can't find a place to hoist dep of L2");
     hoistTo(I, Dest, LI, SE, DT, PDT, LDA);
   }

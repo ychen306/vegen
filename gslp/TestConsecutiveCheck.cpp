@@ -42,13 +42,15 @@ bool TestConsecutiveCheck::runOnFunction(Function &F) {
   return false;
 }
 
-INITIALIZE_PASS_BEGIN(TestConsecutiveCheck, "test-consecutive-check", "test-consecutive-check",
-                      false, false)
+INITIALIZE_PASS_BEGIN(TestConsecutiveCheck, "test-consecutive-check",
+                      "Test Consecutive Access Check", false, false)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-INITIALIZE_PASS_END(TestConsecutiveCheck, "test-consecutive-check", "test-consecutive-check",
-                    false, false)
+INITIALIZE_PASS_END(TestConsecutiveCheck, "test-consecutive-check",
+                    "Test Consecutive Access Check", false, false)
 
-static struct Register {
-  Register() { initializeTestConsecutiveCheckPass(*PassRegistry::getPassRegistry()); }
+static struct RegisterMe {
+  RegisterMe() {
+    initializeTestConsecutiveCheckPass(*PassRegistry::getPassRegistry());
+  }
 } X;

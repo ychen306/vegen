@@ -423,7 +423,7 @@ void fixDefUseDominance(Function *F, DominatorTree &DT) {
   }
 
   PromoteMemToReg(Allocas, DT);
-  assert(!verifyFunction(*F, &errs()));
+  //assert(!verifyFunction(*F, &errs()));
 }
 
 void gatherInstructions(Function *F,
