@@ -79,11 +79,9 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     UnrolledLoopTy(Loop *L, unsigned I) : OrigLoop(L), Iter(I) {}
   };
   DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
-#ifndef NDEBUG
   DenseSet<Loop *> OrigLoops;
   for (auto *L : LI.getLoopsInPreorder())
     OrigLoops.insert(L);
-#endif
 
   auto GetOrigLoop = [&](Loop *L) {
     assert(OrigLoops.count(L) || DupToOrigLoopMap.count(L));

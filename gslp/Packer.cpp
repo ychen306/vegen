@@ -326,25 +326,6 @@ float Packer::getScalarCost(Instruction *I) {
       TTI::OK_AnyValue, TTI::OP_None, TTI::OP_None, Operands, I);
 }
 
-BasicBlock *Packer::getBlockForOperand(const OperandPack *OP) const {
-  BasicBlock *BB = nullptr;
-  for (auto *V : *OP) {
-    auto *I = dyn_cast_or_null<Instruction>(V);
-    if (!I)
-      continue;
-
-    if (!BB) {
-      BB = I->getParent();
-      continue;
-    }
-
-    // Can't produce OP within a single basic block
-    if (BB != I->getParent())
-      return nullptr;
-  }
-  return BB;
-}
-
 bool Packer::isControlCompatible(Instruction *I1, Instruction *I2) const {
   if (I1->getParent() == I2->getParent())
     return true;

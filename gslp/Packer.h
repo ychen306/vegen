@@ -140,10 +140,6 @@ public:
   llvm::Function *getFunction() const { return F; }
   const OperandProducerInfo &getProducerInfo(const OperandPack *);
   float getScalarCost(llvm::Instruction *);
-  // Get the basic block if the operand can be produced within a single basic
-  // block
-  llvm::BasicBlock *getBlockForOperand(const OperandPack *) const;
-
   bool isControlCompatible(llvm::Instruction *, llvm::Instruction *) const;
 };
 
