@@ -58,9 +58,9 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                BlockFrequencyInfo *BFI)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
       LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F),
-      CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA), SE(SE), DT(DT),
-      PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI), TTI(TTI),
-      BFI(BFI) {
+      CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA, true /*precompute*/),
+      SE(SE), DT(DT), PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI),
+      TTI(TTI), BFI(BFI) {
 
   std::vector<LoadInst *> Loads;
   std::vector<StoreInst *> Stores;

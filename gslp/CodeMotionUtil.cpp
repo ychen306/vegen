@@ -14,6 +14,7 @@
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
+#include "llvm/ADT/PostOrderIterator.h"
 
 using namespace llvm;
 
@@ -178,8 +179,48 @@ static BasicBlock *getIDom(DominatorTree &DT, BasicBlock *BB) {
   return Node->getIDom()->getBlock();
 }
 
+ControlCompatibilityChecker::ControlCompatibilityChecker(
+    LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
+    LazyDependenceAnalysis &LDA, ScalarEvolution *SE, VectorPackContext *VPCtx,
+    GlobalDependenceAnalysis *DA, bool PrecomputeEquivalentBlocks)
+    : LI(LI), DT(DT), PDT(PDT), LDA(LDA), SE(SE), VPCtx(VPCtx), DA(DA),
+      CheckEquivalentBlocksLazily(!PrecomputeEquivalentBlocks) {
+  if (!PrecomputeEquivalentBlocks) {
+    return;
+  }
+
+  // Compute block order
+  Function *F = DT.getRootNode()->getBlock()->getParent();
+  ReversePostOrderTraversal<Function *> RPO(F);
+  unsigned i = 0;
+  for (auto *BB : RPO)
+    BlockOrder.try_emplace(BB, i++);
+}
+
+bool ControlCompatibilityChecker::isEquivalent(BasicBlock *BB1,
+                                               BasicBlock *BB2) const {
+  if (CheckEquivalentBlocksLazily) {
+    if (EquivalentBlocks.isEquivalent(BB1, BB2))
+      return true;
+    if (isControlEquivalent(*BB1, *BB2, DT, PDT)) {
+      EquivalentBlocks.unionSets(BB1, BB2);
+      return true;
+    }
+    return false;
+  }
+  return EquivalentBlocks.isEquivalent(BB1, BB2);
+}
+
 BasicBlock *ControlCompatibilityChecker::findCompatiblePredecessorsFor(
     Instruction *I, BasicBlock *BB, bool Inclusive) const {
+  BasicBlock *EarliestCompat = EarliestCompatibleBlocks.lookup(I);
+  if (!CheckEquivalentBlocksLazily && EarliestCompat) {
+    if (Inclusive && BlockOrder.lookup(EarliestCompat) <= BlockOrder.lookup(BB))
+      return EarliestCompat;
+    if (!Inclusive && BlockOrder.lookup(EarliestCompat) < BlockOrder.lookup(BB))
+      return EarliestCompat;
+  }
+
   Loop *ParentLoop = findCommonParentLoop(I->getParent(), BB, LI);
   SkipBackEdge SBE(ParentLoop);
   for (BasicBlock *Pred : inverse_depth_first_ext(BB, SBE)) {
@@ -306,7 +347,7 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   if (It != Memo.end())
     return It->second;
 
-  if (!isControlEquivalent(*I->getParent(), *BB, DT, PDT))
+  if (!isEquivalent(I->getParent(), BB))
     return Memo[MemoKey] = false;
 
   // PHI nodes needs to have their incoming blocks equivalent to some
@@ -354,6 +395,14 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
     if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive)) {
       return Memo[MemoKey] = false;
     }
+  }
+
+  BasicBlock *EarliestCompat = EarliestCompatibleBlocks.lookup(I);
+  if (!CheckEquivalentBlocksLazily) {
+    if (EarliestCompat && BlockOrder.lookup(BB) < BlockOrder.lookup(EarliestCompat))
+      EarliestCompatibleBlocks[I] = BB;
+    else if (!EarliestCompat)
+      EarliestCompatibleBlocks[I] = BB;
   }
 
   return Memo[MemoKey] = true;

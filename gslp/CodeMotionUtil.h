@@ -30,20 +30,30 @@ class ControlCompatibilityChecker {
   VectorPackContext *VPCtx;
   GlobalDependenceAnalysis *DA;
 
+  // This marks the basic blocks in RPO
+  llvm::DenseMap<llvm::BasicBlock *, unsigned> BlockOrder;
+  mutable llvm::DenseMap<llvm::Instruction *, llvm::BasicBlock *> EarliestCompatibleBlocks;
+
   mutable llvm::DenseMap<std::pair<llvm::Instruction *, llvm::BasicBlock *>,
                          bool>
       Memo;
 
-  mutable llvm::DenseMap<std::pair<llvm::Loop *, llvm::Loop *>, bool> FusionMemo;
+  bool CheckEquivalentBlocksLazily;
+  mutable llvm::EquivalenceClasses<llvm::BasicBlock *> EquivalentBlocks;
+
+  mutable llvm::DenseMap<std::pair<llvm::Loop *, llvm::Loop *>, bool>
+      FusionMemo;
   bool isUnsafeToFuse(llvm::Loop *, llvm::Loop *) const;
+  bool isEquivalent(llvm::BasicBlock *, llvm::BasicBlock *) const;
+
 public:
   ControlCompatibilityChecker(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
                               llvm::PostDominatorTree &PDT,
                               LazyDependenceAnalysis &LDA,
                               llvm::ScalarEvolution *SE,
                               VectorPackContext *VPCtx = nullptr,
-                              GlobalDependenceAnalysis *DA = nullptr)
-      : LI(LI), DT(DT), PDT(PDT), LDA(LDA), SE(SE), VPCtx(VPCtx), DA(DA) {}
+                              GlobalDependenceAnalysis *DA = nullptr,
+                              bool PrecomputeEquivalentBlocks = false);
 
   bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *) const;
   llvm::BasicBlock *findCompatiblePredecessorsFor(llvm::Instruction *,
@@ -119,11 +129,15 @@ bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,
                              llvm::ScalarEvolution &);
 
 void getBlocksReachableFrom(
-    llvm::BasicBlock *Earliest, llvm::SmallPtrSetImpl<llvm::BasicBlock *> &Reachable,
-    const llvm::DenseSet<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>> &BackEdges);
+    llvm::BasicBlock *Earliest,
+    llvm::SmallPtrSetImpl<llvm::BasicBlock *> &Reachable,
+    const llvm::DenseSet<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>>
+        &BackEdges);
 
 void getBlocksReaching(
-    llvm::BasicBlock *Latest, llvm::SmallPtrSetImpl<llvm::BasicBlock *> &CanComeFrom,
-    const llvm::DenseSet<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>> &BackEdges);
+    llvm::BasicBlock *Latest,
+    llvm::SmallPtrSetImpl<llvm::BasicBlock *> &CanComeFrom,
+    const llvm::DenseSet<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>>
+        &BackEdges);
 
 #endif // CODE_MOTION_UTIL_H
