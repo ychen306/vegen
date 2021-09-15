@@ -5,6 +5,7 @@
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
@@ -222,7 +223,6 @@ bool GSLP::runOnFunction(Function &F) {
   auto *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   auto *SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   auto *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto *DI = &getAnalysis<DependenceAnalysisWrapperPass>().getDI();
   auto *LVI = &getAnalysis<LazyValueInfoWrapperPass>().getLVI();
@@ -240,9 +240,16 @@ bool GSLP::runOnFunction(Function &F) {
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';
-  Packer Pkr(SupportedIntrinsics, F, AA, LI, SE, DT, PDT, DI, LVI, TTI, BFI);
-  DenseMap<const Loop *, unsigned> UFs;
-  computeUnrollFactor(&Pkr, &F, *LI, UFs);
+
+  AssumptionCache AC(F);
+  DenseMap<Loop *, unsigned> UFs;
+
+  computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
+  DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
+  unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap);
+
+  PostDominatorTree PDT(F); // recompute PDT after unrolling
+  Packer Pkr(SupportedIntrinsics, F, AA, LI, SE, DT, &PDT, DI, LVI, TTI, BFI);
 
   VectorPackSet Packs(&F);
   optimizeBottomUp(Packs, &Pkr);

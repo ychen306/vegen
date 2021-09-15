@@ -357,3 +357,26 @@ bool isConstantPack(const OperandPack &OP) {
       return false;
   return true;
 }
+
+void VectorPack::getPackedInstructions(SmallPtrSetImpl<Instruction *> &Insts) const {
+  if (Kind != General) {
+    for (auto *V : elementValues())
+      Insts.insert(cast<Instruction>(V));
+    return;
+  }
+
+  SmallPtrSet<Value *, 32> LiveIns;
+  SmallVector<Value *> Worklist;
+  for (auto *M : Matches) {
+    LiveIns.insert(M->Inputs.begin(), M->Inputs.end());
+    Worklist.push_back(M->Output);
+  }
+  while (!Worklist.empty()) {
+    auto *I = dyn_cast<Instruction>(Worklist.pop_back_val());
+    if (!I || LiveIns.count(I))
+      continue;
+    if (!Insts.insert(I).second)
+      continue;
+    Worklist.append(I->value_op_begin(), I->value_op_end());
+  }
+}

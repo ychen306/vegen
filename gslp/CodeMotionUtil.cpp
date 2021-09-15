@@ -323,7 +323,6 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
         return Memo[MemoKey] = false;
     }
   }
-
   Loop *LoopForI = LI.getLoopFor(I->getParent());
   Loop *LoopForBB = LI.getLoopFor(BB);
   if ((bool)LoopForI ^ (bool)LoopForBB)
@@ -352,8 +351,9 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   for (Instruction *Dep : Dependences) {
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
-    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive))
+    if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive)) {
       return Memo[MemoKey] = false;
+    }
   }
 
   return Memo[MemoKey] = true;

@@ -58,42 +58,55 @@ public:
   AAResults &getResult() { return Result; }
 };
 
+struct Range {
+  bool Initialized;
+  unsigned Lo, Hi; // inclusive
+  Range() : Initialized(false) {}
+  unsigned size() const { return Hi - Lo + 1; }
+  void update(unsigned X) {
+    if (!Initialized) {
+      Lo = Hi = X;
+      Initialized = true;
+      return;
+    }
+
+    if (X < Lo)
+      Lo = X;
+    else if (X > Hi)
+      Hi = X;
+  }
+};
+raw_ostream &operator<<(raw_ostream &OS, const Range &R) {
+  return OS << '[' << R.Lo << ',' << R.Hi << ']';
+}
+
 } // namespace
 
-static void
-computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
-                        ArrayRef<const InstBinding *> Insts, LazyValueInfo *LVI,
-                        TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
-                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 4) {
-  // Compute some analysis for the unroller
-  Module *M = F->getParent();
-  AssumptionCache AC(*F);
-  TargetLibraryInfoWrapperPass TLIWrapper(Triple(M->getTargetTriple()));
-  ScalarEvolution SE(*F, TLIWrapper.getTLI(*F), AC, DT, LI);
+void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
+                 AssumptionCache &AC, DominatorTree &DT,
+                 TargetTransformInfo *TTI,
+                 const DenseMap<Loop *, unsigned> &UFs,
+                 DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
+                 DenseMap<BasicBlock *, unsigned> *UnrolledIterations) {
 
-  // Mapping duplicated (inner) loops to the original loops
-  struct UnrolledLoopTy {
-    Loop *OrigLoop;
-    unsigned Iter;
-    UnrolledLoopTy() = default;
-    UnrolledLoopTy(Loop *L, unsigned I) : OrigLoop(L), Iter(I) {}
-  };
-  DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
-  DenseSet<Loop *> OrigLoops;
-  for (auto *L : LI.getLoopsInPreorder())
-    OrigLoops.insert(L);
-
-  auto GetOrigLoop = [&](Loop *L) {
-    assert(OrigLoops.count(L) || DupToOrigLoopMap.count(L));
-    return OrigLoops.count(L) ? L : DupToOrigLoopMap.lookup(L).OrigLoop;
+  auto GetOrigLoop = [&DupToOrigLoopMap](Loop *L) {
+    auto It = DupToOrigLoopMap.find(L);
+    if (It != DupToOrigLoopMap.end())
+      return It->second.OrigLoop;
+    return L;
   };
 
   SmallVector<Loop *, 8> Worklist;
   Worklist.assign(LI.begin(), LI.end());
   while (!Worklist.empty()) {
-    auto *L = Worklist.pop_back_val();
+    Loop *L = Worklist.pop_back_val();
 
-    unsigned UF = MaxUF;
+    unsigned UF = UFs.lookup(GetOrigLoop(L));
+    if (!UF) {
+      Worklist.append(L->begin(), L->end());
+      continue;
+    }
+
     unsigned TripCount = SE.getSmallConstantMaxTripCount(L);
     if (TripCount && TripCount < UF)
       UF = TripCount;
@@ -120,6 +133,9 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     // Map the cloned sub loops back to original loops
     for (auto KV : UnrollToOrigMap) {
       auto *BB = dyn_cast<BasicBlock>(KV.first);
+      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations)
+        UnrolledIterations->try_emplace(BB, KV.second.Iter);
+
       if (!BB || !LI.isLoopHeader(BB))
         continue;
       auto *OrigBB = cast<BasicBlock>(KV.second.V);
@@ -131,6 +147,37 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     // Unroll the sub loops
     Worklist.append(L->begin(), L->end());
   }
+}
+
+static void
+computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
+                        ArrayRef<const InstBinding *> Insts, LazyValueInfo *LVI,
+                        TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
+                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 8) {
+  // Compute some analysis for the unroller
+  Module *M = F->getParent();
+  AssumptionCache AC(*F);
+  TargetLibraryInfoWrapperPass TLIWrapper(Triple(M->getTargetTriple()));
+  ScalarEvolution SE(*F, TLIWrapper.getTLI(*F), AC, DT, LI);
+
+  DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
+  // Mapping a basic block to its unrolled iteration
+  DenseMap<BasicBlock *, unsigned> UnrolledIterations;
+  DenseSet<Loop *> OrigLoops;
+  for (auto *L : LI.getLoopsInPreorder())
+    OrigLoops.insert(L);
+
+  auto GetOrigLoop = [&](Loop *L) {
+    assert(OrigLoops.count(L) || DupToOrigLoopMap.count(L));
+    return OrigLoops.count(L) ? L : DupToOrigLoopMap.lookup(L).OrigLoop;
+  };
+
+  // Unroll all the loops maximally
+  DenseMap<Loop *, unsigned> MaxUFs;
+  for (auto *L : LI.getLoopsInPreorder())
+    MaxUFs.try_emplace(L, MaxUF);
+  unrollLoops(F, SE, LI, AC, DT, TTI, MaxUFs, DupToOrigLoopMap,
+              &UnrolledIterations);
 
   // Re-do the alias analysis pipline
   auto GetTLI = [&TLIWrapper](Function &F) { return TLIWrapper.getTLI(F); };
@@ -145,39 +192,77 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
   optimizeBottomUp(Packs, &Pkr);
-  for (auto *VP : Packs)
-    errs() << *VP << '\n';
+
+  for (auto *VP : Packs) {
+    SmallPtrSet<Instruction *, 32> Insts;
+    VP->getPackedInstructions(Insts);
+    SmallPtrSet<BasicBlock *, 8> Blocks;
+    for (auto *I : Insts)
+      Blocks.insert(I->getParent());
+
+    std::map<Loop *, Range> PackedIterations;
+    for (auto *BB : Blocks) {
+      auto *L = LI.getLoopFor(BB);
+      PackedIterations[L].update(
+          UnrolledIterations.count(BB) ? UnrolledIterations.lookup(BB) : 0);
+      for (L = L->getParentLoop(); L; L = L->getParentLoop())
+        PackedIterations[L].update(
+            DupToOrigLoopMap.count(L) ? DupToOrigLoopMap.lookup(L).Iter : 0);
+    }
+    for (const auto &LoopAndRange : PackedIterations) {
+      Loop *L = LoopAndRange.first;
+      const Range &R = LoopAndRange.second;
+      // Ignore epilog loops
+      if (!OrigLoops.count(L) && !DupToOrigLoopMap.count(L))
+        continue;
+
+      unsigned MinUF = R.size();
+      if (R.Lo / MinUF != R.Hi / MinUF)
+        MinUF *= 2;
+
+      std::remove_reference<decltype(UFs)>::type::iterator It;
+      bool Inserted;
+      std::tie(It, Inserted) = UFs.try_emplace(GetOrigLoop(L), MinUF);
+      if (!Inserted)
+        It->second = std::max(It->second, MinUF);
+    }
+  }
+  for (auto KV : UFs)
+    errs() << KV.first << "(depth=" << KV.first->getLoopDepth() << ')' << ": "
+           << KV.second << '\n';
 }
 
-void computeUnrollFactor(Packer *Pkr, Function *OrigF, const LoopInfo &OrigLI,
-                         DenseMap<const Loop *, unsigned> &UFs) {
+void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
+                         LazyValueInfo *LVI, TargetTransformInfo *TTI,
+                         BlockFrequencyInfo *BFI, Function *OrigF,
+                         const LoopInfo &OrigLI,
+                         DenseMap<Loop *, unsigned> &UFs) {
   ValueToValueMapTy VMap;
   Function *F = CloneFunction(OrigF, VMap);
   DominatorTree DT(*F);
   LoopInfo LI(DT);
 
   // Mapping the old loops to the cloned loops
-  DenseMap<const Loop *, Loop *> LoopMap;
+  DenseMap<Loop *, Loop *> CloneToOrigMap;
   for (auto &OrigBB : *OrigF) {
     auto *BB = cast<BasicBlock>(VMap[&OrigBB]);
     Loop *OrigL = OrigLI.getLoopFor(&OrigBB);
     if (!OrigL)
       continue;
     Loop *L = LI.getLoopFor(BB);
-    LoopMap.try_emplace(OrigL, L);
+    CloneToOrigMap.try_emplace(L, OrigL);
   }
 
   // Now compute the unrolling factor on the cloned function, which we are free
   // to modify
   DenseMap<Loop *, unsigned> UnrollFactors;
-  computeUnrollFactorImpl(F, DT, LI, Pkr->getInsts(), &Pkr->getLVI(),
-                          Pkr->getTTI(), Pkr->getBFI(), UnrollFactors);
+  computeUnrollFactorImpl(F, DT, LI, Insts, LVI, TTI, BFI, UnrollFactors);
 
   for (auto KV : UnrollFactors) {
     Loop *L = KV.first;
     unsigned UF = KV.second;
-    assert(LoopMap.count(L));
-    UFs.try_emplace(LoopMap.lookup(L), UF);
+    assert(CloneToOrigMap.count(L));
+    UFs.try_emplace(CloneToOrigMap.lookup(L), UF);
   }
 
   // Erase the clone after we are done

@@ -626,6 +626,7 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
   Optional<DomTreeUpdater> DTU;
   if (DT)
     DTU.emplace(DT, DomTreeUpdater::UpdateStrategy::Lazy);
+#if 0
   // Merge adjacent basic blocks, if possible.
   for (BasicBlock *Latch : Latches) {
     BranchInst *Term = dyn_cast<BranchInst>(Latch->getTerminator());
@@ -644,6 +645,7 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
       }
     }
   }
+#endif
   // Apply updates to the DomTree.
   if (DT)
     DT = &DTU->getDomTree();

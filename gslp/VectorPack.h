@@ -5,6 +5,7 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include <set>
 
 // A vector pack is an *ordered* set of values,
@@ -158,6 +159,8 @@ public:
   // Choose a right place to gather an operand
   void setOperandGatherPoint(unsigned OperandId,
                              IntrinsicBuilder &Builder) const;
+
+  void getPackedInstructions(llvm::SmallPtrSetImpl<llvm::Instruction *> &) const;
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
