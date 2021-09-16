@@ -125,7 +125,7 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
     ULO.PreserveCondBr = false;
 
     ValueMap<Value *, UnrolledValue> UnrollToOrigMap;
-    UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, false,
+    UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, true,
                        UnrollToOrigMap, nullptr /*remainder loop*/);
 
     // Map the cloned sub loops back to original loops

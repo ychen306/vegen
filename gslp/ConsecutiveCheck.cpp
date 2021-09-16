@@ -121,6 +121,8 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
   AddRecLoopRewriter::LoopToLoopMap Loops;
   for (const auto &Pair : zip(LoopNest1, LoopNest2)) {
     std::tie(L1, L2) = Pair;
+    if (L1 == L2)
+      continue;
     if (!haveIdenticalTripCounts(L1, L2, SE))
       return false;
     Loops[L2] = L1;

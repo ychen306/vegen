@@ -325,8 +325,6 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     });
     assert(PredIt != pred_end(BB) &&
            "can't find equivalent incoming for hoisted phi");
-    errs() << "Replacing " << Incoming->getName() << " with "
-           << (*PredIt)->getName() << " for " << *PN << '\n';
     PN->replaceIncomingBlockWith(Incoming, *PredIt);
   }
 }
