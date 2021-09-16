@@ -1,4 +1,4 @@
-; RUN: %opt -gslp %s -o - -S | FileCheck %s
+; RUN: %opt -gslp -no-unroll %s -o - -S | FileCheck %s
 
 ; CHECK: for.body.lr.ph:
 ; CHECK-NEXT:   %arrayidx1 = getelementptr inbounds i32, i32* %a, i64 0

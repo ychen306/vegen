@@ -368,6 +368,8 @@ void VectorPack::getPackedInstructions(SmallPtrSetImpl<Instruction *> &Insts) co
   SmallPtrSet<Value *, 32> LiveIns;
   SmallVector<Value *> Worklist;
   for (auto *M : Matches) {
+    if (!M)
+      continue;
     LiveIns.insert(M->Inputs.begin(), M->Inputs.end());
     Worklist.push_back(M->Output);
   }

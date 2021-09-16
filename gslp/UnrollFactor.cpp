@@ -102,7 +102,7 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
     Loop *L = Worklist.pop_back_val();
 
     unsigned UF = UFs.lookup(GetOrigLoop(L));
-    if (!UF) {
+    if (UF <= 1) {
       Worklist.append(L->begin(), L->end());
       continue;
     }
@@ -124,10 +124,8 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
     ULO.PreserveOnlyFirst = false;
     ULO.PreserveCondBr = false;
 
-    bool PreserveLCSSA = L->isLCSSAForm(DT);
-
     ValueMap<Value *, UnrolledValue> UnrollToOrigMap;
-    UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, PreserveLCSSA,
+    UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, false,
                        UnrollToOrigMap, nullptr /*remainder loop*/);
 
     // Map the cloned sub loops back to original loops
@@ -241,6 +239,12 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
   Function *F = CloneFunction(OrigF, VMap);
   DominatorTree DT(*F);
   LoopInfo LI(DT);
+
+  // Nothing to unroll
+  if (LI.getTopLevelLoops().empty()) {
+    F->eraseFromParent();
+    return;
+  }
 
   // Mapping the old loops to the cloned loops
   DenseMap<Loop *, Loop *> CloneToOrigMap;

@@ -1,3 +1,5 @@
+#define DEBUG_TYPE "vegen-loop-fusion"
+
 #include "LoopFusion.h"
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
@@ -21,8 +23,6 @@
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
-
-#define DEBUG_TYPE "vegen-loop-fusion"
 
 namespace {
 template <typename PatternTy, typename ValueTy> struct Capture_match {
@@ -264,7 +264,7 @@ static bool isUsedByLoop(Instruction *I, Loop *L) {
 static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
                                 DominatorTree &DT, PostDominatorTree &PDT,
                                 LazyDependenceAnalysis &LDA,
-                                ScalarEvolution &SE) {
+                                ScalarEvolution &SE, const ControlCompatibilityChecker *Checker=nullptr) {
   BasicBlock *Preheader = L->getLoopPreheader();
   BasicBlock *Dominator =
       DT.findNearestCommonDominator(I->getParent(), Preheader);
@@ -277,6 +277,8 @@ static bool isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI,
 
   // See if we can find a block before (and including) the preheader to hoist I
   // to
+  if (Checker)
+    return Checker->findCompatiblePredecessorsFor(I, Preheader, true/*inclusive*/);
   return findCompatiblePredecessorsFor(I, Preheader, LI, DT, PDT, LDA, &SE);
 }
 
@@ -312,7 +314,7 @@ getIntermediateBlocks(Loop *L1, Loop *L2,
 // we also assume L1 comes before L2.
 static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
                              LazyDependenceAnalysis &LDA, DominatorTree &DT,
-                             PostDominatorTree &PDT, ScalarEvolution &SE) {
+                             PostDominatorTree &PDT, ScalarEvolution &SE, const ControlCompatibilityChecker *Checker) {
   // Collect the memory accesses
   SmallVector<Instruction *> Accesses1, Accesses2;
   DenseMap<Instruction *, RecurKind> ReductionKinds;
@@ -341,7 +343,7 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
       return false;
     for (auto &I : *BB)
       if (isUsedByLoop(&I, L2) &&
-          !isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA, SE))
+          !isSafeToHoistBefore(&I, L1, LI, DT, PDT, LDA, SE, Checker))
         return false;
   }
 
@@ -363,7 +365,7 @@ static bool checkDependences(Loop *L1, Loop *L2, LoopInfo &LI,
 
 bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
                     LazyDependenceAnalysis &LDA, DominatorTree &DT,
-                    PostDominatorTree &PDT) {
+                    PostDominatorTree &PDT, const ControlCompatibilityChecker *Checker) {
   if (!checkLoop(L1) || !checkLoop(L2)) {
     LLVM_DEBUG(dbgs() << "Loops don't have the right shape\n");
     return true;
@@ -385,11 +387,15 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
   // If L1 and L2 are nested inside other loops, those loops also need to be
   // fused
   if (L1Parent != L2Parent) {
-    if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, LDA,
-                       DT, PDT)) {
-      LLVM_DEBUG(dbgs() << "Parent loops can't be fused\n");
-      return true;
-    }
+    if (Checker) {
+      if (Checker->isUnsafeToFuse(L1Parent, L2Parent))
+        return true;
+    } else
+      if (isUnsafeToFuse(L1->getParentLoop(), L2->getParentLoop(), LI, SE, LDA,
+            DT, PDT)) {
+        LLVM_DEBUG(dbgs() << "Parent loops can't be fused\n");
+        return true;
+      }
     // TODO: maybe support convergent control flow?
     // For now, don't fuse nested loops that are conditionally executed
     // (since it's harder to prove they are executed together)
@@ -408,8 +414,8 @@ bool isUnsafeToFuse(Loop *L1, Loop *L2, LoopInfo &LI, ScalarEvolution &SE,
     }
 
     bool OneBeforeTwo = DT.dominates(getLoopEntry(L1), getLoopEntry(L2));
-    if ((OneBeforeTwo && !checkDependences(L1, L2, LI, LDA, DT, PDT, SE)) ||
-        (!OneBeforeTwo && !checkDependences(L2, L1, LI, LDA, DT, PDT, SE))) {
+    if ((OneBeforeTwo && !checkDependences(L1, L2, LI, LDA, DT, PDT, SE, Checker)) ||
+        (!OneBeforeTwo && !checkDependences(L2, L1, LI, LDA, DT, PDT, SE, Checker))) {
       LLVM_DEBUG(dbgs() << "Loops are dependent (memory)\n");
       return true;
     }

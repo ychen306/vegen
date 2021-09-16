@@ -1,4 +1,4 @@
-; RUN: %opt -gslp %s -o - -S | FileCheck %s
+; RUN: %opt -gslp -no-unroll %s -o - -S | FileCheck %s
 
 ; CHECK: [[B:%.*]] = bitcast i32* %arrayidx to <2 x i32>*
 ; CHECK: [[LOAD:%.*]] = load <2 x i32>, <2 x i32>* [[B]]

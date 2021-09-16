@@ -48,6 +48,9 @@ static cl::opt<std::string>
 static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
                                     cl::init(false));
 
+static cl::opt<bool> DisableUnrolling("no-unroll", cl::desc("Don't unroll"),
+    cl::init(false));
+
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
 }
@@ -241,12 +244,13 @@ bool GSLP::runOnFunction(Function &F) {
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';
 
-  AssumptionCache AC(F);
-  DenseMap<Loop *, unsigned> UFs;
-
-  computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
-  DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
-  unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap);
+  if (!DisableUnrolling) {
+    AssumptionCache AC(F);
+    DenseMap<Loop *, unsigned> UFs;
+    computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
+    DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
+    unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap);
+  }
 
   PostDominatorTree PDT(F); // recompute PDT after unrolling
   Packer Pkr(SupportedIntrinsics, F, AA, LI, SE, DT, &PDT, DI, LVI, TTI, BFI);

@@ -1,3 +1,5 @@
+#define DEBUG_TYPE "vegen-motion-util"
+
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"
 #include "DependenceAnalysis.h"
@@ -15,8 +17,11 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/Statistic.h"
 
 using namespace llvm;
+
+ALWAYS_ENABLED_STATISTIC(NumCompatChecks, "Number of control compatibility checks");
 
 #undef NDEBUG
 
@@ -199,7 +204,7 @@ ControlCompatibilityChecker::ControlCompatibilityChecker(
 
 bool ControlCompatibilityChecker::isEquivalent(BasicBlock *BB1,
                                                BasicBlock *BB2) const {
-  if (CheckEquivalentBlocksLazily) {
+  if (CheckEquivalentBlocksLazily || true) {
     if (EquivalentBlocks.isEquivalent(BB1, BB2))
       return true;
     if (isControlEquivalent(*BB1, *BB2, DT, PDT)) {
@@ -337,7 +342,7 @@ bool ControlCompatibilityChecker::isUnsafeToFuse(Loop *L1, Loop *L2) const {
   if (It != FusionMemo.end())
     return It->second;
 
-  return FusionMemo[{L1, L2}] = ::isUnsafeToFuse(L1, L2, LI, *SE, LDA, DT, PDT);
+  return FusionMemo[{L1, L2}] = ::isUnsafeToFuse(L1, L2, LI, *SE, LDA, DT, PDT, this);
 }
 
 bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
@@ -346,6 +351,9 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   auto It = Memo.find(MemoKey);
   if (It != Memo.end())
     return It->second;
+
+  if (!CheckEquivalentBlocksLazily)
+    NumCompatChecks++;
 
   if (!isEquivalent(I->getParent(), BB))
     return Memo[MemoKey] = false;
@@ -390,6 +398,8 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
 
   // FIXME: check for unsafe to hoist things like volatile
   for (Instruction *Dep : Dependences) {
+    if (LoopForI && !LoopForI->contains(Dep->getParent()))
+      continue;
     // We need to hoist the dependences of a phi node into a proper predecessor
     bool Inclusive = !isa<PHINode>(I);
     if (Dep != I && !findCompatiblePredecessorsFor(Dep, BB, Inclusive)) {
@@ -397,8 +407,8 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
     }
   }
 
-  BasicBlock *EarliestCompat = EarliestCompatibleBlocks.lookup(I);
   if (!CheckEquivalentBlocksLazily) {
+    BasicBlock *EarliestCompat = EarliestCompatibleBlocks.lookup(I);
     if (EarliestCompat && BlockOrder.lookup(BB) < BlockOrder.lookup(EarliestCompat))
       EarliestCompatibleBlocks[I] = BB;
     else if (!EarliestCompat)

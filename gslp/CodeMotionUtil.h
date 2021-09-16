@@ -43,7 +43,6 @@ class ControlCompatibilityChecker {
 
   mutable llvm::DenseMap<std::pair<llvm::Loop *, llvm::Loop *>, bool>
       FusionMemo;
-  bool isUnsafeToFuse(llvm::Loop *, llvm::Loop *) const;
   bool isEquivalent(llvm::BasicBlock *, llvm::BasicBlock *) const;
 
 public:
@@ -55,6 +54,7 @@ public:
                               GlobalDependenceAnalysis *DA = nullptr,
                               bool PrecomputeEquivalentBlocks = false);
 
+  bool isUnsafeToFuse(llvm::Loop *, llvm::Loop *) const;
   bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *) const;
   llvm::BasicBlock *findCompatiblePredecessorsFor(llvm::Instruction *,
                                                   llvm::BasicBlock *,

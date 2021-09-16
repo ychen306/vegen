@@ -121,36 +121,37 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
   auto *Ptr1SCEV = SE.getSCEV(Ptr1);
   auto *Ptr2SCEV = SE.getSCEV(Ptr2);
 
-  if (!UseLVI) {
-    // The check below assumes that the loops used by the two SCEVs are totally
-    // ordered. Check it!
-    struct FindUsedLoops {
-      FindUsedLoops(SmallVectorImpl<const Loop *> &LoopsUsed)
-        : LoopsUsed(LoopsUsed) {}
-      SmallVectorImpl<const Loop *> &LoopsUsed;
-      bool follow(const SCEV *S) {
-        if (auto *AR = dyn_cast<SCEVAddRecExpr>(S))
-          LoopsUsed.push_back(AR->getLoop());
-        return true;
-      }
+  // The check below assumes that the loops used by the two SCEVs are totally
+  // ordered. Check it!
+  struct FindUsedLoops {
+    FindUsedLoops(SmallVectorImpl<const Loop *> &LoopsUsed)
+      : LoopsUsed(LoopsUsed) {}
+    SmallVectorImpl<const Loop *> &LoopsUsed;
+    bool follow(const SCEV *S) {
+      if (auto *AR = dyn_cast<SCEVAddRecExpr>(S))
+        LoopsUsed.push_back(AR->getLoop());
+      return true;
+    }
 
-      bool isDone() const { return false; }
-    };
-    SmallVector<const Loop *> Loops;
-    FindUsedLoops LoopFinder(Loops);
-    SCEVTraversal<FindUsedLoops> LoopCollector(LoopFinder);
+    bool isDone() const { return false; }
+  };
 
-    LoopCollector.visitAll(Ptr1SCEV);
-    LoopCollector.visitAll(Ptr2SCEV);
+  SmallVector<const Loop *> Loops;
+  FindUsedLoops LoopFinder(Loops);
+  SCEVTraversal<FindUsedLoops> LoopCollector(LoopFinder);
 
-    auto CompareLoops = [&DT](const Loop *L1, const Loop *L2) {
-      return L1 == L2 || L1->contains(L2);
-    };
-    stable_sort(Loops, CompareLoops);
-    for (int i = 0; i < (int)Loops.size() - 1; i++)
-      if (!CompareLoops(Loops[i], Loops[i + 1]))
-        return true;
+  LoopCollector.visitAll(Ptr1SCEV);
+  LoopCollector.visitAll(Ptr2SCEV);
 
+  auto CompareLoops = [&DT](const Loop *L1, const Loop *L2) {
+    return L1 == L2 || L1->contains(L2);
+  };
+  stable_sort(Loops, CompareLoops);
+  for (int i = 0; i < (int)Loops.size() - 1; i++)
+    if (!CompareLoops(Loops[i], Loops[i + 1]))
+      return true;
+
+  if (UseLVI) {
     SmallPtrSet<Value *, 16> Unknowns;
     UnknownSCEVCollector UnknownCollector(SE, Unknowns);
     UnknownCollector.visit(Ptr1SCEV);
