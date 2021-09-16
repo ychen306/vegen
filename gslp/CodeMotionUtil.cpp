@@ -299,8 +299,6 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
       bool Inclusive = !isa<PHINode>(I);
       Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, LDA,
                                                 &SE, Inclusive);
-      if (!Dominator)
-        abort();
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
