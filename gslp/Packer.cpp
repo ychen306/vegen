@@ -23,10 +23,11 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
         cast<PointerType>(A1->getPointerOperand()->getType())->getElementType();
     if (!isScalarType(Ty))
       continue;
-    for (auto *A2 : Accesses)
+    for (auto *A2 : Accesses) {
       if (A1->getType() == A2->getType() &&
           isConsecutive(A1, A2, *DL, *SE, *LI))
         DAG[A1].insert(A2);
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-#define DEBUG_TYPE "vegen-motion-util"
+#define DEBUG_TYPE "vegen"
 
 #include "CodeMotionUtil.h"
 #include "ControlEquivalence.h"

@@ -1,9 +1,15 @@
+#define DEBUG_TYPE "vegen"
+
 #include "CodeMotionUtil.h" // haveIdenticalTripCounts
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/ADT/Statistic.h"
 
 using namespace llvm;
+
+ALWAYS_ENABLED_STATISTIC(NumConsecChecks,
+                         "Number of consecutive checks");
 
 static SmallVector<const Loop *, 4> getLoopNest(LoopInfo &LI, Value *V) {
   auto *I = dyn_cast<Instruction>(V);
@@ -103,6 +109,7 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
 // separate loop nest
 bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
                    ScalarEvolution &SE, LoopInfo &LI) {
+  NumConsecChecks++;
   Value *PtrA = getLoadStorePointerOperand(A);
   Value *PtrB = getLoadStorePointerOperand(B);
 
@@ -179,8 +186,9 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
 
   // Otherwise compute the distance with SCEV between the base pointers.
   const SCEV *PtrSCEVA = SE.getSCEV(PtrA);
-  const SCEV *PtrSCEVB =
-      AddRecLoopRewriter::rewrite(SE, SE.getSCEV(PtrB), Loops);
+  const SCEV *PtrSCEVB = SE.getSCEV(PtrB);
+  if (!Loops.empty())
+      AddRecLoopRewriter::rewrite(SE, PtrSCEVB, Loops);
   const SCEV *X = SE.getAddExpr(PtrSCEVA, BaseDelta);
   return X == PtrSCEVB;
 }
