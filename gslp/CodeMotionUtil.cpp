@@ -7,7 +7,9 @@
 #include "VectorPackContext.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/EquivalenceClasses.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
@@ -16,14 +18,11 @@
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
-#include "llvm/ADT/PostOrderIterator.h"
-#include "llvm/ADT/Statistic.h"
 
 using namespace llvm;
 
-ALWAYS_ENABLED_STATISTIC(NumCompatChecks, "Number of control compatibility checks");
-
-#undef NDEBUG
+ALWAYS_ENABLED_STATISTIC(NumCompatChecks,
+                         "Number of control compatibility checks");
 
 bool comesBefore(BasicBlock *BB1, BasicBlock *BB2, Loop *ParentLoop) {
   SmallPtrSet<BasicBlock *, 8> Visited;
@@ -342,7 +341,8 @@ bool ControlCompatibilityChecker::isUnsafeToFuse(Loop *L1, Loop *L2) const {
   if (It != FusionMemo.end())
     return It->second;
 
-  return FusionMemo[{L1, L2}] = ::isUnsafeToFuse(L1, L2, LI, *SE, LDA, DT, PDT, this);
+  return FusionMemo[{L1, L2}] =
+             ::isUnsafeToFuse(L1, L2, LI, *SE, LDA, DT, PDT, this);
 }
 
 bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
@@ -409,7 +409,8 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
 
   if (!CheckEquivalentBlocksLazily) {
     BasicBlock *EarliestCompat = EarliestCompatibleBlocks.lookup(I);
-    if (EarliestCompat && BlockOrder.lookup(BB) < BlockOrder.lookup(EarliestCompat))
+    if (EarliestCompat &&
+        BlockOrder.lookup(BB) < BlockOrder.lookup(EarliestCompat))
       EarliestCompatibleBlocks[I] = BB;
     else if (!EarliestCompat)
       EarliestCompatibleBlocks[I] = BB;
