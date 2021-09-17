@@ -13,21 +13,20 @@ bool isScalarType(Type *Ty) {
   return !Ty->isStructTy() && Ty->getScalarType() == Ty;
 }
 
-// Do a quadratic search to build the access dags
-template <typename MemAccessTy>
-void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<MemAccessTy *> Accesses,
+void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
+    EquivalenceClasses<Instruction *> &EquivalentAccesses,
                     const DataLayout *DL, ScalarEvolution *SE, LoopInfo *LI) {
-  for (auto *A1 : Accesses) {
-    // Get type of the value being acccessed
-    auto *Ty =
-        cast<PointerType>(A1->getPointerOperand()->getType())->getElementType();
-    if (!isScalarType(Ty))
-      continue;
-    for (auto *A2 : Accesses) {
-      if (A1->getType() == A2->getType() &&
-          isConsecutive(A1, A2, *DL, *SE, *LI))
-        DAG[A1].insert(A2);
-    }
+  SmallDenseMap<Type *, std::vector<Instruction *>, 4> AccessesByTypes;
+  for (auto *I : Accesses) {
+    auto *Ptr = getLoadStorePointerOperand(I);
+    assert(Ptr);
+    AccessesByTypes[Ptr->getType()].push_back(I);
+  }
+
+  for (auto &KV : AccessesByTypes) {
+    auto ConsecutiveAccesses = findConsecutiveAccesses(*SE, *DL, *LI, KV.second, EquivalentAccesses);
+    for (auto Pair : ConsecutiveAccesses)
+      DAG[Pair.first].insert(Pair.second);
   }
 }
 
@@ -63,8 +62,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
       SE(SE), DT(DT), PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI),
       TTI(TTI), BFI(BFI) {
 
-  std::vector<LoadInst *> Loads;
-  std::vector<StoreInst *> Stores;
+  std::vector<Instruction *> Loads, Stores;
   for (auto &I : instructions(&F)) {
     if (auto *LI = dyn_cast<LoadInst>(&I)) {
       if (LI->isSimple())
@@ -75,11 +73,15 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
     }
   }
 
-  buildAccessDAG<LoadInst>(LoadDAG, Loads, getDataLayout(), SE, LI);
-  buildAccessDAG<StoreInst>(StoreDAG, Stores, getDataLayout(), SE, LI);
+  EquivalenceClasses<Instruction *> EquivalentAccesses;
+
+  buildAccessDAG(LoadDAG, Loads, EquivalentAccesses, getDataLayout(), SE, LI);
+  buildAccessDAG(StoreDAG, Stores, EquivalentAccesses, getDataLayout(), SE, LI);
   LoadInfo = AccessLayoutInfo(LoadDAG);
   StoreInfo = AccessLayoutInfo(StoreDAG);
 
+  errs() << "!! looking for equivalent loads\n";
+  // FIXME: directly go over equivalence classes of loads...
   // TODO: find more equivalent instructions based on the equivalent loads
   // Find equivalent loads
   EquivalenceClasses<Value *> EquivalentValues;
@@ -92,8 +94,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
       if (!L2)
         continue;
 
-      if (!isEquivalent(L1->getPointerOperand(), L2->getPointerOperand(), *SE,
-                        *LI))
+      if (!EquivalentAccesses.isEquivalent(L1, L2))
         continue;
 
       if (BO.comesBefore(L2, L1))
@@ -103,6 +104,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
         EquivalentValues.unionSets(L1, L2);
     }
   }
+  errs() << "finished looking for equivalent loads\n";
   VPCtx.registerEquivalentValues(std::move(EquivalentValues));
 }
 

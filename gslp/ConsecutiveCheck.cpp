@@ -1,15 +1,15 @@
 #define DEBUG_TYPE "vegen"
 
 #include "CodeMotionUtil.h" // haveIdenticalTripCounts
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
-#include "llvm/ADT/Statistic.h"
 
 using namespace llvm;
 
-ALWAYS_ENABLED_STATISTIC(NumConsecChecks,
-                         "Number of consecutive checks");
+ALWAYS_ENABLED_STATISTIC(NumConsecChecks, "Number of consecutive checks");
+ALWAYS_ENABLED_STATISTIC(NumEquivChecks, "Number of load-equivalence checks");
 
 static SmallVector<const Loop *, 4> getLoopNest(LoopInfo &LI, Value *V) {
   auto *I = dyn_cast<Instruction>(V);
@@ -73,6 +73,8 @@ public:
 };
 
 bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
+  NumEquivChecks++;
+
   if (SE.getSCEV(PtrA) == SE.getSCEV(PtrB))
     return true;
 
@@ -103,6 +105,40 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   const SCEV *PtrSCEVB =
       AddRecLoopRewriter::rewrite(SE, SE.getSCEV(PtrB), Loops);
   return PtrSCEVA == PtrSCEVB;
+}
+
+void fingerprintSCEV(ScalarEvolution &SE, const SCEV *Expr,
+                     SmallVectorImpl<int64_t> &Fingerprints, unsigned N) {
+  constexpr int64_t FakeSize = 128;
+
+  class SCEVFingerprinter : public SCEVRewriteVisitor<SCEVFingerprinter> {
+    unsigned Iter;
+
+  public:
+    SCEVFingerprinter(ScalarEvolution &SE, unsigned Iter)
+        : SCEVRewriteVisitor(SE), Iter(Iter) {}
+
+    const SCEV *visitAddRecExpr(const SCEVAddRecExpr *Expr) {
+      SmallVector<const SCEV *, 4> Operands;
+      for (auto *Op : Expr->operands())
+        Operands.push_back(visit(Op));
+      auto *Rec = cast<SCEVAddRecExpr>(
+          SE.getAddRecExpr(Operands, Expr->getLoop(), Expr->getNoWrapFlags()));
+      return Rec->evaluateAtIteration(SE.getConstant(APInt(64, Iter)), SE);
+    }
+
+    const SCEV *visitUnknown(const SCEVUnknown *Expr) {
+      return SE.getConstant(Expr->getType(), FakeSize);
+    }
+  };
+
+  Fingerprints.resize(N);
+  for (unsigned i = 0; i < N; i++) {
+    SCEVFingerprinter Fingerprinter(SE, i);
+    Fingerprints[i] = cast<SCEVConstant>(Fingerprinter.visit(Expr))
+                          ->getAPInt()
+                          .getLimitedValue();
+  }
 }
 
 // llvm::isConsecutiveAccess modified to work for when A and B are in two
@@ -187,8 +223,74 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
   // Otherwise compute the distance with SCEV between the base pointers.
   const SCEV *PtrSCEVA = SE.getSCEV(PtrA);
   const SCEV *PtrSCEVB = SE.getSCEV(PtrB);
+
   if (!Loops.empty())
-      AddRecLoopRewriter::rewrite(SE, PtrSCEVB, Loops);
+    AddRecLoopRewriter::rewrite(SE, PtrSCEVB, Loops);
   const SCEV *X = SE.getAddExpr(PtrSCEVA, BaseDelta);
   return X == PtrSCEVB;
+}
+
+std::vector<std::pair<Instruction *, Instruction *>>
+findConsecutiveAccesses(ScalarEvolution &SE, const DataLayout &DL, LoopInfo &LI,
+                        ArrayRef<Instruction *> Accesses,
+                        EquivalenceClasses<Instruction *> &EquivalentAccesses,
+                        unsigned NumFingerprints) {
+  if (Accesses.empty())
+    return {};
+
+  DenseMap<int64_t, std::vector<Instruction *>> FingerprintsToAccesses;
+  DenseMap<Instruction *, SmallVector<int64_t, 4>> AccessToFingerprints;
+
+  // Figure out size of the accesses here
+  Value *Ptr = getLoadStorePointerOperand(Accesses.front());
+  Type *Ty = cast<PointerType>(Ptr->getType())->getElementType();
+  int64_t Size = DL.getTypeStoreSize(Ty);
+
+  std::vector<std::pair<Instruction *, Instruction *>> ConsecutiveAccesses;
+
+  for (Instruction *I : Accesses) {
+    Value *Ptr = getLoadStorePointerOperand(I);
+    assert(Ptr);
+    SmallVector<int64_t, 4> Fingerprints;
+    auto *PtrSCEV = SE.getSCEV(Ptr);
+    fingerprintSCEV(SE, PtrSCEV, Fingerprints, NumFingerprints);
+
+    int64_t Left = Fingerprints.front() - Size;
+    for (Instruction *LeftI : FingerprintsToAccesses.lookup(Left)) {
+      ArrayRef<int64_t> LeftFingerprints = AccessToFingerprints[LeftI];
+      if (!all_of(zip(LeftFingerprints, Fingerprints), [Size](auto Pair) {
+            return std::get<0>(Pair) + Size == std::get<1>(Pair);
+          }))
+        continue;
+      if (isConsecutive(LeftI, I, DL, SE, LI))
+        ConsecutiveAccesses.emplace_back(LeftI, I);
+    }
+
+    for (Instruction *I2 : FingerprintsToAccesses.lookup(Fingerprints.front())) {
+      ArrayRef<int64_t> Fingerprints2 = AccessToFingerprints[I2];
+      if (!all_of(zip(Fingerprints2, Fingerprints), [Size](auto Pair) {
+            return std::get<0>(Pair) == std::get<1>(Pair);
+          }))
+        continue;
+      if (isEquivalent(getLoadStorePointerOperand(I), getLoadStorePointerOperand(I2), SE, LI))
+        EquivalentAccesses.unionSets(I, I2);
+    }
+
+
+    int64_t Right = Fingerprints.front() + Size;
+    for (Instruction *RightI : FingerprintsToAccesses.lookup(Right)) {
+      ArrayRef<int64_t> RightFingerprints = AccessToFingerprints[RightI];
+      if (!all_of(zip(RightFingerprints, Fingerprints), [Size](auto Pair) {
+            return std::get<0>(Pair) == std::get<1>(Pair) + Size;
+          }))
+        continue;
+      if (isConsecutive(RightI, I, DL, SE, LI))
+        ConsecutiveAccesses.emplace_back(RightI, I);
+    }
+
+    FingerprintsToAccesses[Fingerprints.front()].push_back(I);
+    AccessToFingerprints.try_emplace(I, std::move(Fingerprints));
+  }
+
+  return ConsecutiveAccesses;
 }
