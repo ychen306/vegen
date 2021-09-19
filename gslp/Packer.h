@@ -82,7 +82,7 @@ public:
 class Packer {
   llvm::Function *F;
   VectorPackContext VPCtx;
-  std::unique_ptr<GlobalDependenceAnalysis> DA;
+  GlobalDependenceAnalysis DA;
   // FIXME: make this not mutable
   mutable LazyDependenceAnalysis LDA;
   MatchManager MM;
@@ -104,16 +104,13 @@ class Packer {
   llvm::TargetTransformInfo *TTI;
   llvm::BlockFrequencyInfo *BFI;
 
-  bool Preplanning;
-
 public:
   Packer(llvm::ArrayRef<const InstBinding *> SupportedInsts, llvm::Function &F,
          llvm::AliasAnalysis *AA, llvm::LoopInfo *LI, llvm::ScalarEvolution *SE,
          llvm::DominatorTree *DT, llvm::PostDominatorTree *PDT,
          llvm::DependenceInfo *DI, llvm::LazyValueInfo *LVI,
          llvm::TargetTransformInfo *TTI, llvm::BlockFrequencyInfo *BFI,
-         llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks=nullptr,
-         bool Preplanning=false);
+         llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks=nullptr);
 
   const VectorPackContext *getContext() const { return &VPCtx; }
 
@@ -126,7 +123,7 @@ public:
   ConsecutiveAccessDAG &getStoreDAG() { return StoreDAG; }
   AccessLayoutInfo &getLoadInfo() { return LoadInfo; }
   AccessLayoutInfo &getStoreInfo() { return StoreInfo; }
-  GlobalDependenceAnalysis *getDA() { return DA.get(); }
+  GlobalDependenceAnalysis &getDA() { return DA; }
   LazyDependenceAnalysis &getLDA() { return LDA; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }

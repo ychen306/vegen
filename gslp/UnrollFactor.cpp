@@ -140,14 +140,8 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
       if (BB && UnrolledBlocks)
         UnrolledBlocks->unionSets(BB, const_cast<BasicBlock *>(cast<BasicBlock>(KV.second.V)));
 
-      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations) {
-        for (auto &I : *BB)
-          if (SE.isSCEVable(I.getType())) {
-            errs() << I << ", " << *SE.getSCEV(&I) << '\n';
-          }
-
+      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations)
         UnrolledIterations->try_emplace(BB, KV.second.Iter);
-      }
 
       if (!BB || !LI.isLoopHeader(BB))
         continue;
@@ -204,13 +198,11 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
 
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
-  Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI, &UnrolledBlocks, true/*preplanning*/);
+  Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI, &UnrolledBlocks);
 
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
   optimizeBottomUp(Packs, &Pkr, &EpilogBlocks);
-
-  errs() << "Finished packing\n";
 
   for (auto *VP : Packs) {
     SmallPtrSet<Instruction *, 32> Insts;

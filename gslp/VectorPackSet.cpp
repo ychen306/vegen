@@ -339,7 +339,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       }
   }
   gatherInstructions(F, EC, Pkr.getLoopInfo(), Pkr.getDT(), Pkr.getPDT(),
-                     Pkr.getSE(), Pkr.getLDA(), Pkr.getDA(), Pkr.getContext());
+                     Pkr.getSE(), Pkr.getLDA(), &Pkr.getDA(), Pkr.getContext());
 
   std::vector<Instruction *> DeadInsts;
 
@@ -356,7 +356,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
     // Determine the schedule according to the dependence constraint
     std::vector<const VectorPack *> OrderedPacks =
-        sortPacksAndScheduleBB(BB, PacksByBlock[BB], *Pkr.getDA());
+        sortPacksAndScheduleBB(BB, PacksByBlock[BB], Pkr.getDA());
 
     // Now generate code according to the schedule
     for (auto *VP : OrderedPacks) {

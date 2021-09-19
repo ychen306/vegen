@@ -3,6 +3,7 @@
 #include "ConsecutiveCheck.h"
 #include "MatchManager.h"
 #include "ControlEquivalence.h"
+#include "VectorPack.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/InstIterator.h"
 
@@ -56,13 +57,13 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, LoopInfo *LI, ScalarEvolution *SE,
                DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
                LazyValueInfo *LVI, TargetTransformInfo *TTI,
-               BlockFrequencyInfo *BFI, EquivalenceClasses<BasicBlock *> *UnrolledBlocks, bool IsPreplanning)
+               BlockFrequencyInfo *BFI, EquivalenceClasses<BasicBlock *> *UnrolledBlocks)
     : F(&F), VPCtx(&F),
-    DA(IsPreplanning ? nullptr : new GlobalDependenceAnalysis(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx)),
+      DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
       LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F),
-      CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, DA.get(), true /*precompute*/, UnrolledBlocks),
+      CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA, true /*precompute*/, UnrolledBlocks),
       SE(SE), DT(DT), PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI),
-      TTI(TTI), BFI(BFI), Preplanning(IsPreplanning) {
+      TTI(TTI), BFI(BFI) {
 
   std::vector<Instruction *> Loads, Stores;
   for (auto &I : instructions(&F)) {
@@ -103,7 +104,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
       if (BO.comesBefore(L2, L1))
         std::swap(L1, L2);
 
-      if (Preplanning || !DA->getDepended(L2).test(VPCtx.getScalarId(L1)))
+      if (DA.getDepended(L2).test(VPCtx.getScalarId(L1)))
         EquivalentValues.unionSets(L1, L2);
     }
   }
@@ -149,7 +150,7 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
   auto *VPCtx = Pkr->getContext();
   auto &LoadDAG = Pkr->getLoadDAG();
-  auto *DA = Pkr->getDA();
+  auto &DA = Pkr->getDA();
 
   // The set of loads producing elements of `OP`
   SmallPtrSet<Instruction *, 8> LoadSet;
@@ -169,8 +170,7 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
     BitVector Elements(VPCtx->getNumValues());
     BitVector Depended(VPCtx->getNumValues());
     Elements.set(VPCtx->getScalarId(LeadLI));
-    if (DA)
-      Depended |= DA->getDepended(LeadLI);
+    Depended |= DA.getDepended(LeadLI);
     std::vector<LoadInst *> Loads{LeadLI};
 
     LoadInst *CurLoad = LeadLI;
@@ -194,12 +194,11 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
         CurLoad = cast<LoadInst>(*It->second.begin());
         continue;
       }
-      if (DA && !checkIndependence(*DA, *VPCtx, NextLI, Elements, Depended))
+      if (!checkIndependence(DA, *VPCtx, NextLI, Elements, Depended))
         break;
       Loads.push_back(NextLI);
       Elements.set(VPCtx->getScalarId(NextLI));
-      if (DA)
-        Depended |= DA->getDepended(NextLI);
+      Depended |= DA.getDepended(NextLI);
       CurLoad = NextLI;
     }
     if (Elements.count() == LoadSet.size()) {
@@ -247,19 +246,19 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     AllPHIs &= isa<PHINode>(V);
 
     unsigned InstId = VPCtx.getScalarId(I);
-    if (!OPI.Feasible || (DA && !checkIndependence(*DA, VPCtx, I, Elements, Depended)))
+    if (!OPI.Feasible || !checkIndependence(DA, VPCtx, I, Elements, Depended))
       OPI.Feasible = false;
     Elements.set(InstId);
-    if (DA)
-      Depended |= DA->getDepended(I);
+    Depended |= DA.getDepended(I);
 
     // We can only pack instructions that are control-compatible
     //auto CompatibleWithI = [&](Instruction *I2) {
     //  return isControlCompatible(I, I2);
     //};
     //if (!OPI.Feasible || !all_of(VisitedInsts, CompatibleWithI))
-    if (!OPI.Feasible || (!VisitedInsts.empty() && !isControlCompatible(VisitedInsts.front(), I)))
+    if (!OPI.Feasible || (!VisitedInsts.empty() && !isControlCompatible(VisitedInsts.front(), I))) {
       OPI.Feasible = false;
+    }
     VisitedInsts.push_back(I);
   }
 
@@ -342,9 +341,6 @@ bool Packer::isControlCompatible(Instruction *I1, Instruction *I2) const {
 
   if (!BO.comesBefore(I1->getParent(), I2->getParent()))
     std::swap(I1, I2);
-
-  if (Preplanning)
-    return isControlEquivalent(*I1->getParent(), *I2->getParent(), *DT, *PDT);
 
   return CompatChecker.isControlCompatible(I2, I1->getParent());
 }

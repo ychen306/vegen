@@ -51,7 +51,7 @@ template <typename AccessType>
 std::vector<VectorPack *>
 getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
                 DenseSet<BasicBlock *> *BlocksToIgnore) {
-  auto *DA = Pkr->getDA();
+  auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto *TTI = Pkr->getTTI();
   bool IsStore = std::is_same<AccessType, StoreInst>::value;
@@ -76,8 +76,8 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           if (BlocksToIgnore && BlocksToIgnore->count(Next->getParent()))
             continue;
           auto *NextAccess = cast<AccessType>(Next);
-          //if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
-          //  continue;
+          if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
+            continue;
 
 #if 0
           auto CompatibleWithNext = [&](Instruction *I) {
@@ -94,8 +94,7 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           auto DependedExt = Depended;
           AccessesExt.push_back(NextAccess);
           ElementsExt.set(VPCtx->getScalarId(NextAccess));
-          if (DA)
-            DependedExt |= DA->getDepended(NextAccess);
+          DependedExt |= DA.getDepended(NextAccess);
           Enumerate(AccessesExt, ElementsExt, DependedExt);
         }
       };
@@ -105,8 +104,7 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
   BitVector Depended(VPCtx->getNumValues());
 
   Elements.set(VPCtx->getScalarId(Access));
-  if (DA)
-    Depended |= DA->getDepended(Access);
+  Depended |= DA.getDepended(Access);
 
   Enumerate(Accesses, Elements, Depended);
   return Seeds;
@@ -114,7 +112,7 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
 
 std::vector<const VectorPack *>
 enumerate(Packer *Pkr, DenseSet<BasicBlock *> *BlocksToIgnore) {
-  auto *DA = Pkr->getDA();
+  auto &DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto &LayoutInfo = Pkr->getStoreInfo();
 
@@ -231,7 +229,7 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   auto *TTI = Pkr->getTTI();
   unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS) /
                 getBitWidth(SI->getValueOperand(), Pkr->getDataLayout());
-  auto *DA = Pkr->getDA();
+  auto &DA = Pkr->getDA();
   if (Values.size() <= VL)
     return {VP};
   SmallVector<const VectorPack *> Decomposed;
@@ -243,8 +241,7 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
       auto *SI = cast<StoreInst>(Values[j]);
       Stores.push_back(SI);
       Elements.set(VPCtx->getScalarId(SI));
-      if (DA)
-        Depended |= DA->getDepended(SI);
+      Depended |= DA.getDepended(SI);
     }
     Decomposed.push_back(
         VPCtx->createStorePack(Stores, Elements, Depended, TTI));
