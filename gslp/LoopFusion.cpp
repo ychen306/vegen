@@ -270,7 +270,10 @@ isSafeToHoistBefore(Instruction *I, Loop *L, LoopInfo &LI, DominatorTree &DT,
   BasicBlock *Dominator =
       DT.findNearestCommonDominator(I->getParent(), Preheader);
   SmallPtrSet<Instruction *, 16> Dependences;
-  findDependences(I, Dominator, LI, DT, LDA, Dependences);
+  if (Checker)
+    Checker->findDependences(I, Dominator, Dependences);
+  else
+    findDependences(I, Dominator, LI, DT, LDA, Dependences);
   // Make sure I is not loop-dependent on L
   if (any_of(Dependences,
              [L](auto *Dep) { return L->contains(Dep->getParent()); }))

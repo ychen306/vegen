@@ -32,18 +32,21 @@ class ControlCompatibilityChecker {
 
   // This marks the basic blocks in RPO
   llvm::DenseMap<llvm::BasicBlock *, unsigned> BlockOrder;
-  mutable llvm::DenseMap<llvm::Instruction *, llvm::BasicBlock *> EarliestCompatibleBlocks;
+  mutable llvm::DenseMap<llvm::Instruction *, llvm::BasicBlock *>
+      EarliestCompatibleBlocks;
 
   mutable llvm::DenseMap<std::pair<llvm::Instruction *, llvm::BasicBlock *>,
                          bool>
       Memo;
 
   bool CheckEquivalentBlocksLazily;
+  llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks;
   mutable llvm::EquivalenceClasses<llvm::BasicBlock *> EquivalentBlocks;
 
   mutable llvm::DenseMap<std::pair<llvm::Loop *, llvm::Loop *>, bool>
       FusionMemo;
   bool isEquivalent(llvm::BasicBlock *, llvm::BasicBlock *) const;
+  void updateEarliestCompatibleBlock(llvm::Instruction *, llvm::BasicBlock *) const;
 
 public:
   ControlCompatibilityChecker(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
@@ -52,10 +55,14 @@ public:
                               llvm::ScalarEvolution *SE,
                               VectorPackContext *VPCtx = nullptr,
                               GlobalDependenceAnalysis *DA = nullptr,
-                              bool PrecomputeEquivalentBlocks = false);
+                              bool PrecomputeEquivalentBlocks = false,
+                              llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks=nullptr);
 
   bool isUnsafeToFuse(llvm::Loop *, llvm::Loop *) const;
   bool isControlCompatible(llvm::Instruction *, llvm::BasicBlock *) const;
+  void findDependences(llvm::Instruction *, llvm::BasicBlock *Earliest,
+                       llvm::SmallPtrSetImpl<llvm::Instruction *> &,
+                       bool Inclusive = false) const;
   llvm::BasicBlock *findCompatiblePredecessorsFor(llvm::Instruction *,
                                                   llvm::BasicBlock *,
                                                   bool Inclusive) const;

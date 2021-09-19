@@ -107,34 +107,64 @@ bool isEquivalent(Value *PtrA, Value *PtrB, ScalarEvolution &SE, LoopInfo &LI) {
   return PtrSCEVA == PtrSCEVB;
 }
 
-void fingerprintSCEV(ScalarEvolution &SE, const SCEV *Expr,
-                     SmallVectorImpl<int64_t> &Fingerprints, unsigned N) {
-  constexpr int64_t FakeSize = 128;
+namespace {
+class SizeGenerator {
+  SmallDenseMap<const SCEVUnknown *, int64_t> UnknownToSize;
+
+public:
+  int64_t getSize(const SCEVUnknown *Expr) {
+    int64_t i = UnknownToSize.size();
+    auto It = UnknownToSize.try_emplace(Expr, (2 << i)+i).first;
+    return It->second;
+  }
+};
+
+class IterationGenerator {
+  SmallDenseMap<const Loop *, int64_t> Iterations;
+  int64_t Offset;
+
+public:
+  IterationGenerator(int64_t Offset) : Offset(Offset) {}
+  int64_t getIteration(const Loop *L) {
+    int64_t i = Iterations.size();
+    auto It = Iterations.try_emplace(L, std::rand() % 32).first;
+    return It->second;
+  }
+};
+} // namespace
+
+static void fingerprintSCEV(ScalarEvolution &SE, const SCEV *Expr,
+                            SizeGenerator &SG,
+                            SmallVectorImpl<IterationGenerator> &IGs,
+                            SmallVectorImpl<int64_t> &Fingerprints,
+                            unsigned N) {
 
   class SCEVFingerprinter : public SCEVRewriteVisitor<SCEVFingerprinter> {
-    unsigned Iter;
+    SizeGenerator &SG;
+    IterationGenerator &IG;
 
   public:
-    SCEVFingerprinter(ScalarEvolution &SE, unsigned Iter)
-        : SCEVRewriteVisitor(SE), Iter(Iter) {}
+    SCEVFingerprinter(ScalarEvolution &SE, SizeGenerator &SG, IterationGenerator &IG)
+        : SCEVRewriteVisitor(SE), SG(SG), IG(IG) {}
 
     const SCEV *visitAddRecExpr(const SCEVAddRecExpr *Expr) {
       SmallVector<const SCEV *, 4> Operands;
       for (auto *Op : Expr->operands())
         Operands.push_back(visit(Op));
+      auto *L = Expr->getLoop();
       auto *Rec = cast<SCEVAddRecExpr>(
           SE.getAddRecExpr(Operands, Expr->getLoop(), Expr->getNoWrapFlags()));
-      return Rec->evaluateAtIteration(SE.getConstant(APInt(64, Iter)), SE);
+      return Rec->evaluateAtIteration(SE.getConstant(APInt(64, IG.getIteration(L))), SE);
     }
 
     const SCEV *visitUnknown(const SCEVUnknown *Expr) {
-      return SE.getConstant(Expr->getType(), FakeSize);
+      return SE.getConstant(Expr->getType(), SG.getSize(Expr));
     }
   };
 
   Fingerprints.resize(N);
   for (unsigned i = 0; i < N; i++) {
-    SCEVFingerprinter Fingerprinter(SE, i);
+    SCEVFingerprinter Fingerprinter(SE, SG, IGs[i]);
     Fingerprints[i] = cast<SCEVConstant>(Fingerprinter.visit(Expr))
                           ->getAPInt()
                           .getLimitedValue();
@@ -248,12 +278,17 @@ findConsecutiveAccesses(ScalarEvolution &SE, const DataLayout &DL, LoopInfo &LI,
 
   std::vector<std::pair<Instruction *, Instruction *>> ConsecutiveAccesses;
 
+  SizeGenerator SG;
+  SmallVector<IterationGenerator, 4> IGs;
+  for (unsigned i = 0; i < NumFingerprints; i++)
+    IGs.emplace_back(i);
+
   for (Instruction *I : Accesses) {
     Value *Ptr = getLoadStorePointerOperand(I);
     assert(Ptr);
     SmallVector<int64_t, 4> Fingerprints;
     auto *PtrSCEV = SE.getSCEV(Ptr);
-    fingerprintSCEV(SE, PtrSCEV, Fingerprints, NumFingerprints);
+    fingerprintSCEV(SE, PtrSCEV, SG, IGs, Fingerprints, NumFingerprints);
 
     int64_t Left = Fingerprints.front() - Size;
     for (Instruction *LeftI : FingerprintsToAccesses.lookup(Left)) {
@@ -266,16 +301,17 @@ findConsecutiveAccesses(ScalarEvolution &SE, const DataLayout &DL, LoopInfo &LI,
         ConsecutiveAccesses.emplace_back(LeftI, I);
     }
 
-    for (Instruction *I2 : FingerprintsToAccesses.lookup(Fingerprints.front())) {
+    for (Instruction *I2 :
+         FingerprintsToAccesses.lookup(Fingerprints.front())) {
       ArrayRef<int64_t> Fingerprints2 = AccessToFingerprints[I2];
       if (!all_of(zip(Fingerprints2, Fingerprints), [Size](auto Pair) {
             return std::get<0>(Pair) == std::get<1>(Pair);
           }))
         continue;
-      if (isEquivalent(getLoadStorePointerOperand(I), getLoadStorePointerOperand(I2), SE, LI))
+      if (isEquivalent(getLoadStorePointerOperand(I),
+                       getLoadStorePointerOperand(I2), SE, LI))
         EquivalentAccesses.unionSets(I, I2);
     }
-
 
     int64_t Right = Fingerprints.front() + Size;
     for (Instruction *RightI : FingerprintsToAccesses.lookup(Right)) {
@@ -284,7 +320,7 @@ findConsecutiveAccesses(ScalarEvolution &SE, const DataLayout &DL, LoopInfo &LI,
             return std::get<0>(Pair) == std::get<1>(Pair) + Size;
           }))
         continue;
-      if (isConsecutive(RightI, I, DL, SE, LI))
+      if (isConsecutive(I, RightI, DL, SE, LI))
         ConsecutiveAccesses.emplace_back(RightI, I);
     }
 

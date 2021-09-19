@@ -20,6 +20,7 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
 
 using namespace llvm;
 
@@ -87,7 +88,9 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
                  TargetTransformInfo *TTI,
                  const DenseMap<Loop *, unsigned> &UFs,
                  DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
-                 DenseMap<BasicBlock *, unsigned> *UnrolledIterations) {
+                 DenseMap<BasicBlock *, unsigned> *UnrolledIterations,
+                 DenseSet<BasicBlock *> *EpilogBlocks,
+                 EquivalenceClasses<BasicBlock *> *UnrolledBlocks) {
 
   auto GetOrigLoop = [&DupToOrigLoopMap](Loop *L) {
     auto It = DupToOrigLoopMap.find(L);
@@ -125,14 +128,26 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
     ULO.PreserveCondBr = false;
 
     ValueMap<Value *, UnrolledValue> UnrollToOrigMap;
+    Loop *EpilogL = nullptr;
     UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, true,
-                       UnrollToOrigMap, nullptr /*remainder loop*/);
+                       UnrollToOrigMap, &EpilogL);
+    if (EpilogBlocks && EpilogL && EpilogL->getNumBlocks())
+      EpilogBlocks->insert(EpilogL->block_begin(), EpilogL->block_end());
 
     // Map the cloned sub loops back to original loops
     for (auto KV : UnrollToOrigMap) {
       auto *BB = dyn_cast<BasicBlock>(KV.first);
-      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations)
+      if (BB && UnrolledBlocks)
+        UnrolledBlocks->unionSets(BB, const_cast<BasicBlock *>(cast<BasicBlock>(KV.second.V)));
+
+      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations) {
+        for (auto &I : *BB)
+          if (SE.isSCEVable(I.getType())) {
+            errs() << I << ", " << *SE.getSCEV(&I) << '\n';
+          }
+
         UnrolledIterations->try_emplace(BB, KV.second.Iter);
+      }
 
       if (!BB || !LI.isLoopHeader(BB))
         continue;
@@ -174,22 +189,28 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
   DenseMap<Loop *, unsigned> MaxUFs;
   for (auto *L : LI.getLoopsInPreorder())
     MaxUFs.try_emplace(L, MaxUF);
+  DenseSet<BasicBlock *> EpilogBlocks;
+  EquivalenceClasses<BasicBlock *> UnrolledBlocks;
   unrollLoops(F, SE, LI, AC, DT, TTI, MaxUFs, DupToOrigLoopMap,
-              &UnrolledIterations);
+              &UnrolledIterations, &EpilogBlocks, &UnrolledBlocks);
+  errs() << "!!! number of loops after unrolling: " << LI.getLoopsInPreorder().size() << '\n';
+  errs() << "Number of epilog blocks: " << EpilogBlocks.size() << '\n';
 
   // Re-do the alias analysis pipline
-  auto GetTLI = [&TLIWrapper](Function &F) { return TLIWrapper.getTLI(F); };
+  auto GetTLI = [&TLIWrapper](Function &F) -> TargetLibraryInfo & { return TLIWrapper.getTLI(F); };
   AAResultsBuilder AABuilder(*M, *F, GetTLI, AC, DT, LI);
   AAResults &AA = AABuilder.getResult();
   DependenceInfo DI(F, &AA, &SE, &LI);
 
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
-  Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI);
+  Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI, &UnrolledBlocks, true/*preplanning*/);
 
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
-  optimizeBottomUp(Packs, &Pkr);
+  optimizeBottomUp(Packs, &Pkr, &EpilogBlocks);
+
+  errs() << "Finished packing\n";
 
   for (auto *VP : Packs) {
     SmallPtrSet<Instruction *, 32> Insts;
@@ -201,6 +222,8 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
     std::map<Loop *, Range> PackedIterations;
     for (auto *BB : Blocks) {
       auto *L = LI.getLoopFor(BB);
+      if (!L)
+        continue;
       PackedIterations[L].update(
           UnrolledIterations.count(BB) ? UnrolledIterations.lookup(BB) : 0);
       for (L = L->getParentLoop(); L; L = L->getParentLoop())
@@ -235,6 +258,7 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
                          BlockFrequencyInfo *BFI, Function *OrigF,
                          const LoopInfo &OrigLI,
                          DenseMap<Loop *, unsigned> &UFs) {
+  errs() << "Computing unrolling factor for " << OrigF->getName() << '\n';
   ValueToValueMapTy VMap;
   Function *F = CloneFunction(OrigF, VMap);
   DominatorTree DT(*F);

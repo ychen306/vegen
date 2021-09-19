@@ -186,9 +186,10 @@ static BasicBlock *getIDom(DominatorTree &DT, BasicBlock *BB) {
 ControlCompatibilityChecker::ControlCompatibilityChecker(
     LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT,
     LazyDependenceAnalysis &LDA, ScalarEvolution *SE, VectorPackContext *VPCtx,
-    GlobalDependenceAnalysis *DA, bool PrecomputeEquivalentBlocks)
+    GlobalDependenceAnalysis *DA, bool PrecomputeEquivalentBlocks, EquivalenceClasses<BasicBlock *> *UnrolledBlocks)
     : LI(LI), DT(DT), PDT(PDT), LDA(LDA), SE(SE), VPCtx(VPCtx), DA(DA),
-      CheckEquivalentBlocksLazily(!PrecomputeEquivalentBlocks) {
+      CheckEquivalentBlocksLazily(!PrecomputeEquivalentBlocks),
+      UnrolledBlocks(UnrolledBlocks) {
   if (!PrecomputeEquivalentBlocks) {
     return;
   }
@@ -341,6 +342,36 @@ bool ControlCompatibilityChecker::isUnsafeToFuse(Loop *L1, Loop *L2) const {
              ::isUnsafeToFuse(L1, L2, LI, *SE, LDA, DT, PDT, this);
 }
 
+void ControlCompatibilityChecker::findDependences(Instruction *I,
+                                                  BasicBlock *Earliest,
+                                                  SmallPtrSetImpl<Instruction *> &Deps,
+                                                  bool Inclusive) const {
+  if (!DA || !VPCtx) {
+    ::findDependences(I, Earliest, LI, DT, LDA, Deps, Inclusive);
+    return;
+  }
+
+  for (Value *V : VPCtx->iter_values(DA->getDepended(I))) {
+    auto *Dep = cast<Instruction>(V);
+    if (!Inclusive && DT.dominates(Dep, Earliest->getTerminator()))
+      continue;
+    if (Inclusive && DT.properlyDominates(Dep->getParent(), Earliest))
+      continue;
+    Deps.insert(Dep);
+  }
+}
+
+void ControlCompatibilityChecker::updateEarliestCompatibleBlock(Instruction *I, BasicBlock *BB) const {
+  if (CheckEquivalentBlocksLazily)
+    return;
+  BasicBlock *EarliestCompat = EarliestCompatibleBlocks.lookup(I);
+  if (EarliestCompat &&
+      BlockOrder.lookup(BB) < BlockOrder.lookup(EarliestCompat))
+    EarliestCompatibleBlocks[I] = BB;
+  else if (!EarliestCompat)
+    EarliestCompatibleBlocks[I] = BB;
+}
+
 bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
                                                       BasicBlock *BB) const {
   auto MemoKey = std::make_pair(I, BB);
@@ -375,9 +406,16 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   if (LoopForI != LoopForBB && (!SE || isUnsafeToFuse(LoopForI, LoopForBB)))
     return Memo[MemoKey] = false;
 
+  if (UnrolledBlocks && UnrolledBlocks->isEquivalent(I->getParent(), BB)) {
+    updateEarliestCompatibleBlock(I, BB);
+    return Memo[MemoKey ] = true;
+  }
+
   // Find dependences of `I` that could get violated by hoisting `I` to `BB`
   BasicBlock *Dominator = DT.findNearestCommonDominator(I->getParent(), BB);
   SmallPtrSet<Instruction *, 16> Dependences;
+  findDependences(I, Dominator, Dependences, isa<PHINode>(I)/*inclusive*/);
+#if 0
   if (DA && VPCtx) {
     bool Inclusive = isa<PHINode>(I);
     for (Value *V : VPCtx->iter_values(DA->getDepended(I))) {
@@ -391,6 +429,7 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
   } else {
     findDependences(I, Dominator, LI, DT, LDA, Dependences, isa<PHINode>(I));
   }
+#endif
 
   // FIXME: check for unsafe to hoist things like volatile
   for (Instruction *Dep : Dependences) {
@@ -403,15 +442,7 @@ bool ControlCompatibilityChecker::isControlCompatible(Instruction *I,
     }
   }
 
-  if (!CheckEquivalentBlocksLazily) {
-    BasicBlock *EarliestCompat = EarliestCompatibleBlocks.lookup(I);
-    if (EarliestCompat &&
-        BlockOrder.lookup(BB) < BlockOrder.lookup(EarliestCompat))
-      EarliestCompatibleBlocks[I] = BB;
-    else if (!EarliestCompat)
-      EarliestCompatibleBlocks[I] = BB;
-  }
-
+  updateEarliestCompatibleBlock(I, BB);
   return Memo[MemoKey] = true;
 }
 

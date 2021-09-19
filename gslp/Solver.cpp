@@ -48,9 +48,10 @@ VectorPack *createMemPack(const VectorPackContext *VPCtx,
 }
 
 template <typename AccessType>
-std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, AccessType *Access,
-                                          unsigned VL) {
-  auto &DA = Pkr->getDA();
+std::vector<VectorPack *>
+getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
+                DenseSet<BasicBlock *> *BlocksToIgnore) {
+  auto *DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto *TTI = Pkr->getTTI();
   bool IsStore = std::is_same<AccessType, StoreInst>::value;
@@ -72,14 +73,20 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, AccessType *Access,
           return;
         }
         for (auto *Next : It->second) {
-          auto *NextAccess = cast<AccessType>(Next);
-          if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
+          if (BlocksToIgnore && BlocksToIgnore->count(Next->getParent()))
             continue;
+          auto *NextAccess = cast<AccessType>(Next);
+          //if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
+          //  continue;
 
+#if 0
           auto CompatibleWithNext = [&](Instruction *I) {
             return Pkr->isControlCompatible(I, NextAccess);
           };
           if (!all_of(Accesses, CompatibleWithNext))
+            continue;
+#endif
+          if (!Pkr->isControlCompatible(Accesses.front(), NextAccess))
             continue;
 
           auto AccessesExt = Accesses;
@@ -87,7 +94,8 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, AccessType *Access,
           auto DependedExt = Depended;
           AccessesExt.push_back(NextAccess);
           ElementsExt.set(VPCtx->getScalarId(NextAccess));
-          DependedExt |= DA.getDepended(NextAccess);
+          if (DA)
+            DependedExt |= DA->getDepended(NextAccess);
           Enumerate(AccessesExt, ElementsExt, DependedExt);
         }
       };
@@ -97,14 +105,16 @@ std::vector<VectorPack *> getSeedMemPacks(Packer *Pkr, AccessType *Access,
   BitVector Depended(VPCtx->getNumValues());
 
   Elements.set(VPCtx->getScalarId(Access));
-  Depended |= DA.getDepended(Access);
+  if (DA)
+    Depended |= DA->getDepended(Access);
 
   Enumerate(Accesses, Elements, Depended);
   return Seeds;
 }
 
-std::vector<const VectorPack *> enumerate(Packer *Pkr) {
-  auto &DA = Pkr->getDA();
+std::vector<const VectorPack *>
+enumerate(Packer *Pkr, DenseSet<BasicBlock *> *BlocksToIgnore) {
+  auto *DA = Pkr->getDA();
   auto *VPCtx = Pkr->getContext();
   auto &LayoutInfo = Pkr->getStoreInfo();
 
@@ -112,6 +122,9 @@ std::vector<const VectorPack *> enumerate(Packer *Pkr) {
 
   std::vector<const VectorPack *> Packs;
   for (Instruction &I : instructions(Pkr->getFunction())) {
+    if (BlocksToIgnore && BlocksToIgnore->count(I.getParent()))
+      continue;
+
     auto *LI = dyn_cast<LoadInst>(&I);
     // Only pack scalar load
     if (!LI || LI->getType()->isVectorTy())
@@ -122,7 +135,7 @@ std::vector<const VectorPack *> enumerate(Packer *Pkr) {
     for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
       if (VL > MaxVF)
         continue;
-      for (auto *VP : getSeedMemPacks(Pkr, LI, VL))
+      for (auto *VP : getSeedMemPacks(Pkr, LI, VL, BlocksToIgnore))
         Packs.push_back(VP);
     }
   }
@@ -218,7 +231,7 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   auto *TTI = Pkr->getTTI();
   unsigned VL = TTI->getLoadStoreVecRegBitWidth(AS) /
                 getBitWidth(SI->getValueOperand(), Pkr->getDataLayout());
-  auto &DA = Pkr->getDA();
+  auto *DA = Pkr->getDA();
   if (Values.size() <= VL)
     return {VP};
   SmallVector<const VectorPack *> Decomposed;
@@ -230,7 +243,8 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
       auto *SI = cast<StoreInst>(Values[j]);
       Stores.push_back(SI);
       Elements.set(VPCtx->getScalarId(SI));
-      Depended |= DA.getDepended(SI);
+      if (DA)
+        Depended |= DA->getDepended(SI);
     }
     Decomposed.push_back(
         VPCtx->createStorePack(Stores, Elements, Depended, TTI));
@@ -238,7 +252,8 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   return Decomposed;
 }
 
-static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
+static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
+                        DenseSet<BasicBlock *> *BlocksToIgnore) {
   SmallVector<const VectorPack *> Seeds;
   for (Instruction &I : instructions(Pkr->getFunction())) {
     auto *SI = dyn_cast<StoreInst>(&I);
@@ -246,7 +261,7 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
     if (!SI || SI->getValueOperand()->getType()->isVectorTy())
       continue;
     for (unsigned VL : {2, 4, 8, 16, 32, 64})
-      for (auto *VP : getSeedMemPacks(Pkr, SI, VL))
+      for (auto *VP : getSeedMemPacks(Pkr, SI, VL, BlocksToIgnore))
         Seeds.push_back(VP);
   }
 
@@ -355,9 +370,10 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates) {
   } while (Optimized);
 }
 
-float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr) {
+float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
+                       DenseSet<BasicBlock *> *BlocksToIgnore) {
   CandidatePackSet Candidates;
-  Candidates.Packs = enumerate(Pkr);
+  Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
   auto *VPCtx = Pkr->getContext();
   Candidates.Inst2Packs.resize(VPCtx->getNumValues());
   for (auto *VP : Candidates.Packs)
@@ -365,7 +381,7 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr) {
       Candidates.Inst2Packs[i].push_back(VP);
 
   Plan P(Pkr);
-  improvePlan(Pkr, P, &Candidates);
+  improvePlan(Pkr, P, &Candidates, BlocksToIgnore);
   Packs.insert(Packs.end(), P.begin(), P.end());
   return P.cost();
 }

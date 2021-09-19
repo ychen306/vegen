@@ -31,6 +31,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/InstSimplifyPass.h"
 #include "llvm/Transforms/Vectorize.h"
+#include "llvm/Transforms/Utils.h"
 #include <set>
 
 using namespace llvm;
@@ -285,6 +286,11 @@ static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
   MPM.add(createSROAPass());
   MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+
+  MPM.add(createLoopSimplifyPass());
+  MPM.add(createLoopRotatePass());
+  MPM.add(createLCSSAPass());
+
   if (UseMainlineSLP) {
     errs() << "USING LLVM SLP\n";
     MPM.add(createSLPVectorizerPass());
