@@ -154,8 +154,10 @@ static void fingerprintSCEV(ScalarEvolution &SE, const SCEV *Expr,
       for (auto *Op : Expr->operands())
         Operands.push_back(visit(Op));
       auto *L = Expr->getLoop();
-      auto *Rec = cast<SCEVAddRecExpr>(
-          SE.getAddRecExpr(Operands, Expr->getLoop(), Expr->getNoWrapFlags()));
+      auto *X = SE.getAddRecExpr(Operands, Expr->getLoop(), Expr->getNoWrapFlags());
+      auto *Rec = dyn_cast<SCEVAddRecExpr>(X);
+      if (!Rec)
+        return X;
       return Rec->evaluateAtIteration(SE.getConstant(APInt(64, IG.getIteration(L))), SE);
     }
 

@@ -133,8 +133,8 @@ enumerate(Packer *Pkr, DenseSet<BasicBlock *> *BlocksToIgnore) {
     for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
       if (VL > MaxVF)
         continue;
-      for (auto *VP : getSeedMemPacks(Pkr, LI, VL, BlocksToIgnore))
-        Packs.push_back(VP);
+      //for (auto *VP : getSeedMemPacks(Pkr, LI, VL, BlocksToIgnore))
+      //  Packs.push_back(VP);
     }
   }
   return Packs;
