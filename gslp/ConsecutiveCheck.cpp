@@ -125,7 +125,9 @@ class IterationGenerator {
 
 public:
   IterationGenerator(int64_t Offset) : Offset(Offset) {}
+  // FIXME: figure out why std::rand() breaks
   int64_t getIteration(const Loop *L) {
+    return 0;
     int64_t i = Iterations.size();
     auto It = Iterations.try_emplace(L, std::rand() % 32).first;
     return It->second;
@@ -255,7 +257,7 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
   const SCEV *PtrSCEVB = SE.getSCEV(PtrB);
 
   if (!Loops.empty())
-    AddRecLoopRewriter::rewrite(SE, PtrSCEVB, Loops);
+    PtrSCEVB = AddRecLoopRewriter::rewrite(SE, PtrSCEVB, Loops);
   const SCEV *X = SE.getAddExpr(PtrSCEVA, BaseDelta);
   return X == PtrSCEVB;
 }
@@ -309,8 +311,10 @@ findConsecutiveAccesses(ScalarEvolution &SE, const DataLayout &DL, LoopInfo &LI,
           }))
         continue;
       if (isEquivalent(getLoadStorePointerOperand(I),
-                       getLoadStorePointerOperand(I2), SE, LI))
+                       getLoadStorePointerOperand(I2), SE, LI)) {
         EquivalentAccesses.unionSets(I, I2);
+        break;
+      }
     }
 
     int64_t Right = Fingerprints.front() + Size;
@@ -321,7 +325,7 @@ findConsecutiveAccesses(ScalarEvolution &SE, const DataLayout &DL, LoopInfo &LI,
           }))
         continue;
       if (isConsecutive(I, RightI, DL, SE, LI))
-        ConsecutiveAccesses.emplace_back(RightI, I);
+        ConsecutiveAccesses.emplace_back(I, RightI);
     }
 
     FingerprintsToAccesses[Fingerprints.front()].push_back(I);

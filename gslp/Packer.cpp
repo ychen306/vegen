@@ -83,7 +83,6 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
   LoadInfo = AccessLayoutInfo(LoadDAG);
   StoreInfo = AccessLayoutInfo(StoreDAG);
 
-  errs() << "!! looking for equivalent loads\n";
   // FIXME: directly go over equivalence classes of loads...
   // TODO: find more equivalent instructions based on the equivalent loads
   // Find equivalent loads
@@ -104,7 +103,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
       if (BO.comesBefore(L2, L1))
         std::swap(L1, L2);
 
-      if (DA.getDepended(L2).test(VPCtx.getScalarId(L1)))
+      if (!DA.getDepended(L2).test(VPCtx.getScalarId(L1)))
         EquivalentValues.unionSets(L1, L2);
     }
   }

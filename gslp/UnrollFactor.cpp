@@ -11,6 +11,7 @@
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/PhiValues.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -20,7 +21,6 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
-#include "llvm/Analysis/MemoryBuiltins.h"
 
 using namespace llvm;
 
@@ -129,8 +129,8 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
 
     ValueMap<Value *, UnrolledValue> UnrollToOrigMap;
     Loop *EpilogL = nullptr;
-    UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, true,
-                       UnrollToOrigMap, &EpilogL);
+    UnrollLoopWithVMap(L, ULO, &LI, &SE, &DT, &AC, TTI, true, UnrollToOrigMap,
+                       &EpilogL);
     if (EpilogBlocks && EpilogL && EpilogL->getNumBlocks())
       EpilogBlocks->insert(EpilogL->block_begin(), EpilogL->block_end());
 
@@ -138,7 +138,8 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
     for (auto KV : UnrollToOrigMap) {
       auto *BB = dyn_cast<BasicBlock>(KV.first);
       if (BB && UnrolledBlocks)
-        UnrolledBlocks->unionSets(BB, const_cast<BasicBlock *>(cast<BasicBlock>(KV.second.V)));
+        UnrolledBlocks->unionSets(
+            BB, const_cast<BasicBlock *>(cast<BasicBlock>(KV.second.V)));
 
       if (BB && LI.getLoopFor(BB) == L && UnrolledIterations)
         UnrolledIterations->try_emplace(BB, KV.second.Iter);
@@ -157,7 +158,7 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
 }
 
 static void
-computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
+refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
                         ArrayRef<const InstBinding *> Insts, LazyValueInfo *LVI,
                         TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
                         DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 8) {
@@ -180,25 +181,27 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
   };
 
   // Unroll all the loops maximally
-  DenseMap<Loop *, unsigned> MaxUFs;
-  for (auto *L : LI.getLoopsInPreorder())
-    MaxUFs.try_emplace(L, MaxUF);
+  DenseMap<Loop *, unsigned> MaxUFs = UFs;
+  UFs.clear();
+  // for (auto *L : LI.getLoopsInPreorder())
+  //  MaxUFs.try_emplace(L, MaxUF);
   DenseSet<BasicBlock *> EpilogBlocks;
   EquivalenceClasses<BasicBlock *> UnrolledBlocks;
   unrollLoops(F, SE, LI, AC, DT, TTI, MaxUFs, DupToOrigLoopMap,
               &UnrolledIterations, &EpilogBlocks, &UnrolledBlocks);
-  errs() << "!!! number of loops after unrolling: " << LI.getLoopsInPreorder().size() << '\n';
-  errs() << "Number of epilog blocks: " << EpilogBlocks.size() << '\n';
 
   // Re-do the alias analysis pipline
-  auto GetTLI = [&TLIWrapper](Function &F) -> TargetLibraryInfo & { return TLIWrapper.getTLI(F); };
+  auto GetTLI = [&TLIWrapper](Function &F) -> TargetLibraryInfo & {
+    return TLIWrapper.getTLI(F);
+  };
   AAResultsBuilder AABuilder(*M, *F, GetTLI, AC, DT, LI);
   AAResults &AA = AABuilder.getResult();
   DependenceInfo DI(F, &AA, &SE, &LI);
 
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
-  Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI, &UnrolledBlocks);
+  Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI,
+             &UnrolledBlocks);
 
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
@@ -240,17 +243,13 @@ computeUnrollFactorImpl(Function *F, DominatorTree &DT, LoopInfo &LI,
         It->second = std::max(It->second, MinUF);
     }
   }
-  for (auto KV : UFs)
-    errs() << KV.first << "(depth=" << KV.first->getLoopDepth() << ')' << ": "
-           << KV.second << '\n';
 }
 
-void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
+void computeUnrollFactorImpl(ArrayRef<const InstBinding *> Insts,
                          LazyValueInfo *LVI, TargetTransformInfo *TTI,
                          BlockFrequencyInfo *BFI, Function *OrigF,
                          const LoopInfo &OrigLI,
                          DenseMap<Loop *, unsigned> &UFs) {
-  errs() << "Computing unrolling factor for " << OrigF->getName() << '\n';
   ValueToValueMapTy VMap;
   Function *F = CloneFunction(OrigF, VMap);
   DominatorTree DT(*F);
@@ -263,6 +262,7 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
   }
 
   // Mapping the old loops to the cloned loops
+  DenseMap<Loop *, unsigned> RefinedUnrollFactors;
   DenseMap<Loop *, Loop *> CloneToOrigMap;
   for (auto &OrigBB : *OrigF) {
     auto *BB = cast<BasicBlock>(VMap[&OrigBB]);
@@ -270,15 +270,17 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
     if (!OrigL)
       continue;
     Loop *L = LI.getLoopFor(BB);
-    CloneToOrigMap.try_emplace(L, OrigL);
+    bool Inserted = CloneToOrigMap.try_emplace(L, OrigL).second;
+    if (!Inserted)
+      continue;
+    if (unsigned UF = UFs.lookup(OrigL))
+      RefinedUnrollFactors.try_emplace(L, UF);
   }
 
-  // Now compute the unrolling factor on the cloned function, which we are free
-  // to modify
-  DenseMap<Loop *, unsigned> UnrollFactors;
-  computeUnrollFactorImpl(F, DT, LI, Insts, LVI, TTI, BFI, UnrollFactors);
+  refineUnrollFactors(F, DT, LI, Insts, LVI, TTI, BFI, RefinedUnrollFactors);
 
-  for (auto KV : UnrollFactors) {
+  UFs.clear();
+  for (auto KV : RefinedUnrollFactors) {
     Loop *L = KV.first;
     unsigned UF = KV.second;
     assert(CloneToOrigMap.count(L));
@@ -287,4 +289,18 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
 
   // Erase the clone after we are done
   F->eraseFromParent();
+}
+
+void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
+                         LazyValueInfo *LVI, TargetTransformInfo *TTI,
+                         BlockFrequencyInfo *BFI, Function *F,
+                         const LoopInfo &LI,
+                         DenseMap<Loop *, unsigned> &UFs) {
+  for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
+    UFs[L] = 8;
+    computeUnrollFactorImpl(Insts, LVI, TTI, BFI, F, LI, UFs);
+    errs() << "Unroll factor for loop " << L 
+      << "(depth=" << L->getLoopDepth() << ')' << " " << UFs.lookup(L)
+      << '\n';
+  }
 }
