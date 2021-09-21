@@ -20,7 +20,7 @@ public:
   }
   unsigned getBitwidth() const { return Bitwidth; }
   llvm::Instruction::BinaryOps getOpcode() const { return Opcode; }
-  bool match(llvm::Value *V, std::vector<Match> &Matches) const override;
+  bool match(llvm::Value *V, llvm::SmallVectorImpl<Match> &Matches) const override;
   unsigned getMaximumVF(llvm::TargetTransformInfo *) const;
 };
 

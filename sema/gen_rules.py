@@ -220,7 +220,7 @@ def declare_operation(op_name, bound_operation):
   return f'''
 class : public Operation {{
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {{
+    Value *V, SmallVectorImpl<Match> &Matches) const override {{
     { bound_operation.get_matching_code() }
   }}
 }} {op_name};

@@ -48,7 +48,7 @@ struct Operation {
   };
   // `match' returns true if `V` is matched.
   // If a match is found, additionally return the matched liveins
-  virtual bool match(llvm::Value *V, std::vector<Match> &Matches) const = 0;
+  virtual bool match(llvm::Value *V, llvm::SmallVectorImpl<Match> &Matches) const = 0;
 };
 
 // An operation explicitly bound to an instruction and its input(s)

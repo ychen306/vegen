@@ -144,7 +144,7 @@ bool Print = false;
 
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
-  Plan Best = P;
+  //Plan Best = P;
   SmallVector<const OperandPack *> Worklist;
   Worklist.push_back(OP);
   SmallPtrSet<const OperandPack *, 4> Visited;
@@ -172,10 +172,10 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.append(Operands.begin(), Operands.end());
     }
-    if (P.cost() < Best.cost())
-      Best = P;
+    //if (P.cost() < Best.cost())
+    //  Best = P;
   }
-  P = Best;
+  //P = Best;
 }
 
 SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx,

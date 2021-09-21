@@ -8,7 +8,7 @@ using namespace PatternMatch;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 64) &&
@@ -31,7 +31,7 @@ hasBitWidth(tmp0, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 64) &&
@@ -54,7 +54,7 @@ hasBitWidth(tmp0, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -79,7 +79,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -104,7 +104,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -129,7 +129,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -154,7 +154,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -179,7 +179,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -208,7 +208,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 64) &&
@@ -231,7 +231,7 @@ hasBitWidth(tmp0, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -256,7 +256,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 32) &&
@@ -279,7 +279,7 @@ hasBitWidth(tmp0, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 32) &&
@@ -302,7 +302,7 @@ hasBitWidth(tmp0, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 32) &&
@@ -325,7 +325,7 @@ hasBitWidth(tmp0, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 64) &&
@@ -348,7 +348,7 @@ hasBitWidth(tmp0, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -373,7 +373,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 8) &&
@@ -403,7 +403,7 @@ tmp0 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -428,7 +428,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 64) &&
@@ -451,7 +451,7 @@ hasBitWidth(tmp0, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 16) &&
@@ -474,7 +474,7 @@ hasBitWidth(tmp0, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -504,7 +504,7 @@ tmp0 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 32) &&
@@ -527,7 +527,7 @@ hasBitWidth(tmp0, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -557,7 +557,7 @@ tmp0 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 16) &&
@@ -580,7 +580,7 @@ hasBitWidth(tmp0, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -605,7 +605,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -631,7 +631,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -657,7 +657,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -683,7 +683,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -715,7 +715,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -742,7 +742,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0;
     bool Matched = hasBitWidth(V, 64) &&
@@ -765,7 +765,7 @@ hasBitWidth(tmp0, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -791,7 +791,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -829,7 +829,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -854,7 +854,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 8) &&
@@ -902,7 +902,7 @@ tmp1 == tmp5;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -927,7 +927,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -952,7 +952,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -978,7 +978,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -1010,7 +1010,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1036,7 +1036,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -1062,7 +1062,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -1091,7 +1091,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -1116,7 +1116,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1141,7 +1141,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -1179,7 +1179,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1227,7 +1227,7 @@ tmp1 == tmp5;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -1253,7 +1253,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1282,7 +1282,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1307,7 +1307,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1334,7 +1334,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1363,7 +1363,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1388,7 +1388,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1413,7 +1413,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1438,7 +1438,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1463,7 +1463,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1492,7 +1492,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1540,7 +1540,7 @@ tmp1 == tmp5;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1569,7 +1569,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1604,7 +1604,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -1631,7 +1631,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1660,7 +1660,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1689,7 +1689,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1779,7 +1779,7 @@ tmp3 == tmp15;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -1806,7 +1806,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1844,7 +1844,7 @@ tmp0 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1873,7 +1873,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1902,7 +1902,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -1927,7 +1927,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -1956,7 +1956,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -1985,7 +1985,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2014,7 +2014,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2052,7 +2052,7 @@ tmp0 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2086,7 +2086,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -2124,7 +2124,7 @@ tmp0 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -2153,7 +2153,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2183,7 +2183,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2213,7 +2213,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -2251,7 +2251,7 @@ tmp0 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -2280,7 +2280,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -2309,7 +2309,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2334,7 +2334,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -2364,7 +2364,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -2394,7 +2394,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -2425,7 +2425,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -2455,7 +2455,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -2485,7 +2485,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2516,7 +2516,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -2541,7 +2541,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -2575,7 +2575,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2609,7 +2609,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18; Value *tmp19; Value *tmp20; Value *tmp21; Value *tmp22; Value *tmp23; Value *tmp24; Value *tmp25; Value *tmp26; Value *tmp27; Value *tmp28; Value *tmp29; Value *tmp30; Value *tmp31; Value *tmp32; Value *tmp33; Value *tmp34; Value *tmp35; Value *tmp36; Value *tmp37; Value *tmp38; Value *tmp39; Value *tmp40; Value *tmp41; Value *tmp42; Value *tmp43; Value *tmp44; Value *tmp45; Value *tmp46; Value *tmp47;
     bool Matched = hasBitWidth(V, 16) &&
@@ -2836,7 +2836,7 @@ tmp43 == tmp47;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     
     bool Matched = hasBitWidth(V, 16) &&
@@ -2857,7 +2857,7 @@ PatternMatch::match(V, m_SpecificInt(APInt(16, "0", 10)));
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -2888,7 +2888,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -2913,7 +2913,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 8) &&
@@ -2961,7 +2961,7 @@ tmp1 == tmp5;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -2992,7 +2992,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3024,7 +3024,7 @@ hasBitWidth(tmp4, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3055,7 +3055,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -3087,7 +3087,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3118,7 +3118,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3150,7 +3150,7 @@ hasBitWidth(tmp4, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3181,7 +3181,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3215,7 +3215,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3250,7 +3250,7 @@ hasBitWidth(tmp4, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3284,7 +3284,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3318,7 +3318,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3353,7 +3353,7 @@ hasBitWidth(tmp4, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3387,7 +3387,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3422,7 +3422,7 @@ hasBitWidth(tmp4, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3448,7 +3448,7 @@ hasBitWidth(tmp2, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3483,7 +3483,7 @@ hasBitWidth(tmp4, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3532,7 +3532,7 @@ tmp2 == tmp6;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3581,7 +3581,7 @@ tmp2 == tmp6;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3608,7 +3608,7 @@ hasBitWidth(tmp3, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3658,7 +3658,7 @@ hasBitWidth(tmp7, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3708,7 +3708,7 @@ hasBitWidth(tmp7, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3758,7 +3758,7 @@ hasBitWidth(tmp7, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3807,7 +3807,7 @@ tmp2 == tmp6;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3856,7 +3856,7 @@ tmp2 == tmp6;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7;
     bool Matched = hasBitWidth(V, 8) &&
@@ -3906,7 +3906,7 @@ hasBitWidth(tmp7, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3932,7 +3932,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3964,7 +3964,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -3991,7 +3991,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4024,7 +4024,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4057,7 +4057,7 @@ hasBitWidth(tmp2, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4091,7 +4091,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4125,7 +4125,7 @@ hasBitWidth(tmp3, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4204,7 +4204,7 @@ tmp4 == tmp12;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -4240,7 +4240,7 @@ hasBitWidth(tmp4, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4320,7 +4320,7 @@ hasBitWidth(tmp13, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4350,7 +4350,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -4387,7 +4387,7 @@ hasBitWidth(tmp5, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4417,7 +4417,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4448,7 +4448,7 @@ hasBitWidth(tmp5, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4478,7 +4478,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4508,7 +4508,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4539,7 +4539,7 @@ hasBitWidth(tmp5, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4570,7 +4570,7 @@ hasBitWidth(tmp5, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4601,7 +4601,7 @@ hasBitWidth(tmp5, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4631,7 +4631,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4662,7 +4662,7 @@ hasBitWidth(tmp5, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4692,7 +4692,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4723,7 +4723,7 @@ hasBitWidth(tmp5, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     
     bool Matched = hasBitWidth(V, 8) &&
@@ -4744,7 +4744,7 @@ PatternMatch::match(V, m_SpecificInt(APInt(8, "0", 10)));
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4774,7 +4774,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4804,7 +4804,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4835,7 +4835,7 @@ hasBitWidth(tmp5, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4863,7 +4863,7 @@ tmp0 == tmp1;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4894,7 +4894,7 @@ hasBitWidth(tmp5, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4918,7 +4918,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -4943,7 +4943,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -4977,7 +4977,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5012,7 +5012,7 @@ hasBitWidth(tmp4, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5036,7 +5036,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5061,7 +5061,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5096,7 +5096,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5132,7 +5132,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5164,7 +5164,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5195,7 +5195,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5226,7 +5226,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5258,7 +5258,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5284,7 +5284,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5311,7 +5311,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5341,7 +5341,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5371,7 +5371,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5397,7 +5397,7 @@ hasBitWidth(tmp2, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5424,7 +5424,7 @@ hasBitWidth(tmp3, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5473,7 +5473,7 @@ tmp2 == tmp6;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5522,7 +5522,7 @@ tmp2 == tmp6;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5572,7 +5572,7 @@ hasBitWidth(tmp7, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5622,7 +5622,7 @@ hasBitWidth(tmp7, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5648,7 +5648,7 @@ hasBitWidth(tmp2, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -5675,7 +5675,7 @@ hasBitWidth(tmp3, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5703,7 +5703,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5731,7 +5731,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5761,7 +5761,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5789,7 +5789,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5817,7 +5817,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5845,7 +5845,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5873,7 +5873,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -5903,7 +5903,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     
     bool Matched = hasBitWidth(V, 64) &&
@@ -5924,7 +5924,7 @@ PatternMatch::match(V, m_SpecificInt(APInt(64, "0", 10)));
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -5950,7 +5950,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -5979,7 +5979,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6002,7 +6002,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6032,7 +6032,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6060,7 +6060,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6089,7 +6089,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6115,7 +6115,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6143,7 +6143,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6172,7 +6172,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6199,7 +6199,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6226,7 +6226,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6252,7 +6252,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6278,7 +6278,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6305,7 +6305,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6330,7 +6330,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6356,7 +6356,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6383,7 +6383,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6409,7 +6409,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6436,7 +6436,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -6466,7 +6466,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -6494,7 +6494,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -6522,7 +6522,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -6552,7 +6552,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -6580,7 +6580,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -6608,7 +6608,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6634,7 +6634,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6661,7 +6661,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6687,7 +6687,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6713,7 +6713,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6740,7 +6740,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6767,7 +6767,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6794,7 +6794,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6820,7 +6820,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6846,7 +6846,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6873,7 +6873,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6900,7 +6900,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -6926,7 +6926,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6955,7 +6955,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -6985,7 +6985,7 @@ tmp3 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7015,7 +7015,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7044,7 +7044,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7074,7 +7074,7 @@ tmp3 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7104,7 +7104,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7134,7 +7134,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7164,7 +7164,7 @@ tmp3 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7193,7 +7193,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7223,7 +7223,7 @@ tmp3 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7252,7 +7252,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7282,7 +7282,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7312,7 +7312,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7343,7 +7343,7 @@ hasBitWidth(tmp5, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7373,7 +7373,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7404,7 +7404,7 @@ hasBitWidth(tmp5, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7434,7 +7434,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7465,7 +7465,7 @@ hasBitWidth(tmp5, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7495,7 +7495,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7526,7 +7526,7 @@ hasBitWidth(tmp5, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7556,7 +7556,7 @@ tmp0 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7582,7 +7582,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7614,7 +7614,7 @@ hasBitWidth(tmp4, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7645,7 +7645,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7676,7 +7676,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7702,7 +7702,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7729,7 +7729,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7761,7 +7761,7 @@ hasBitWidth(tmp4, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7788,7 +7788,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7815,7 +7815,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7841,7 +7841,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7867,7 +7867,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7894,7 +7894,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -7923,7 +7923,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7953,7 +7953,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -7984,7 +7984,7 @@ hasBitWidth(tmp5, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8014,7 +8014,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8044,7 +8044,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8073,7 +8073,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8104,7 +8104,7 @@ hasBitWidth(tmp5, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8135,7 +8135,7 @@ hasBitWidth(tmp5, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8165,7 +8165,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8194,7 +8194,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8224,7 +8224,7 @@ tmp2 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8255,7 +8255,7 @@ hasBitWidth(tmp5, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8285,7 +8285,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8316,7 +8316,7 @@ hasBitWidth(tmp5, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8347,7 +8347,7 @@ hasBitWidth(tmp5, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8376,7 +8376,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8406,7 +8406,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8437,7 +8437,7 @@ hasBitWidth(tmp5, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8467,7 +8467,7 @@ tmp2 == tmp4;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8498,7 +8498,7 @@ hasBitWidth(tmp5, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8536,7 +8536,7 @@ tmp0 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     
     bool Matched = hasBitWidth(V, 32) &&
@@ -8557,7 +8557,7 @@ PatternMatch::match(V, m_SpecificInt(APInt(32, "0", 10)));
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8592,7 +8592,7 @@ hasBitWidth(tmp4, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8626,7 +8626,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8650,7 +8650,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8674,7 +8674,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8699,7 +8699,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8724,7 +8724,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8748,7 +8748,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 16) &&
@@ -8776,7 +8776,7 @@ tmp0 == tmp1;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8800,7 +8800,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8824,7 +8824,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 16) &&
@@ -8858,7 +8858,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -8883,7 +8883,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8908,7 +8908,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 16) &&
@@ -8943,7 +8943,7 @@ hasBitWidth(tmp4, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -8968,7 +8968,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9002,7 +9002,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9030,7 +9030,7 @@ tmp0 == tmp1;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9065,7 +9065,7 @@ hasBitWidth(tmp4, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9089,7 +9089,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9113,7 +9113,7 @@ hasBitWidth(tmp1, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9138,7 +9138,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9163,7 +9163,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9187,7 +9187,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9211,7 +9211,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9235,7 +9235,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9260,7 +9260,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9285,7 +9285,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9310,7 +9310,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9338,7 +9338,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9364,7 +9364,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9392,7 +9392,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9421,7 +9421,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9450,7 +9450,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9477,7 +9477,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9510,7 +9510,7 @@ tmp1 == tmp3;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9540,7 +9540,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9572,7 +9572,7 @@ tmp1 == tmp2;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9598,7 +9598,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9624,7 +9624,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9651,7 +9651,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9678,7 +9678,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9704,7 +9704,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9731,7 +9731,7 @@ hasBitWidth(tmp3, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9757,7 +9757,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9784,7 +9784,7 @@ hasBitWidth(tmp3, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -9812,7 +9812,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 8) &&
@@ -9840,7 +9840,7 @@ hasBitWidth(tmp1, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9868,7 +9868,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 64) &&
@@ -9896,7 +9896,7 @@ hasBitWidth(tmp2, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9924,7 +9924,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2;
     bool Matched = hasBitWidth(V, 32) &&
@@ -9952,7 +9952,7 @@ hasBitWidth(tmp2, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18; Value *tmp19;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10058,7 +10058,7 @@ tmp4 == tmp19;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10149,7 +10149,7 @@ tmp5 == tmp15;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10187,7 +10187,7 @@ hasBitWidth(tmp4, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10279,7 +10279,7 @@ tmp5 == tmp15;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10318,7 +10318,7 @@ hasBitWidth(tmp5, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10358,7 +10358,7 @@ hasBitWidth(tmp5, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18; Value *tmp19; Value *tmp20; Value *tmp21; Value *tmp22; Value *tmp23; Value *tmp24; Value *tmp25; Value *tmp26; Value *tmp27; Value *tmp28; Value *tmp29; Value *tmp30; Value *tmp31; Value *tmp32; Value *tmp33; Value *tmp34; Value *tmp35;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10528,7 +10528,7 @@ tmp8 == tmp35;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10582,7 +10582,7 @@ hasBitWidth(tmp8, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18; Value *tmp19; Value *tmp20; Value *tmp21; Value *tmp22; Value *tmp23; Value *tmp24; Value *tmp25; Value *tmp26; Value *tmp27; Value *tmp28;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10728,7 +10728,7 @@ tmp9 == tmp27;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10788,7 +10788,7 @@ hasBitWidth(tmp9, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18; Value *tmp19; Value *tmp20; Value *tmp21; Value *tmp22; Value *tmp23; Value *tmp24; Value *tmp25; Value *tmp26; Value *tmp27;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10933,7 +10933,7 @@ tmp9 == tmp27;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9;
     bool Matched = hasBitWidth(V, 32) &&
@@ -10992,7 +10992,7 @@ hasBitWidth(tmp9, 8);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11017,7 +11017,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11044,7 +11044,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11071,7 +11071,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11098,7 +11098,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11125,7 +11125,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11152,7 +11152,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11178,7 +11178,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11205,7 +11205,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11232,7 +11232,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11259,7 +11259,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11286,7 +11286,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11313,7 +11313,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11340,7 +11340,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11367,7 +11367,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11394,7 +11394,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11421,7 +11421,7 @@ hasBitWidth(tmp1, 32);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11448,7 +11448,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11475,7 +11475,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11502,7 +11502,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11528,7 +11528,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11555,7 +11555,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11582,7 +11582,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11609,7 +11609,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11636,7 +11636,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11663,7 +11663,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11690,7 +11690,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11717,7 +11717,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 64) &&
@@ -11744,7 +11744,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11771,7 +11771,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11798,7 +11798,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1;
     bool Matched = hasBitWidth(V, 32) &&
@@ -11825,7 +11825,7 @@ hasBitWidth(tmp1, 64);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18; Value *tmp19; Value *tmp20; Value *tmp21; Value *tmp22; Value *tmp23; Value *tmp24; Value *tmp25; Value *tmp26; Value *tmp27; Value *tmp28; Value *tmp29; Value *tmp30; Value *tmp31; Value *tmp32; Value *tmp33; Value *tmp34; Value *tmp35; Value *tmp36; Value *tmp37; Value *tmp38; Value *tmp39; Value *tmp40; Value *tmp41; Value *tmp42; Value *tmp43; Value *tmp44; Value *tmp45; Value *tmp46; Value *tmp47; Value *tmp48; Value *tmp49; Value *tmp50; Value *tmp51; Value *tmp52; Value *tmp53; Value *tmp54; Value *tmp55; Value *tmp56; Value *tmp57; Value *tmp58; Value *tmp59; Value *tmp60; Value *tmp61; Value *tmp62; Value *tmp63; Value *tmp64; Value *tmp65; Value *tmp66; Value *tmp67; Value *tmp68; Value *tmp69; Value *tmp70; Value *tmp71; Value *tmp72; Value *tmp73; Value *tmp74; Value *tmp75; Value *tmp76; Value *tmp77; Value *tmp78; Value *tmp79; Value *tmp80; Value *tmp81; Value *tmp82; Value *tmp83; Value *tmp84; Value *tmp85; Value *tmp86; Value *tmp87; Value *tmp88; Value *tmp89; Value *tmp90; Value *tmp91; Value *tmp92; Value *tmp93; Value *tmp94; Value *tmp95; Value *tmp96; Value *tmp97; Value *tmp98; Value *tmp99; Value *tmp100; Value *tmp101; Value *tmp102; Value *tmp103; Value *tmp104; Value *tmp105; Value *tmp106; Value *tmp107; Value *tmp108; Value *tmp109; Value *tmp110; Value *tmp111; Value *tmp112; Value *tmp113; Value *tmp114; Value *tmp115; Value *tmp116; Value *tmp117; Value *tmp118; Value *tmp119; Value *tmp120; Value *tmp121; Value *tmp122; Value *tmp123; Value *tmp124; Value *tmp125; Value *tmp126; Value *tmp127; Value *tmp128; Value *tmp129; Value *tmp130; Value *tmp131; Value *tmp132; Value *tmp133; Value *tmp134; Value *tmp135; Value *tmp136; Value *tmp137; Value *tmp138; Value *tmp139; Value *tmp140; Value *tmp141; Value *tmp142; Value *tmp143; Value *tmp144; Value *tmp145; Value *tmp146; Value *tmp147; Value *tmp148; Value *tmp149; Value *tmp150; Value *tmp151; Value *tmp152; Value *tmp153; Value *tmp154; Value *tmp155; Value *tmp156; Value *tmp157; Value *tmp158; Value *tmp159; Value *tmp160; Value *tmp161; Value *tmp162; Value *tmp163; Value *tmp164; Value *tmp165; Value *tmp166; Value *tmp167; Value *tmp168; Value *tmp169; Value *tmp170; Value *tmp171; Value *tmp172; Value *tmp173; Value *tmp174; Value *tmp175; Value *tmp176; Value *tmp177; Value *tmp178; Value *tmp179; Value *tmp180; Value *tmp181; Value *tmp182; Value *tmp183; Value *tmp184; Value *tmp185; Value *tmp186; Value *tmp187; Value *tmp188; Value *tmp189; Value *tmp190; Value *tmp191; Value *tmp192; Value *tmp193; Value *tmp194; Value *tmp195; Value *tmp196; Value *tmp197; Value *tmp198; Value *tmp199; Value *tmp200; Value *tmp201; Value *tmp202; Value *tmp203; Value *tmp204; Value *tmp205; Value *tmp206; Value *tmp207; Value *tmp208; Value *tmp209; Value *tmp210; Value *tmp211; Value *tmp212; Value *tmp213; Value *tmp214; Value *tmp215; Value *tmp216; Value *tmp217; Value *tmp218; Value *tmp219; Value *tmp220; Value *tmp221; Value *tmp222; Value *tmp223; Value *tmp224; Value *tmp225; Value *tmp226; Value *tmp227; Value *tmp228; Value *tmp229; Value *tmp230; Value *tmp231; Value *tmp232; Value *tmp233; Value *tmp234; Value *tmp235; Value *tmp236; Value *tmp237; Value *tmp238; Value *tmp239; Value *tmp240; Value *tmp241; Value *tmp242; Value *tmp243; Value *tmp244; Value *tmp245; Value *tmp246; Value *tmp247; Value *tmp248; Value *tmp249; Value *tmp250; Value *tmp251; Value *tmp252; Value *tmp253; Value *tmp254; Value *tmp255; Value *tmp256; Value *tmp257; Value *tmp258; Value *tmp259; Value *tmp260; Value *tmp261; Value *tmp262; Value *tmp263; Value *tmp264; Value *tmp265; Value *tmp266; Value *tmp267; Value *tmp268; Value *tmp269; Value *tmp270; Value *tmp271; Value *tmp272; Value *tmp273; Value *tmp274; Value *tmp275; Value *tmp276; Value *tmp277; Value *tmp278; Value *tmp279; Value *tmp280; Value *tmp281; Value *tmp282; Value *tmp283; Value *tmp284; Value *tmp285; Value *tmp286; Value *tmp287; Value *tmp288; Value *tmp289; Value *tmp290; Value *tmp291; Value *tmp292; Value *tmp293; Value *tmp294; Value *tmp295; Value *tmp296; Value *tmp297; Value *tmp298; Value *tmp299; Value *tmp300; Value *tmp301; Value *tmp302; Value *tmp303; Value *tmp304; Value *tmp305; Value *tmp306; Value *tmp307; Value *tmp308; Value *tmp309; Value *tmp310; Value *tmp311; Value *tmp312; Value *tmp313; Value *tmp314; Value *tmp315; Value *tmp316; Value *tmp317; Value *tmp318; Value *tmp319; Value *tmp320; Value *tmp321; Value *tmp322; Value *tmp323; Value *tmp324; Value *tmp325; Value *tmp326; Value *tmp327; Value *tmp328; Value *tmp329; Value *tmp330; Value *tmp331; Value *tmp332; Value *tmp333; Value *tmp334; Value *tmp335; Value *tmp336; Value *tmp337; Value *tmp338; Value *tmp339; Value *tmp340; Value *tmp341; Value *tmp342; Value *tmp343; Value *tmp344; Value *tmp345; Value *tmp346; Value *tmp347; Value *tmp348; Value *tmp349; Value *tmp350; Value *tmp351; Value *tmp352; Value *tmp353; Value *tmp354; Value *tmp355; Value *tmp356; Value *tmp357; Value *tmp358; Value *tmp359; Value *tmp360; Value *tmp361; Value *tmp362; Value *tmp363; Value *tmp364; Value *tmp365; Value *tmp366; Value *tmp367; Value *tmp368; Value *tmp369; Value *tmp370; Value *tmp371; Value *tmp372; Value *tmp373; Value *tmp374; Value *tmp375; Value *tmp376; Value *tmp377; Value *tmp378; Value *tmp379; Value *tmp380; Value *tmp381;
     bool Matched = hasBitWidth(V, 16) &&
@@ -12736,7 +12736,7 @@ tmp190 == tmp191;
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12; Value *tmp13; Value *tmp14; Value *tmp15; Value *tmp16; Value *tmp17; Value *tmp18; Value *tmp19; Value *tmp20; Value *tmp21; Value *tmp22; Value *tmp23; Value *tmp24; Value *tmp25; Value *tmp26; Value *tmp27; Value *tmp28; Value *tmp29; Value *tmp30; Value *tmp31; Value *tmp32; Value *tmp33; Value *tmp34; Value *tmp35; Value *tmp36; Value *tmp37; Value *tmp38; Value *tmp39; Value *tmp40; Value *tmp41; Value *tmp42; Value *tmp43; Value *tmp44; Value *tmp45; Value *tmp46; Value *tmp47; Value *tmp48; Value *tmp49; Value *tmp50; Value *tmp51; Value *tmp52; Value *tmp53; Value *tmp54; Value *tmp55; Value *tmp56; Value *tmp57; Value *tmp58; Value *tmp59; Value *tmp60; Value *tmp61; Value *tmp62; Value *tmp63; Value *tmp64; Value *tmp65; Value *tmp66; Value *tmp67; Value *tmp68; Value *tmp69; Value *tmp70; Value *tmp71; Value *tmp72; Value *tmp73; Value *tmp74; Value *tmp75; Value *tmp76; Value *tmp77; Value *tmp78; Value *tmp79; Value *tmp80; Value *tmp81; Value *tmp82; Value *tmp83; Value *tmp84; Value *tmp85; Value *tmp86; Value *tmp87; Value *tmp88; Value *tmp89; Value *tmp90; Value *tmp91; Value *tmp92; Value *tmp93; Value *tmp94; Value *tmp95; Value *tmp96; Value *tmp97; Value *tmp98; Value *tmp99; Value *tmp100; Value *tmp101; Value *tmp102; Value *tmp103; Value *tmp104; Value *tmp105; Value *tmp106; Value *tmp107; Value *tmp108; Value *tmp109; Value *tmp110; Value *tmp111; Value *tmp112; Value *tmp113; Value *tmp114; Value *tmp115; Value *tmp116; Value *tmp117; Value *tmp118; Value *tmp119; Value *tmp120; Value *tmp121; Value *tmp122; Value *tmp123; Value *tmp124; Value *tmp125; Value *tmp126; Value *tmp127; Value *tmp128; Value *tmp129; Value *tmp130; Value *tmp131; Value *tmp132; Value *tmp133; Value *tmp134; Value *tmp135; Value *tmp136; Value *tmp137; Value *tmp138; Value *tmp139; Value *tmp140; Value *tmp141; Value *tmp142; Value *tmp143; Value *tmp144; Value *tmp145; Value *tmp146; Value *tmp147; Value *tmp148; Value *tmp149; Value *tmp150; Value *tmp151; Value *tmp152; Value *tmp153; Value *tmp154; Value *tmp155; Value *tmp156; Value *tmp157; Value *tmp158; Value *tmp159; Value *tmp160; Value *tmp161; Value *tmp162; Value *tmp163; Value *tmp164; Value *tmp165; Value *tmp166; Value *tmp167; Value *tmp168; Value *tmp169; Value *tmp170; Value *tmp171; Value *tmp172; Value *tmp173; Value *tmp174; Value *tmp175; Value *tmp176; Value *tmp177; Value *tmp178; Value *tmp179; Value *tmp180; Value *tmp181; Value *tmp182; Value *tmp183; Value *tmp184; Value *tmp185; Value *tmp186; Value *tmp187; Value *tmp188; Value *tmp189; Value *tmp190; Value *tmp191; Value *tmp192; Value *tmp193; Value *tmp194; Value *tmp195; Value *tmp196; Value *tmp197; Value *tmp198; Value *tmp199; Value *tmp200; Value *tmp201; Value *tmp202; Value *tmp203; Value *tmp204; Value *tmp205; Value *tmp206; Value *tmp207; Value *tmp208; Value *tmp209; Value *tmp210; Value *tmp211; Value *tmp212; Value *tmp213; Value *tmp214; Value *tmp215; Value *tmp216; Value *tmp217; Value *tmp218; Value *tmp219; Value *tmp220; Value *tmp221; Value *tmp222; Value *tmp223; Value *tmp224; Value *tmp225; Value *tmp226; Value *tmp227; Value *tmp228; Value *tmp229; Value *tmp230; Value *tmp231; Value *tmp232; Value *tmp233; Value *tmp234; Value *tmp235; Value *tmp236; Value *tmp237; Value *tmp238; Value *tmp239; Value *tmp240; Value *tmp241; Value *tmp242; Value *tmp243; Value *tmp244; Value *tmp245; Value *tmp246; Value *tmp247; Value *tmp248; Value *tmp249; Value *tmp250; Value *tmp251; Value *tmp252; Value *tmp253; Value *tmp254; Value *tmp255; Value *tmp256; Value *tmp257; Value *tmp258; Value *tmp259; Value *tmp260; Value *tmp261; Value *tmp262; Value *tmp263; Value *tmp264; Value *tmp265; Value *tmp266; Value *tmp267; Value *tmp268; Value *tmp269; Value *tmp270; Value *tmp271; Value *tmp272; Value *tmp273; Value *tmp274; Value *tmp275; Value *tmp276; Value *tmp277; Value *tmp278; Value *tmp279; Value *tmp280; Value *tmp281; Value *tmp282; Value *tmp283; Value *tmp284; Value *tmp285; Value *tmp286; Value *tmp287; Value *tmp288; Value *tmp289; Value *tmp290; Value *tmp291; Value *tmp292; Value *tmp293; Value *tmp294; Value *tmp295; Value *tmp296; Value *tmp297; Value *tmp298; Value *tmp299; Value *tmp300; Value *tmp301; Value *tmp302; Value *tmp303; Value *tmp304; Value *tmp305; Value *tmp306; Value *tmp307; Value *tmp308; Value *tmp309; Value *tmp310; Value *tmp311; Value *tmp312; Value *tmp313; Value *tmp314; Value *tmp315; Value *tmp316; Value *tmp317; Value *tmp318; Value *tmp319; Value *tmp320; Value *tmp321; Value *tmp322; Value *tmp323; Value *tmp324; Value *tmp325; Value *tmp326; Value *tmp327; Value *tmp328; Value *tmp329; Value *tmp330; Value *tmp331; Value *tmp332; Value *tmp333; Value *tmp334; Value *tmp335; Value *tmp336; Value *tmp337; Value *tmp338; Value *tmp339; Value *tmp340; Value *tmp341; Value *tmp342; Value *tmp343; Value *tmp344; Value *tmp345; Value *tmp346; Value *tmp347; Value *tmp348; Value *tmp349; Value *tmp350; Value *tmp351; Value *tmp352; Value *tmp353; Value *tmp354; Value *tmp355; Value *tmp356; Value *tmp357; Value *tmp358; Value *tmp359; Value *tmp360; Value *tmp361; Value *tmp362; Value *tmp363; Value *tmp364; Value *tmp365; Value *tmp366; Value *tmp367; Value *tmp368; Value *tmp369; Value *tmp370; Value *tmp371; Value *tmp372; Value *tmp373;
     bool Matched = hasBitWidth(V, 16) &&
@@ -13640,7 +13640,7 @@ hasBitWidth(tmp190, 16);
 
 class : public Operation {
   bool match(
-    Value *V, std::vector<Match> &Matches) const override {
+    Value *V, SmallVectorImpl<Match> &Matches) const override {
     
     Value *tmp0; Value *tmp1; Value *tmp2; Value *tmp3; Value *tmp4; Value *tmp5; Value *tmp6; Value *tmp7; Value *tmp8; Value *tmp9; Value *tmp10; Value *tmp11; Value *tmp12;
     bool Matched = hasBitWidth(V, 32) &&

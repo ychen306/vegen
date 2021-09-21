@@ -16,7 +16,7 @@ static bool isFloat(Instruction::BinaryOps Opcode) {
   }
 }
 
-bool BinaryIROperation::match(Value *V, std::vector<Match> &Matches) const {
+bool BinaryIROperation::match(Value *V, SmallVectorImpl<Match> &Matches) const {
   auto *BinOp = dyn_cast<BinaryOperator>(V);
   bool Matched =
       BinOp && BinOp->getOpcode() == Opcode && hasBitWidth(BinOp, Bitwidth);

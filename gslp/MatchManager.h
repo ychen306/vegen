@@ -2,6 +2,7 @@
 #define MATCH_MANAGER_H
 
 #include "InstSema.h"
+#include "llvm/ADT/SmallVector.h"
 #include <algorithm>
 
 namespace llvm {
@@ -13,7 +14,7 @@ class Function;
 // matching the same operation twice on the same value
 class MatchManager {
   // record matches for each operation
-  llvm::DenseMap<const Operation *, std::vector<Operation::Match>> OpMatches;
+  llvm::DenseMap<const Operation *, llvm::SmallVector<Operation::Match, 2>> OpMatches;
 
   void match(llvm::Value *V);
 

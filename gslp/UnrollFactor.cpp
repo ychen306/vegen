@@ -201,7 +201,7 @@ refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
   Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI,
-             &UnrolledBlocks);
+             &UnrolledBlocks, true/*preplanning*/);
 
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
