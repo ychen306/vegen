@@ -14,4 +14,4 @@ fi
 exec $clang -Xclang -load -Xclang @CMAKE_BINARY_DIR@/gslp/libGSLP.so\
        -mllvm --wrappers-dir=@CMAKE_BINARY_DIR@\
        $@\
-       -fno-slp-vectorize -fno-vectorize -fno-unroll-loops
+       -fno-slp-vectorize -fno-vectorize

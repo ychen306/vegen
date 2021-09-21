@@ -585,8 +585,6 @@ void gatherInstructions(Function *F,
     for (Instruction *I : Members)
       CoupledInsts.unionSets(Leader, I);
   }
-
-  fixDefUseDominance(F, DT);
 }
 
 bool haveIdenticalTripCounts(const Loop *L1, const Loop *L2,

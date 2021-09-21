@@ -457,4 +457,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       I->eraseFromParent();
     Changed = !ReallyDeadInsts.empty();
   } while (Changed);
+
+  fixDefUseDominance(F, Pkr.getDT());
 }
