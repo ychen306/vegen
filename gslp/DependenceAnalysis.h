@@ -46,7 +46,7 @@ public:
   GlobalDependenceAnalysis(llvm::AliasAnalysis &, llvm::ScalarEvolution &,
                            llvm::DominatorTree &, llvm::LoopInfo &LI,
                            llvm::LazyValueInfo &, llvm::Function *,
-                           VectorPackContext *);
+                           VectorPackContext *, bool NoAlias);
 
   const llvm::BitVector &getDepended(llvm::Instruction *I) const {
     auto It = TransitiveClosure.find(I);

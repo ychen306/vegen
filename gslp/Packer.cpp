@@ -57,9 +57,10 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, LoopInfo *LI, ScalarEvolution *SE,
                DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
                LazyValueInfo *LVI, TargetTransformInfo *TTI,
-               BlockFrequencyInfo *BFI, EquivalenceClasses<BasicBlock *> *UnrolledBlocks)
+               BlockFrequencyInfo *BFI, EquivalenceClasses<BasicBlock *> *UnrolledBlocks,
+               bool Preplanning)
     : F(&F), VPCtx(&F),
-      DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx),
+      DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
       LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F),
       CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA, true /*precompute*/, UnrolledBlocks),
       SE(SE), DT(DT), PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI),

@@ -234,7 +234,7 @@ bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
 // FIXME: change this to use LazyDependenceAnalysis
 GlobalDependenceAnalysis::GlobalDependenceAnalysis(
     AliasAnalysis &AA, ScalarEvolution &SE, DominatorTree &DT, LoopInfo &LI,
-    LazyValueInfo &LVI, Function *F, VectorPackContext *VPCtx) {
+    LazyValueInfo &LVI, Function *F, VectorPackContext *VPCtx, bool NoAlias) {
 
   SmallVector<Instruction *> MemRefs;
 
@@ -258,7 +258,7 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
           Dependences[&I].push_back(OpInst);
       }
 
-      if (!I.mayReadOrWriteMemory())
+      if (NoAlias || !I.mayReadOrWriteMemory())
         continue;
 
       for (Instruction *PrevRef : MemRefs)

@@ -110,7 +110,8 @@ public:
          llvm::DominatorTree *DT, llvm::PostDominatorTree *PDT,
          llvm::DependenceInfo *DI, llvm::LazyValueInfo *LVI,
          llvm::TargetTransformInfo *TTI, llvm::BlockFrequencyInfo *BFI,
-         llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks=nullptr);
+         llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks=nullptr,
+         bool Preplanning = false);
 
   const VectorPackContext *getContext() const { return &VPCtx; }
 
