@@ -5,8 +5,8 @@
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/Triple.h"
-#include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/LazyValueInfo.h"
@@ -30,8 +30,8 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/InstSimplifyPass.h"
-#include "llvm/Transforms/Vectorize.h"
 #include "llvm/Transforms/Utils.h"
+#include "llvm/Transforms/Vectorize.h"
 #include <set>
 
 using namespace llvm;
@@ -46,11 +46,8 @@ static cl::opt<std::string>
     Filter("filter",
            cl::desc("only run on function names containing this substring"));
 
-static cl::opt<bool> UseMainlineSLP("use-slp", cl::desc("Use LLVM SLP"),
-                                    cl::init(false));
-
 static cl::opt<bool> DisableUnrolling("no-unroll", cl::desc("Don't unroll"),
-    cl::init(false));
+                                      cl::init(false));
 
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
@@ -150,7 +147,7 @@ collectReductionElements(Instruction *I,
 
     // if not an Add then found a leave
     Value *A, *B;
-    if (!isa<Instruction>(V) || 
+    if (!isa<Instruction>(V) ||
         !match(V, m_OneUse(m_Add(m_Value(A), m_Value(B))))) {
       Elems.push_back(V);
       continue;
@@ -291,34 +288,13 @@ static void registerGSLP(const PassManagerBuilder &PMB,
   MPM.add(createLoopRotatePass());
   MPM.add(createLCSSAPass());
 
-  if (UseMainlineSLP) {
-    errs() << "USING LLVM SLP\n";
-    MPM.add(createSLPVectorizerPass());
-  } else {
-    errs() << "USING G-SLP\n";
-    MPM.add(new GSLP());
-  }
-
-  // run the cleanup passes, copied from llvm's pass builder
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-  MPM.add(createLoopUnrollPass(2 /*opt level*/, PMB.DisableUnrollLoops,
-                               PMB.ForgetAllSCEVInLoopUnroll));
-  if (!PMB.DisableUnrollLoops) {
-    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-    MPM.add(
-        createLICMPass(PMB.LicmMssaOptCap, PMB.LicmMssaNoAccForPromotionCap));
-  }
-  MPM.add(createAlignmentFromAssumptionsPass());
-  MPM.add(createLoopSinkPass());
-  MPM.add(createInstSimplifyLegacyPass());
-  MPM.add(createDivRemPairsPass());
-  MPM.add(createCFGSimplificationPass());
+  MPM.add(new GSLP());
 }
 
 // Register this pass to run after all optimization,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
-    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerGSLP);
+    RegisterMyPass(PassManagerBuilder::EP_VectorizerStart, registerGSLP);
 
 static struct RegisterGSLP {
   RegisterGSLP() { initializeGSLPPass(*PassRegistry::getPassRegistry()); }
