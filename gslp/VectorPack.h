@@ -95,10 +95,10 @@ private:
 
   // Reduction
   VectorPack(const VectorPackContext *VPCtx, ReductionInfo RI,
+             llvm::BitVector Elements, llvm::BitVector Depended,
              llvm::TargetTransformInfo *TTI)
-      : VPCtx(VPCtx), Elements(VPCtx->getNumValues()),
-        Depended(VPCtx->getNumValues()), Kind(PackKind::Reduction), Rdx(RI) {
-    Elements.set(VPCtx->getScalarId(RI.Phi));
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::Reduction), Rdx(RI) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);

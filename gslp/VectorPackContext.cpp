@@ -1,5 +1,6 @@
 #include "VectorPackContext.h"
 #include "VectorPack.h"
+#include "Reduction.h"
 #include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
@@ -15,6 +16,7 @@ struct VectorPackCache {
   std::map<LoadPackKey, std::unique_ptr<VectorPack>> LoadPacks;
   std::map<StorePackKey, std::unique_ptr<VectorPack>> StorePacks;
   std::map<PHIPackKey, std::unique_ptr<VectorPack>> PHIPacks;
+  std::map<Instruction *, std::unique_ptr<VectorPack>> ReductionPacks;
 };
 
 VectorPackContext::~VectorPackContext() = default;
@@ -79,6 +81,19 @@ VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
   return VP.get();
 }
 
+VectorPack *VectorPackContext::createReduction(const ReductionInfo &Rdx,
+                                               TargetTransformInfo *TTI) const {
+  auto *Root = Rdx.Ops.back();
+  auto &VP = PackCache->ReductionPacks[Root];
+  if (!VP) {
+    BitVector Elements(getNumValues());
+    BitVector Depended(getNumValues());
+    Elements.set(getScalarId(Root));
+    VP.reset(new VectorPack(this, Rdx, Elements, Depended, TTI));
+  }
+  return VP.get();
+}
+
 const OperandPack *VectorPackContext::dedup(const OperandPack *OP) const {
   SmallPtrSet<Value *, 4> Seen;
   OperandPack Deduped;
@@ -116,7 +131,7 @@ OperandPack *VectorPackContext::getCanonicalOperandPack(OperandPack OP) const {
   // Look for equivalent values in OP,
   // and replace them with a single, arbitrary value.
   for (unsigned i = 0; i < OP.size(); i++)
-    for (unsigned j = i+1; j < OP.size(); j++)
+    for (unsigned j = i + 1; j < OP.size(); j++)
       if (EquivalentValues.isEquivalent(OP[i], OP[j]))
         OP[j] = OP[i];
 

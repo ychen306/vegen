@@ -8,6 +8,8 @@
 #include "llvm/ADT/Hashing.h"
 #include <vector>
 
+class ReductionInfo;
+
 class VectorPack;
 struct OperandProducerInfo {
   bool Feasible; // Whether it's feasible to produce this operand pack
@@ -74,6 +76,9 @@ public:
   // Create a vectorized phi
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
                             llvm::TargetTransformInfo *TTI) const;
+
+  VectorPack *createReduction(const ReductionInfo &,
+                              llvm::TargetTransformInfo *TTI) const;
 
   OperandPack *getCanonicalOperandPack(OperandPack OP) const;
 

@@ -270,6 +270,9 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   }
   case Phi:
     Cost = 0;
+  case Reduction:
+    // FIXME: actually compute the cost
+    Cost = 1;
   }
 
   ProducingCost = Cost;
@@ -291,7 +294,7 @@ void VectorPack::computeOrderedValues() {
     OrderedValues.append(PHIs.begin(), PHIs.end());
     break;
   case Reduction:
-    OrderedValues.push_back(Rdx->Phi);
+    OrderedValues.push_back(Rdx->Ops.back());
   }
 }
 

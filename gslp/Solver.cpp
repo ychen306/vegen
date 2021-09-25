@@ -273,8 +273,27 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
     return Info1.Id < Info2.Id;
   });
 
-  Heuristic H(Pkr, Candidates);
+  auto &LI = Pkr->getLoopInfo();
+  auto *TTI = Pkr->getTTI();
   auto *VPCtx = Pkr->getContext();
+  // Add reduction packs
+  for (auto &I : instructions(Pkr->getFunction())) {
+    auto *PN = dyn_cast<PHINode>(&I);
+    if (!PN)
+      continue;
+    Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
+    if (RI && RI->Elts.size() > 1) {
+      errs() << "1! chain op = <<<\n";
+      for (auto *X : RI->Ops)
+        errs() << '\t' << *X << '\n';
+      errs() << ">>>>\n";
+      Seeds.push_back(VPCtx->createReduction(*RI, TTI));
+      errs() << "!!! created reduction: " << *Seeds.back() << '\n';
+      errs() << "\toperand = " << *Seeds.back()->getOperandPacks().front() << '\n';
+    }
+  }
+
+  Heuristic H(Pkr, Candidates);
 
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
     for (auto *OP : OPs)
@@ -291,7 +310,8 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
       DecomposedStores;
 
   for (auto *VP : Seeds)
-    DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
+    if (VP->isStore())
+      DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
   BitVector Packed(Pkr->getContext()->getNumValues());
   for (auto *VP : Seeds) {
@@ -299,8 +319,16 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
       continue;
 
     Plan P2 = P;
-    for (auto *VP2 : DecomposedStores[VP])
-      P2.add(VP2);
+
+    if (VP->isStore()) {
+      for (auto *VP2 : DecomposedStores[VP])
+        P2.add(VP2);
+    } else {
+      errs() << "Cost before adding reduction: " << P.cost() << '\n';
+      P2.add(VP);
+      errs() << "Cost after: " << P.cost() << '\n';
+    }
+
     auto *OP = VP->getOperandPacks().front();
     if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
         Improve(P2, deinterleave(VPCtx, OP, 4)) ||

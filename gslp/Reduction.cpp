@@ -51,9 +51,13 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
   RI.Phi = PN;
   RI.StartValue = Rdx.getRecurrenceStartValue();
 
-  // Don't vectorize phis that have more than one in-loop use
-  for (User *U : PN->users()) {
-    if (U == RI.Ops.front())
+  // Don't vectorize phis that have more than one use
+  if (!PN->hasOneUse())
+    return None;
+
+  // Don't vectorize if the reduced value have more than one *in-loop* use
+  for (User *U : RI.Ops.back()->users()) {
+    if (U == PN)
       continue;
     if (L->contains(cast<Instruction>(U)->getParent()))
       return None;
@@ -61,10 +65,10 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
 
   Value *Prev = PN;
   for (auto *Cur : RI.Ops) {
-    auto *Elt = matchReductionValue(Cur, Prev, RI.Kind);
     // Don't vectorize reduction on values with more than one use
-    if (!Elt->hasOneUse())
+    if (Cur != RI.Ops.back() && !Cur->hasOneUse())
       return None;
+    auto *Elt = matchReductionValue(Cur, Prev, RI.Kind);
     RI.Elts.push_back(Elt);
     Prev = Cur;
   }

@@ -245,7 +245,8 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
       // we must just inserted it for packed PHIs.
       // Don't even bother with checking dependence,
       // because these instructions are right before the terminator.
-      assert(isa<ShuffleVectorInst>(I) || isa<InsertElementInst>(I) || isa<BranchInst>(I));
+      assert(isa<ShuffleVectorInst>(I) || isa<InsertElementInst>(I) ||
+             isa<BranchInst>(I));
       assert(!ValueToPackMap.count(I));
       ReorderedInsts.push_back(I);
       return;
@@ -323,7 +324,7 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
 }
 
 static Value *emitReduction(RecurKind Kind, Value *A, Value *B,
-                                  IRBuilderBase &Builder) {
+                            IRBuilderBase &Builder) {
   switch (Kind) {
   case RecurKind::Add:
     return Builder.CreateAdd(A, B);
@@ -365,7 +366,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   gatherInstructions(F, EC, Pkr.getLoopInfo(), Pkr.getDT(), Pkr.getPDT(),
                      Pkr.getSE(), Pkr.getLDA(), &Pkr.getDA(), Pkr.getContext());
 
-  std::vector<Instruction *> DeadInsts;
+  SmallVector<Instruction *> DeadInsts;
 
   std::map<BasicBlock *, SmallVector<const VectorPack *>> PacksByBlock;
   for (auto *VP : AllPacks)
@@ -374,7 +375,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   auto &LI = Pkr.getLoopInfo();
   auto *TTI = Pkr.getTTI();
 
-  SmallVector<std::pair<PHINode *, Value *>> ReductionPhis;
+  SmallVector<std::pair<Instruction *, Value *>> Reductions;
 
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
@@ -475,26 +476,34 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       // Emit the vector phi, specify the incomings later
       Builder.SetInsertPoint(&Header->front());
-      auto *VecPhi = Builder.CreatePHI(VecTy, 2/*num incoming*/);
+      auto *VecPhi = Builder.CreatePHI(VecTy, 2 /*num incoming*/);
 
       // Emit the vector rdx op
-      auto *Operand = gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
+      auto *Operand =
+          gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
       Builder.SetInsertPoint(Latch->getTerminator());
       auto *RdxOp = emitReduction(RI.Kind, VecPhi, Operand, Builder);
 
       // Patch up the vector phi
-      auto *Identity = ConstantVector::getSplat(VecTy->getElementCount(), 
-          RecurrenceDescriptor::getRecurrenceIdentity(RI.Kind, RI.Phi->getType()));
-      VecPhi->addIncoming(Identity, L->getLoopPreheader());
+      auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
+          RI.Kind, RI.Phi->getType());
+      auto *IdentityVector =
+          ConstantVector::getSplat(VecTy->getElementCount(), Identity);
+      VecPhi->addIncoming(IdentityVector, L->getLoopPreheader());
       VecPhi->addIncoming(RdxOp, Latch);
 
       // Reduce the vector in the exit block
       Builder.SetInsertPoint(Exit->getFirstNonPHI());
-      auto *HorizontalRdx = createSimpleTargetReduction(Builder, TTI, VecPhi, RI.Kind);
-      auto *Reduced = emitReduction(RI.Kind, HorizontalRdx, RI.StartValue, Builder);
+      auto *HorizontalRdx =
+          createSimpleTargetReduction(Builder, TTI, RdxOp, RI.Kind);
+      auto *Reduced =
+          emitReduction(RI.Kind, HorizontalRdx, RI.StartValue, Builder);
 
-      // Record the fact that we've replaced the original phi with this reduced value
-      ReductionPhis.emplace_back(RI.Phi, Reduced);
+      DeadInsts.append(RI.Ops.begin(), RI.Ops.end());
+      DeadInsts.push_back(RI.Phi);
+
+      // Record the fact that we are replacing the original scalar reduction with `Reduced`
+      Reductions.emplace_back(RI.Ops.back(), Reduced);
     }
   }
 
@@ -509,19 +518,9 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     }
   }
 
-  // Replace uses of the reduction phis
-  for (auto &Pair : ReductionPhis) {
-    auto *PN = Pair.first;
-    auto *Reduced = Pair.second;
-
-    // Nuke phi's operands before calling RAUW
-    auto *Undef = UndefValue::get(PN->getType());
-    for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
-      PN->setIncomingValue(i, Undef);
-
-    PN->replaceAllUsesWith(Reduced);
-    PN->eraseFromParent();
-  }
+  // Replace the original scalar reductions with the new reduced values
+  for (auto &Pair : Reductions)
+    Pair.first->replaceAllUsesWith(Pair.second);
 
   // Delete the dead instructions.
   // Do it the reverse of program order to avoid dangling pointer.
