@@ -82,7 +82,7 @@ private:
     computeCost(TTI);
   }
 
-  // Load Pack
+  // PHI Pack
   VectorPack(const VectorPackContext *VPCtx,
              llvm::ArrayRef<llvm::PHINode *> PHIs, llvm::BitVector Elements,
              llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
@@ -95,10 +95,10 @@ private:
 
   // Reduction
   VectorPack(const VectorPackContext *VPCtx, ReductionInfo RI,
-             llvm::BitVector Elements, llvm::BitVector Depended,
              llvm::TargetTransformInfo *TTI)
-      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Reduction), Rdx(RI) {
+      : VPCtx(VPCtx), Elements(VPCtx->getNumValues()),
+        Depended(VPCtx->getNumValues()), Kind(PackKind::Reduction), Rdx(RI) {
+    Elements.set(VPCtx->getScalarId(RI.Phi));
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);

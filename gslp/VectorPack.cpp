@@ -289,7 +289,7 @@ void VectorPack::computeOrderedValues() {
     OrderedValues.append(PHIs.begin(), PHIs.end());
     break;
   case Reduction:
-    OrderedValues.append(Rdx->Ops.begin(), Rdx->Ops.end());
+    OrderedValues.push_back(Rdx->Phi);
   }
 }
 
