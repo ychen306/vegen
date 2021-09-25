@@ -7,6 +7,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "llvm/Transforms/Utils/LoopUtils.h"
 
 using namespace llvm;
 
@@ -321,6 +322,29 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
   return SortedPacks;
 }
 
+static Value *emitReduction(RecurKind Kind, Value *A, Value *B,
+                                  IRBuilderBase &Builder) {
+  switch (Kind) {
+  case RecurKind::Add:
+    return Builder.CreateAdd(A, B);
+  case RecurKind::Mul:
+    return Builder.CreateMul(A, B);
+  case RecurKind::And:
+    return Builder.CreateAnd(A, B);
+  case RecurKind::Or:
+    return Builder.CreateOr(A, B);
+  case RecurKind::Xor:
+    return Builder.CreateXor(A, B);
+  case RecurKind::FAdd:
+    return Builder.CreateFAdd(A, B);
+  case RecurKind::FMul:
+    return Builder.CreateFMul(A, B);
+  default:
+    llvm_unreachable("unsupport reduction kind");
+  }
+  return nullptr;
+}
+
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
@@ -347,9 +371,16 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *VP : AllPacks)
     PacksByBlock[getBlockForPack(VP)].push_back(VP);
 
+  auto &LI = Pkr.getLoopInfo();
+  auto *TTI = Pkr.getTTI();
+
+  SmallVector<std::pair<PHINode *, Value *>> ReductionPhis;
+
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
   SmallVector<const VectorPack *> PHIPacks;
+  // Mapping loop-latch to the reduction packs that we should be emiting
+  DenseMap<BasicBlock *, SmallVector<const VectorPack *, 1>> RdxPacks;
   for (BasicBlock *BB : RPO) {
     if (!PacksByBlock.count(BB))
       continue;
@@ -362,6 +393,13 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     for (auto *VP : OrderedPacks) {
       if (VP->isPHI())
         PHIPacks.push_back(VP);
+      // Delay emitting reduction until later
+      if (VP->isReduction()) {
+        auto *L = LI.getLoopFor(BB);
+        assert(L->getLoopLatch());
+        RdxPacks[L->getLoopLatch()].push_back(VP);
+        continue;
+      }
       // Get the operands ready.
       SmallVector<Value *, 2> Operands;
       unsigned OperandId = 0;
@@ -392,7 +430,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       // Conservatively extract all elements.
       // Let the later cleanup passes clean up dead extracts.
-      if (!isa<StoreInst>(VecInst)) {
+      if (!isa<StoreInst>(VecInst) || !VP->isReduction()) {
         unsigned LaneId = 0;
         if (isa<PHINode>(VecInst))
           Builder.SetInsertPoint(BB->getFirstNonPHI());
@@ -421,6 +459,43 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
     }
+
+    if (!RdxPacks.count(BB))
+      continue;
+
+    // Emit the reductions!
+    for (auto *VP : RdxPacks[BB]) {
+      auto *L = LI.getLoopFor(BB);
+      auto *Header = L->getHeader();
+      auto *Exit = L->getExitBlock();
+      auto *Latch = BB;
+      auto *OP = VP->getOperandPacks().front();
+      auto *VecTy = getVectorType(*OP);
+      auto &RI = VP->getReductionInfo();
+
+      // Emit the vector phi, specify the incomings later
+      Builder.SetInsertPoint(&Header->front());
+      auto *VecPhi = Builder.CreatePHI(VecTy, 2/*num incoming*/);
+
+      // Emit the vector rdx op
+      auto *Operand = gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
+      Builder.SetInsertPoint(Latch->getTerminator());
+      auto *RdxOp = emitReduction(RI.Kind, VecPhi, Operand, Builder);
+
+      // Patch up the vector phi
+      auto *Identity = ConstantVector::getSplat(VecTy->getElementCount(), 
+          RecurrenceDescriptor::getRecurrenceIdentity(RI.Kind, RI.Phi->getType()));
+      VecPhi->addIncoming(Identity, L->getLoopPreheader());
+      VecPhi->addIncoming(RdxOp, Latch);
+
+      // Reduce the vector in the exit block
+      Builder.SetInsertPoint(Exit->getFirstNonPHI());
+      auto *HorizontalRdx = createSimpleTargetReduction(Builder, TTI, VecPhi, RI.Kind);
+      auto *Reduced = emitReduction(RI.Kind, HorizontalRdx, RI.StartValue, Builder);
+
+      // Record the fact that we've replaced the original phi with this reduced value
+      ReductionPhis.emplace_back(RI.Phi, Reduced);
+    }
   }
 
   // Patch up the operands of the phi packs
@@ -432,6 +507,20 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
           gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
       cast<Instruction>(MaterializedPacks[VP])->setOperand(i, Gathered);
     }
+  }
+
+  // Replace uses of the reduction phis
+  for (auto &Pair : ReductionPhis) {
+    auto *PN = Pair.first;
+    auto *Reduced = Pair.second;
+
+    // Nuke phi's operands before calling RAUW
+    auto *Undef = UndefValue::get(PN->getType());
+    for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+      PN->setIncomingValue(i, Undef);
+
+    PN->replaceAllUsesWith(Reduced);
+    PN->eraseFromParent();
   }
 
   // Delete the dead instructions.

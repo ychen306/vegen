@@ -241,6 +241,8 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
     return emitVectorStore(Operands, Builder);
   case Phi:
     return emitVectorPhi(Operands, Builder);
+  case Reduction:
+    llvm_unreachable("Don't call emit on reduction pack directly");
   }
 }
 

@@ -12,6 +12,7 @@ class LoopInfo;
 struct ReductionInfo {
   llvm::RecurKind Kind;
   llvm::PHINode *Phi;
+  llvm::Value *StartValue;
   llvm::SmallVector<llvm::Value *, 4> Elts;      // things being reduced
   llvm::SmallVector<llvm::Instruction *, 4> Ops; // ops used to reduce things
 };

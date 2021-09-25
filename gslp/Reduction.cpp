@@ -49,6 +49,7 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
   RI.Kind = Rdx.getRecurrenceKind();
   RI.Ops = Rdx.getReductionOpChain(PN, L);
   RI.Phi = PN;
+  RI.StartValue = Rdx.getRecurrenceStartValue();
 
   // Don't vectorize phis that have more than one in-loop use
   for (User *U : PN->users()) {

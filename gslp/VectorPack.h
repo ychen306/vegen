@@ -147,10 +147,13 @@ public:
   }
 
   bool isStore() const { return Kind == Store; }
-
   bool isLoad() const { return Kind == Load; }
-
   bool isPHI() const { return Kind == Phi; }
+  bool isReduction() const { return Rdx.hasValue(); }
+  const ReductionInfo &getReductionInfo() const {
+    assert(isReduction());
+    return *Rdx;
+  };
 
   llvm::ArrayRef<llvm::Value *> getOrderedValues() const {
     return OrderedValues;
