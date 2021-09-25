@@ -502,7 +502,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       DeadInsts.append(RI.Ops.begin(), RI.Ops.end());
       DeadInsts.push_back(RI.Phi);
 
-      // Record the fact that we are replacing the original scalar reduction with `Reduced`
+      // Record the fact that we are replacing the original scalar reduction
+      // with `Reduced`
       Reductions.emplace_back(RI.Ops.back(), Reduced);
     }
   }
