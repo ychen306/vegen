@@ -220,6 +220,10 @@ void VectorPack::computeOperandPacks() {
   case Phi:
     canonicalizeOperandPacks(computeOperandPacksForPhi());
     break;
+  case Reduction:
+    OperandPack OP;
+    OP.assign(Rdx->Elts.begin(), Rdx->Elts.end());
+    canonicalizeOperandPacks({OP});
   }
 }
 
@@ -272,24 +276,20 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
 void VectorPack::computeOrderedValues() {
   switch (Kind) {
   case General:
-    for (auto *M : Matches)
-      if (M)
-        OrderedValues.push_back(M->Output);
-      else
-        OrderedValues.push_back(nullptr);
+    transform(Matches, std::back_inserter(OrderedValues),
+              [](auto *M) { return M ? M->Output : nullptr; });
     break;
   case Load:
-    for (auto *LI : Loads)
-      OrderedValues.push_back(LI);
+    OrderedValues.append(Loads.begin(), Loads.end());
     break;
   case Store:
-    for (auto *SI : Stores)
-      OrderedValues.push_back(SI);
+    OrderedValues.append(Stores.begin(), Stores.end());
     break;
   case Phi:
-    for (auto *PHI : PHIs)
-      OrderedValues.push_back(PHI);
+    OrderedValues.append(PHIs.begin(), PHIs.end());
     break;
+  case Reduction:
+    OrderedValues.append(Rdx->Ops.begin(), Rdx->Ops.end());
   }
 }
 
@@ -358,7 +358,8 @@ bool isConstantPack(const OperandPack &OP) {
   return true;
 }
 
-void VectorPack::getPackedInstructions(SmallPtrSetImpl<Instruction *> &Insts) const {
+void VectorPack::getPackedInstructions(
+    SmallPtrSetImpl<Instruction *> &Insts) const {
   if (Kind != General) {
     for (auto *V : elementValues())
       Insts.insert(cast<Instruction>(V));

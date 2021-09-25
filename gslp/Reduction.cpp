@@ -36,8 +36,7 @@ static Value *matchReductionValue(Instruction *Rdx, Value *A, RecurKind Kind) {
   return B;
 }
 
-Optional<RecurKind> matchLoopReduction(PHINode *PN, LoopInfo &LI,
-                                      SmallVectorImpl<Value *> &Elts) {
+Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
   auto *L = LI.getLoopFor(PN->getParent());
   if (!L)
     return None;
@@ -46,26 +45,28 @@ Optional<RecurKind> matchLoopReduction(PHINode *PN, LoopInfo &LI,
   if (!RecurrenceDescriptor::isReductionPHI(PN, L, Rdx))
     return None;
 
-  auto Kind = Rdx.getRecurrenceKind();
-
-  auto Chain = Rdx.getReductionOpChain(PN, L);
+  ReductionInfo RI;
+  RI.Kind = Rdx.getRecurrenceKind();
+  RI.Ops = Rdx.getReductionOpChain(PN, L);
+  RI.Phi = PN;
 
   // Don't vectorize phis that have more than one in-loop use
   for (User *U : PN->users()) {
-    if (U == Chain.front())
+    if (U == RI.Ops.front())
       continue;
     if (L->contains(cast<Instruction>(U)->getParent()))
       return None;
   }
 
   Value *Prev = PN;
-  for (auto *Cur : Chain) {
-    auto *Elt = matchReductionValue(Cur, Prev, Kind);
+  for (auto *Cur : RI.Ops) {
+    auto *Elt = matchReductionValue(Cur, Prev, RI.Kind);
     // Don't vectorize reduction on values with more than one use
     if (!Elt->hasOneUse())
       return None;
-    Elts.push_back(Elt);
+    RI.Elts.push_back(Elt);
     Prev = Cur;
   }
-  return Kind;
+
+  return RI;
 }

@@ -1,18 +1,19 @@
 #ifndef VECTOR_PACK_H
 #define VECTOR_PACK_H
 
+#include "Reduction.h"
 #include "VectorPackContext.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
-#include "llvm/ADT/SmallPtrSet.h"
 #include <set>
 
 // A vector pack is an *ordered* set of values,
 // these values should come from the same basic block
 class VectorPack {
 public:
-  enum PackKind { General, Phi, Load, Store };
+  enum PackKind { General, Phi, Load, Store, Reduction };
 
 private:
   friend class VectorPackContext;
@@ -34,6 +35,8 @@ private:
   llvm::SmallVector<llvm::StoreInst *, 4> Stores;
   // PHI
   llvm::SmallVector<llvm::PHINode *, 4> PHIs;
+  // Loop reduction
+  llvm::Optional<ReductionInfo> Rdx;
   ///////////////
 
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
@@ -90,12 +93,23 @@ private:
     computeCost(TTI);
   }
 
+  // Reduction
+  VectorPack(const VectorPackContext *VPCtx, ReductionInfo RI,
+             llvm::BitVector Elements, llvm::BitVector Depended,
+             llvm::TargetTransformInfo *TTI)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::Reduction), Rdx(RI) {
+    computeOperandPacks();
+    computeOrderedValues();
+    computeCost(TTI);
+  }
+
   std::vector<OperandPack> computeOperandPacksForGeneral();
   std::vector<OperandPack> computeOperandPacksForLoad();
   std::vector<OperandPack> computeOperandPacksForStore();
   std::vector<OperandPack> computeOperandPacksForPhi();
 
-  void canonicalizeOperandPacks(std::vector<OperandPack> OPs) {
+  void canonicalizeOperandPacks(llvm::ArrayRef<OperandPack> OPs) {
     for (auto &OP : OPs)
       OperandPacks.push_back(VPCtx->getCanonicalOperandPack(std::move(OP)));
   }
@@ -160,7 +174,8 @@ public:
   void setOperandGatherPoint(unsigned OperandId,
                              IntrinsicBuilder &Builder) const;
 
-  void getPackedInstructions(llvm::SmallPtrSetImpl<llvm::Instruction *> &) const;
+  void
+  getPackedInstructions(llvm::SmallPtrSetImpl<llvm::Instruction *> &) const;
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);

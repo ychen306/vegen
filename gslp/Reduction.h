@@ -9,9 +9,15 @@ namespace llvm {
 class LoopInfo;
 }
 
+struct ReductionInfo {
+  llvm::RecurKind Kind;
+  llvm::PHINode *Phi;
+  llvm::SmallVector<llvm::Value *, 4> Elts;      // things being reduced
+  llvm::SmallVector<llvm::Instruction *, 4> Ops; // ops used to reduce things
+};
+
 // Match for a loop reduction and return the non-phi values being reduced
-llvm::Optional<llvm::RecurKind>
-matchLoopReduction(llvm::PHINode *, llvm::LoopInfo &,
-                   llvm::SmallVectorImpl<llvm::Value *> &Elts);
+llvm::Optional<ReductionInfo> matchLoopReduction(llvm::PHINode *,
+                                                 llvm::LoopInfo &);
 
 #endif // REDUCTION_H
