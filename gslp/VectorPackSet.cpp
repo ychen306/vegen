@@ -375,7 +375,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   auto &LI = Pkr.getLoopInfo();
   auto *TTI = Pkr.getTTI();
 
-  SmallVector<std::pair<Instruction *, Value *>> Reductions;
+  SmallVector<std::pair<const ReductionInfo *, Value *>> ReductionsToPatch;
 
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
@@ -492,20 +492,36 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       VecPhi->addIncoming(IdentityVector, L->getLoopPreheader());
       VecPhi->addIncoming(RdxOp, Latch);
 
-      // Reduce the vector in the exit block
-      Builder.SetInsertPoint(Exit->getFirstNonPHI());
-      auto *HorizontalRdx =
-          createSimpleTargetReduction(Builder, TTI, RdxOp, RI.Kind);
-      auto *Reduced =
-          emitReduction(RI.Kind, HorizontalRdx, RI.StartValue, Builder);
-
       DeadInsts.append(RI.Ops.begin(), RI.Ops.end());
       DeadInsts.push_back(RI.Phi);
 
       // Record the fact that we are replacing the original scalar reduction
       // with `Reduced`
-      Reductions.emplace_back(RI.Ops.front(), Reduced);
+      ReductionsToPatch.emplace_back(&RI, RdxOp);
     }
+  }
+
+  // We need to do reduction *after* latch and *before* exits (because of LCSSA phis)
+  DenseMap<BasicBlock *, BasicBlock *> PreExits;
+  // Patch up the reductions
+  for (auto &Pair : ReductionsToPatch) {
+    const ReductionInfo *RI = Pair.first;
+    Value *RdxOp = Pair.second;
+    auto *L = LI.getLoopFor(RI->Phi->getParent());
+    auto *Exit = L->getExitBlock();
+    auto *PreExit = PreExits.lookup(Exit);
+    if (!PreExit) {
+      PreExit = Exit->splitBasicBlockBefore(Exit->begin(), Exit->getName() + ".split");
+      PreExits[Exit] = PreExit;
+    }
+
+    //// Reduce the vector in the exit block
+    Builder.SetInsertPoint(&PreExit->front());
+    auto *HorizontalRdx =
+        createSimpleTargetReduction(Builder, TTI, RdxOp, RI->Kind);
+    auto *Reduced =
+        emitReduction(RI->Kind, HorizontalRdx, RI->StartValue, Builder);
+    RI->Ops.front()->replaceAllUsesWith(Reduced);
   }
 
   // Patch up the operands of the phi packs
@@ -518,10 +534,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       cast<Instruction>(MaterializedPacks[VP])->setOperand(i, Gathered);
     }
   }
-
-  // Replace the original scalar reductions with the new reduced values
-  for (auto &Pair : Reductions)
-    Pair.first->replaceAllUsesWith(Pair.second);
 
   // Delete the dead instructions.
   // Do it the reverse of program order to avoid dangling pointer.
