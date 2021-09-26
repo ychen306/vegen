@@ -83,7 +83,7 @@ VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
 
 VectorPack *VectorPackContext::createReduction(const ReductionInfo &Rdx,
                                                TargetTransformInfo *TTI) const {
-  auto *Root = Rdx.Ops.back();
+  auto *Root = Rdx.Ops.front();
   auto &VP = PackCache->ReductionPacks[Root];
   if (!VP) {
     BitVector Elements(getNumValues());

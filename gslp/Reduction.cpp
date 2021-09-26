@@ -4,36 +4,67 @@
 
 using namespace llvm;
 
-// Suppose we are doing A + B, given A, find B
-static Value *matchReductionValue(Instruction *Rdx, Value *A, RecurKind Kind) {
+// Suppose we are doing A + B, find A and B
+static bool matchReduction(Value *Rdx, Value *&A, Value *&B, RecurKind Kind) {
   using namespace PatternMatch;
-  Value *B = nullptr;
   switch (Kind) {
   case RecurKind::Add:
-    match(Rdx, m_c_Add(m_Specific(A), m_Value(B)));
-    break;
+    return match(Rdx, m_Add(m_Value(A), m_Value(B)));
   case RecurKind::Mul:
-    match(Rdx, m_c_Mul(m_Specific(A), m_Value(B)));
-    break;
+    return match(Rdx, m_Mul(m_Value(A), m_Value(B)));
   case RecurKind::And:
-    match(Rdx, m_c_And(m_Specific(A), m_Value(B)));
-    break;
+    return match(Rdx, m_And(m_Value(A), m_Value(B)));
   case RecurKind::Or:
-    match(Rdx, m_c_Or(m_Specific(A), m_Value(B)));
-    break;
+    return match(Rdx, m_Or(m_Value(A), m_Value(B)));
   case RecurKind::Xor:
-    match(Rdx, m_c_Xor(m_Specific(A), m_Value(B)));
-    break;
+    return match(Rdx, m_Xor(m_Value(A), m_Value(B)));
   case RecurKind::FAdd:
-    match(Rdx, m_c_FAdd(m_Specific(A), m_Value(B)));
-    break;
+    return match(Rdx, m_FAdd(m_Value(A), m_Value(B)));
   case RecurKind::FMul:
-    match(Rdx, m_c_FMul(m_Specific(A), m_Value(B)));
-    break;
-  default:;
+    return match(Rdx, m_FMul(m_Value(A), m_Value(B)));
+  default:
+    return false;
   }
-  assert(B);
-  return B;
+}
+
+static void matchReductionTreeWithKind(Value *Root,
+                                       SmallVectorImpl<Instruction *> &Ops,
+                                       SmallVectorImpl<Value *> &Leaves,
+                                       RecurKind Kind) {
+  SmallVector<Value *> Worklist{Root};
+  while (!Worklist.empty()) {
+    auto *V = Worklist.pop_back_val();
+    Value *A, *B;
+    // Only the root is allowed to have more than one use
+    if ((V != Root && !V->hasOneUse()) || !matchReduction(V, A, B, Kind)) {
+      Leaves.push_back(V);
+      continue;
+    }
+    Ops.push_back(cast<Instruction>(V));
+    Worklist.push_back(A);
+    Worklist.push_back(B);
+  }
+}
+
+static bool matchReductionTree(PHINode *PN, Loop *L,
+                               SmallVectorImpl<Instruction *> &Ops,
+                               SmallVectorImpl<Value *> &Leaves,
+                               RecurKind &Kind) {
+  auto Kinds = {RecurKind::Add, RecurKind::Mul,  RecurKind::And, RecurKind::Or,
+                RecurKind::Xor, RecurKind::FAdd, RecurKind::FMul};
+  Value *Root = PN->getIncomingValueForBlock(L->getLoopLatch());
+  for (RecurKind K : Kinds) {
+    Ops.clear();
+    Leaves.clear();
+    matchReductionTreeWithKind(Root, Ops, Leaves, K);
+    auto It = find(Leaves, PN);
+    if (It != Leaves.end()) {
+      Leaves.erase(It);
+      Kind = K;
+      return true;
+    }
+  }
+  return false;
 }
 
 Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
@@ -41,36 +72,23 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
   if (!L)
     return None;
 
-  RecurrenceDescriptor Rdx;
-  if (!RecurrenceDescriptor::isReductionPHI(PN, L, Rdx))
-    return None;
-
   ReductionInfo RI;
-  RI.Kind = Rdx.getRecurrenceKind();
-  RI.Ops = Rdx.getReductionOpChain(PN, L);
+  if (!matchReductionTree(PN, L, RI.Ops, RI.Elts, RI.Kind))
+    return None;
   RI.Phi = PN;
-  RI.StartValue = Rdx.getRecurrenceStartValue();
+  RI.StartValue = RI.Phi->getIncomingValueForBlock(L->getLoopPreheader());
 
   // Don't vectorize phis that have more than one use
   if (!PN->hasOneUse())
     return None;
 
+  auto *Root = RI.Ops.front();
   // Don't vectorize if the reduced value have more than one *in-loop* use
-  for (User *U : RI.Ops.back()->users()) {
+  for (User *U : Root->users()) {
     if (U == PN)
       continue;
     if (L->contains(cast<Instruction>(U)->getParent()))
       return None;
-  }
-
-  Value *Prev = PN;
-  for (auto *Cur : RI.Ops) {
-    // Don't vectorize reduction on values with more than one use
-    if (Cur != RI.Ops.back() && !Cur->hasOneUse())
-      return None;
-    auto *Elt = matchReductionValue(Cur, Prev, RI.Kind);
-    RI.Elts.push_back(Elt);
-    Prev = Cur;
   }
 
   return RI;
