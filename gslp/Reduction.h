@@ -7,6 +7,7 @@
 
 namespace llvm {
 class LoopInfo;
+class raw_ostream;
 }
 
 struct ReductionInfo {
@@ -20,5 +21,7 @@ struct ReductionInfo {
 // Match for a loop reduction and return the non-phi values being reduced
 llvm::Optional<ReductionInfo> matchLoopReduction(llvm::PHINode *,
                                                  llvm::LoopInfo &);
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ReductionInfo &);
 
 #endif // REDUCTION_H

@@ -94,3 +94,10 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
 
   return RI;
 }
+
+raw_ostream &operator<<(raw_ostream &OS, const ReductionInfo &RI) {
+  return OS << "reduction { "
+    << "phi = " << *RI.Phi
+    << ", root = " << *RI.Ops.front()
+    << "}";
+}

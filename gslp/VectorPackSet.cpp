@@ -479,9 +479,9 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       auto *VecPhi = Builder.CreatePHI(VecTy, 2 /*num incoming*/);
 
       // Emit the vector rdx op
+      Builder.SetInsertPoint(Latch->getTerminator());
       auto *Operand =
           gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
-      Builder.SetInsertPoint(Latch->getTerminator());
       auto *RdxOp = emitReduction(RI.Kind, VecPhi, Operand, Builder);
 
       // Patch up the vector phi
@@ -503,6 +503,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
   // We need to do reduction *after* latch and *before* exits (because of LCSSA
   // phis)
+  SmallVector<DominatorTree::UpdateType, 4> CFGUpdates;
   DenseMap<BasicBlock *, BasicBlock *> PreExits;
   // Patch up the reductions
   for (auto &Pair : ReductionsToPatch) {
@@ -514,7 +515,11 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     if (!PreExit) {
       PreExit = Exit->splitBasicBlockBefore(Exit->begin(),
                                             Exit->getName() + ".split");
+      auto *Latch = L->getLoopLatch();
       PreExits[Exit] = PreExit;
+      CFGUpdates.emplace_back(cfg::UpdateKind::Insert, Latch, PreExit);
+      CFGUpdates.emplace_back(cfg::UpdateKind::Insert, PreExit, Exit);
+      CFGUpdates.emplace_back(cfg::UpdateKind::Delete, Latch, Exit);
     }
 
     //// Reduce the vector in the exit block
@@ -525,6 +530,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         emitReduction(RI->Kind, HorizontalRdx, RI->StartValue, Builder);
     RI->Ops.front()->replaceAllUsesWith(Reduced);
   }
+  Pkr.getDT().applyUpdates(CFGUpdates);
 
   // Patch up the operands of the phi packs
   for (auto *VP : PHIPacks) {
