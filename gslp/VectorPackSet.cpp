@@ -501,7 +501,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     }
   }
 
-  // We need to do reduction *after* latch and *before* exits (because of LCSSA phis)
+  // We need to do reduction *after* latch and *before* exits (because of LCSSA
+  // phis)
   DenseMap<BasicBlock *, BasicBlock *> PreExits;
   // Patch up the reductions
   for (auto &Pair : ReductionsToPatch) {
@@ -511,7 +512,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     auto *Exit = L->getExitBlock();
     auto *PreExit = PreExits.lookup(Exit);
     if (!PreExit) {
-      PreExit = Exit->splitBasicBlockBefore(Exit->begin(), Exit->getName() + ".split");
+      PreExit = Exit->splitBasicBlockBefore(Exit->begin(),
+                                            Exit->getName() + ".split");
       PreExits[Exit] = PreExit;
     }
 
