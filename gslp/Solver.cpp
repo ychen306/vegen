@@ -133,7 +133,7 @@ enumerate(Packer *Pkr, DenseSet<BasicBlock *> *BlocksToIgnore) {
     for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
       if (VL > MaxVF)
         continue;
-      //for (auto *VP : getSeedMemPacks(Pkr, LI, VL, BlocksToIgnore))
+      // for (auto *VP : getSeedMemPacks(Pkr, LI, VL, BlocksToIgnore))
       //  Packs.push_back(VP);
     }
   }
@@ -144,7 +144,7 @@ bool Print = false;
 
 // Run the bottom-up heuristic starting from `OP`
 void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
-  //Plan Best = P;
+  // Plan Best = P;
   SmallVector<const OperandPack *> Worklist;
   Worklist.push_back(OP);
   SmallPtrSet<const OperandPack *, 4> Visited;
@@ -172,10 +172,10 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.append(Operands.begin(), Operands.end());
     }
-    //if (P.cost() < Best.cost())
+    // if (P.cost() < Best.cost())
     //  Best = P;
   }
-  //P = Best;
+  // P = Best;
 }
 
 SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx,
@@ -282,23 +282,17 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
     if (!PN)
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
-    if (RI && RI->Elts.size() > 1) {
-      errs() << "1! chain op = <<<\n";
-      for (auto *X : RI->Ops)
-        errs() << '\t' << *X << '\n';
-      errs() << ">>>>\n";
+    if (RI && RI->Elts.size() > 1)
       Seeds.push_back(VPCtx->createReduction(*RI, TTI));
-      errs() << "!!! created reduction: " << *Seeds.back() << '\n';
-      errs() << "\toperand = " << *Seeds.back()->getOperandPacks().front() << '\n';
-    }
   }
 
   Heuristic H(Pkr, Candidates);
 
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
-    for (auto *OP : OPs)
+    for (auto *OP : OPs) {
       if (!H.solve(OP).Packs.empty())
         runBottomUpFromOperand(OP, P2, H);
+    }
     if (P2.cost() < P.cost()) {
       P = P2;
       return true;
@@ -324,9 +318,7 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
       for (auto *VP2 : DecomposedStores[VP])
         P2.add(VP2);
     } else {
-      errs() << "Cost before adding reduction: " << P.cost() << '\n';
       P2.add(VP);
-      errs() << "Cost after: " << P.cost() << '\n';
     }
 
     auto *OP = VP->getOperandPacks().front();

@@ -431,7 +431,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       // Conservatively extract all elements.
       // Let the later cleanup passes clean up dead extracts.
-      if (!isa<StoreInst>(VecInst) || !VP->isReduction()) {
+      if (!isa<StoreInst>(VecInst) && !VP->isReduction()) {
         unsigned LaneId = 0;
         if (isa<PHINode>(VecInst))
           Builder.SetInsertPoint(BB->getFirstNonPHI());

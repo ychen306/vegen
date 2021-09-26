@@ -270,6 +270,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   }
   case Phi:
     Cost = 0;
+    break;
   case Reduction:
     // FIXME: actually compute the cost
     Cost = 1;

@@ -248,7 +248,6 @@ bool GSLP::runOnFunction(Function &F) {
     computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
     DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
     unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap);
-    F.dump();
   }
 
   PostDominatorTree PDT(F); // recompute PDT after unrolling

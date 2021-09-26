@@ -68,8 +68,9 @@ static bool matchReductionTree(PHINode *PN, Loop *L,
 }
 
 Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
-  auto *L = LI.getLoopFor(PN->getParent());
-  if (!L)
+  auto *BB = PN->getParent();
+  auto *L = LI.getLoopFor(BB);
+  if (!L || L->getHeader() != BB)
     return None;
 
   ReductionInfo RI;
