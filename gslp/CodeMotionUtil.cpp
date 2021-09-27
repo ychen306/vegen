@@ -295,11 +295,12 @@ void hoistTo(Instruction *I, BasicBlock *BB, LoopInfo &LI, ScalarEvolution &SE,
     // Find a common dominator for the instructions (which we need to hoist as
     // well) coupled with `Dep`.
     BasicBlock *Dominator = BB;
+    bool Inclusive = !isa<PHINode>(I);
     for (Instruction *I2 : Coupled) {
       // We need to hoist the dependence of a phi node *before* the target block
-      bool Inclusive = !isa<PHINode>(I);
       Dominator = findCompatiblePredecessorsFor(I2, Dominator, LI, DT, PDT, LDA,
                                                 &SE, Inclusive);
+      Inclusive = true;
       assert(Dominator && "can't find a dominator to hoist dependence");
     }
 
