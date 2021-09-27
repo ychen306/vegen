@@ -317,6 +317,8 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   StringRef ProducerName = "";
   if (auto *Producer = VP.getProducer())
     ProducerName = Producer->getName();
+  else if (VP.isReduction())
+    ProducerName = "reduction";
   OS << "PACK<" << ProducerName << ">: (\n";
   for (auto *V : VP.getOrderedValues())
     if (V)

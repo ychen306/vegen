@@ -307,9 +307,16 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
     if (VP->isStore())
       DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
-  BitVector Packed(Pkr->getContext()->getNumValues());
   for (auto *VP : Seeds) {
-    if (VP->getElements().anyCommon(Packed))
+    bool Packed = false;
+    for (auto *V : VP->elementValues()) {
+      auto *I = dyn_cast<Instruction>(V);
+      if (I && P.getProducer(I)) {
+        Packed = true;
+        break;
+      }
+    }
+    if (Packed)
       continue;
 
     Plan P2 = P;
@@ -326,7 +333,6 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
         Improve(P2, deinterleave(VPCtx, OP, 4)) ||
         Improve(P2, deinterleave(VPCtx, OP, 8))) {
       errs() << "~COST: " << P.cost() << '\n';
-      Packed |= VP->getElements();
     }
   }
 
