@@ -307,16 +307,13 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
     if (VP->isStore())
       DecomposedStores[VP] = decomposeStorePacks(Pkr, VP);
 
+  auto IsPacked = [&P](auto *V) {
+    auto *I = dyn_cast<Instruction>(V);
+    return I && P.getProducer(I);
+  };
+
   for (auto *VP : Seeds) {
-    bool Packed = false;
-    for (auto *V : VP->elementValues()) {
-      auto *I = dyn_cast<Instruction>(V);
-      if (I && P.getProducer(I)) {
-        Packed = true;
-        break;
-      }
-    }
-    if (Packed)
+    if (any_of(VP->elementValues(), IsPacked))
       continue;
 
     Plan P2 = P;
