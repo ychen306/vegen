@@ -59,6 +59,7 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
 
   std::vector<VectorPack *> Seeds;
 
+  auto &LI = Pkr->getLoopInfo();
   std::function<void(std::vector<AccessType *>, BitVector, BitVector)>
       Enumerate = [&](std::vector<AccessType *> Accesses, BitVector Elements,
                       BitVector Depended) {
@@ -73,6 +74,8 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           return;
         }
         for (auto *Next : It->second) {
+          if (!IsStore && LI.getLoopFor(Next->getParent()) != LI.getLoopFor(Accesses.back()->getParent()))
+            continue;
           if (BlocksToIgnore && BlocksToIgnore->count(Next->getParent()))
             continue;
           auto *NextAccess = cast<AccessType>(Next);
@@ -130,11 +133,11 @@ enumerate(Packer *Pkr, DenseSet<BasicBlock *> *BlocksToIgnore) {
     unsigned AS = LI->getPointerAddressSpace();
     unsigned MaxVF = TTI->getLoadStoreVecRegBitWidth(AS) /
                      getBitWidth(LI, Pkr->getDataLayout());
-    for (unsigned VL : {2, 4, 8, 16, 32, 64}) {
+    for (unsigned VL : {64, 32, 16, 8, 4, 2}) {
       if (VL > MaxVF)
         continue;
-      // for (auto *VP : getSeedMemPacks(Pkr, LI, VL, BlocksToIgnore))
-      //  Packs.push_back(VP);
+      for (auto *VP : getSeedMemPacks(Pkr, LI, VL, BlocksToIgnore))
+        Packs.push_back(VP);
     }
   }
   return Packs;
@@ -286,6 +289,9 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
       Seeds.push_back(VPCtx->createReduction(*RI, TTI));
   }
 
+  if (Candidates)
+    Seeds.append(Candidates->Packs.begin(), Candidates->Packs.end());
+
   Heuristic H(Pkr, Candidates);
 
   auto Improve = [&](Plan P2, ArrayRef<const OperandPack *> OPs) -> bool {
@@ -323,6 +329,14 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
         P2.add(VP2);
     } else {
       P2.add(VP);
+    }
+
+    if (VP->isLoad()) {
+      if (P2.cost() < P.cost()) {
+        P = P2;
+        errs() << "~COST: " << P.cost() << '\n';
+      }
+      continue;
     }
 
     auto *OP = VP->getOperandPacks().front();
