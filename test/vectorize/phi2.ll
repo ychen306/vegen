@@ -1,4 +1,4 @@
-; RUN: %opt -gslp %s -o - -S | FileCheck %s
+; RUN: %opt -gslp -no-unroll %s -o - -S | FileCheck %s
 
 ; CHECK: for.body.lr.ph:
 ; CHECK-NEXT:   [[S_ADDR:%.*]] = bitcast i32* %s to <2 x i32>*
