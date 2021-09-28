@@ -122,9 +122,12 @@ bool hasFeature(const llvm::Function &F, std::string Feature) {
          Features.getValueAsString().contains("+" + Feature);
 }
 
-bool isSupported(InstBinding *Inst, const llvm::Function &F) {
+bool isSupported(InstBinding *Inst, const llvm::Function &F,
+                 TargetTransformInfo *TTI) {
+  unsigned PreferVectorWidth = TTI->getLoadStoreVecRegBitWidth(0);
   for (auto &Feature : Inst->getTargetFeatures())
-    if (!hasFeature(F, Feature))
+    if (!hasFeature(F, Feature) ||
+        Inst->getSignature().OutputBitwidths[0] > PreferVectorWidth)
       return false;
   return true;
 }
@@ -232,7 +235,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   std::vector<const InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts())
-    if (isSupported(&Inst, F))
+    if (isSupported(&Inst, F, TTI))
       SupportedIntrinsics.push_back(&Inst);
   for (auto &Inst : VecBindingTable.getBindings()) {
     if (Inst.isSupported(TTI))
