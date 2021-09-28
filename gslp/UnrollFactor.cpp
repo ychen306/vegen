@@ -207,6 +207,17 @@ refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   AAResults &AA = AABuilder.getResult();
   DependenceInfo DI(F, &AA, &SE, &LI);
 
+  {
+    for (auto &BB : *F) {
+      for (auto &I : BB) {
+        auto It = UnrolledIterations.find(&I);
+        if (It == UnrolledIterations.end())
+          continue;
+        errs() << "Unroll info: " << I << "; " << *It->second.OrigI << "(" << It->second.Iter << ")\n";
+      }
+    }
+  }
+
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
   Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI,

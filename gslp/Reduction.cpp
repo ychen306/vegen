@@ -68,9 +68,12 @@ static bool matchReductionTree(PHINode *PN, Loop *L,
 }
 
 Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
+  if (PN->getType()->isVectorTy())
+    return None;
+
   auto *BB = PN->getParent();
   auto *L = LI.getLoopFor(BB);
-  if (!L || L->getHeader() != BB)
+  if (!L || !L->getLoopPreheader() || L->getHeader() != BB)
     return None;
 
   ReductionInfo RI;
