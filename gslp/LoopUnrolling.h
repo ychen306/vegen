@@ -2,11 +2,13 @@
 #define LOOP_UNROLLING_H
 
 #include "llvm/IR/ValueMap.h"
+#include "llvm/IR/ValueHandle.h"
 #include "llvm/Transforms/Utils/UnrollLoop.h"
+
 
 struct UnrolledValue {
   unsigned Iter;
-  const llvm::Value *V;
+  llvm::WeakTrackingVH V;
 };
 
 // Our version of llvm::UnrollLoop that additionally keeps track of the the

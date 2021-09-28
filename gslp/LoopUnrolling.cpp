@@ -383,7 +383,7 @@ UnrollLoopWithVMap(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
       for (ValueToValueMapTy::iterator VI = VMap.begin(), VE = VMap.end();
            VI != VE; ++VI) {
         LastValueMap[VI->first] = VI->second;
-        UnrollToOrigMap[VI->second] = UnrolledValue{It, VI->first};
+        UnrollToOrigMap[VI->second] = UnrolledValue{It, const_cast<Value *>(VI->first)};
       }
 
       // Add phi entries for newly created values to all exit blocks.

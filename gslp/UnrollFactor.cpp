@@ -88,7 +88,7 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
                  TargetTransformInfo *TTI,
                  const DenseMap<Loop *, unsigned> &UFs,
                  DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
-                 DenseMap<BasicBlock *, unsigned> *UnrolledIterations,
+                 DenseMap<Instruction *, UnrolledInstruction> *UnrolledIterations,
                  DenseSet<BasicBlock *> *EpilogBlocks,
                  EquivalenceClasses<BasicBlock *> *UnrolledBlocks) {
 
@@ -141,8 +141,17 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
         UnrolledBlocks->unionSets(
             BB, const_cast<BasicBlock *>(cast<BasicBlock>(KV.second.V)));
 
-      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations)
-        UnrolledIterations->try_emplace(BB, KV.second.Iter);
+      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations) {
+        for (auto &I : *BB) {
+          auto It = UnrollToOrigMap.find(&I);
+          if (It != UnrollToOrigMap.end() && It->second.V.pointsToAliveValue()) {
+            const Instruction *SrcI = cast<Instruction>(It->second.V);
+            if (UnrolledIterations->count(SrcI))
+              SrcI = UnrolledIterations->lookup(SrcI).OrigI;
+            UnrolledIterations->insert({&I, {SrcI, It->second.Iter}});
+          }
+        }
+      }
 
       if (!BB || !LI.isLoopHeader(BB))
         continue;
@@ -170,7 +179,7 @@ refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
 
   DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
   // Mapping a basic block to its unrolled iteration
-  DenseMap<BasicBlock *, unsigned> UnrolledIterations;
+  DenseMap<Instruction *, UnrolledInstruction> UnrolledIterations;
   DenseSet<Loop *> OrigLoops;
   for (auto *L : LI.getLoopsInPreorder())
     OrigLoops.insert(L);
@@ -210,17 +219,15 @@ refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   for (auto *VP : Packs) {
     SmallPtrSet<Instruction *, 32> Insts;
     VP->getPackedInstructions(Insts);
-    SmallPtrSet<BasicBlock *, 8> Blocks;
-    for (auto *I : Insts)
-      Blocks.insert(I->getParent());
 
     std::map<Loop *, Range> PackedIterations;
-    for (auto *BB : Blocks) {
+    for (auto *I : Insts) {
+      auto *BB = I->getParent();
       auto *L = LI.getLoopFor(BB);
       if (!L)
         continue;
       PackedIterations[L].update(
-          UnrolledIterations.count(BB) ? UnrolledIterations.lookup(BB) : 0);
+          UnrolledIterations.count(I) ? UnrolledIterations.lookup(I).Iter : 0);
       for (L = L->getParentLoop(); L; L = L->getParentLoop())
         PackedIterations[L].update(
             DupToOrigLoopMap.count(L) ? DupToOrigLoopMap.lookup(L).Iter : 0);
