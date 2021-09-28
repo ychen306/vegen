@@ -13,7 +13,7 @@ static cl::opt<bool>
                 cl::desc("Refine the initial vectorization plan"),
                 cl::init(false));
 
-static unsigned getBitWidth(Value *V, const DataLayout *DL) {
+unsigned getBitWidth(Value *V, const DataLayout *DL) {
   auto *Ty = V->getType();
   if (Ty->isIntegerTy())
     return Ty->getIntegerBitWidth();

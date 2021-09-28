@@ -157,4 +157,6 @@ static inline bool checkIndependence(const GlobalDependenceAnalysis &DA,
          !Elements.anyCommon(DA.getDepended(I));
 }
 
+unsigned getBitWidth(llvm::Value *V, const llvm::DataLayout *);
+
 #endif // PACKER

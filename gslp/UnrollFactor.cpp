@@ -21,6 +21,7 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
@@ -83,14 +84,14 @@ raw_ostream &operator<<(raw_ostream &OS, const Range &R) {
 
 } // namespace
 
-void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
-                 AssumptionCache &AC, DominatorTree &DT,
-                 TargetTransformInfo *TTI,
-                 const DenseMap<Loop *, unsigned> &UFs,
-                 DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
-                 DenseMap<Instruction *, UnrolledInstruction> *UnrolledIterations,
-                 DenseSet<BasicBlock *> *EpilogBlocks,
-                 EquivalenceClasses<BasicBlock *> *UnrolledBlocks) {
+void unrollLoops(
+    Function *F, ScalarEvolution &SE, LoopInfo &LI, AssumptionCache &AC,
+    DominatorTree &DT, TargetTransformInfo *TTI,
+    const DenseMap<Loop *, unsigned> &UFs,
+    DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
+    DenseMap<Instruction *, UnrolledInstruction> *UnrolledIterations,
+    DenseSet<BasicBlock *> *EpilogBlocks,
+    EquivalenceClasses<BasicBlock *> *UnrolledBlocks) {
 
   auto GetOrigLoop = [&DupToOrigLoopMap](Loop *L) {
     auto It = DupToOrigLoopMap.find(L);
@@ -144,7 +145,8 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
       if (BB && LI.getLoopFor(BB) == L && UnrolledIterations) {
         for (auto &I : *BB) {
           auto It = UnrollToOrigMap.find(&I);
-          if (It != UnrollToOrigMap.end() && It->second.V.pointsToAliveValue()) {
+          if (It != UnrollToOrigMap.end() &&
+              It->second.V.pointsToAliveValue()) {
             const Instruction *SrcI = cast<Instruction>(It->second.V);
             if (UnrolledIterations->count(SrcI))
               SrcI = UnrolledIterations->lookup(SrcI).OrigI;
@@ -166,11 +168,12 @@ void unrollLoops(Function *F, ScalarEvolution &SE, LoopInfo &LI,
   }
 }
 
-static void
-refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
-                        ArrayRef<const InstBinding *> Insts, LazyValueInfo *LVI,
-                        TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
-                        DenseMap<Loop *, unsigned> &UFs, unsigned MaxUF = 8) {
+static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
+                                ArrayRef<const InstBinding *> Insts,
+                                LazyValueInfo *LVI, TargetTransformInfo *TTI,
+                                BlockFrequencyInfo *BFI,
+                                DenseMap<Loop *, unsigned> &UFs,
+                                unsigned MaxUF = 8) {
   // Compute some analysis for the unroller
   Module *M = F->getParent();
   AssumptionCache AC(*F);
@@ -199,6 +202,20 @@ refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   unrollLoops(F, SE, LI, AC, DT, TTI, MaxUFs, DupToOrigLoopMap,
               &UnrolledIterations, &EpilogBlocks, &UnrolledBlocks);
 
+  auto GetUnrollVector = [&](Instruction *I) {
+    std::vector<unsigned> X;
+    auto *BB = I->getParent();
+    auto *L = LI.getLoopFor(BB);
+    if (!L)
+      return X;
+    X.push_back(UnrolledIterations.count(I) ? UnrolledIterations.lookup(I).Iter
+                                            : 0);
+    for (; L->getParentLoop(); L = L->getParentLoop())
+      X.push_back(DupToOrigLoopMap.count(L) ? DupToOrigLoopMap.lookup(L).Iter
+                                            : 0);
+    return X;
+  };
+
   // Re-do the alias analysis pipline
   auto GetTLI = [&TLIWrapper](Function &F) -> TargetLibraryInfo & {
     return TLIWrapper.getTLI(F);
@@ -207,21 +224,55 @@ refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   AAResults &AA = AABuilder.getResult();
   DependenceInfo DI(F, &AA, &SE, &LI);
 
-  {
-    for (auto &BB : *F) {
-      for (auto &I : BB) {
-        auto It = UnrolledIterations.find(&I);
-        if (It == UnrolledIterations.end())
-          continue;
-        errs() << "Unroll info: " << I << "; " << *It->second.OrigI << "(" << It->second.Iter << ")\n";
-      }
-    }
-  }
-
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
   Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI,
-             &UnrolledBlocks, false/*preplanning*/);
+             &UnrolledBlocks, false /*preplanning*/);
+
+  // Mapping <an original instruction + its unroll vector> -> the unrolled instruction
+  DenseMap<const Instruction *, unsigned> InstToDim;
+  std::map<std::pair<const Instruction *, std::vector<unsigned>>, Instruction *> UnrolledInsts;
+  for (auto &I : instructions(F)) {
+    auto It = UnrolledIterations.find(&I);
+    if (It == UnrolledIterations.end())
+      continue;
+    auto *OrigI = It->second.OrigI;
+    auto X = GetUnrollVector(&I);
+    UnrolledInsts[{OrigI, X}] = &I;
+    InstToDim[OrigI] = X.size();
+  }
+
+  unsigned MaxVecWidth = TTI->getLoadStoreVecRegBitWidth(0);
+  ReversePostOrderTraversal<Function *> RPO(F);
+  for (auto *BB : RPO) {
+    for (auto &I : reverse(*BB)) {
+      auto *Ty = I.getType();
+      if (Ty->isVoidTy() || Ty->isVectorTy())
+        continue;
+      unsigned MaxVL = MaxVecWidth / getBitWidth(&I, &F->getParent()->getDataLayout());
+
+      auto It = UnrolledIterations.find(&I);
+      bool IsUnrolled = It != UnrolledIterations.end();
+      auto *OrigI = IsUnrolled ? It->second.OrigI : &I;
+      const auto X = IsUnrolled ? GetUnrollVector(&I) : std::vector<unsigned>(InstToDim.lookup(&I), 0);
+
+      for (unsigned Dim = 0; Dim < X.size(); Dim++) {
+        // Try to find a chain along Dim
+        auto X_scratch = X;
+        SmallVector<Instruction *, 16> Chain { &I };
+        while (Chain.size() < MaxVL) {
+          ++X_scratch[Dim];
+          auto It = UnrolledInsts.find({OrigI, X_scratch});
+          if (It == UnrolledInsts.end())
+            break;
+          Chain.push_back(It->second);
+        }
+        if (Chain.size() > 2)
+          for (auto *I : Chain)
+            errs() << '\t' << *I << '\n';
+      }
+    }
+  }
 
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
@@ -264,10 +315,10 @@ refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
 }
 
 void computeUnrollFactorImpl(ArrayRef<const InstBinding *> Insts,
-                         LazyValueInfo *LVI, TargetTransformInfo *TTI,
-                         BlockFrequencyInfo *BFI, Function *OrigF,
-                         const LoopInfo &OrigLI,
-                         DenseMap<Loop *, unsigned> &UFs) {
+                             LazyValueInfo *LVI, TargetTransformInfo *TTI,
+                             BlockFrequencyInfo *BFI, Function *OrigF,
+                             const LoopInfo &OrigLI,
+                             DenseMap<Loop *, unsigned> &UFs) {
   ValueToValueMapTy VMap;
   Function *F = CloneFunction(OrigF, VMap);
   DominatorTree DT(*F);
@@ -312,13 +363,11 @@ void computeUnrollFactorImpl(ArrayRef<const InstBinding *> Insts,
 void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
                          LazyValueInfo *LVI, TargetTransformInfo *TTI,
                          BlockFrequencyInfo *BFI, Function *F,
-                         const LoopInfo &LI,
-                         DenseMap<Loop *, unsigned> &UFs) {
+                         const LoopInfo &LI, DenseMap<Loop *, unsigned> &UFs) {
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
     UFs[L] = 8;
     computeUnrollFactorImpl(Insts, LVI, TTI, BFI, F, LI, UFs);
-    errs() << "Unroll factor for loop " << L 
-      << "(depth=" << L->getLoopDepth() << ')' << " " << UFs.lookup(L)
-      << '\n';
+    errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
+           << ')' << " " << UFs.lookup(L) << '\n';
   }
 }
