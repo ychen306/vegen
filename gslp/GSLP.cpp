@@ -5,6 +5,7 @@
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -47,6 +48,9 @@ static cl::opt<std::string>
            cl::desc("only run on function names containing this substring"));
 
 static cl::opt<bool> DisableUnrolling("no-unroll", cl::desc("Don't unroll"),
+                                      cl::init(false));
+
+static cl::opt<bool> DisableCleanup("no-cleanup", cl::desc("Don't run GVN and ADCE after vectorization"),
                                       cl::init(false));
 
 namespace llvm {
@@ -284,14 +288,17 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 // http://adriansampson.net/blog/clangpass.html
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
-  MPM.add(createSROAPass());
-  MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
-
   MPM.add(createLoopSimplifyPass());
   MPM.add(createLoopRotatePass());
   MPM.add(createLCSSAPass());
 
   MPM.add(new GSLP());
+
+  if (!DisableCleanup) {
+    MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
+    MPM.add(createGVNPass());
+    MPM.add(createAggressiveDCEPass());
+  }
 }
 
 // Register this pass to run after all optimization,

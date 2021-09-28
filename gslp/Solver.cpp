@@ -74,7 +74,8 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           return;
         }
         for (auto *Next : It->second) {
-          if (!IsStore && LI.getLoopFor(Next->getParent()) != LI.getLoopFor(Accesses.back()->getParent()))
+          if (!IsStore && LI.getLoopFor(Next->getParent()) !=
+                              LI.getLoopFor(Accesses.back()->getParent()))
             continue;
           if (BlocksToIgnore && BlocksToIgnore->count(Next->getParent()))
             continue;
@@ -261,8 +262,9 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
     if (!SI || SI->getValueOperand()->getType()->isVectorTy())
       continue;
     for (unsigned VL : {2, 4, 8, 16, 32, 64})
-      for (auto *VP : getSeedMemPacks(Pkr, SI, VL, BlocksToIgnore))
+      for (auto *VP : getSeedMemPacks(Pkr, SI, VL, BlocksToIgnore)) {
         Seeds.push_back(VP);
+      }
   }
 
   AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo();
