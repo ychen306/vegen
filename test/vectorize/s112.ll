@@ -1,4 +1,4 @@
-; RUN: %opt -gslp %s -o %t && %check-function  2 'void s112(int, int*, int*)' 's112(1000, %%s, %%s)' %t %s
+; RUN: %opt -gslp %s -o %t && %check-function  2 'int s112(int, int*, int*)' 's112(1000, %%s, %%s)' %t %s
 
 source_filename = "s112.c"
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
