@@ -388,4 +388,9 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
            << ')' << " " << UFs.lookup(L) << '\n';
   }
+  errs() << "========= final unroll plan ========\n";
+  for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
+    errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
+           << ')' << " " << UFs.lookup(L) << '\n';
+  }
 }
