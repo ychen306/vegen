@@ -35,8 +35,8 @@ struct UnrolledLoopTy {
 void computeUnrollFactor(llvm::ArrayRef<const InstBinding *> Insts,
                          llvm::LazyValueInfo *LVI,
                          llvm::TargetTransformInfo *TTI,
-                         llvm::BlockFrequencyInfo *BFI,
-                         llvm::Function *F, const llvm::LoopInfo &LI,
+                         llvm::BlockFrequencyInfo *BFI, llvm::Function *F,
+                         const llvm::LoopInfo &LI,
                          llvm::DenseMap<llvm::Loop *, unsigned> &UFs);
 
 struct UnrolledInstruction {
@@ -51,8 +51,17 @@ void unrollLoops(
     llvm::TargetTransformInfo *TTI,
     const llvm::DenseMap<llvm::Loop *, unsigned> &UFs,
     llvm::DenseMap<llvm::Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
-    llvm::DenseMap<llvm::Instruction *, UnrolledInstruction> *UnrolledIterations = nullptr,
+    llvm::DenseMap<llvm::Instruction *, UnrolledInstruction>
+        *UnrolledIterations = nullptr,
     llvm::DenseSet<llvm::BasicBlock *> *Epilogblocks = nullptr,
     llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks = nullptr);
+
+class OperandPack;
+class Packer;
+std::vector<const OperandPack *>
+getSeeds(Packer &,
+         llvm::DenseMap<llvm::Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
+         llvm::DenseMap<llvm::Instruction *, UnrolledInstruction>
+             &UnrolledIterations);
 
 #endif // UNROLL_FACTOR_H

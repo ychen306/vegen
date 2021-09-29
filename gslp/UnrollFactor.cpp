@@ -19,9 +19,9 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
-#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
@@ -168,6 +168,83 @@ void unrollLoops(
   }
 }
 
+std::vector<const OperandPack *>
+getSeeds(Packer &Pkr, DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
+         DenseMap<Instruction *, UnrolledInstruction> &UnrolledIterations) {
+  auto &LI = Pkr.getLoopInfo();
+
+  auto GetUnrollVector = [&](Instruction *I) {
+    std::vector<unsigned> X;
+    auto *BB = I->getParent();
+    auto *L = LI.getLoopFor(BB);
+    if (!L)
+      return X;
+    X.push_back(UnrolledIterations.count(I) ? UnrolledIterations.lookup(I).Iter
+                                            : 0);
+    for (; L->getParentLoop(); L = L->getParentLoop())
+      X.push_back(DupToOrigLoopMap.count(L) ? DupToOrigLoopMap.lookup(L).Iter
+                                            : 0);
+    return X;
+  };
+
+  auto *F = Pkr.getFunction();
+
+  // Mapping <an original instruction + its unroll vector> -> the unrolled
+  // instruction
+  DenseMap<const Instruction *, unsigned> InstToDim;
+  std::map<std::pair<const Instruction *, std::vector<unsigned>>, Instruction *>
+      UnrolledInsts;
+  for (auto &I : instructions(F)) {
+    auto It = UnrolledIterations.find(&I);
+    if (It == UnrolledIterations.end())
+      continue;
+    auto *OrigI = It->second.OrigI;
+    auto X = GetUnrollVector(&I);
+    UnrolledInsts[{OrigI, X}] = &I;
+    InstToDim[OrigI] = X.size();
+  }
+
+  unsigned MaxVecWidth = Pkr.getTTI()->getLoadStoreVecRegBitWidth(0);
+  ReversePostOrderTraversal<Function *> RPO(F);
+  auto *VPCtx = Pkr.getContext();
+  std::vector<const OperandPack *> SeedOperands;
+  for (auto *BB : RPO) {
+    for (auto &I : reverse(*BB)) {
+      auto *Ty = I.getType();
+      if (Ty->isVoidTy() || Ty->isVectorTy())
+        continue;
+      unsigned MaxVL =
+          MaxVecWidth / getBitWidth(&I, &F->getParent()->getDataLayout());
+
+      auto It = UnrolledIterations.find(&I);
+      bool IsUnrolled = It != UnrolledIterations.end();
+      auto *OrigI = IsUnrolled ? It->second.OrigI : &I;
+      const auto X = IsUnrolled
+                         ? GetUnrollVector(&I)
+                         : std::vector<unsigned>(InstToDim.lookup(&I), 0);
+
+      for (unsigned Dim = 0; Dim < X.size(); Dim++) {
+        // Try to find a chain along Dim
+        auto X_scratch = X;
+        SmallVector<Instruction *, 16> Chain{&I};
+        while (Chain.size() < MaxVL) {
+          ++X_scratch[Dim];
+          auto It = UnrolledInsts.find({OrigI, X_scratch});
+          if (It == UnrolledInsts.end())
+            break;
+          Chain.push_back(It->second);
+        }
+        if (Chain.size() > 1 && isPowerOf2_32(Chain.size())) {
+          OperandPack OP;
+          OP.assign(Chain.begin(), Chain.end());
+          SeedOperands.push_back(VPCtx->getCanonicalOperandPack(OP));
+        }
+      }
+    }
+  }
+  return SeedOperands;
+}
+
 static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
                                 ArrayRef<const InstBinding *> Insts,
                                 LazyValueInfo *LVI, TargetTransformInfo *TTI,
@@ -195,26 +272,10 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   // Unroll all the loops maximally
   DenseMap<Loop *, unsigned> MaxUFs = UFs;
   UFs.clear();
-  // for (auto *L : LI.getLoopsInPreorder())
-  //  MaxUFs.try_emplace(L, MaxUF);
   DenseSet<BasicBlock *> EpilogBlocks;
   EquivalenceClasses<BasicBlock *> UnrolledBlocks;
   unrollLoops(F, SE, LI, AC, DT, TTI, MaxUFs, DupToOrigLoopMap,
               &UnrolledIterations, &EpilogBlocks, &UnrolledBlocks);
-
-  auto GetUnrollVector = [&](Instruction *I) {
-    std::vector<unsigned> X;
-    auto *BB = I->getParent();
-    auto *L = LI.getLoopFor(BB);
-    if (!L)
-      return X;
-    X.push_back(UnrolledIterations.count(I) ? UnrolledIterations.lookup(I).Iter
-                                            : 0);
-    for (; L->getParentLoop(); L = L->getParentLoop())
-      X.push_back(DupToOrigLoopMap.count(L) ? DupToOrigLoopMap.lookup(L).Iter
-                                            : 0);
-    return X;
-  };
 
   // Re-do the alias analysis pipline
   auto GetTLI = [&TLIWrapper](Function &F) -> TargetLibraryInfo & {
@@ -229,54 +290,11 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI,
              &UnrolledBlocks, false /*preplanning*/);
 
-  // Mapping <an original instruction + its unroll vector> -> the unrolled instruction
-  DenseMap<const Instruction *, unsigned> InstToDim;
-  std::map<std::pair<const Instruction *, std::vector<unsigned>>, Instruction *> UnrolledInsts;
-  for (auto &I : instructions(F)) {
-    auto It = UnrolledIterations.find(&I);
-    if (It == UnrolledIterations.end())
-      continue;
-    auto *OrigI = It->second.OrigI;
-    auto X = GetUnrollVector(&I);
-    UnrolledInsts[{OrigI, X}] = &I;
-    InstToDim[OrigI] = X.size();
-  }
-
-  unsigned MaxVecWidth = TTI->getLoadStoreVecRegBitWidth(0);
-  ReversePostOrderTraversal<Function *> RPO(F);
-  for (auto *BB : RPO) {
-    for (auto &I : reverse(*BB)) {
-      auto *Ty = I.getType();
-      if (Ty->isVoidTy() || Ty->isVectorTy())
-        continue;
-      unsigned MaxVL = MaxVecWidth / getBitWidth(&I, &F->getParent()->getDataLayout());
-
-      auto It = UnrolledIterations.find(&I);
-      bool IsUnrolled = It != UnrolledIterations.end();
-      auto *OrigI = IsUnrolled ? It->second.OrigI : &I;
-      const auto X = IsUnrolled ? GetUnrollVector(&I) : std::vector<unsigned>(InstToDim.lookup(&I), 0);
-
-      for (unsigned Dim = 0; Dim < X.size(); Dim++) {
-        // Try to find a chain along Dim
-        auto X_scratch = X;
-        SmallVector<Instruction *, 16> Chain { &I };
-        while (Chain.size() < MaxVL) {
-          ++X_scratch[Dim];
-          auto It = UnrolledInsts.find({OrigI, X_scratch});
-          if (It == UnrolledInsts.end())
-            break;
-          Chain.push_back(It->second);
-        }
-        if (Chain.size() > 2)
-          for (auto *I : Chain)
-            errs() << '\t' << *I << '\n';
-      }
-    }
-  }
+  auto SeedOperands = getSeeds(Pkr, DupToOrigLoopMap, UnrolledIterations);
 
   // Run the solver to find packs
   std::vector<const VectorPack *> Packs;
-  optimizeBottomUp(Packs, &Pkr, &EpilogBlocks);
+  optimizeBottomUp(Packs, &Pkr, SeedOperands, &EpilogBlocks);
 
   for (auto *VP : Packs) {
     SmallPtrSet<Instruction *, 32> Insts;

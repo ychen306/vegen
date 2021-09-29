@@ -249,19 +249,25 @@ bool GSLP::runOnFunction(Function &F) {
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';
 
+  DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
+  DenseMap<Instruction *, UnrolledInstruction> UnrolledIterations;
   if (!DisableUnrolling) {
     AssumptionCache AC(F);
     DenseMap<Loop *, unsigned> UFs;
     computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
-    DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
-    unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap);
+    unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap, &UnrolledIterations);
   }
 
   PostDominatorTree PDT(F); // recompute PDT after unrolling
   Packer Pkr(SupportedIntrinsics, F, AA, LI, SE, DT, &PDT, DI, LVI, TTI, BFI);
 
+  // Forward the seeds from the unroller
+  std::vector<const OperandPack *> SeedOperands;
+  if (!DisableUnrolling)
+    SeedOperands = getSeeds(Pkr, DupToOrigLoopMap, UnrolledIterations);
+
   VectorPackSet Packs(&F);
-  optimizeBottomUp(Packs, &Pkr);
+  optimizeBottomUp(Packs, &Pkr, SeedOperands);
 
   IntrinsicBuilder Builder(*InstWrappers);
   errs() << "Generating vector code\n";

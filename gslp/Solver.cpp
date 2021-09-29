@@ -253,7 +253,9 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   return Decomposed;
 }
 
-static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
+static void improvePlan(Packer *Pkr, Plan &P,
+                        ArrayRef<const OperandPack *> SeedOperands,
+                        CandidatePackSet *Candidates,
                         DenseSet<BasicBlock *> *BlocksToIgnore) {
   SmallVector<const VectorPack *> Seeds;
   for (Instruction &I : instructions(Pkr->getFunction())) {
@@ -349,6 +351,18 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
     }
   }
 
+  for (auto *OP : SeedOperands) {
+    if (any_of(*OP, IsPacked))
+      continue;
+
+    Plan P2 = P;
+    if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+        Improve(P2, deinterleave(VPCtx, OP, 4)) ||
+        Improve(P2, deinterleave(VPCtx, OP, 8))) {
+      errs() << "~COST: " << P.cost() << '\n';
+    }
+  }
+
   if (!RefinePlans)
     return;
 
@@ -407,6 +421,7 @@ static void improvePlan(Packer *Pkr, Plan &P, CandidatePackSet *Candidates,
 }
 
 float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
+                       ArrayRef<const OperandPack *> SeedOperands,
                        DenseSet<BasicBlock *> *BlocksToIgnore) {
   CandidatePackSet Candidates;
   Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
@@ -417,14 +432,15 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
       Candidates.Inst2Packs[i].push_back(VP);
 
   Plan P(Pkr);
-  improvePlan(Pkr, P, &Candidates, BlocksToIgnore);
+  improvePlan(Pkr, P, SeedOperands, &Candidates, BlocksToIgnore);
   Packs.insert(Packs.end(), P.begin(), P.end());
   return P.cost();
 }
 
-float optimizeBottomUp(VectorPackSet &PackSet, Packer *Pkr) {
+float optimizeBottomUp(VectorPackSet &PackSet, Packer *Pkr,
+                       ArrayRef<const OperandPack *> SeedOperands) {
   std::vector<const VectorPack *> Packs;
-  float Cost = optimizeBottomUp(Packs, Pkr);
+  float Cost = optimizeBottomUp(Packs, Pkr, SeedOperands);
   for (auto *VP : Packs)
     PackSet.tryAdd(VP);
   return Cost;
