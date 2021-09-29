@@ -19,7 +19,8 @@ Plan::Plan(Packer *Pkr) : Pkr(Pkr), Cost(0) {
 void Plan::incScalarUses(Instruction *I) {
   auto It = InstToPackMap.find(I);
   bool NeedToExtract = !NumScalarUses[I] && It != InstToPackMap.end();
-  if (!NumScalarUses[I] && It != InstToPackMap.end()) {
+  // Pay the extract cost if I is packed
+  if (!NumScalarUses[I] && It != InstToPackMap.end() && !It->second.VP->isReduction()) {
     assert(!ExtractCosts.count(I));
     const VectorPackSlot &Slot = It->second;
     auto *VecTy = getVectorType(*Slot.VP);
@@ -139,8 +140,9 @@ void Plan::revive(Instruction *I) {
   // reviving a dead instruction as scalar
   Cost += Pkr->getScalarCost(I);
   for (Value *O : I->operands())
-    if (auto *I2 = dyn_cast<Instruction>(O))
+    if (auto *I2 = dyn_cast<Instruction>(O)) {
       incScalarUses(I2);
+    }
 }
 
 void Plan::kill(Instruction *I) {
@@ -233,7 +235,7 @@ void Plan::addImpl(const VectorPack *VP) {
   auto *VecTy = !VP->isStore() ? getVectorType(*VP) : nullptr;
   for (unsigned i = 0, N = Values.size(); i < N; i++)
     if (auto *I = dyn_cast_or_null<Instruction>(Values[i])) {
-      if (NumScalarUses.lookup(I)) {
+      if (!VP->isReduction() && NumScalarUses.lookup(I)) {
         float ExtractCost =
             TTI->getVectorInstrCost(Instruction::ExtractElement, VecTy, i);
         Cost += ExtractCost;
@@ -271,7 +273,9 @@ void Plan::removeImpl(const VectorPack *VP) {
       // If there's someone using I, we have to now produce it as a scalar
       if (isAlive(I)) {
         revive(I);
-        if (NumScalarUses.lookup(I)) {
+        // Since we are producing I as a scalar now, we don't need to pay the extract cost
+        // One exception is "Reduction pack" which produces a single scalar that we never extract
+        if (!VP->isReduction() && NumScalarUses.lookup(I)) {
           assert(ExtractCosts.count(I));
           Cost -= ExtractCosts[I];
           ExtractCosts.erase(I);

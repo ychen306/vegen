@@ -273,7 +273,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     break;
   case Reduction:
     // FIXME: actually compute the cost
-    Cost = 1;
+    Cost = 4;
   }
 
   ProducingCost = Cost;
