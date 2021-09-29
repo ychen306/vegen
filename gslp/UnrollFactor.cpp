@@ -146,7 +146,7 @@ void unrollLoops(
         for (auto &I : *BB) {
           auto It = UnrollToOrigMap.find(&I);
           if (It != UnrollToOrigMap.end() &&
-              It->second.V.pointsToAliveValue()) {
+              isa_and_nonnull<Instruction>(It->second.V)) {
             const Instruction *SrcI = cast<Instruction>(It->second.V);
             if (UnrolledIterations->count(SrcI))
               SrcI = UnrolledIterations->lookup(SrcI).OrigI;
