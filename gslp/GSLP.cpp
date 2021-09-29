@@ -222,6 +222,7 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  errs() << "Optimizing " << F.getName() << '\n';
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
   balanceReductionTree(F);

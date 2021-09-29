@@ -115,12 +115,13 @@ void unrollLoops(
     if (TripCount && TripCount < UF)
       UF = TripCount;
 
+    auto *ExitingBlock = L->getExitingBlock();
     UnrollLoopOptions ULO;
     ULO.TripCount = 0;
     ULO.Count = UF;
     ULO.Force = true;
     ULO.PeelCount = 0;
-    ULO.TripMultiple = SE.getSmallConstantTripMultiple(L);
+    ULO.TripMultiple = ExitingBlock ? SE.getSmallConstantTripMultiple(L, ExitingBlock) : 1;
     ULO.AllowRuntime = true;
     ULO.AllowExpensiveTripCount = true;
     ULO.ForgetAllSCEV = false;
