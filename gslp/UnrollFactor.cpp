@@ -143,7 +143,8 @@ void unrollLoops(
         UnrolledBlocks->unionSets(
             BB, const_cast<BasicBlock *>(cast<BasicBlock>(KV.second.V)));
 
-      if (BB && LI.getLoopFor(BB) == L && UnrolledIterations) {
+      auto *NewLoop = LI.getLoopFor(BB);
+      if (BB && UnrolledIterations) {
         for (auto &I : *BB) {
           auto It = UnrollToOrigMap.find(&I);
           if (It != UnrollToOrigMap.end() &&
@@ -151,15 +152,18 @@ void unrollLoops(
             const Instruction *SrcI = cast<Instruction>(It->second.V);
             if (UnrolledIterations->count(SrcI))
               SrcI = UnrolledIterations->lookup(SrcI).OrigI;
-            UnrolledIterations->insert({&I, {SrcI, It->second.Iter}});
+            // If the loop of the unrolled block belongs to a loop different
+            // to the one we start with, it means we are unrolling the outer loop,
+            // which means that the inner unroll iter should be zero.
+            unsigned InnerIter = NewLoop == L ? It->second.Iter : 0;
+            UnrolledIterations->insert({&I, {SrcI, InnerIter}});
           }
         }
       }
 
-      if (!BB || !LI.isLoopHeader(BB))
+      if (!BB || !LI.isLoopHeader(BB) || NewLoop == L)
         continue;
       auto *OrigBB = cast<BasicBlock>(KV.second.V);
-      auto *NewLoop = LI.getLoopFor(BB);
       DupToOrigLoopMap.try_emplace(NewLoop, GetOrigLoop(LI.getLoopFor(OrigBB)),
                                    KV.second.Iter);
     }
@@ -182,7 +186,7 @@ getSeeds(Packer &Pkr, DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
       return X;
     X.push_back(UnrolledIterations.count(I) ? UnrolledIterations.lookup(I).Iter
                                             : 0);
-    for (; L->getParentLoop(); L = L->getParentLoop())
+    for (; L; L = L->getParentLoop())
       X.push_back(DupToOrigLoopMap.count(L) ? DupToOrigLoopMap.lookup(L).Iter
                                             : 0);
     return X;
@@ -202,6 +206,7 @@ getSeeds(Packer &Pkr, DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
     auto *OrigI = It->second.OrigI;
     auto X = GetUnrollVector(&I);
     UnrolledInsts[{OrigI, X}] = &I;
+
     InstToDim[OrigI] = X.size();
   }
 
@@ -240,6 +245,7 @@ getSeeds(Packer &Pkr, DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
           OP.assign(Chain.begin(), Chain.end());
           SeedOperands.push_back(VPCtx->getCanonicalOperandPack(OP));
         }
+
       }
     }
   }
@@ -309,13 +315,15 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
         continue;
       PackedIterations[L].update(
           UnrolledIterations.count(I) ? UnrolledIterations.lookup(I).Iter : 0);
-      for (L = L->getParentLoop(); L; L = L->getParentLoop())
+      for (L = L->getParentLoop(); L; L = L->getParentLoop()) {
         PackedIterations[L].update(
             DupToOrigLoopMap.count(L) ? DupToOrigLoopMap.lookup(L).Iter : 0);
+      }
     }
     for (const auto &LoopAndRange : PackedIterations) {
       Loop *L = LoopAndRange.first;
       const Range &R = LoopAndRange.second;
+
       // Ignore epilog loops
       if (!OrigLoops.count(L) && !DupToOrigLoopMap.count(L))
         continue;
