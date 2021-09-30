@@ -22,8 +22,12 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+
+static cl::opt<bool> ForwardSeeds("forward-seeds", cl::desc("Forward seeds from the unroller"),
+                                  cl::init(false));
 
 namespace {
 class AAResultsBuilder {
@@ -176,6 +180,9 @@ void unrollLoops(
 std::vector<const OperandPack *>
 getSeeds(Packer &Pkr, DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
          DenseMap<Instruction *, UnrolledInstruction> &UnrolledIterations) {
+  if (!ForwardSeeds)
+    return {};
+
   auto &LI = Pkr.getLoopInfo();
 
   auto GetUnrollVector = [&](Instruction *I) {

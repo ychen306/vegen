@@ -79,7 +79,7 @@ Value *IRVectorBinding::emit(ArrayRef<Value *> Operands,
 }
 
 unsigned BinaryIROperation::getMaximumVF(TargetTransformInfo *TTI) const {
-  return TTI->getMaximumVF(Bitwidth, Opcode);
+  return TTI->getLoadStoreVecRegBitWidth(0) / Bitwidth;
 }
 
 bool IRVectorBinding::isSupported(TargetTransformInfo *TTI) const {
