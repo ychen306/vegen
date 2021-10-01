@@ -98,6 +98,7 @@ VectorPack *VectorPackContext::createGEPPack(ArrayRef<GetElementPtrInst *> GEPs,
 }
 
 VectorPack *VectorPackContext::createReduction(const ReductionInfo &Rdx,
+                                               unsigned RdxLen,
                                                TargetTransformInfo *TTI) const {
   auto *Root = Rdx.Ops.front();
   auto &VP = PackCache->ReductionPacks[Root];
@@ -105,7 +106,7 @@ VectorPack *VectorPackContext::createReduction(const ReductionInfo &Rdx,
     BitVector Elements(getNumValues());
     BitVector Depended(getNumValues());
     Elements.set(getScalarId(Root));
-    VP.reset(new VectorPack(this, Rdx, Elements, Depended, TTI));
+    VP.reset(new VectorPack(this, Rdx, RdxLen, Elements, Depended, TTI));
   }
   return VP.get();
 }

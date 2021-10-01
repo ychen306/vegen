@@ -470,8 +470,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       auto *Header = L->getHeader();
       auto *Exit = L->getExitBlock();
       auto *Latch = BB;
-      auto *OP = VP->getOperandPacks().front();
-      auto *VecTy = getVectorType(*OP);
+      ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
+      auto *VecTy = getVectorType(*OPs.front());
       auto &RI = VP->getReductionInfo();
 
       // Emit the vector phi, specify the incomings later
@@ -480,9 +480,12 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       // Emit the vector rdx op
       Builder.SetInsertPoint(Latch->getTerminator());
-      auto *Operand =
+      Value *Acc = VecPhi;
+      for (auto *OP : OPs) {
+        auto *Operand =
           gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
-      auto *RdxOp = emitReduction(RI.Kind, VecPhi, Operand, Builder);
+        Acc = emitReduction(RI.Kind, Acc, Operand, Builder);
+      }
 
       // Patch up the vector phi
       auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
@@ -490,14 +493,13 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       auto *IdentityVector =
           ConstantVector::getSplat(VecTy->getElementCount(), Identity);
       VecPhi->addIncoming(IdentityVector, L->getLoopPreheader());
-      VecPhi->addIncoming(RdxOp, Latch);
+      VecPhi->addIncoming(Acc, Latch);
 
       DeadInsts.append(RI.Ops.begin(), RI.Ops.end());
       DeadInsts.push_back(RI.Phi);
 
       // Record the fact that we are replacing the original scalar reduction
-      // with `Reduced`
-      ReductionsToPatch.emplace_back(&RI, RdxOp);
+      ReductionsToPatch.emplace_back(&RI, Acc);
     }
   }
 

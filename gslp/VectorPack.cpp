@@ -263,9 +263,12 @@ void VectorPack::computeOperandPacks() {
     canonicalizeOperandPacks(computeOperandPacksForPhi());
     break;
   case Reduction: {
-    OperandPack OP;
-    OP.assign(Rdx->Elts.begin(), Rdx->Elts.end());
-    canonicalizeOperandPacks({OP});
+    SmallVector<OperandPack, 4> OPs;
+    assert(Rdx->Elts.size() % RdxLen == 0);
+    for (unsigned Offset = 0; Offset < Rdx->Elts.size(); Offset += RdxLen)
+      OPs.emplace_back().assign(Rdx->Elts.begin() + Offset,
+                                Rdx->Elts.begin() + Offset + RdxLen);
+    canonicalizeOperandPacks(OPs);
   } break;
   case GEP: {
     SmallVector<Value *, 4> Ptrs;

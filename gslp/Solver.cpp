@@ -283,14 +283,18 @@ static void improvePlan(Packer *Pkr, Plan &P,
   auto &LI = Pkr->getLoopInfo();
   auto *TTI = Pkr->getTTI();
   auto *VPCtx = Pkr->getContext();
+  unsigned MaxVecWidth = TTI->getLoadStoreVecRegBitWidth(0);
   // Add reduction packs
   for (auto &I : instructions(Pkr->getFunction())) {
     auto *PN = dyn_cast<PHINode>(&I);
     if (!PN)
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
-    if (RI && RI->Elts.size() > 1)
-      Seeds.push_back(VPCtx->createReduction(*RI, TTI));
+    if (RI && RI->Elts.size() > 1 && isPowerOf2_32(RI->Elts.size())) {
+      unsigned RdxLen = MaxVecWidth / getBitWidth(PN, Pkr->getDataLayout());
+      Seeds.push_back(
+          VPCtx->createReduction(*RI, std::min<unsigned>(RdxLen, RI->Elts.size()), TTI));
+    }
   }
 
   if (Candidates)

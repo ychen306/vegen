@@ -38,6 +38,7 @@ private:
   llvm::SmallVector<llvm::PHINode *, 4> PHIs;
   // Loop reduction
   llvm::Optional<ReductionInfo> Rdx;
+  unsigned RdxLen;
   // GEP
   llvm::SmallVector<llvm::GetElementPtrInst *, 4> GEPs;
   ///////////////
@@ -99,11 +100,11 @@ private:
   }
 
   // Reduction
-  VectorPack(const VectorPackContext *VPCtx, ReductionInfo RI,
+  VectorPack(const VectorPackContext *VPCtx, ReductionInfo RI, unsigned RdxLen,
              llvm::BitVector Elements, llvm::BitVector Depended,
              llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Reduction), Rdx(RI) {
+        Kind(PackKind::Reduction), Rdx(RI), RdxLen(RdxLen) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);

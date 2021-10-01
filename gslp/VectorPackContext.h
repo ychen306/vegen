@@ -84,8 +84,10 @@ public:
                             llvm::BitVector Elements, llvm::BitVector Depended,
                             llvm::TargetTransformInfo *TTI) const;
 
-  VectorPack *createReduction(const ReductionInfo &,
-                              llvm::TargetTransformInfo *TTI) const;
+  VectorPack *
+  createReduction(const ReductionInfo &,
+                  unsigned RdxLen /*vector length of the reduction*/,
+                  llvm::TargetTransformInfo *TTI) const;
 
   OperandPack *getCanonicalOperandPack(OperandPack OP) const;
 
