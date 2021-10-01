@@ -83,7 +83,8 @@ unsigned BinaryIROperation::getMaximumVF(TargetTransformInfo *TTI) const {
 }
 
 bool IRVectorBinding::isSupported(TargetTransformInfo *TTI) const {
-  return Op->getMaximumVF(TTI) <= getLaneOps().size();
+  return true;
+  return getLaneOps().size() <= Op->getMaximumVF(TTI);
 }
 
 IRInstTable::IRInstTable() {
