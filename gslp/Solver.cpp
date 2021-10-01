@@ -352,6 +352,8 @@ static void improvePlan(Packer *Pkr, Plan &P,
   }
 
   for (auto *OP : SeedOperands) {
+    if (any_of(*OP, IsPacked))
+      continue;
     Plan P2 = P;
     if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
         Improve(P2, deinterleave(VPCtx, OP, 4)) ||
