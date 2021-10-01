@@ -29,6 +29,7 @@ private:
   // General
   const InstBinding *Producer = nullptr;
   llvm::SmallVector<const Operation::Match *, 4> Matches;
+  bool IsGatherScatter = false;
   // Load
   llvm::SmallVector<llvm::LoadInst *, 4> Loads;
   // Store
@@ -61,22 +62,24 @@ private:
   }
 
   // Load Pack
-  VectorPack(const VectorPackContext *VPCtx,
+  VectorPack(const VectorPackContext *VPCtx, bool IsGatherScatter,
              llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
              llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Load), Loads(Loads.begin(), Loads.end()) {
+        Kind(PackKind::Load), IsGatherScatter(IsGatherScatter),
+        Loads(Loads.begin(), Loads.end()) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);
   }
 
   // Store Pack
-  VectorPack(const VectorPackContext *VPCtx,
+  VectorPack(const VectorPackContext *VPCtx, bool IsGatherScatter,
              llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
              llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Store), Stores(Stores.begin(), Stores.end()) {
+        Kind(PackKind::Store), IsGatherScatter(IsGatherScatter),
+        Stores(Stores.begin(), Stores.end()) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);

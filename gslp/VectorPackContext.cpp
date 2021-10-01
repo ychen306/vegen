@@ -1,6 +1,6 @@
 #include "VectorPackContext.h"
-#include "VectorPack.h"
 #include "Reduction.h"
+#include "VectorPack.h"
 #include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
@@ -13,8 +13,9 @@ struct VectorPackCache {
   using PHIPackKey = decltype(VectorPack::PHIs);
 
   std::map<GeneralPackKey, std::unique_ptr<VectorPack>> GeneralPacks;
-  std::map<LoadPackKey, std::unique_ptr<VectorPack>> LoadPacks;
-  std::map<StorePackKey, std::unique_ptr<VectorPack>> StorePacks;
+  std::map<std::pair<LoadPackKey, bool>, std::unique_ptr<VectorPack>> LoadPacks;
+  std::map<std::pair<StorePackKey, bool>, std::unique_ptr<VectorPack>>
+      StorePacks;
   std::map<PHIPackKey, std::unique_ptr<VectorPack>> PHIPacks;
   std::map<Instruction *, std::unique_ptr<VectorPack>> ReductionPacks;
 };
@@ -46,24 +47,26 @@ VectorPack *VectorPackContext::createVectorPack(
 VectorPack *VectorPackContext::createLoadPack(ArrayRef<LoadInst *> Loads,
                                               BitVector Elements,
                                               BitVector Depended,
-                                              TargetTransformInfo *TTI) const {
+                                              TargetTransformInfo *TTI,
+                                              bool IsGather) const {
   VectorPackCache::LoadPackKey Key(Loads.begin(), Loads.end());
-  auto &VP = PackCache->LoadPacks[Key];
+  auto &VP = PackCache->LoadPacks[{Key, IsGather}];
   if (VP)
     return VP.get();
-  VP.reset(new VectorPack(this, Loads, Elements, Depended, TTI));
+  VP.reset(new VectorPack(this, IsGather, Loads, Elements, Depended, TTI));
   return VP.get();
 }
 
 VectorPack *VectorPackContext::createStorePack(ArrayRef<StoreInst *> Stores,
                                                BitVector Elements,
                                                BitVector Depended,
-                                               TargetTransformInfo *TTI) const {
+                                               TargetTransformInfo *TTI,
+                                               bool IsScatter) const {
   VectorPackCache::StorePackKey Key(Stores.begin(), Stores.end());
-  auto &VP = PackCache->StorePacks[Key];
+  auto &VP = PackCache->StorePacks[{Key, IsScatter}];
   if (VP)
     return VP.get();
-  VP.reset(new VectorPack(this, Stores, Elements, Depended, TTI));
+  VP.reset(new VectorPack(this, IsScatter, Stores, Elements, Depended, TTI));
   return VP.get();
 }
 

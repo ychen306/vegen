@@ -76,18 +76,29 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
 }
 
 std::vector<OperandPack> VectorPack::computeOperandPacksForLoad() {
-  // Only need the single *scalar* pointer, doesn't need packed operand
-  return {};
+  if (!IsGatherScatter) {
+    // Only need the single *scalar* pointer, doesn't need packed operand
+    return {};
+  }
+
+  OperandPack OP;
+  for (auto *L : Loads)
+    OP.push_back(L->getPointerOperand());
+  return {OP};
 }
 
 std::vector<OperandPack> VectorPack::computeOperandPacksForStore() {
-  std::vector<OperandPack> OperandPacks(1);
-  auto &OP = OperandPacks[0];
-  // Don't care about the pointers,
-  // only the values being stored need to be packed first
+  OperandPack ValueOP;
   for (auto *S : Stores)
-    OP.push_back(S->getValueOperand());
-  return OperandPacks;
+    ValueOP.push_back(S->getValueOperand());
+
+  if (!IsGatherScatter)
+    return {ValueOP};
+
+  OperandPack PtrOP;
+  for (auto *S : Stores)
+    PtrOP.push_back(S->getPointerOperand());
+  return {PtrOP, ValueOP};
 }
 
 std::vector<OperandPack> VectorPack::computeOperandPacksForPhi() {
@@ -119,7 +130,15 @@ Value *VectorPack::emitVectorGeneral(ArrayRef<Value *> Operands,
   return Builder.CreateBitCast(VecInst, VecType);
 }
 
-// Shameless stolen from llvm's SLPVectorizer
+namespace {
+template <typename LoadStores> Align getCommonAlignment(LoadStores Insts) {
+  Align A = Insts.front()->getAlign();
+  for (auto *I : drop_begin(Insts))
+    A = std::min(A, I->getAlign());
+  return A;
+}
+} // namespace
+
 Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
                                   IntrinsicBuilder &Builder) const {
   auto *FirstLoad = Loads[0];
@@ -136,8 +155,12 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
   Value *VecPtr = Builder.CreateBitCast(ScalarPtr, VecTy->getPointerTo(AS));
 
   // Emit the load
-  auto *VecLoad =
-      Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
+  Instruction *VecLoad;
+  if (IsGatherScatter)
+    VecLoad =
+        Builder.CreateMaskedGather(Operands.front(), getCommonAlignment(Loads));
+  else
+    VecLoad = Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
 
   std::vector<Value *> Values;
   for (auto *LI : Loads)
@@ -148,32 +171,42 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
 
 Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands,
                                    IntrinsicBuilder &Builder) const {
-  auto *FirstStore = Stores[0];
 
   // This is the value we want to store
-  Value *VecValue = Operands[0];
-
-  // Figure out the store alignment
-  unsigned Alignment = FirstStore->getAlignment();
-  unsigned AS = FirstStore->getPointerAddressSpace();
-
-  // Cast the scalar pointer to vector pointer
-  assert(Operands.size() == 1);
-  Value *ScalarPtr = FirstStore->getPointerOperand();
-  Value *VecPtr =
-      Builder.CreateBitCast(ScalarPtr, VecValue->getType()->getPointerTo(AS));
 
   // Emit the vector store
-  StoreInst *VecStore = Builder.CreateStore(VecValue, VecPtr);
+  Instruction *VecStore;
+  if (IsGatherScatter) {
+    auto *Ptrs = Operands[0];
+    auto *Values = Operands[1];
+    VecStore =
+        Builder.CreateMaskedScatter(Values, Ptrs, getCommonAlignment(Stores));
+  } else {
+    Value *VecValue = Operands.front();
+    auto *FirstStore = Stores.front();
 
-  // Fix the vector store alignment
-  auto &DL = FirstStore->getParent()->getModule()->getDataLayout();
-  if (!Alignment)
-    Alignment =
-        DL.getABITypeAlignment(FirstStore->getValueOperand()->getType());
+    // Figure out the store alignment
+    unsigned Alignment = FirstStore->getAlignment();
+    unsigned AS = FirstStore->getPointerAddressSpace();
 
-  VecStore->setAlignment(Align(Alignment));
-  std::vector<Value *> Stores_(Stores.begin(), Stores.end());
+    // Cast the scalar pointer to vector pointer
+    assert(Operands.size() == 1);
+    Value *ScalarPtr = FirstStore->getPointerOperand();
+    Value *VecPtr =
+        Builder.CreateBitCast(ScalarPtr, VecValue->getType()->getPointerTo(AS));
+
+    VecStore = Builder.CreateStore(VecValue, VecPtr);
+
+    // Fix the vector store alignment
+    auto &DL = FirstStore->getParent()->getModule()->getDataLayout();
+    if (!Alignment)
+      Alignment =
+          DL.getABITypeAlignment(FirstStore->getValueOperand()->getType());
+
+    cast<StoreInst>(VecStore)->setAlignment(Align(Alignment));
+  }
+
+  SmallVector<Value *, 4> Stores_(Stores.begin(), Stores.end());
   return propagateMetadata(VecStore, Stores_);
 }
 
@@ -256,16 +289,30 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   case Load: {
     auto *LI = Loads[0];
     auto *VecTy = FixedVectorType::get(LI->getType(), Loads.size());
-    Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
-                                TTI::TCK_RecipThroughput, LI);
+    if (IsGatherScatter) {
+      Cost = TTI->getGatherScatterOpCost(
+          Instruction::Load, VecTy, LI->getPointerOperand(),
+          false /*variable mask*/, getCommonAlignment(Loads),
+          TTI::TCK_RecipThroughput, LI);
+    } else {
+      Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
+                                  TTI::TCK_RecipThroughput, LI);
+    }
     break;
   }
   case Store: {
     auto *SI = Stores[0];
     auto *VecTy =
         FixedVectorType::get(SI->getValueOperand()->getType(), Stores.size());
-    Cost = TTI->getMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(), 0,
-                                TTI::TCK_RecipThroughput, SI);
+    if (IsGatherScatter) {
+      Cost = TTI->getGatherScatterOpCost(
+          Instruction::Store, VecTy, SI->getPointerOperand(),
+          false /*variable mask*/, getCommonAlignment(Stores),
+          TTI::TCK_RecipThroughput, SI);
+    } else {
+      Cost = TTI->getMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(), 0,
+                                  TTI::TCK_RecipThroughput, SI);
+    }
     break;
   }
   case Phi:

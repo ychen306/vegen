@@ -65,13 +65,15 @@ public:
   // Create a vectorized load
   VectorPack *createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads,
                              llvm::BitVector Elements, llvm::BitVector Depended,
-                             llvm::TargetTransformInfo *TTI) const;
+                             llvm::TargetTransformInfo *TTI,
+                             bool IsGather = false) const;
 
   // Create a vectorized store
   VectorPack *createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores,
                               llvm::BitVector Elements,
                               llvm::BitVector Depended,
-                              llvm::TargetTransformInfo *TTI) const;
+                              llvm::TargetTransformInfo *TTI,
+                              bool IsScatter = false) const;
 
   // Create a vectorized phi
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
