@@ -348,9 +348,12 @@ static void improvePlan(Packer *Pkr, Plan &P,
     }
 
     auto *OP = VP->getOperandPacks().front();
+#if 0
     if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
         Improve(P2, deinterleave(VPCtx, OP, 4)) ||
         Improve(P2, deinterleave(VPCtx, OP, 8))) {
+#endif
+    if (Improve(P2, VP->getOperandPacks())) {
       errs() << "~COST: " << P.cost() << '\n';
     }
   }
