@@ -239,6 +239,15 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
   return VecPHI;
 }
 
+static void getPointersAndIndices(ArrayRef<GetElementPtrInst *> GEPs,
+                                  SmallVectorImpl<Value *> &Ptrs,
+                                  SmallVectorImpl<Value *> &Idxs) {
+  for (auto *GEP : GEPs) {
+    Ptrs.push_back(GEP->getOperand(0));
+    Idxs.push_back(GEP->getOperand(1));
+  }
+}
+
 void VectorPack::computeOperandPacks() {
   switch (Kind) {
   case General:
@@ -253,11 +262,48 @@ void VectorPack::computeOperandPacks() {
   case Phi:
     canonicalizeOperandPacks(computeOperandPacksForPhi());
     break;
-  case Reduction:
+  case Reduction: {
     OperandPack OP;
     OP.assign(Rdx->Elts.begin(), Rdx->Elts.end());
     canonicalizeOperandPacks({OP});
-  }
+  } break;
+  case GEP: {
+    SmallVector<Value *, 4> Ptrs;
+    SmallVector<Value *, 4> Idxs;
+    getPointersAndIndices(GEPs, Ptrs, Idxs);
+    SmallVector<OperandPack, 2> OPs;
+    if (!is_splat(Ptrs))
+      OPs.emplace_back().assign(Ptrs);
+    if (!is_splat(Idxs))
+      OPs.emplace_back().assign(Idxs);
+    canonicalizeOperandPacks(OPs);
+  } break;
+
+  } // end switch
+}
+
+static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
+                            ArrayRef<Value *> Operands,
+                            IRBuilderBase &Builder) {
+  SmallVector<Value *, 4> Ptrs;
+  SmallVector<Value *, 4> Idxs;
+  getPointersAndIndices(GEPs, Ptrs, Idxs);
+
+  unsigned i = 0;
+
+  Value *Ptr;
+  if (is_splat(Ptrs))
+    Ptr = Ptrs.front();
+  else
+    Ptr = Operands[i++];
+
+  Value *Idx;
+  if (is_splat(Idxs))
+    Idx = Idxs.front();
+  else
+    Idx = Operands[i];
+
+  return Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idx);
 }
 
 Value *VectorPack::emit(ArrayRef<Value *> Operands,
@@ -274,6 +320,8 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
     return emitVectorStore(Operands, Builder);
   case Phi:
     return emitVectorPhi(Operands, Builder);
+  case GEP:
+    return emitVectorGEP(GEPs, Operands, Builder);
   case Reduction:
     llvm_unreachable("Don't call emit on reduction pack directly");
   }
@@ -321,6 +369,10 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   case Reduction:
     // FIXME: actually compute the cost
     Cost = 4;
+    break;
+  case GEP:
+    Cost = 0;
+    break;
   }
 
   ProducingCost = Cost;
@@ -333,16 +385,20 @@ void VectorPack::computeOrderedValues() {
               [](auto *M) { return M ? M->Output : nullptr; });
     break;
   case Load:
-    OrderedValues.append(Loads.begin(), Loads.end());
+    OrderedValues.assign(Loads.begin(), Loads.end());
     break;
   case Store:
-    OrderedValues.append(Stores.begin(), Stores.end());
+    OrderedValues.assign(Stores.begin(), Stores.end());
     break;
   case Phi:
-    OrderedValues.append(PHIs.begin(), PHIs.end());
+    OrderedValues.assign(PHIs.begin(), PHIs.end());
     break;
   case Reduction:
     OrderedValues.push_back(Rdx->Ops.front());
+    break;
+  case GEP:
+    OrderedValues.assign(GEPs.begin(), GEPs.end());
+    break;
   }
 }
 

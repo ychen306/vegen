@@ -13,7 +13,7 @@
 // these values should come from the same basic block
 class VectorPack {
 public:
-  enum PackKind { General, Phi, Load, Store, Reduction };
+  enum PackKind { General, Phi, Load, Store, Reduction, GEP };
 
 private:
   friend class VectorPackContext;
@@ -38,6 +38,8 @@ private:
   llvm::SmallVector<llvm::PHINode *, 4> PHIs;
   // Loop reduction
   llvm::Optional<ReductionInfo> Rdx;
+  // GEP
+  llvm::SmallVector<llvm::GetElementPtrInst *, 4> GEPs;
   ///////////////
 
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
@@ -102,6 +104,18 @@ private:
              llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::Reduction), Rdx(RI) {
+    computeOperandPacks();
+    computeOrderedValues();
+    computeCost(TTI);
+  }
+
+  // GEP Pack
+  VectorPack(const VectorPackContext *VPCtx,
+             llvm::ArrayRef<llvm::GetElementPtrInst *> GEPs,
+             llvm::BitVector Elements, llvm::BitVector Depended,
+             llvm::TargetTransformInfo *TTI)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::GEP), GEPs(GEPs.begin(), GEPs.end()) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);

@@ -11,12 +11,14 @@ struct VectorPackCache {
   using LoadPackKey = decltype(VectorPack::Loads);
   using StorePackKey = decltype(VectorPack::Stores);
   using PHIPackKey = decltype(VectorPack::PHIs);
+  using GEPPackKey = decltype(VectorPack::GEPs);
 
   std::map<GeneralPackKey, std::unique_ptr<VectorPack>> GeneralPacks;
   std::map<std::pair<LoadPackKey, bool>, std::unique_ptr<VectorPack>> LoadPacks;
   std::map<std::pair<StorePackKey, bool>, std::unique_ptr<VectorPack>>
       StorePacks;
   std::map<PHIPackKey, std::unique_ptr<VectorPack>> PHIPacks;
+  std::map<GEPPackKey, std::unique_ptr<VectorPack>> GEPPacks;
   std::map<Instruction *, std::unique_ptr<VectorPack>> ReductionPacks;
 };
 
@@ -77,10 +79,21 @@ VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
     Elements.set(getScalarId(PHI));
   VectorPackCache::PHIPackKey Key(PHIs.begin(), PHIs.end());
   auto &VP = PackCache->PHIPacks[Key];
-  if (VP)
-    return VP.get();
-  VP.reset(
-      new VectorPack(this, PHIs, Elements, BitVector(getNumValues()), TTI));
+  if (!VP) {
+    VP.reset(
+        new VectorPack(this, PHIs, Elements, BitVector(getNumValues()), TTI));
+  }
+  return VP.get();
+}
+
+VectorPack *VectorPackContext::createGEPPack(ArrayRef<GetElementPtrInst *> GEPs,
+                                             BitVector Elements,
+                                             BitVector Depended,
+                                             TargetTransformInfo *TTI) const {
+  VectorPackCache::GEPPackKey Key(GEPs.begin(), GEPs.end());
+  auto &VP = PackCache->GEPPacks[Key];
+  if (!VP)
+    VP.reset(new VectorPack(this, GEPs, Elements, Depended, TTI));
   return VP.get();
 }
 

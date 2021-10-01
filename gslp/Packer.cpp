@@ -212,6 +212,21 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
   }
 }
 
+static bool matchPackableGEPs(ArrayRef<Value *> Values, SmallVectorImpl<GetElementPtrInst *> &GEPs) {
+  Type *Ty = nullptr;
+  for (auto *V : Values) {
+    auto *GEP = dyn_cast<GetElementPtrInst>(V);
+    if (!GEP || GEP->getNumOperands() != 2)
+      return false;
+    if (!Ty)
+      Ty = GEP->getSourceElementType();
+    else if (Ty != GEP->getSourceElementType())
+      return false;
+    GEPs.push_back(GEP);
+  }
+  return true;
+}
+
 const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;
@@ -290,6 +305,12 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
   if (HasUndef) {
     OPI.Feasible = false;
+    return OPI;
+  }
+
+  SmallVector<GetElementPtrInst *, 4> GEPs;
+  if (matchPackableGEPs(*OP, GEPs)) {
+    OPI.Producers.push_back(VPCtx.createGEPPack(GEPs, OPI.Elements, Depended, TTI));
     return OPI;
   }
 

@@ -79,6 +79,11 @@ public:
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
                             llvm::TargetTransformInfo *TTI) const;
 
+  // Create a vectorized GEP
+  VectorPack *createGEPPack(llvm::ArrayRef<llvm::GetElementPtrInst *> GEPs,
+                            llvm::BitVector Elements, llvm::BitVector Depended,
+                            llvm::TargetTransformInfo *TTI) const;
+
   VectorPack *createReduction(const ReductionInfo &,
                               llvm::TargetTransformInfo *TTI) const;
 
