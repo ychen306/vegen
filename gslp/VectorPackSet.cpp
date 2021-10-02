@@ -342,9 +342,9 @@ static Value *emitReduction(RecurKind Kind, Value *A, Value *B,
     return Builder.CreateFMul(A, B);
 
   case RecurKind::FMax:
-    return Builder.CreateBinaryIntrinsic(Intrinsic::maxnum, A, B);
+    return Builder.CreateSelect(Builder.CreateFCmpOGT(A, B), A, B);
   case RecurKind::FMin:
-    return Builder.CreateBinaryIntrinsic(Intrinsic::minnum, A, B);
+    return Builder.CreateSelect(Builder.CreateFCmpOLT(A, B), A, B);
 
   case RecurKind::SMax:
     return Builder.CreateSelect(Builder.CreateICmpSGT(A, B), A, B);
@@ -504,10 +504,17 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       }
 
       // Patch up the vector phi
-      auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
-          RI.Kind, RI.Phi->getType());
-      auto *IdentityVector =
-          ConstantVector::getSplat(VecTy->getElementCount(), Identity);
+      Value *IdentityVector;
+      if (RecurrenceDescriptor::isMinMaxRecurrenceKind(RI.Kind)) {
+        Builder.SetInsertPoint(L->getLoopPreheader()->getTerminator());
+        IdentityVector =
+            Builder.CreateVectorSplat(VecTy->getElementCount(), RI.StartValue);
+      } else {
+        auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
+            RI.Kind, RI.Phi->getType());
+        IdentityVector =
+            ConstantVector::getSplat(VecTy->getElementCount(), Identity);
+      }
       VecPhi->addIncoming(IdentityVector, L->getLoopPreheader());
       VecPhi->addIncoming(Acc, Latch);
 
