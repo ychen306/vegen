@@ -20,10 +20,8 @@ static cl::opt<bool> UseLVI(
     cl::desc("use lazy value info to improve dependence analysis precision"),
     cl::init(false));
 
-static cl::opt<bool> UseDA(
-    "use-da",
-    cl::desc("use dependence info"),
-    cl::init(false));
+static cl::opt<bool> UseDA("use-da", cl::desc("use dependence info"),
+                           cl::init(false));
 
 static bool isLessThan(ScalarEvolution &SE, const SCEV *A, const SCEV *B) {
   return SE.isKnownNegative(SE.getMinusSCEV(A, B));
@@ -100,6 +98,25 @@ static const Loop *getLoopForPointer(LoopInfo &LI, Value *Ptr) {
   return LI.getLoopFor(I->getParent());
 }
 
+// Copied from SCEV AA
+static Value *getBaseValue(const SCEV *S) {
+  if (const SCEVAddRecExpr *AR = dyn_cast<SCEVAddRecExpr>(S)) {
+    // In an addrec, assume that the base will be in the start, rather
+    // than the step.
+    return getBaseValue(AR->getStart());
+  } else if (const SCEVAddExpr *A = dyn_cast<SCEVAddExpr>(S)) {
+    // If there's a pointer operand, it'll be sorted at the end of the list.
+    const SCEV *Last = A->getOperand(A->getNumOperands() - 1);
+    if (Last->getType()->isPointerTy())
+      return getBaseValue(Last);
+  } else if (const SCEVUnknown *U = dyn_cast<SCEVUnknown>(S)) {
+    // This is a leaf node.
+    return U->getValue();
+  }
+  // No Identified object found.
+  return nullptr;
+}
+
 static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
                       ScalarEvolution &SE, DominatorTree &DT, LoopInfo &LI,
                       LazyValueInfo &LVI) {
@@ -121,11 +138,17 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
   auto *Ptr1SCEV = SE.getSCEV(Ptr1);
   auto *Ptr2SCEV = SE.getSCEV(Ptr2);
 
+  auto *Base1 = getBaseValue(Ptr1SCEV);
+  auto *Base2 = getBaseValue(Ptr2SCEV);
+  if (Base1 != Base2)
+    return AA.alias(MemoryLocation::getBeforeOrAfter(Base1),
+                    MemoryLocation::getBeforeOrAfter(Base2));
+
   // The check below assumes that the loops used by the two SCEVs are totally
   // ordered. Check it!
   struct FindUsedLoops {
     FindUsedLoops(SmallVectorImpl<const Loop *> &LoopsUsed)
-      : LoopsUsed(LoopsUsed) {}
+        : LoopsUsed(LoopsUsed) {}
     SmallVectorImpl<const Loop *> &LoopsUsed;
     bool follow(const SCEV *S) {
       if (auto *AR = dyn_cast<SCEVAddRecExpr>(S))
