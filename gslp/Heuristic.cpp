@@ -7,7 +7,6 @@
 using namespace llvm;
 
 static constexpr float C_Splat = 1.0;
-static constexpr float C_Insert = 2;
 static constexpr float C_Perm = 2;
 static constexpr float C_Shuffle = 2;
 static constexpr float C_Extract = 1.0;
@@ -46,12 +45,18 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
 
   Solutions[OP] = 0;
 
+  auto *TTI = Pkr->getTTI();
+  auto *VecTy = getVectorType(*OP);
+
   // Build by explicit insertion
   float Cost = 0;
   SmallPtrSet<Value *, 8> Inserted;
-  for (auto *V : *OP)
+  for (auto Item : enumerate(*OP)) {
+    auto *V = Item.value();
     if (V && !isa<Constant>(V) && Inserted.insert(V).second)
-      Cost += getCost(V) + C_Insert;
+      Cost += getCost(V) + 
+            TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, Item.index());
+  }
 
   // The baseline solution is building the vector by implicit insertion
   Solution Sol(Cost);
@@ -72,9 +77,8 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   const OperandPack *Deduped = VPCtx->dedup(OP);
   float ExtraCost = Deduped != OP ? C_Shuffle : 0;
   auto OPI = Pkr->getProducerInfo(Deduped);
-  for (auto *VP : OPI.getProducers()) {
+  for (auto *VP : OPI.getProducers())
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
-  }
 
   if (AllowTranspose) {
     for (unsigned N : {2, 4, 8})
@@ -104,6 +108,7 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
     }
   }
 
+#if 0
   if (!Candidates)
     return Solutions[OP] = Sol;
 
@@ -127,6 +132,7 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
       }
     }
   }
+#endif
 
   return Solutions[OP] = Sol;
 }

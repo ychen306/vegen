@@ -345,8 +345,6 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
           Instruction::Load, VecTy, LI->getPointerOperand(),
           false /*variable mask*/, getCommonAlignment(Loads),
           TTI::TCK_RecipThroughput, LI);
-      if (Cost > 4)
-        Cost = 4;
     } else {
       Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
                                   TTI::TCK_RecipThroughput, LI);
