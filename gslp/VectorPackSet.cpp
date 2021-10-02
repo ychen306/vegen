@@ -391,7 +391,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   auto &LI = Pkr.getLoopInfo();
   auto *TTI = Pkr.getTTI();
 
-  SmallVector<std::pair<const ReductionInfo *, SmallVector<Value *, 4>>> ReductionsToPatch;
+  SmallVector<std::pair<const ReductionInfo *, SmallVector<Value *, 4>>>
+      ReductionsToPatch;
 
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
@@ -489,7 +490,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
       auto *VecTy = getVectorType(*OPs.front());
       auto &RI = VP->getReductionInfo();
-
 
       SmallVector<PHINode *, 4> VecPhis;
       SmallVector<Value *, 4> RdxOps;
