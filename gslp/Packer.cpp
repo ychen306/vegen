@@ -213,16 +213,19 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
 }
 
 static bool matchPackableGEPs(ArrayRef<Value *> Values, SmallVectorImpl<GetElementPtrInst *> &GEPs) {
-  Type *Ty = nullptr;
-  for (auto *V : Values) {
-    auto *GEP = dyn_cast<GetElementPtrInst>(V);
-    if (!GEP || GEP->getNumOperands() != 2)
+  GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(Values.front());
+  if (!GEP)
+    return false;
+  GEPs.push_back(GEP);
+  unsigned NumOperands = GEP->getNumOperands();
+  Type *Ty = GEP->getSourceElementType();
+
+  for (auto *V : drop_begin(Values)) {
+    auto *GEP2 = dyn_cast<GetElementPtrInst>(V);
+    if (GEP2->getNumOperands() != NumOperands ||
+        GEP2->getSourceElementType() != Ty)
       return false;
-    if (!Ty)
-      Ty = GEP->getSourceElementType();
-    else if (Ty != GEP->getSourceElementType())
-      return false;
-    GEPs.push_back(GEP);
+    GEPs.push_back(GEP2);
   }
   return true;
 }

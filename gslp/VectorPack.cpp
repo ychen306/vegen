@@ -239,13 +239,10 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
   return VecPHI;
 }
 
-static void getPointersAndIndices(ArrayRef<GetElementPtrInst *> GEPs,
-                                  SmallVectorImpl<Value *> &Ptrs,
-                                  SmallVectorImpl<Value *> &Idxs) {
-  for (auto *GEP : GEPs) {
-    Ptrs.push_back(GEP->getOperand(0));
-    Idxs.push_back(GEP->getOperand(1));
-  }
+static void getGEPOperands(unsigned i, ArrayRef<GetElementPtrInst *> GEPs,
+                          SmallVectorImpl<Value *> &Operands) {
+  for (auto *GEP : GEPs)
+    Operands.push_back(GEP->getOperand(i));
 }
 
 void VectorPack::computeOperandPacks() {
@@ -271,14 +268,14 @@ void VectorPack::computeOperandPacks() {
     canonicalizeOperandPacks(OPs);
   } break;
   case GEP: {
-    SmallVector<Value *, 4> Ptrs;
-    SmallVector<Value *, 4> Idxs;
-    getPointersAndIndices(GEPs, Ptrs, Idxs);
-    SmallVector<OperandPack, 2> OPs;
-    if (!is_splat(Ptrs))
-      OPs.emplace_back().assign(Ptrs);
-    if (!is_splat(Idxs))
-      OPs.emplace_back().assign(Idxs);
+    unsigned NumOperands = GEPs.front()->getNumOperands();
+    SmallVector<OperandPack, 4> OPs;
+    for (unsigned i = 0; i < NumOperands; i++) {
+      SmallVector<Value *, 8> Operands;
+      getGEPOperands(i, GEPs, Operands);
+      if (!is_splat(Operands))
+        OPs.emplace_back().assign(Operands);
+    }
     canonicalizeOperandPacks(OPs);
   } break;
 
@@ -289,24 +286,27 @@ static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
                             ArrayRef<Value *> Operands,
                             IRBuilderBase &Builder) {
   SmallVector<Value *, 4> Ptrs;
-  SmallVector<Value *, 4> Idxs;
-  getPointersAndIndices(GEPs, Ptrs, Idxs);
-
-  unsigned i = 0;
+  getGEPOperands(0, GEPs, Ptrs);
 
   Value *Ptr;
-  if (is_splat(Ptrs))
+  bool BroadcastPtr = is_splat(Ptrs);
+  unsigned j = 0;
+  if (BroadcastPtr)
     Ptr = Ptrs.front();
   else
-    Ptr = Operands[i++];
+    Ptr = Operands[j++];
 
-  Value *Idx;
-  if (is_splat(Idxs))
-    Idx = Idxs.front();
-  else
-    Idx = Operands[i];
-
-  return Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idx);
+  unsigned NumOperands = GEPs.front()->getNumOperands();
+  SmallVector<Value *, 4> Idxs;
+  for (unsigned i = 1; i < NumOperands; i++) {
+    SmallVector<Value *, 4> Values;
+    getGEPOperands(i, GEPs, Values);
+    if (is_splat(Values))
+      Idxs.push_back(Values.front());
+    else
+      Idxs.push_back(Operands[j++]);
+  }
+  return Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idxs);
 }
 
 Value *VectorPack::emit(ArrayRef<Value *> Operands,
@@ -345,6 +345,8 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
           Instruction::Load, VecTy, LI->getPointerOperand(),
           false /*variable mask*/, getCommonAlignment(Loads),
           TTI::TCK_RecipThroughput, LI);
+      if (Cost > 4)
+        Cost = 4;
     } else {
       Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
                                   TTI::TCK_RecipThroughput, LI);
@@ -425,6 +427,9 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
     ProducerName = Producer->getName();
   else if (VP.isReduction())
     ProducerName = "reduction";
+  else if (VP.IsGatherScatter)
+    ProducerName = "gather/scatter";
+
   OS << "PACK<" << ProducerName << ">: (\n";
   for (auto *V : VP.getOrderedValues())
     if (V)

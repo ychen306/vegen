@@ -13,6 +13,8 @@
 // these values should come from the same basic block
 class VectorPack {
 public:
+  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
+
   enum PackKind { General, Phi, Load, Store, Reduction, GEP };
 
 private:
@@ -199,13 +201,12 @@ public:
   getPackedInstructions(llvm::SmallPtrSetImpl<llvm::Instruction *> &) const;
 };
 
-llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
-llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
-
 llvm::FixedVectorType *getVectorType(const OperandPack &OpndPack);
 
 llvm::FixedVectorType *getVectorType(const VectorPack &VP);
 
 bool isConstantPack(const OperandPack &OpndPack);
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 #endif // VECTOR_PACK_H
