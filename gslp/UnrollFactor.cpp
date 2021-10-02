@@ -20,13 +20,14 @@
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
-#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
 
-static cl::opt<bool> ForwardSeeds("forward-seeds", cl::desc("Forward seeds from the unroller"),
+static cl::opt<bool> ForwardSeeds("forward-seeds",
+                                  cl::desc("Forward seeds from the unroller"),
                                   cl::init(false));
 
 namespace {
@@ -125,7 +126,8 @@ void unrollLoops(
     ULO.Count = UF;
     ULO.Force = true;
     ULO.PeelCount = 0;
-    ULO.TripMultiple = ExitingBlock ? SE.getSmallConstantTripMultiple(L, ExitingBlock) : 1;
+    ULO.TripMultiple =
+        ExitingBlock ? SE.getSmallConstantTripMultiple(L, ExitingBlock) : 1;
     ULO.AllowRuntime = true;
     ULO.AllowExpensiveTripCount = true;
     ULO.ForgetAllSCEV = false;
@@ -157,8 +159,8 @@ void unrollLoops(
             if (UnrolledIterations->count(SrcI))
               SrcI = UnrolledIterations->lookup(SrcI).OrigI;
             // If the loop of the unrolled block belongs to a loop different
-            // to the one we start with, it means we are unrolling the outer loop,
-            // which means that the inner unroll iter should be zero.
+            // to the one we start with, it means we are unrolling the outer
+            // loop, which means that the inner unroll iter should be zero.
             unsigned InnerIter = NewLoop == L ? It->second.Iter : 0;
             UnrolledIterations->insert({&I, {SrcI, InnerIter}});
           }
@@ -252,7 +254,6 @@ getSeeds(Packer &Pkr, DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
           OP.assign(Chain.begin(), Chain.end());
           SeedOperands.push_back(VPCtx->getCanonicalOperandPack(OP));
         }
-
       }
     }
   }
@@ -317,7 +318,8 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
 
     if (VP->isReduction()) {
       auto &RI = VP->getReductionInfo();
-      LoopsWithReductions.insert(GetOrigLoop(LI.getLoopFor(RI.Phi->getParent())));
+      LoopsWithReductions.insert(
+          GetOrigLoop(LI.getLoopFor(RI.Phi->getParent())));
     }
 
     std::map<Loop *, Range> PackedIterations;
