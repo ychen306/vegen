@@ -8,6 +8,7 @@ using namespace llvm;
 
 static constexpr float C_Splat = 1.0;
 static constexpr float C_Perm = 2;
+static constexpr float C_Insert = 2;
 static constexpr float C_Shuffle = 2;
 static constexpr float C_Extract = 1.0;
 
@@ -45,17 +46,13 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
 
   Solutions[OP] = 0;
 
-  auto *TTI = Pkr->getTTI();
-  auto *VecTy = getVectorType(*OP);
-
   // Build by explicit insertion
   float Cost = 0;
   SmallPtrSet<Value *, 8> Inserted;
   for (auto Item : enumerate(*OP)) {
     auto *V = Item.value();
     if (V && !isa<Constant>(V) && Inserted.insert(V).second)
-      Cost += getCost(V) + 
-            TTI->getVectorInstrCost(Instruction::InsertElement, VecTy, Item.index());
+      Cost += getCost(V) + C_Insert;
   }
 
   // The baseline solution is building the vector by implicit insertion
