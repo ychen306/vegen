@@ -391,7 +391,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   auto &LI = Pkr.getLoopInfo();
   auto *TTI = Pkr.getTTI();
 
-  SmallVector<std::pair<const ReductionInfo *, Value *>> ReductionsToPatch;
+  SmallVector<std::pair<const ReductionInfo *, SmallVector<Value *, 4>>> ReductionsToPatch;
 
   // Generate code in RPO of the CFG
   ReversePostOrderTraversal<Function *> RPO(F);
@@ -490,17 +490,20 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       auto *VecTy = getVectorType(*OPs.front());
       auto &RI = VP->getReductionInfo();
 
-      // Emit the vector phi, specify the incomings later
-      Builder.SetInsertPoint(&Header->front());
-      auto *VecPhi = Builder.CreatePHI(VecTy, 2 /*num incoming*/);
 
-      // Emit the vector rdx op
-      Builder.SetInsertPoint(Latch->getTerminator());
-      Value *Acc = VecPhi;
+      SmallVector<PHINode *, 4> VecPhis;
+      SmallVector<Value *, 4> RdxOps;
       for (auto *OP : OPs) {
+        // Emit the vector phi, specify the incomings later
+        Builder.SetInsertPoint(&Header->front());
+        auto *VecPhi = Builder.CreatePHI(VecTy, 2 /*num incoming*/);
+        VecPhis.push_back(VecPhi);
+
+        // Gather operand in the latch
+        Builder.SetInsertPoint(Latch->getTerminator());
         auto *Operand =
             gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
-        Acc = emitReduction(RI.Kind, Acc, Operand, Builder);
+        RdxOps.push_back(emitReduction(RI.Kind, VecPhi, Operand, Builder));
       }
 
       // Patch up the vector phi
@@ -515,14 +518,19 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         IdentityVector =
             ConstantVector::getSplat(VecTy->getElementCount(), Identity);
       }
-      VecPhi->addIncoming(IdentityVector, L->getLoopPreheader());
-      VecPhi->addIncoming(Acc, Latch);
+
+      for (auto Pair : zip(VecPhis, RdxOps)) {
+        PHINode *VecPhi = std::get<0>(Pair);
+        Value *RdxOp = std::get<1>(Pair);
+        VecPhi->addIncoming(IdentityVector, L->getLoopPreheader());
+        VecPhi->addIncoming(RdxOp, Latch);
+      }
 
       DeadInsts.append(RI.Ops.begin(), RI.Ops.end());
       DeadInsts.push_back(RI.Phi);
 
       // Record the fact that we are replacing the original scalar reduction
-      ReductionsToPatch.emplace_back(&RI, Acc);
+      ReductionsToPatch.emplace_back(&RI, RdxOps);
     }
   }
 
@@ -533,7 +541,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   // Patch up the reductions
   for (auto &Pair : ReductionsToPatch) {
     const ReductionInfo *RI = Pair.first;
-    Value *RdxOp = Pair.second;
+    ArrayRef<Value *> RdxOps = Pair.second;
+
     auto *L = LI.getLoopFor(RI->Phi->getParent());
     auto *Exit = L->getExitBlock();
     auto *PreExit = PreExits.lookup(Exit);
@@ -549,6 +558,11 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
     //// Reduce the vector in the exit block
     Builder.SetInsertPoint(&PreExit->front());
+
+    Value *RdxOp = RdxOps.front();
+    for (auto *RdxOp2 : drop_begin(RdxOps))
+      RdxOp = emitReduction(RI->Kind, RdxOp, RdxOp2, Builder);
+
     auto *HorizontalRdx =
         createSimpleTargetReduction(Builder, TTI, RdxOp, RI->Kind);
     auto *Reduced =

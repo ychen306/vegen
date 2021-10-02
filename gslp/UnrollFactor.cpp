@@ -310,9 +310,15 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   std::vector<const VectorPack *> Packs;
   optimizeBottomUp(Packs, &Pkr, SeedOperands, &EpilogBlocks);
 
+  SmallPtrSet<Loop *, 4> LoopsWithReductions;
   for (auto *VP : Packs) {
     SmallPtrSet<Instruction *, 32> Insts;
     VP->getPackedInstructions(Insts);
+
+    if (VP->isReduction()) {
+      auto &RI = VP->getReductionInfo();
+      LoopsWithReductions.insert(GetOrigLoop(LI.getLoopFor(RI.Phi->getParent())));
+    }
 
     std::map<Loop *, Range> PackedIterations;
     for (auto *I : Insts) {
@@ -345,6 +351,15 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
       if (!Inserted)
         It->second = std::max(It->second, MinUF);
     }
+  }
+
+  for (auto *L : LoopsWithReductions) {
+    if (!OrigLoops.count(L))
+      continue;
+    if (!UFs.count(L))
+      UFs[L] = 4;
+    else
+      UFs[L] *= 4;
   }
 }
 
