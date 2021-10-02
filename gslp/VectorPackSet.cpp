@@ -340,6 +340,22 @@ static Value *emitReduction(RecurKind Kind, Value *A, Value *B,
     return Builder.CreateFAdd(A, B);
   case RecurKind::FMul:
     return Builder.CreateFMul(A, B);
+
+  case RecurKind::FMax:
+    return Builder.CreateBinaryIntrinsic(Intrinsic::maxnum, A, B);
+  case RecurKind::FMin:
+    return Builder.CreateBinaryIntrinsic(Intrinsic::minnum, A, B);
+
+  case RecurKind::SMax:
+    return Builder.CreateSelect(Builder.CreateICmpSGT(A, B), A, B);
+  case RecurKind::SMin:
+    return Builder.CreateSelect(Builder.CreateICmpSLT(A, B), A, B);
+
+  case RecurKind::UMax:
+    return Builder.CreateSelect(Builder.CreateICmpUGT(A, B), A, B);
+  case RecurKind::UMin:
+    return Builder.CreateSelect(Builder.CreateICmpULT(A, B), A, B);
+
   default:
     llvm_unreachable("unsupport reduction kind");
   }
@@ -483,7 +499,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       Value *Acc = VecPhi;
       for (auto *OP : OPs) {
         auto *Operand =
-          gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
+            gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
         Acc = emitReduction(RI.Kind, Acc, Operand, Builder);
       }
 

@@ -292,8 +292,8 @@ static void improvePlan(Packer *Pkr, Plan &P,
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
     if (RI && RI->Elts.size() > 1 && isPowerOf2_32(RI->Elts.size())) {
       unsigned RdxLen = MaxVecWidth / getBitWidth(PN, Pkr->getDataLayout());
-      Seeds.push_back(
-          VPCtx->createReduction(*RI, std::min<unsigned>(RdxLen, RI->Elts.size()), TTI));
+      Seeds.push_back(VPCtx->createReduction(
+          *RI, std::min<unsigned>(RdxLen, RI->Elts.size()), TTI));
     }
   }
 

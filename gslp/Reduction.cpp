@@ -22,6 +22,20 @@ static bool matchReduction(Value *Rdx, Value *&A, Value *&B, RecurKind Kind) {
     return match(Rdx, m_FAdd(m_Value(A), m_Value(B)));
   case RecurKind::FMul:
     return match(Rdx, m_FMul(m_Value(A), m_Value(B)));
+  case RecurKind::FMax:
+    return match(Rdx, m_OrdFMax(m_Value(A), m_Value(B))) ||
+           match(Rdx, m_UnordFMax(m_Value(A), m_Value(B)));
+  case RecurKind::FMin:
+    return match(Rdx, m_OrdFMin(m_Value(A), m_Value(B))) ||
+           match(Rdx, m_UnordFMin(m_Value(A), m_Value(B)));
+  case RecurKind::SMax:
+    return match(Rdx, m_SMax(m_Value(A), m_Value(B)));
+  case RecurKind::SMin:
+    return match(Rdx, m_SMin(m_Value(A), m_Value(B)));
+  case RecurKind::UMax:
+    return match(Rdx, m_UMax(m_Value(A), m_Value(B)));
+  case RecurKind::UMin:
+    return match(Rdx, m_UMin(m_Value(A), m_Value(B)));
   default:
     return false;
   }
@@ -31,15 +45,19 @@ static void matchReductionTreeWithKind(Value *Root,
                                        SmallVectorImpl<Instruction *> &Ops,
                                        SmallVectorImpl<Value *> &Leaves,
                                        RecurKind Kind) {
+  unsigned MaxNumUses =
+      RecurrenceDescriptor::isMinMaxRecurrenceKind(Kind) ? 2 : 1;
   SmallVector<Value *> Worklist{Root};
   while (!Worklist.empty()) {
     auto *V = Worklist.pop_back_val();
     Value *A, *B;
     // Only the root is allowed to have more than one use
-    if ((V != Root && !V->hasOneUse()) || !matchReduction(V, A, B, Kind)) {
+    if ((V != Root && V->getNumUses() > MaxNumUses) ||
+        !matchReduction(V, A, B, Kind)) {
       Leaves.push_back(V);
       continue;
     }
+
     Ops.push_back(cast<Instruction>(V));
     Worklist.push_back(A);
     Worklist.push_back(B);
@@ -50,8 +68,11 @@ static bool matchReductionTree(PHINode *PN, Loop *L,
                                SmallVectorImpl<Instruction *> &Ops,
                                SmallVectorImpl<Value *> &Leaves,
                                RecurKind &Kind) {
-  auto Kinds = {RecurKind::Add, RecurKind::Mul,  RecurKind::And, RecurKind::Or,
-                RecurKind::Xor, RecurKind::FAdd, RecurKind::FMul};
+  auto Kinds = {RecurKind::Add,  RecurKind::Mul,  RecurKind::And,
+                RecurKind::Or,   RecurKind::Xor,  RecurKind::FAdd,
+                RecurKind::FMul, RecurKind::FMin, RecurKind::FMax,
+                RecurKind::SMin, RecurKind::SMax, RecurKind::UMin,
+                RecurKind::UMax};
   Value *Root = PN->getIncomingValueForBlock(L->getLoopLatch());
   for (RecurKind K : Kinds) {
     Ops.clear();
@@ -82,8 +103,10 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
   RI.Phi = PN;
   RI.StartValue = RI.Phi->getIncomingValueForBlock(L->getLoopPreheader());
 
+  unsigned MaxNumUses =
+      RecurrenceDescriptor::isMinMaxRecurrenceKind(RI.Kind) ? 2 : 1;
   // Don't vectorize phis that have more than one use
-  if (!PN->hasOneUse())
+  if (PN->getNumUses() > MaxNumUses)
     return None;
 
   auto *Root = RI.Ops.front();
@@ -100,7 +123,5 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
 
 raw_ostream &operator<<(raw_ostream &OS, const ReductionInfo &RI) {
   return OS << "reduction { "
-    << "phi = " << *RI.Phi
-    << ", root = " << *RI.Ops.front()
-    << "}";
+            << "phi = " << *RI.Phi << ", root = " << *RI.Ops.front() << "}";
 }
