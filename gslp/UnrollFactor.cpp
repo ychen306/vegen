@@ -364,9 +364,6 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
     UFs[L] = PowerOf2Ceil(UFs[L]) * divideCeil(4, NumRdxs);
     errs() << "Adjusted uf = " << UFs[L] << '\n';
   }
-
-  for (auto &Pair : UFs)
-    Pair.second = PowerOf2Ceil(Pair.second);
 }
 
 void computeUnrollFactorImpl(ArrayRef<const InstBinding *> Insts,
