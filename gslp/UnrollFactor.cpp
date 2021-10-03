@@ -311,15 +311,16 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   std::vector<const VectorPack *> Packs;
   optimizeBottomUp(Packs, &Pkr, SeedOperands, &EpilogBlocks);
 
-  SmallPtrSet<Loop *, 4> LoopsWithReductions;
+  DenseMap<Loop *, unsigned> LoopsWithReductions;
   for (auto *VP : Packs) {
     SmallPtrSet<Instruction *, 32> Insts;
     VP->getPackedInstructions(Insts);
 
     if (VP->isReduction()) {
       auto &RI = VP->getReductionInfo();
-      LoopsWithReductions.insert(
-          GetOrigLoop(LI.getLoopFor(RI.Phi->getParent())));
+      auto *L = GetOrigLoop(LI.getLoopFor(RI.Phi->getParent()));
+      LoopsWithReductions[L] = std::max<unsigned>(
+          LoopsWithReductions[L], VP->getOperandPacks().size());
     }
 
     std::map<Loop *, Range> PackedIterations;
@@ -355,13 +356,13 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
     }
   }
 
-  for (auto *L : LoopsWithReductions) {
+  for (auto &Pair : LoopsWithReductions) {
+    auto *L = Pair.first;
+    unsigned NumRdxs = Pair.second;
     if (!OrigLoops.count(L))
       continue;
-    if (!UFs.count(L))
-      UFs[L] = 4;
-    else
-      UFs[L] *= 4;
+    UFs[L] = PowerOf2Ceil(UFs[L]) * divideCeil(4, NumRdxs);
+    errs() << "Adjusted uf = " << UFs[L] << '\n';
   }
 }
 

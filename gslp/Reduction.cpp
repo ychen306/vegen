@@ -47,21 +47,28 @@ static void matchReductionTreeWithKind(Value *Root,
                                        RecurKind Kind) {
   unsigned MaxNumUses =
       RecurrenceDescriptor::isMinMaxRecurrenceKind(Kind) ? 2 : 1;
-  SmallVector<Value *> Worklist{Root};
+
+  SmallVector<std::pair<Value *, unsigned>> Worklist{std::make_pair(Root, 0)},
+      LeavesAndHeights;
   while (!Worklist.empty()) {
-    auto *V = Worklist.pop_back_val();
+    auto ValAndHeight = Worklist.pop_back_val();
+    Value *V = ValAndHeight.first;
+    unsigned Height = ValAndHeight.second;
     Value *A, *B;
     // Only the root is allowed to have more than one use
     if ((V != Root && V->getNumUses() > MaxNumUses) ||
         !matchReduction(V, A, B, Kind)) {
-      Leaves.push_back(V);
+      LeavesAndHeights.emplace_back(V, Height);
       continue;
     }
-
     Ops.push_back(cast<Instruction>(V));
-    Worklist.push_back(A);
-    Worklist.push_back(B);
+    Worklist.emplace_back(A, Height + 1);
+    Worklist.emplace_back(B, Height + 1);
   }
+  stable_sort(LeavesAndHeights,
+              [](auto &P1, auto &P2) { return P1.second > P2.second; });
+  for (auto &Pair : LeavesAndHeights)
+    Leaves.push_back(Pair.first);
 }
 
 static bool matchReductionTree(PHINode *PN, Loop *L,

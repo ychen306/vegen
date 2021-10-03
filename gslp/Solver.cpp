@@ -253,6 +253,10 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
   return Decomposed;
 }
 
+static unsigned greatestPowerOfTwoDivisor(unsigned n) {
+  return (n & (~(n - 1)));
+}
+
 static void improvePlan(Packer *Pkr, Plan &P,
                         ArrayRef<const OperandPack *> SeedOperands,
                         CandidatePackSet *Candidates,
@@ -290,10 +294,12 @@ static void improvePlan(Packer *Pkr, Plan &P,
     if (!PN)
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
-    if (RI && RI->Elts.size() > 1 && isPowerOf2_32(RI->Elts.size())) {
-      unsigned RdxLen = MaxVecWidth / getBitWidth(PN, Pkr->getDataLayout());
+    if (RI && RI->Elts.size() % 2 == 0) {
+      unsigned RdxLen = std::min<unsigned>(
+          greatestPowerOfTwoDivisor(RI->Elts.size()),
+          MaxVecWidth / getBitWidth(PN, Pkr->getDataLayout()));
       Seeds.push_back(VPCtx->createReduction(
-          *RI, std::min<unsigned>(RdxLen, RI->Elts.size()), TTI));
+          *RI, RdxLen, TTI));
     }
   }
 
