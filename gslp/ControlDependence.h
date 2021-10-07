@@ -11,6 +11,7 @@ class Value;
 class BasicBlock;
 class PostDominatorTree;
 class DominatorTree;
+class raw_ostream;
 } // namespace llvm
 
 class ControlCondition {
@@ -30,6 +31,10 @@ struct ConditionAnd : public ControlCondition {
   llvm::Value *Cond;
   bool IsTrue;
 
+  static bool classof(const ControlCondition *C) {
+    return C->getKind() == Kind_ConditionAnd;
+  }
+
 private:
   friend class ControlDependenceAnalysis;
   ConditionAnd(const ControlCondition *Parent, llvm::Value *Cond, bool IsTrue)
@@ -40,6 +45,10 @@ private:
 struct ConditionOr : public ControlCondition {
   const ControlCondition *A;
   const ControlCondition *B;
+
+  static bool classof(const ControlCondition *C) {
+    return C->getKind() == Kind_ConditionOr;
+  }
 
 private:
   friend class ControlDependenceAnalysis;
@@ -76,5 +85,7 @@ public:
   const ControlCondition *getConditionForEdge(llvm::BasicBlock *,
                                               llvm::BasicBlock *);
 };
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ControlCondition &);
 
 #endif // CONTROL_DEPENDENCE_H

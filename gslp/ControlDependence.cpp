@@ -73,9 +73,14 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   if (It != BlockConditions.end())
     return It->second;
 
+  // The entry block always executes unconditionally
+  auto *Node = DT.getNode(BB);
+  if (Node == DT.getRootNode())
+    return nullptr;
+
   // Fast path:
   // If BB post-dominates its idom, BB has the same control condition
-  BasicBlock *IDom = DT.getNode(BB)->getIDom()->getBlock();
+  BasicBlock *IDom = Node->getIDom()->getBlock();
   if (PDT.dominates(BB, IDom))
     return BlockConditions[BB] = getConditionForBlock(IDom);
 
@@ -94,4 +99,35 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   }
   sort(CondsToJoin);
   return BlockConditions[BB] = getOr(CondsToJoin);
+}
+
+static void dump(raw_ostream &OS, const ControlCondition *C) {
+  if (!C) {
+    OS << "true";
+    return;
+  }
+
+  if (auto *And = dyn_cast<ConditionAnd>(C)) {
+    OS << '(';
+    if (And->Parent) {
+      dump(OS, And->Parent);
+      OS << " /\\ ";
+    }
+    if (!And->IsTrue)
+      OS << "not ";
+    OS << And->Cond->getName();
+    OS << ')';
+    return;
+  }
+  auto *Or = cast<ConditionOr>(C);
+  OS << '(';
+  dump(OS, Or->A);
+  OS << " \\/ ";
+  dump(OS, Or->B);
+  OS << ')';
+}
+
+raw_ostream &operator<<(raw_ostream &OS, const ControlCondition &C) {
+  dump(OS, &C);
+  return OS;
 }

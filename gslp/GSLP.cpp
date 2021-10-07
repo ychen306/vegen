@@ -4,6 +4,7 @@
 #include "Solver.h"
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
+#include "ControlDependence.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -247,6 +248,19 @@ bool GSLP::runOnFunction(Function &F) {
   for (auto &Inst : VecBindingTable.getBindings()) {
     if (Inst.isSupported(TTI))
       SupportedIntrinsics.push_back(&Inst);
+  }
+
+  {
+    for (auto &BB : F)
+      if (!isa<ReturnInst>(BB.getTerminator()) &&
+          !isa<BranchInst>(BB.getTerminator()))
+        return false;
+    PostDominatorTree PDT(F);
+    ControlDependenceAnalysis CDA(*DT, PDT);
+    for (auto &BB : F) {
+      errs() << BB.getName() << ": " <<  *CDA.getConditionForBlock(&BB) << '\n';
+    }
+    return false;
   }
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
