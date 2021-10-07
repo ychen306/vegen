@@ -6,6 +6,8 @@ set(LIB_PACKING_SRC
 
   Plan.cpp
 
+  ControlDependence.cpp
+
   Reduction.cpp
 
   ControlEquivalence.cpp
