@@ -10,6 +10,7 @@ namespace llvm {
 class Value;
 class BasicBlock;
 class PostDominatorTree;
+class LoopInfo;
 class DominatorTree;
 class raw_ostream;
 } // namespace llvm
@@ -43,8 +44,8 @@ struct ConditionAnd : public ControlCondition {
 private:
   friend class ControlDependenceAnalysis;
   ConditionAnd(const ControlCondition *Parent, llvm::Value *Cond, bool IsTrue)
-      : ControlCondition(Kind_ConditionAnd, getDepth(Parent) + 1), Parent(Parent),
-        Cond(Cond), IsTrue(IsTrue) {}
+      : ControlCondition(Kind_ConditionAnd, getDepth(Parent) + 1),
+        Parent(Parent), Cond(Cond), IsTrue(IsTrue) {}
 };
 
 struct ConditionOr : public ControlCondition {
@@ -61,8 +62,10 @@ private:
 };
 
 class ControlDependenceAnalysis {
+  llvm::LoopInfo &LI;
   llvm::DominatorTree &DT;
   llvm::PostDominatorTree &PDT;
+
   using OrKeyT = llvm::ArrayRef<const ControlCondition *>;
   llvm::DenseMap<OrKeyT, std::unique_ptr<ConditionOr>> UniqueOrs;
   using AndKeyT = std::pair<const ControlCondition *, llvm::Value *>;
@@ -80,9 +83,9 @@ class ControlDependenceAnalysis {
   getControlDependentBlocks(llvm::BasicBlock *);
 
 public:
-  ControlDependenceAnalysis(llvm::DominatorTree &DT,
+  ControlDependenceAnalysis(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
                             llvm::PostDominatorTree &PDT)
-      : DT(DT), PDT(PDT) {}
+      : LI(LI), DT(DT), PDT(PDT) {}
   const ControlCondition *getConditionForBlock(llvm::BasicBlock *);
   const ControlCondition *getConditionForEdge(llvm::BasicBlock *,
                                               llvm::BasicBlock *);
@@ -91,6 +94,7 @@ public:
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ControlCondition &);
 const ControlCondition *getGreatestCommonCondition(const ControlCondition *,
                                                    const ControlCondition *);
-const ControlCondition *getGreatestCommonCondition(llvm::ArrayRef<const ControlCondition *>);
+const ControlCondition *
+    getGreatestCommonCondition(llvm::ArrayRef<const ControlCondition *>);
 
 #endif // CONTROL_DEPENDENCE_H

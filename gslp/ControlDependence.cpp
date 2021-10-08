@@ -1,10 +1,13 @@
 #include "ControlDependence.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Instructions.h"
 
 using namespace llvm;
 
 static unsigned maxDepth(ArrayRef<const ControlCondition *> Conds) {
+  if (Conds.empty())
+    return 0;
   unsigned Depth = ControlCondition::getDepth(Conds.front());
   for (auto *C : drop_begin(Conds))
     Depth = std::max(Depth, ControlCondition::getDepth(C));
@@ -59,6 +62,9 @@ ControlDependenceAnalysis::getAnd(const ControlCondition *Parent, Value *Cond,
 
 const ControlCondition *
 ControlDependenceAnalysis::getOr(ArrayRef<const ControlCondition *> Conds) {
+  if (Conds.empty())
+    return nullptr;
+
   if (Conds.size() == 1)
     return Conds.front();
 
@@ -115,6 +121,13 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   auto *Node = DT.getNode(BB);
   if (Node == DT.getRootNode())
     return nullptr;
+
+  if (auto *L = LI.getLoopFor(BB)) {
+    // We track the control condition of the main loop body separately
+    auto *Header = L->getHeader();
+    if (DT.dominates(Header, BB) && PDT.dominates(BB, Header))
+      return nullptr;
+  }
 
   // Fast path:
   // If BB post-dominates its idom, BB has the same control condition

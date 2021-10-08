@@ -27,6 +27,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Analysis/MustExecute.h"
 // For pass building
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -225,9 +226,9 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
-  errs() << "Optimizing " << F.getName() << '\n';
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
+  errs() << "Optimizing " << F.getName() << '\n';
   balanceReductionTree(F);
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
@@ -251,13 +252,18 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   {
+    if (mayContainIrreducibleControl(F, LI))
+      return false;
+
     for (auto &BB : F)
       if (!isa<ReturnInst>(BB.getTerminator()) &&
           !isa<BranchInst>(BB.getTerminator()))
         return false;
     PostDominatorTree PDT(F);
-    ControlDependenceAnalysis CDA(*DT, PDT);
+    ControlDependenceAnalysis CDA(*LI, *DT, PDT);
     for (auto &BB : F) {
+      CDA.getConditionForBlock(&BB);
+#if 0
       errs() << BB.getName() << ": " <<  *CDA.getConditionForBlock(&BB) << '\n';
       SmallVector<const ControlCondition *> Conds;
       for (auto *Pred : predecessors(&BB))
@@ -266,6 +272,7 @@ bool GSLP::runOnFunction(Function &F) {
         errs() << "\tnum preds: " << Conds.size() << '\n';
         errs() << "\tgreatest common for joined conds: " << *getGreatestCommonCondition(Conds) << '\n';
       }
+#endif
     }
     return false;
   }
