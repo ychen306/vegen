@@ -59,6 +59,9 @@ ControlDependenceAnalysis::getAnd(const ControlCondition *Parent, Value *Cond,
 
 const ControlCondition *
 ControlDependenceAnalysis::getOr(ArrayRef<const ControlCondition *> Conds) {
+  if (Conds.size() == 1)
+    return Conds.front();
+
   decltype(UniqueOrs)::iterator It;
   bool Inserted;
   std::tie(It, Inserted) = UniqueOrs.try_emplace(OrKeyT(Conds), nullptr);
@@ -166,5 +169,6 @@ static void dump(raw_ostream &OS, const ControlCondition *C) {
 
 raw_ostream &operator<<(raw_ostream &OS, const ControlCondition &C) {
   dump(OS, &C);
+  OS << "(" << &C << ")";
   return OS;
 }
