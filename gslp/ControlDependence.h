@@ -20,10 +20,15 @@ public:
 
 private:
   const ConditionKind Kind;
+  const unsigned Depth;
 
 public:
-  ControlCondition(ConditionKind K) : Kind(K) {}
+  ControlCondition(ConditionKind K, unsigned Depth) : Kind(K), Depth(Depth) {}
   ConditionKind getKind() const { return Kind; }
+  unsigned depth() const { return Depth; }
+  static unsigned getDepth(const ControlCondition *C) {
+    return C ? C->depth() : 0;
+  }
 };
 
 struct ConditionAnd : public ControlCondition {
@@ -38,13 +43,13 @@ struct ConditionAnd : public ControlCondition {
 private:
   friend class ControlDependenceAnalysis;
   ConditionAnd(const ControlCondition *Parent, llvm::Value *Cond, bool IsTrue)
-      : ControlCondition(Kind_ConditionAnd), Parent(Parent), Cond(Cond),
-        IsTrue(IsTrue) {}
+      : ControlCondition(Kind_ConditionAnd, getDepth(Parent) + 1), Parent(Parent),
+        Cond(Cond), IsTrue(IsTrue) {}
 };
 
 struct ConditionOr : public ControlCondition {
-  const ControlCondition *A;
-  const ControlCondition *B;
+  llvm::SmallVector<const ControlCondition *> Conds;
+  const ControlCondition *GreatestCommonCond;
 
   static bool classof(const ControlCondition *C) {
     return C->getKind() == Kind_ConditionOr;
@@ -52,18 +57,17 @@ struct ConditionOr : public ControlCondition {
 
 private:
   friend class ControlDependenceAnalysis;
-  ConditionOr(const ControlCondition *A, const ControlCondition *B)
-      : ControlCondition(Kind_ConditionOr), A(A), B(B) {}
+  ConditionOr(llvm::ArrayRef<const ControlCondition *> Conds);
 };
 
 class ControlDependenceAnalysis {
   llvm::DominatorTree &DT;
   llvm::PostDominatorTree &PDT;
-  using OrKeyT = std::pair<const ControlCondition *, const ControlCondition *>;
-  llvm::DenseMap<OrKeyT, std::unique_ptr<ControlCondition>> UniqueOrs;
+  using OrKeyT = llvm::ArrayRef<const ControlCondition *>;
+  llvm::DenseMap<OrKeyT, std::unique_ptr<ConditionOr>> UniqueOrs;
   using AndKeyT = std::pair<const ControlCondition *, llvm::Value *>;
-  llvm::DenseMap<AndKeyT, std::unique_ptr<ControlCondition>> UniqueAndOfTrue;
-  llvm::DenseMap<AndKeyT, std::unique_ptr<ControlCondition>> UniqueAndOfFalse;
+  llvm::DenseMap<AndKeyT, std::unique_ptr<ConditionAnd>> UniqueAndOfTrue;
+  llvm::DenseMap<AndKeyT, std::unique_ptr<ConditionAnd>> UniqueAndOfFalse;
 
   llvm::DenseMap<llvm::BasicBlock *, const ControlCondition *> BlockConditions;
   // use std::map to avoid reallocation/iterator stability
@@ -71,8 +75,6 @@ class ControlDependenceAnalysis {
       ControlDependentBlocks;
 
   const ControlCondition *getAnd(const ControlCondition *, llvm::Value *, bool);
-  const ControlCondition *getOr(const ControlCondition *,
-                                const ControlCondition *);
   const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);
   const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &
   getControlDependentBlocks(llvm::BasicBlock *);
@@ -87,5 +89,8 @@ public:
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ControlCondition &);
+const ControlCondition *getGreatestCommonCondition(const ControlCondition *,
+                                                   const ControlCondition *);
+const ControlCondition *getGreatestCommonCondition(llvm::ArrayRef<const ControlCondition *>);
 
 #endif // CONTROL_DEPENDENCE_H

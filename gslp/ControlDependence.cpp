@@ -4,34 +4,69 @@
 
 using namespace llvm;
 
+static unsigned maxDepth(ArrayRef<const ControlCondition *> Conds) {
+  unsigned Depth = ControlCondition::getDepth(Conds.front());
+  for (auto *C : drop_begin(Conds))
+    Depth = std::max(Depth, ControlCondition::getDepth(C));
+  return Depth;
+}
+
+ConditionOr::ConditionOr(ArrayRef<const ControlCondition *> TheConds)
+    : ControlCondition(Kind_ConditionOr, maxDepth(TheConds) + 1),
+      Conds(TheConds.begin(), TheConds.end()),
+      GreatestCommonCond(getGreatestCommonCondition(TheConds)) {}
+
+const ControlCondition *getCommonCondForOr(const ControlCondition *C) {
+  if (auto *Or = dyn_cast_or_null<ConditionOr>(C))
+    return Or->GreatestCommonCond;
+  return C;
+}
+
+const ControlCondition *getGreatestCommonCondition(const ControlCondition *C1,
+                                                   const ControlCondition *C2) {
+  C1 = getCommonCondForOr(C1);
+  C2 = getCommonCondForOr(C2);
+  if (!C1 || !C2)
+    return nullptr;
+
+  while (C1 != C2) {
+    if (C1->depth() < C2->depth())
+      std::swap(C1, C2);
+    C1 = getCommonCondForOr(cast<ConditionAnd>(C1)->Parent);
+    if (!C1)
+      return nullptr;
+  }
+  return C1;
+}
+
+const ControlCondition *
+getGreatestCommonCondition(ArrayRef<const ControlCondition *> Conds) {
+  auto *C = Conds.front();
+  for (auto *C2 : drop_begin(Conds))
+    C = getGreatestCommonCondition(C, C2);
+  return C;
+}
+
 const ControlCondition *
 ControlDependenceAnalysis::getAnd(const ControlCondition *Parent, Value *Cond,
                                   bool IsTrue) {
   AndKeyT Key(Parent, Cond);
-  std::unique_ptr<ControlCondition> &Slot =
-      IsTrue ? UniqueAndOfTrue[Key] : UniqueAndOfFalse[Key];
+  auto &Slot = IsTrue ? UniqueAndOfTrue[Key] : UniqueAndOfFalse[Key];
   if (!Slot)
     Slot.reset(new ConditionAnd(Parent, Cond, IsTrue));
   return Slot.get();
 }
 
 const ControlCondition *
-ControlDependenceAnalysis::getOr(const ControlCondition *A,
-                                 const ControlCondition *B) {
-  OrKeyT Key(A, B);
-  std::unique_ptr<ControlCondition> &Slot = UniqueOrs[Key];
-  if (!Slot)
-    Slot.reset(new ConditionOr(A, B));
-  return Slot.get();
-}
-
-// TODO: sort the conditions?
-const ControlCondition *
 ControlDependenceAnalysis::getOr(ArrayRef<const ControlCondition *> Conds) {
-  auto *Or = Conds.front();
-  for (auto *Cond : drop_begin(Conds))
-    Or = getOr(Or, Cond);
-  return Or;
+  decltype(UniqueOrs)::iterator It;
+  bool Inserted;
+  std::tie(It, Inserted) = UniqueOrs.try_emplace(OrKeyT(Conds), nullptr);
+  if (Inserted) {
+    It->second.reset(new ConditionOr(Conds));
+    It->first = It->second->Conds;
+  }
+  return It->second.get();
 }
 
 const ControlCondition *
@@ -121,9 +156,11 @@ static void dump(raw_ostream &OS, const ControlCondition *C) {
   }
   auto *Or = cast<ConditionOr>(C);
   OS << '(';
-  dump(OS, Or->A);
-  OS << " \\/ ";
-  dump(OS, Or->B);
+  dump(OS, Or->Conds.front());
+  for (auto *C2 : drop_begin(Or->Conds)) {
+    OS << " \\/ ";
+    dump(OS, C2);
+  }
   OS << ')';
 }
 

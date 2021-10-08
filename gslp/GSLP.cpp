@@ -259,6 +259,13 @@ bool GSLP::runOnFunction(Function &F) {
     ControlDependenceAnalysis CDA(*DT, PDT);
     for (auto &BB : F) {
       errs() << BB.getName() << ": " <<  *CDA.getConditionForBlock(&BB) << '\n';
+      SmallVector<const ControlCondition *> Conds;
+      for (auto *Pred : predecessors(&BB))
+        Conds.push_back(CDA.getConditionForBlock(Pred));
+      if (!Conds.empty()) {
+        errs() << "\tnum preds: " << Conds.size() << '\n';
+        errs() << "\tgreatest common for joined conds: " << *getGreatestCommonCondition(Conds) << '\n';
+      }
     }
     return false;
   }
