@@ -1,18 +1,18 @@
+#include "ControlDependence.h"
 #include "IRVec.h"
 #include "InstSema.h"
 #include "Packer.h"
 #include "Solver.h"
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
-#include "ControlDependence.h"
 #include "llvm/ADT/Triple.h"
-#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/MustExecute.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
@@ -27,7 +27,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Analysis/MustExecute.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 // For pass building
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -52,8 +52,10 @@ static cl::opt<std::string>
 static cl::opt<bool> DisableUnrolling("no-unroll", cl::desc("Don't unroll"),
                                       cl::init(false));
 
-static cl::opt<bool> DisableCleanup("no-cleanup", cl::desc("Don't run GVN and ADCE after vectorization"),
-                                      cl::init(false));
+static cl::opt<bool>
+    DisableCleanup("no-cleanup",
+                   cl::desc("Don't run GVN and ADCE after vectorization"),
+                   cl::init(false));
 
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
@@ -242,6 +244,23 @@ bool GSLP::runOnFunction(Function &F) {
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
 
+  // Don't deal with irreducible CFG
+  if (mayContainIrreducibleControl(F, LI))
+    return false;
+
+  // We don't deal with things like switches or invoke
+  for (auto &BB : F)
+    if (!isa<ReturnInst>(BB.getTerminator()) &&
+        !isa<BranchInst>(BB.getTerminator()))
+      return false;
+
+  // Don't deal with infinite loops
+  for (auto *L : LI->getLoopsInPreorder()) {
+    auto *Latch = L->getLoopLatch();
+    if (Latch && cast<BranchInst>(Latch->getTerminator())->isUnconditional())
+      return false;
+  }
+
   std::vector<const InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts())
     if (isSupported(&Inst, F, TTI))
@@ -252,13 +271,7 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   {
-    if (mayContainIrreducibleControl(F, LI))
-      return false;
 
-    for (auto &BB : F)
-      if (!isa<ReturnInst>(BB.getTerminator()) &&
-          !isa<BranchInst>(BB.getTerminator()))
-        return false;
     PostDominatorTree PDT(F);
     ControlDependenceAnalysis CDA(*LI, *DT, PDT);
     for (auto &BB : F) {
@@ -286,7 +299,8 @@ bool GSLP::runOnFunction(Function &F) {
     AssumptionCache AC(F);
     DenseMap<Loop *, unsigned> UFs;
     computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
-    unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap, &UnrolledIterations);
+    unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap,
+                &UnrolledIterations);
   }
 
   PostDominatorTree PDT(F); // recompute PDT after unrolling
