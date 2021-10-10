@@ -33,7 +33,7 @@ public:
 };
 
 struct ConditionAnd : public ControlCondition {
-  const ControlCondition *Parent;
+  const ControlCondition *Parent, *Complement;
   llvm::Value *Cond;
   bool IsTrue;
 

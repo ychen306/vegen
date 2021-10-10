@@ -1,4 +1,5 @@
 #include "ControlDependence.h"
+#include "BlockBuilder.h"
 #include "IRVec.h"
 #include "InstSema.h"
 #include "Packer.h"

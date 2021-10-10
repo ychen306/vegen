@@ -55,8 +55,10 @@ ControlDependenceAnalysis::getAnd(const ControlCondition *Parent, Value *Cond,
                                   bool IsTrue) {
   AndKeyT Key(Parent, Cond);
   auto &Slot = IsTrue ? UniqueAndOfTrue[Key] : UniqueAndOfFalse[Key];
-  if (!Slot)
+  if (!Slot) {
     Slot.reset(new ConditionAnd(Parent, Cond, IsTrue));
+    Slot->Complement = getAnd(Parent, Cond, !IsTrue);
+  }
   return Slot.get();
 }
 

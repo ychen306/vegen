@@ -7,6 +7,7 @@ set(LIB_PACKING_SRC
   Plan.cpp
 
   ControlDependence.cpp
+  BlockBuilder.cpp
 
   Reduction.cpp
 
