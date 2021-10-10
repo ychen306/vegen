@@ -7,11 +7,13 @@
 namespace llvm {
 class LLVMContext;
 class BasicBlock;
+class Function;
 }
 
 class ControlCondition;
 class BlockBuilder {
   llvm::LLVMContext &Ctx;
+  llvm::Function *F;
 
   // Conditions with blocks that we can still modify
   llvm::DenseMap<const ControlCondition *, llvm::BasicBlock *> ActiveConds;
@@ -22,6 +24,8 @@ class BlockBuilder {
 
   unsigned DummyCounter;
   const ControlCondition *getDummyCondition();
+
+  llvm::BasicBlock *createBlock();
 
 public:
   BlockBuilder(llvm::BasicBlock *EntryBB);

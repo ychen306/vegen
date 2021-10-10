@@ -5,7 +5,12 @@
 using namespace llvm;
 
 BlockBuilder::BlockBuilder(BasicBlock *EntryBB)
-    : Ctx(EntryBB->getContext()), ActiveConds({{nullptr, EntryBB}}) {}
+    : Ctx(EntryBB->getContext()), F(EntryBB->getParent()),
+      ActiveConds({{nullptr, EntryBB}}) {}
+
+BasicBlock *BlockBuilder::createBlock() {
+  return BasicBlock::Create(Ctx, "", F);
+}
 
 static Value *emitCondition(const ControlCondition *Common,
                             const ControlCondition *C, IRBuilderBase &IRB);
@@ -70,7 +75,7 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   if (SemiActiveConds.count(C)) {
     SmallPtrSet<const ControlCondition *, 4> Conds;
     GetActiveConds(C, Conds);
-    auto *BB = BasicBlock::Create(Ctx);
+    auto *BB = createBlock();
     for (auto *C2 : Conds) {
       auto It = ActiveConds.find(C2);
       assert(It != ActiveConds.end());
@@ -82,8 +87,8 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   }
 
   if (auto *And = dyn_cast<ConditionAnd>(C)) {
-    auto *IfTrue = BasicBlock::Create(Ctx);
-    auto *IfFalse = BasicBlock::Create(Ctx);
+    auto *IfTrue = createBlock();
+    auto *IfFalse = createBlock();
     BranchInst::Create(IfTrue, IfFalse, And->Cond, getBlockFor(And->Parent));
     auto *BB = And->IsTrue ? IfTrue : IfFalse;
 
@@ -98,7 +103,7 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   auto *Or = cast<ConditionOr>(C);
   // If all of the conditions are active, just join all of them.
   if (all_of(Or->Conds, [&](auto *C2) { return ActiveConds.count(C2); })) {
-    auto *BB = BasicBlock::Create(Ctx);
+    auto *BB = createBlock();
     for (auto *C2 : Or->Conds) {
       auto It = ActiveConds.find(C2);
       assert(It != ActiveConds.end());
@@ -110,16 +115,16 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
     return BB;
   }
 
-  // At this point, we need a join but not all the conditions we want are active.
-  // Find all the active blocks that are using the greatest common cond.
+  // At this point, we need a join but not all the conditions we want are
+  // active. Find all the active blocks that are using the greatest common cond.
   auto *CommonC = getGreatestCommonCondition(Or->Conds);
   SmallPtrSet<const ControlCondition *, 4> Conds;
   GetActiveConds(CommonC, Conds);
 
   // Join the conditions we want to BB.
   // Join the other conditions to AuxBB, which then branch conditionally to BB
-  auto *BB = BasicBlock::Create(Ctx);
-  auto *AuxBB = BasicBlock::Create(Ctx);
+  auto *BB = createBlock();
+  auto *AuxBB = createBlock();
   SmallPtrSet<const ControlCondition *, 4> CondsToJoin, Joined;
   CondsToJoin.insert(Or->Conds.begin(), Or->Conds.end());
   for (auto *C2 : Conds) {
@@ -142,7 +147,7 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
       UnjoinedConds.push_back(C);
 
   // Branch conditionally from AuxBB to BB
-  auto *DrainBB = BasicBlock::Create(Ctx);
+  auto *DrainBB = createBlock();
   BranchInst::Create(BB, DrainBB,
                      emitDisjunction(AuxBB, CommonC, UnjoinedConds), AuxBB);
 

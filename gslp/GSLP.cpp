@@ -275,8 +275,10 @@ bool GSLP::runOnFunction(Function &F) {
 
     PostDominatorTree PDT(F);
     ControlDependenceAnalysis CDA(*LI, *DT, PDT);
+
+    std::vector<const ControlCondition *> Conds;
     for (auto &BB : F) {
-      CDA.getConditionForBlock(&BB);
+      Conds.push_back(CDA.getConditionForBlock(&BB));
 #if 0
       errs() << BB.getName() << ": " <<  *CDA.getConditionForBlock(&BB) << '\n';
       SmallVector<const ControlCondition *> Conds;
@@ -288,6 +290,11 @@ bool GSLP::runOnFunction(Function &F) {
       }
 #endif
     }
+
+    BlockBuilder Builder(BasicBlock::Create(F.getParent()->getContext(), "", &F));
+    for (auto *C : Conds)
+      Builder.getBlockFor(C);
+    F.dump();
     return false;
   }
 
