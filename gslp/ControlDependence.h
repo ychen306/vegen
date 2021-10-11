@@ -77,8 +77,6 @@ class ControlDependenceAnalysis {
   std::map<llvm::BasicBlock *, llvm::SmallPtrSet<llvm::BasicBlock *, 4>>
       ControlDependentBlocks;
 
-  const ControlCondition *getAnd(const ControlCondition *, llvm::Value *, bool);
-  const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);
   const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &
   getControlDependentBlocks(llvm::BasicBlock *);
 
@@ -89,6 +87,9 @@ public:
   const ControlCondition *getConditionForBlock(llvm::BasicBlock *);
   const ControlCondition *getConditionForEdge(llvm::BasicBlock *,
                                               llvm::BasicBlock *);
+  // Should be private but exposed for testing
+  const ControlCondition *getAnd(const ControlCondition *, llvm::Value *, bool);
+  const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ControlCondition &);

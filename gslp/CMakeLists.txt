@@ -47,11 +47,13 @@ endif()
 
 add_library(GSLP MODULE GSLP.cpp TestCodeMotion.cpp TestConsecutiveCheck.cpp)
 add_executable(test-loop-fusion TestLoopFusion.cpp)
+add_executable(test-block-builder TestBlockBuilder.cpp)
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis scalaropts)
 
 target_link_libraries(GSLP Packing)
 
 target_link_libraries(test-loop-fusion Packing ${LLVM_LIBRARIES})
+target_link_libraries(test-block-builder Packing ${LLVM_LIBRARIES})
 
 set_target_properties(GSLP PROPERTIES COMPILE_FLAGS "-fno-rtti")
 

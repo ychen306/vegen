@@ -53,6 +53,7 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
                             SmallPtrSetImpl<const ControlCondition *> &Conds) {
     SmallPtrSet<const ControlCondition *, 4> Visited;
     SmallVector<const ControlCondition *> Worklist{C};
+    assert(SemiActiveConds.count(C));
     while (!Worklist.empty()) {
       auto *C2 = Worklist.pop_back_val();
       if (!Visited.insert(C2).second)
@@ -101,6 +102,7 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   }
 
   auto *Or = cast<ConditionOr>(C);
+
   // If all of the conditions are active, just join all of them.
   if (all_of(Or->Conds, [&](auto *C2) { return ActiveConds.count(C2); })) {
     auto *BB = createBlock();
@@ -117,9 +119,14 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
 
   // At this point, we need a join but not all the conditions we want are
   // active. Find all the active blocks that are using the greatest common cond.
-  auto *CommonC = getGreatestCommonCondition(Or->Conds);
   SmallPtrSet<const ControlCondition *, 4> Conds;
-  GetActiveConds(CommonC, Conds);
+  auto *CommonC = Or->GreatestCommonCond;
+  if (!SemiActiveConds.count(CommonC)) {
+    (void)getBlockFor(CommonC);
+    Conds.insert(CommonC);
+  } else {
+    GetActiveConds(CommonC, Conds);
+  }
 
   // Join the conditions we want to BB.
   // Join the other conditions to AuxBB, which then branch conditionally to BB

@@ -273,6 +273,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   {
 
+#if 0
     PostDominatorTree PDT(F);
     ControlDependenceAnalysis CDA(*LI, *DT, PDT);
 
@@ -296,6 +297,7 @@ bool GSLP::runOnFunction(Function &F) {
       Builder.getBlockFor(C);
     F.dump();
     return false;
+#endif
   }
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
