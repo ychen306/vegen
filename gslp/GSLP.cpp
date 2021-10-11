@@ -271,35 +271,6 @@ bool GSLP::runOnFunction(Function &F) {
       SupportedIntrinsics.push_back(&Inst);
   }
 
-  {
-
-#if 0
-    PostDominatorTree PDT(F);
-    ControlDependenceAnalysis CDA(*LI, *DT, PDT);
-
-    std::vector<const ControlCondition *> Conds;
-    for (auto &BB : F) {
-      Conds.push_back(CDA.getConditionForBlock(&BB));
-#if 0
-      errs() << BB.getName() << ": " <<  *CDA.getConditionForBlock(&BB) << '\n';
-      SmallVector<const ControlCondition *> Conds;
-      for (auto *Pred : predecessors(&BB))
-        Conds.push_back(CDA.getConditionForBlock(Pred));
-      if (!Conds.empty()) {
-        errs() << "\tnum preds: " << Conds.size() << '\n';
-        errs() << "\tgreatest common for joined conds: " << *getGreatestCommonCondition(Conds) << '\n';
-      }
-#endif
-    }
-
-    BlockBuilder Builder(BasicBlock::Create(F.getParent()->getContext(), "", &F));
-    for (auto *C : Conds)
-      Builder.getBlockFor(C);
-    F.dump();
-    return false;
-#endif
-  }
-
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';
 
