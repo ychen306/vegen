@@ -5,16 +5,14 @@ CHECK-NEXT:   br label %1
 
 CHECK: 0:
 CHECK-NEXT:   %DUMMY
-CHECK-NEXT:   br label %6
+CHECK-NEXT:   br label %4
 
 CHECK: 1:
-CHECK-NEXT:   %2 = and i1 true, %x1
-CHECK-NEXT:   %3 = and i1 true, %x2
-CHECK-NEXT:   %4 = or i1 %2, %3
-CHECK-NEXT:   br i1 %4, label %0, label %5
+CHECK-NEXT:   %2 = or i1 %x1, %x2
+CHECK-NEXT:   br i1 %2, label %0, label %3
 
-CHECK: 5:
-CHECK-NEXT:   br label %6
+CHECK: 3:
+CHECK-NEXT:   br label %4
 
-CHECK: 6:
+CHECK: 4:
 CHECK-NEXT:   ret void

@@ -24,14 +24,20 @@ static Value *emitDisjunction(const ControlCondition *Common,
   return IRB.CreateOr(Values);
 }
 
+static Value *CreateAnd(Value *A, Value *B, IRBuilderBase &IRB) {
+  if (A == ConstantInt::getTrue(IRB.getContext()))
+    return B;
+  return IRB.CreateAnd(A, B);
+}
+
 static Value *emitCondition(const ControlCondition *Common,
                             const ControlCondition *C, IRBuilderBase &IRB) {
   if (C == Common)
     return ConstantInt::getTrue(IRB.getContext());
   assert(C);
   if (auto *And = dyn_cast<ConditionAnd>(C)) {
-    return IRB.CreateAnd(emitCondition(Common, And->Parent, IRB),
-                         And->IsTrue ? And->Cond : IRB.CreateNot(And->Cond));
+    return CreateAnd(emitCondition(Common, And->Parent, IRB),
+                     And->IsTrue ? And->Cond : IRB.CreateNot(And->Cond), IRB);
   }
   return emitDisjunction(Common, cast<ConditionOr>(C)->Conds, IRB);
 }

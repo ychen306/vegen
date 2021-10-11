@@ -12,14 +12,13 @@ CHECK-NEXT:   br label %3
 
 CHECK: 2:
 CHECK-NEXT:   %DUMMY-x1-or-x2
-CHECK-NEXT:   br label %6
+CHECK-NEXT:   br label %5
 
 CHECK: 3:
-CHECK-NEXT:   %4 = and i1 true, %x2
-CHECK-NEXT:   br i1 %4, label %2, label %5
+CHECK-NEXT:   br i1 %x2, label %2, label %4
+
+CHECK: 4:
+CHECK-NEXT:   br label %5
 
 CHECK: 5:
-CHECK-NEXT:   br label %6
-
-CHECK: 6:
 CHECK-NEXT:   ret void
