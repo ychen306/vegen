@@ -1,6 +1,6 @@
 #include "ControlDependence.h"
-#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Instructions.h"
 
 using namespace llvm;
@@ -78,6 +78,25 @@ ControlDependenceAnalysis::getOr(ArrayRef<const ControlCondition *> Conds) {
     It->first = It->second->Conds;
   }
   return It->second.get();
+}
+
+const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
+  decltype(Gammas)::iterator It;
+  bool Inserted;
+  std::tie(It, Inserted) = Gammas.try_emplace(PN);
+  if (!Inserted)
+    return It->second.get();
+
+  auto *G = new GammaNode;
+  G->PN = PN;
+  It->second.reset(G);
+  Value *V; BasicBlock *BB;
+  for (auto Pair : zip(PN->incoming_values(), PN->blocks())) {
+    std::tie(V, BB) = Pair;
+    G->Vals.push_back(V);
+    G->Conds.push_back(getConditionForEdge(BB, PN->getParent()));
+  }
+  return G;
 }
 
 const ControlCondition *

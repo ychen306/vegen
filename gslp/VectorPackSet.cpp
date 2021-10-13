@@ -1,5 +1,7 @@
 #include "VectorPackSet.h"
+#include "BlockBuilder.h"
 #include "CodeMotionUtil.h"
+#include "ControlDependence.h"
 #include "Packer.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -192,17 +194,13 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
   return true;
 }
 
-// Topsort the vector packs.
-// Also reschedule the basic block according to the sorted packs.
-//
-// This reordering makes codegen easier because we can
-// just insert the vector instruction immediately after the last
-// instruction that you are replacing.
-static std::vector<const VectorPack *>
-sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
-                       GlobalDependenceAnalysis &DA) {
+// Topsort the instructions s.t. instructions in the same packs are grouped
+// together.
+static std::vector<Instruction *> schedule(Function *F,
+                                           ArrayRef<const VectorPack *> Packs,
+                                           GlobalDependenceAnalysis &DA) {
   if (Packs.empty())
-    return std::vector<const VectorPack *>();
+    return {};
 
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
@@ -210,34 +208,18 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
     for (Value *V : VP->elementValues())
       ValueToPackMap[V] = VP;
 
-  // Sort the packs by dependence
-  std::vector<const VectorPack *> SortedPacks;
-  DenseSet<const VectorPack *> Visited;
-  std::function<void(const VectorPack *)> SortPack = [&](const VectorPack *VP) {
-    bool Inserted = Visited.insert(VP).second;
-    if (!Inserted)
-      return;
-
-    // visit the depended packs
-    for (Value *V : VP->dependedValues())
-      if (auto *DependedVP = ValueToPackMap.lookup(V))
-        SortPack(DependedVP);
-
-    SortedPacks.push_back(VP);
-  };
-
-  // Schedule the basic block subject to the pack dependence.
+  // Schedule the instruction to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
   const VectorPackContext *VPCtx = Packs[0]->getContext();
-  using InstOrPack = PointerUnion<const Instruction *, const VectorPack *>;
+  using InstOrPack = PointerUnion<Instruction *, const VectorPack *>;
   DenseSet<void *> Reordered;
-  std::vector<const Instruction *> ReorderedInsts;
+  std::vector<Instruction *> ReorderedInsts;
   std::function<void(InstOrPack)> Schedule = [&](InstOrPack IOP) {
     bool Inserted = Reordered.insert(IOP.getOpaqueValue()).second;
     if (!Inserted)
       return;
 
-    auto *I = IOP.dyn_cast<const Instruction *>();
+    auto *I = IOP.dyn_cast<Instruction *>();
     auto *VP = IOP.dyn_cast<const VectorPack *>();
 
     if (I && !VPCtx->isKnownValue(I)) {
@@ -271,19 +253,14 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
     }
 
     // Recurse on the depended values
-    for (auto *V : DependedValues) {
-      if (auto *I = dyn_cast<Instruction>(V)) {
-        if (I->getParent() == BB) {
-          Schedule(I);
-        }
-      }
-    }
+    for (auto *V : DependedValues)
+      if (auto *I = dyn_cast<Instruction>(V))
+        Schedule(I);
 
 #ifndef NDEBUG
     for (auto *V : DependedValues)
       if (auto *I2 = dyn_cast<Instruction>(V))
-        if (I2->getParent() == BB)
-          assert(std::count(ReorderedInsts.begin(), ReorderedInsts.end(), I2));
+        assert(std::count(ReorderedInsts.begin(), ReorderedInsts.end(), I2));
 #endif
 
     // Now finalize ordering of this (pack of) instruction(s)
@@ -298,29 +275,17 @@ sortPacksAndScheduleBB(BasicBlock *BB, ArrayRef<const VectorPack *> Packs,
         ReorderedInsts.push_back(I);
   };
 
-  // Sort the packs first
-  for (auto *VP : Packs)
-    SortPack(VP);
-  assert(SortedPacks.size() == Packs.size());
+  for (auto &I : instructions(F)) {
+    // Ignore branches which we will generate from
+    // scratch according to control-dep
+    if (!I.isTerminator())
+      Schedule(&I);
+  }
 
-  for (auto &I : *BB)
-    Schedule(&I);
   for (auto *VP : Packs)
     Schedule(VP);
 
-  assert(ReorderedInsts.size() == BB->size());
-  assert((*ReorderedInsts.rbegin())->isTerminator());
-
-  // Reorder the instruction according to the schedule
-  for (auto *I : ReorderedInsts)
-    const_cast<Instruction *>(I)->removeFromParent();
-  assert(BB->empty());
-  auto &InstList = BB->getInstList();
-  for (auto *I : ReorderedInsts)
-    InstList.push_back(const_cast<Instruction *>(I));
-  assert(BB->size() == ReorderedInsts.size());
-
-  return SortedPacks;
+  return ReorderedInsts;
 }
 
 static Value *emitReduction(RecurKind Kind, Value *A, Value *B,
@@ -362,52 +327,80 @@ static Value *emitReduction(RecurKind Kind, Value *A, Value *B,
   return nullptr;
 }
 
+// Move I to the end of BB
+static void moveToEnd(Instruction *I, BasicBlock *BB) {
+  I->removeFromParent();
+  BB->getInstList().push_back(I);
+  assert(I->getParent() == BB);
+}
+
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
 
-  // Move instructions that we want to pack together into the same basic block
-  EquivalenceClasses<Instruction *> EC;
-  for (auto *VP : AllPacks) {
-    Instruction *Leader = nullptr;
-    for (auto *V : VP->elementValues())
-      if (auto *I = dyn_cast<Instruction>(V)) {
-        if (!Leader) {
-          Leader = I;
-          continue;
-        }
-        EC.unionSets(Leader, I);
-      }
-  }
-  gatherInstructions(F, EC, Pkr.getLoopInfo(), Pkr.getDT(), Pkr.getPDT(),
-                     Pkr.getSE(), Pkr.getLDA(), &Pkr.getDA(), Pkr.getContext());
-
-  SmallVector<Instruction *> DeadInsts;
-
-  std::map<BasicBlock *, SmallVector<const VectorPack *>> PacksByBlock;
-  for (auto *VP : AllPacks)
-    PacksByBlock[getBlockForPack(VP)].push_back(VP);
-
   auto &LI = Pkr.getLoopInfo();
   auto *TTI = Pkr.getTTI();
 
-  SmallVector<std::pair<const ReductionInfo *, SmallVector<Value *, 4>>>
-      ReductionsToPatch;
+  // Schedule the instructions
+  std::vector<Instruction *> OrderedInsts = schedule(F, AllPacks, Pkr.getDA());
 
-  // Generate code in RPO of the CFG
-  ReversePostOrderTraversal<Function *> RPO(F);
-  SmallVector<const VectorPack *> PHIPacks;
-  // Mapping loop-latch to the reduction packs that we should be emiting
-  DenseMap<BasicBlock *, SmallVector<const VectorPack *, 1>> RdxPacks;
-  for (BasicBlock *BB : RPO) {
-    if (!PacksByBlock.count(BB))
+  // Remove the basic blocks from F
+  std::vector<BasicBlock *> OldBlocks;
+  for (auto &BB : *F) {
+    OldBlocks.push_back(&BB);
+    BB.removeFromParent();
+  }
+
+  // Now generate code according to the schedule
+  auto &Ctx = F->getParent()->getContext();
+  BlockBuilder BBuilder(BasicBlock::Create(Ctx, "entry", F));
+  for (auto *I : OrderedInsts) {
+    auto *Cond = Pkr.getBlockCondition(I->getParent());
+    auto *VP = ValueToPackMap.lookup(I);
+
+    // I is not packed
+    if (!VP) {
+      moveToEnd(I, BBuilder.getBlockFor(Cond));
+      continue;
+    }
+
+    // I is packed but we've already lowered that pack
+    if (MaterializedPacks.count(VP))
       continue;
 
-    // Determine the schedule according to the dependence constraint
-    std::vector<const VectorPack *> OrderedPacks =
-        sortPacksAndScheduleBB(BB, PacksByBlock[BB], Pkr.getDA());
+    // Get the operands ready.
+    SmallVector<Value *, 2> Operands;
+    for (auto &Item : enumerate(VP->getOperandPacks())) {
+      auto *OP = Item.value();
+      VP->setOperandGatherPoint(Item.index(), Builder);
+      Operands.push_back(
+          gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
+    }
 
-    // Now generate code according to the schedule
+    // Get or create a new basic block to emit the pack
+    SmallVector<const ControlCondition *, 8> Conds;
+    for (auto *V : VP->elementValues())
+      Conds.push_back(
+          Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+    Builder.SetInsertPoint(
+        BBuilder.getBlockFor(getGreatestCommonCondition(Conds)));
+
+    // Now we can emit the vector instruction
+    auto *VecInst = VP->emit(Operands, Builder);
+
+    // Conservatively extract all elements.
+    // Let the later cleanup passes clean up dead extracts.
+    if (!isa<StoreInst>(VecInst) && !VP->isReduction()) {
+      for (auto &Item : enumerate(VP->getOrderedValues())) {
+        if (auto *V = Item.value()) {
+          auto *Extract = Builder.CreateExtractElement(VecInst, Item.index());
+          V->replaceAllUsesWith(Extract);
+        }
+      }
+    }
+  }
+
+#if 0
     for (auto *VP : OrderedPacks) {
       if (VP->isPHI())
         PHIPacks.push_back(VP);
@@ -477,134 +470,5 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       // Map the pack to its materialized value
       MaterializedPacks[VP] = VecInst;
     }
-
-    if (!RdxPacks.count(BB))
-      continue;
-
-    // Emit the reductions!
-    for (auto *VP : RdxPacks[BB]) {
-      auto *L = LI.getLoopFor(BB);
-      auto *Header = L->getHeader();
-      auto *Exit = L->getExitBlock();
-      auto *Latch = BB;
-      ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
-      auto *VecTy = getVectorType(*OPs.front());
-      auto &RI = VP->getReductionInfo();
-
-      SmallVector<PHINode *, 4> VecPhis;
-      SmallVector<Value *, 4> RdxOps;
-      for (auto *OP : OPs) {
-        // Emit the vector phi, specify the incomings later
-        Builder.SetInsertPoint(&Header->front());
-        auto *VecPhi = Builder.CreatePHI(VecTy, 2 /*num incoming*/);
-        VecPhis.push_back(VecPhi);
-
-        // Gather operand in the latch
-        Builder.SetInsertPoint(Latch->getTerminator());
-        auto *Operand =
-            gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
-        RdxOps.push_back(emitReduction(RI.Kind, VecPhi, Operand, Builder));
-      }
-
-      // Patch up the vector phi
-      Value *IdentityVector;
-      if (RecurrenceDescriptor::isMinMaxRecurrenceKind(RI.Kind)) {
-        Builder.SetInsertPoint(L->getLoopPreheader()->getTerminator());
-        IdentityVector =
-            Builder.CreateVectorSplat(VecTy->getElementCount(), RI.StartValue);
-      } else {
-        auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
-            RI.Kind, RI.Phi->getType());
-        IdentityVector =
-            ConstantVector::getSplat(VecTy->getElementCount(), Identity);
-      }
-
-      for (auto Pair : zip(VecPhis, RdxOps)) {
-        PHINode *VecPhi = std::get<0>(Pair);
-        Value *RdxOp = std::get<1>(Pair);
-        VecPhi->addIncoming(IdentityVector, L->getLoopPreheader());
-        VecPhi->addIncoming(RdxOp, Latch);
-      }
-
-      DeadInsts.append(RI.Ops.begin(), RI.Ops.end());
-      DeadInsts.push_back(RI.Phi);
-
-      // Record the fact that we are replacing the original scalar reduction
-      ReductionsToPatch.emplace_back(&RI, RdxOps);
-    }
-  }
-
-  // We need to do reduction *after* latch and *before* exits (because of LCSSA
-  // phis)
-  SmallVector<DominatorTree::UpdateType, 4> CFGUpdates;
-  DenseMap<BasicBlock *, BasicBlock *> PreExits;
-  // Patch up the reductions
-  for (auto &Pair : ReductionsToPatch) {
-    const ReductionInfo *RI = Pair.first;
-    ArrayRef<Value *> RdxOps = Pair.second;
-
-    auto *L = LI.getLoopFor(RI->Phi->getParent());
-    auto *Exit = L->getExitBlock();
-    auto *PreExit = PreExits.lookup(Exit);
-    if (!PreExit) {
-      PreExit = Exit->splitBasicBlockBefore(Exit->begin(),
-                                            Exit->getName() + ".split");
-      auto *Latch = L->getLoopLatch();
-      PreExits[Exit] = PreExit;
-      CFGUpdates.emplace_back(cfg::UpdateKind::Insert, Latch, PreExit);
-      CFGUpdates.emplace_back(cfg::UpdateKind::Insert, PreExit, Exit);
-      CFGUpdates.emplace_back(cfg::UpdateKind::Delete, Latch, Exit);
-    }
-
-    //// Reduce the vector in the exit block
-    Builder.SetInsertPoint(&PreExit->front());
-
-    Value *RdxOp = RdxOps.front();
-    for (auto *RdxOp2 : drop_begin(RdxOps))
-      RdxOp = emitReduction(RI->Kind, RdxOp, RdxOp2, Builder);
-
-    auto *HorizontalRdx =
-        createSimpleTargetReduction(Builder, TTI, RdxOp, RI->Kind);
-    auto *Reduced =
-        emitReduction(RI->Kind, HorizontalRdx, RI->StartValue, Builder);
-    RI->Ops.front()->replaceAllUsesWith(Reduced);
-  }
-  Pkr.getDT().applyUpdates(CFGUpdates);
-
-  // Patch up the operands of the phi packs
-  for (auto *VP : PHIPacks) {
-    ArrayRef<OperandPack *> OPs = VP->getOperandPacks();
-    for (unsigned i = 0; i < OPs.size(); i++) {
-      VP->setOperandGatherPoint(i, Builder);
-      Value *Gathered =
-          gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
-      cast<Instruction>(MaterializedPacks[VP])->setOperand(i, Gathered);
-    }
-  }
-
-  // Delete the dead instructions.
-  // Do it the reverse of program order to avoid dangling pointer.
-  for (Instruction *I : reverse(DeadInsts)) {
-    auto *Undef = UndefValue::get(I->getType());
-    I->replaceAllUsesWith(Undef);
-    I->dropAllReferences();
-  }
-  for (Instruction *I : reverse(DeadInsts)) {
-    assert(!I->isTerminator());
-    I->eraseFromParent();
-  }
-
-  // Another pass to delete trivially dead instructions
-  bool Changed;
-  do {
-    SmallVector<Instruction *> ReallyDeadInsts;
-    for (Instruction &I : instructions(F))
-      if (isInstructionTriviallyDead(&I))
-        ReallyDeadInsts.push_back(&I);
-    for (auto *I : ReallyDeadInsts)
-      I->eraseFromParent();
-    Changed = !ReallyDeadInsts.empty();
-  } while (Changed);
-
-  fixDefUseDominance(F, Pkr.getDT());
+#endif
 }

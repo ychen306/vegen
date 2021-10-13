@@ -12,6 +12,7 @@ class BasicBlock;
 class PostDominatorTree;
 class LoopInfo;
 class DominatorTree;
+class PHINode;
 class raw_ostream;
 } // namespace llvm
 
@@ -61,6 +62,12 @@ private:
   ConditionOr(llvm::ArrayRef<const ControlCondition *> Conds);
 };
 
+struct GammaNode {
+  llvm::PHINode *PN;
+  llvm::SmallVector<llvm::Value *, 2> Vals;
+  llvm::SmallVector<const ControlCondition *, 2> Conds;
+};
+
 class ControlDependenceAnalysis {
   llvm::LoopInfo &LI;
   llvm::DominatorTree &DT;
@@ -73,6 +80,9 @@ class ControlDependenceAnalysis {
   llvm::DenseMap<AndKeyT, std::unique_ptr<ConditionAnd>> UniqueAndOfFalse;
 
   llvm::DenseMap<llvm::BasicBlock *, const ControlCondition *> BlockConditions;
+
+  llvm::DenseMap<llvm::PHINode *, std::unique_ptr<GammaNode>> Gammas;
+
   // use std::map to avoid reallocation/iterator stability
   std::map<llvm::BasicBlock *, llvm::SmallPtrSet<llvm::BasicBlock *, 4>>
       ControlDependentBlocks;
@@ -87,6 +97,8 @@ public:
   const ControlCondition *getConditionForBlock(llvm::BasicBlock *);
   const ControlCondition *getConditionForEdge(llvm::BasicBlock *,
                                               llvm::BasicBlock *);
+  const GammaNode *getGamma(llvm::PHINode *);
+
   // Should be private but exposed for testing
   const ControlCondition *getAnd(const ControlCondition *, llvm::Value *, bool);
   const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);

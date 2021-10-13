@@ -1,11 +1,12 @@
 #ifndef PACKER_H
 #define PACKER_H
 
+#include "CodeMotionUtil.h"
+#include "ControlDependence.h"
 #include "DependenceAnalysis.h"
 #include "InstSema.h"
 #include "MatchManager.h"
 #include "VectorPackContext.h"
-#include "CodeMotionUtil.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -83,6 +84,7 @@ class Packer {
   llvm::Function *F;
   VectorPackContext VPCtx;
   GlobalDependenceAnalysis DA;
+  ControlDependenceAnalysis CDA;
   // FIXME: make this not mutable
   mutable LazyDependenceAnalysis LDA;
   MatchManager MM;
@@ -98,6 +100,11 @@ class Packer {
   AccessLayoutInfo LoadInfo, StoreInfo;
   llvm::DenseMap<const OperandPack *, OperandProducerInfo> Producers;
 
+  llvm::DenseMap<llvm::BasicBlock *, const ControlCondition *> BlockConditions;
+  llvm::DenseMap<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>,
+                 const ControlCondition *>
+      EdgeConditions;
+
   std::vector<const InstBinding *> SupportedInsts;
 
   llvm::LazyValueInfo *LVI;
@@ -110,7 +117,7 @@ public:
          llvm::DominatorTree *DT, llvm::PostDominatorTree *PDT,
          llvm::DependenceInfo *DI, llvm::LazyValueInfo *LVI,
          llvm::TargetTransformInfo *TTI, llvm::BlockFrequencyInfo *BFI,
-         llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks=nullptr,
+         llvm::EquivalenceClasses<llvm::BasicBlock *> *UnrolledBlocks = nullptr,
          bool Preplanning = false);
 
   const VectorPackContext *getContext() const { return &VPCtx; }
@@ -137,6 +144,14 @@ public:
 
   const llvm::DataLayout *getDataLayout() const {
     return &F->getParent()->getDataLayout();
+  }
+
+  const ControlCondition *getBlockCondition(llvm::BasicBlock *BB) const {
+    return BlockConditions.lookup(BB);
+  }
+  const ControlCondition *getEdgeCondition(llvm::BasicBlock *Src,
+                                           llvm::BasicBlock *Dst) const {
+    return EdgeConditions.lookup({Src, Dst});
   }
 
   llvm::Function *getFunction() const { return F; }

@@ -9,13 +9,17 @@
 #include "llvm/IR/Instruction.h"
 #include <set>
 
+// Phi node with incoming blocks replaced with explicit control conditions
+class GammaNode;
+
 // A vector pack is an *ordered* set of values,
 // these values should come from the same basic block
 class VectorPack {
 public:
-  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const VectorPack &VP);
+  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
+                                       const VectorPack &VP);
 
-  enum PackKind { General, Phi, Load, Store, Reduction, GEP };
+  enum PackKind { General, Phi, Load, Store, Reduction, GEP, Gamma };
 
 private:
   friend class VectorPackContext;
@@ -38,6 +42,10 @@ private:
   llvm::SmallVector<llvm::StoreInst *, 4> Stores;
   // PHI
   llvm::SmallVector<llvm::PHINode *, 4> PHIs;
+
+  // Gated PHI (i.e., divergent PHIs that we will lower into vector select
+  llvm::SmallVector<const GammaNode *, 4> Gammas;
+
   // Loop reduction
   llvm::Optional<ReductionInfo> Rdx;
   unsigned RdxLen;
@@ -119,6 +127,18 @@ private:
              llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::GEP), GEPs(GEPs.begin(), GEPs.end()) {
+    computeOperandPacks();
+    computeOrderedValues();
+    computeCost(TTI);
+  }
+
+  // Gated PHI Pack
+  VectorPack(const VectorPackContext *VPCtx,
+             llvm::ArrayRef<const GammaNode *> Gammas,
+             llvm::BitVector Elements, llvm::BitVector Depended,
+             llvm::TargetTransformInfo *TTI)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::Gamma), Gammas(Gammas.begin(), Gammas.end()) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);

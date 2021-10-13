@@ -1,6 +1,7 @@
 #include "VectorPackContext.h"
 #include "Reduction.h"
 #include "VectorPack.h"
+#include "ControlDependence.h"
 #include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
@@ -157,4 +158,83 @@ OperandPack *VectorPackContext::getCanonicalOperandPack(OperandPack OP) const {
     return It->second.get();
   auto NewOP = std::make_unique<OperandPack>(OP);
   return (OperandCache[*NewOP] = std::move(NewOP)).get();
+}
+
+// Categorize whether we can produce this pack as a vector of AND, OR, or can't vectorize
+// enum ConditionKind { CP_And, CP_Or, CP_Infeasible };
+// ConditionKind Kind;
+// llvm::SmallVector<const ControlCondition *, 4> Conds;
+// const OperandPack *OP; // If this is an AND pack
+
+ConditionPack *VectorPackContext::getConditionPack(
+    ArrayRef<const ControlCondition *> Conds) const {
+  auto It = ConditionPackCache.find(Conds);
+  if (It != ConditionPackCache.end())
+    return It->second.get();
+
+  auto *NewCP = new ConditionPack;
+  NewCP->Conds.assign(Conds.begin(), Conds.end());
+  NewCP->ElemsToFlip.resize(Conds.size());
+  ConditionPackCache[NewCP->Conds].reset(NewCP);
+
+  // See if there are duplicated conditions
+  SmallPtrSet<const ControlCondition *, 8> Seen;
+  for (auto *C : Conds)
+    if (!Seen.insert(C).second) {
+      NewCP->Kind = ConditionPack::CP_Infeasible;
+      return NewCP;
+    }
+
+  if (all_of(Conds, [](auto *C) { return !C || isa<ConditionAnd>(C); })) {
+    SmallVector<const ControlCondition *> Parents;
+    OperandPack OP;
+    for (auto Item : enumerate(Conds)) {
+      auto *C = Item.value();
+      unsigned i = Item.index();
+      if (C) {
+        auto *And = cast<ConditionAnd>(C);
+        Parents.push_back(And->Parent);
+        OP.push_back(And->Cond);
+        if (!And->IsTrue)
+          NewCP->ElemsToFlip.set(i);
+      } else {
+        Parents.push_back(nullptr);
+        OP.push_back(nullptr);
+      }
+    }
+
+    bool AllNull = Parents.front() == nullptr && is_splat(Parents);
+    if (!AllNull)
+      NewCP->Parent = getConditionPack(Parents);
+    NewCP->OP = getCanonicalOperandPack(OP);
+    return NewCP;
+  }
+
+  // Can't pack conditions that are mix of ANDs and ORs
+  if (!all_of(Conds, [](auto *C) { return !C || isa<ConditionOr>(C); })) {
+    NewCP->Kind = ConditionPack::CP_Infeasible;
+    return NewCP;
+  }
+
+  unsigned MaxNumTerms = 0;
+  for (auto *C : Conds) {
+    if (!C) continue;
+    auto *Or = cast<ConditionOr>(C);
+    if (MaxNumTerms < Or->Conds.size())
+      MaxNumTerms = Or->Conds.size();
+  }
+
+  for (unsigned i = 0; i < MaxNumTerms; i++) {
+    SmallVector<const ControlCondition *> IthConds;
+    for (auto *C : Conds) {
+      auto *Or = dyn_cast_or_null<ConditionOr>(C);
+      if (Or && i < Or->Conds.size())
+        IthConds.push_back(Or->Conds[i]);
+      else
+        IthConds.push_back(nullptr);
+    }
+    NewCP->CPs.push_back(getConditionPack(IthConds));
+  }
+
+  return NewCP;
 }

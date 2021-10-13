@@ -30,10 +30,23 @@ struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
   mutable llvm::FixedVectorType *Ty = nullptr;
 };
 
+class ControlCondition;
+struct ConditionPack {
+  // Categorize whether we can produce this pack as a vector of AND, OR, or can't vectorize
+  enum ConditionKind { CP_And, CP_Or, CP_Infeasible };
+  ConditionKind Kind;
+  llvm::SmallVector<const ControlCondition *, 4> Conds;
+
+  const ConditionPack *Parent = nullptr; // For And
+  const OperandPack *OP = nullptr; // If this is an AND pack
+  llvm::BitVector ElemsToFlip; // a mask indicating which elements of OP should be flipped;
+
+  llvm::SmallVector<const ConditionPack *> CPs; // For Or
+};
+
 // VectorPackContext captures various meta data we use to create and manage
 // vector packs. Basically we want to store vector packs are a bitvector, and we
 // need this class to manage the mapping between a value and its integer id
-class VectorPack;
 struct VectorPackCache;
 struct OperandPackCache;
 class VectorPackContext {
@@ -46,6 +59,9 @@ class VectorPackContext {
   mutable llvm::DenseMap<llvm::ArrayRef<llvm::Value *>,
                          std::unique_ptr<OperandPack>>
       OperandCache;
+  mutable llvm::DenseMap<llvm::ArrayRef<const ControlCondition *>,
+                         std::unique_ptr<ConditionPack>>
+      ConditionPackCache;
 
 public:
   VectorPackContext(llvm::Function *F);
@@ -90,6 +106,7 @@ public:
                   llvm::TargetTransformInfo *TTI) const;
 
   OperandPack *getCanonicalOperandPack(OperandPack OP) const;
+  ConditionPack *getConditionPack(llvm::ArrayRef<const ControlCondition *>) const;
 
   // Remove duplicate elements in OP
   const OperandPack *dedup(const OperandPack *) const;

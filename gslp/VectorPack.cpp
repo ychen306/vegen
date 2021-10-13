@@ -1,4 +1,5 @@
 #include "VectorPack.h"
+#include "ControlDependence.h"
 #include "MatchManager.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/VectorUtils.h"
@@ -240,7 +241,7 @@ Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
 }
 
 static void getGEPOperands(unsigned i, ArrayRef<GetElementPtrInst *> GEPs,
-                          SmallVectorImpl<Value *> &Operands) {
+                           SmallVectorImpl<Value *> &Operands) {
   for (auto *GEP : GEPs)
     Operands.push_back(GEP->getOperand(i));
 }

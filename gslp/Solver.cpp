@@ -83,16 +83,6 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
             continue;
 
-#if 0
-          auto CompatibleWithNext = [&](Instruction *I) {
-            return Pkr->isControlCompatible(I, NextAccess);
-          };
-          if (!all_of(Accesses, CompatibleWithNext))
-            continue;
-#endif
-          if (!Pkr->isControlCompatible(Accesses.front(), NextAccess))
-            continue;
-
           auto AccessesExt = Accesses;
           auto ElementsExt = Elements;
           auto DependedExt = Depended;

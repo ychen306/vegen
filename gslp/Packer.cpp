@@ -1,8 +1,8 @@
 #include "Packer.h"
 #include "CodeMotionUtil.h"
 #include "ConsecutiveCheck.h"
-#include "MatchManager.h"
 #include "ControlEquivalence.h"
+#include "MatchManager.h"
 #include "VectorPack.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/InstIterator.h"
@@ -16,17 +16,20 @@ bool isScalarType(Type *Ty) {
 }
 
 void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
-    EquivalenceClasses<Instruction *> &EquivalentAccesses,
+                    EquivalenceClasses<Instruction *> &EquivalentAccesses,
                     const DataLayout *DL, ScalarEvolution *SE, LoopInfo *LI) {
-  DenseMap<std::pair<Type *, unsigned>, std::vector<Instruction *>> AccessesByTypes;
+  DenseMap<std::pair<Type *, unsigned>, std::vector<Instruction *>>
+      AccessesByTypes;
   for (auto *I : Accesses) {
     auto *Ptr = getLoadStorePointerOperand(I);
     assert(Ptr);
-    AccessesByTypes[{Ptr->getType(), LI->getLoopDepth(I->getParent())}].push_back(I);
+    AccessesByTypes[{Ptr->getType(), LI->getLoopDepth(I->getParent())}]
+        .push_back(I);
   }
 
   for (auto &KV : AccessesByTypes) {
-    auto ConsecutiveAccesses = findConsecutiveAccesses(*SE, *DL, *LI, KV.second, EquivalentAccesses);
+    auto ConsecutiveAccesses =
+        findConsecutiveAccesses(*SE, *DL, *LI, KV.second, EquivalentAccesses);
     for (auto Pair : ConsecutiveAccesses)
       DAG[Pair.first].insert(Pair.second);
   }
@@ -57,14 +60,23 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, LoopInfo *LI, ScalarEvolution *SE,
                DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
                LazyValueInfo *LVI, TargetTransformInfo *TTI,
-               BlockFrequencyInfo *BFI, EquivalenceClasses<BasicBlock *> *UnrolledBlocks,
+               BlockFrequencyInfo *BFI,
+               EquivalenceClasses<BasicBlock *> *UnrolledBlocks,
                bool Preplanning)
-    : F(&F), VPCtx(&F),
-      DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
-      LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F), MM(Insts, F),
-      CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA, true /*precompute*/, UnrolledBlocks),
+    : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
+      CDA(*LI, *DT, *PDT), LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F),
+      MM(Insts, F), CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA,
+                                  true /*precompute*/, UnrolledBlocks),
       SE(SE), DT(DT), PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI),
       TTI(TTI), BFI(BFI) {
+
+  for (auto &BB : F) {
+    BlockConditions[&BB] = CDA.getConditionForBlock(&BB);
+    if (!isa<PHINode>(&BB.front()))
+      continue;
+    for (auto *Pred : predecessors(&BB))
+      EdgeConditions[{Pred, &BB}] = CDA.getConditionForEdge(Pred, &BB);
+  }
 
   std::vector<Instruction *> Loads, Stores;
   for (auto &I : instructions(&F)) {
@@ -212,7 +224,8 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
   }
 }
 
-static bool matchPackableGEPs(ArrayRef<Value *> Values, SmallVectorImpl<GetElementPtrInst *> &GEPs) {
+static bool matchPackableGEPs(ArrayRef<Value *> Values,
+                              SmallVectorImpl<GetElementPtrInst *> &GEPs) {
   GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(Values.front());
   if (!GEP)
     return false;
@@ -269,14 +282,6 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     Elements.set(InstId);
     Depended |= DA.getDepended(I);
 
-    // We can only pack instructions that are control-compatible
-    //auto CompatibleWithI = [&](Instruction *I2) {
-    //  return isControlCompatible(I, I2);
-    //};
-    //if (!OPI.Feasible || !all_of(VisitedInsts, CompatibleWithI))
-    if (!OPI.Feasible || (!VisitedInsts.empty() && !isControlCompatible(VisitedInsts.front(), I))) {
-      OPI.Feasible = false;
-    }
     VisitedInsts.push_back(I);
   }
 
@@ -292,7 +297,8 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     // FIXME: make sure the loads have the same type?
     for (auto *V : *OP)
       Loads.push_back(cast<LoadInst>(V));
-    OPI.LoadProducers.push_back(VPCtx.createLoadPack(Loads, Elements, Depended, TTI, true/*is gather*/));
+    OPI.LoadProducers.push_back(VPCtx.createLoadPack(Loads, Elements, Depended,
+                                                     TTI, true /*is gather*/));
     if (OPI.LoadProducers.empty())
       OPI.Feasible = false;
     return OPI;
@@ -313,7 +319,8 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
   SmallVector<GetElementPtrInst *, 4> GEPs;
   if (matchPackableGEPs(*OP, GEPs)) {
-    OPI.Producers.push_back(VPCtx.createGEPPack(GEPs, OPI.Elements, Depended, TTI));
+    OPI.Producers.push_back(
+        VPCtx.createGEPPack(GEPs, OPI.Elements, Depended, TTI));
     return OPI;
   }
 
