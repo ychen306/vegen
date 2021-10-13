@@ -307,7 +307,15 @@ void VectorPack::computeOperandPacks() {
       getOperandPacksFromCondition(VPCtx->getConditionPack(Conds), OperandPacks);
       OperandPacks.push_back(VPCtx->getCanonicalOperandPack(ValOP));
     }
-
+  } break;
+  case Cmp: {
+    SmallVector<OperandPack, 2> OPs;
+    OPs.resize(2);
+    for (unsigned i : {0, 1}) {
+      for (auto *Cmp : Cmps)
+        OPs[i].push_back(Cmp->getOperand(i));
+    }
+    canonicalizeOperandPacks(OPs);
   } break;
 
   } // end switch
@@ -340,6 +348,12 @@ static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
   return Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idxs);
 }
 
+static Value *emitVectorCmp(ArrayRef<CmpInst *> Cmps, ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+  auto Pred = Cmps.front()->getPredicate();
+  assert(Operands.size() == 2);
+  return Builder.CreateCmp(Pred, Operands[0], Operands[1]);
+}
+
 Value *VectorPack::emit(ArrayRef<Value *> Operands,
                         IntrinsicBuilder &Builder) const {
   IRBuilderBase::InsertPointGuard Guard(Builder);
@@ -356,8 +370,11 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
     return emitVectorPhi(Operands, Builder);
   case GEP:
     return emitVectorGEP(GEPs, Operands, Builder);
+  case Cmp:
+    return emitVectorCmp(Cmps, Operands, Builder);
   case Reduction:
-    llvm_unreachable("Don't call emit on reduction pack directly");
+  case Gamma:
+    llvm_unreachable("Don't call emit on reduction and gamma pack directly");
   }
 }
 
@@ -397,6 +414,10 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     }
     break;
   }
+  case Cmp:
+    // FIXME: call TTI
+    Cost = 1;
+    break;
   case Phi:
     Cost = 0;
     break;
@@ -406,6 +427,10 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     break;
   case GEP:
     Cost = 0;
+    break;
+  case Gamma:
+    // FIXME call TTI
+    Cost = 1;
     break;
   }
 
@@ -433,6 +458,13 @@ void VectorPack::computeOrderedValues() {
   case GEP:
     OrderedValues.assign(GEPs.begin(), GEPs.end());
     break;
+  case Cmp:
+    OrderedValues.assign(Cmps.begin(), Cmps.end());
+    break;
+  case Gamma:
+    for (auto *G : Gammas)
+      OrderedValues.push_back(G->PN);
+    break;
   }
 }
 
@@ -454,6 +486,8 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   StringRef ProducerName = "";
   if (auto *Producer = VP.getProducer())
     ProducerName = Producer->getName();
+  else if (VP.isGamma())
+    ProducerName = "Gamma";
   else if (VP.isReduction())
     ProducerName = "reduction";
   else if (VP.IsGatherScatter)

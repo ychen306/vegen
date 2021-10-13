@@ -19,7 +19,7 @@ public:
   friend llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
                                        const VectorPack &VP);
 
-  enum PackKind { General, Phi, Load, Store, Reduction, GEP, Gamma };
+  enum PackKind { General, Phi, Load, Store, Reduction, GEP, Gamma, Cmp };
 
 private:
   friend class VectorPackContext;
@@ -42,15 +42,14 @@ private:
   llvm::SmallVector<llvm::StoreInst *, 4> Stores;
   // PHI
   llvm::SmallVector<llvm::PHINode *, 4> PHIs;
-
   // Gated PHI (i.e., divergent PHIs that we will lower into vector select
   llvm::SmallVector<const GammaNode *, 4> Gammas;
-
   // Loop reduction
   llvm::Optional<ReductionInfo> Rdx;
   unsigned RdxLen;
   // GEP
   llvm::SmallVector<llvm::GetElementPtrInst *, 4> GEPs;
+  llvm::SmallVector<llvm::CmpInst *, 4> Cmps;
   ///////////////
 
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
@@ -134,11 +133,21 @@ private:
 
   // Gated PHI Pack
   VectorPack(const VectorPackContext *VPCtx,
-             llvm::ArrayRef<const GammaNode *> Gammas,
-             llvm::BitVector Elements, llvm::BitVector Depended,
-             llvm::TargetTransformInfo *TTI)
+             llvm::ArrayRef<const GammaNode *> Gammas, llvm::BitVector Elements,
+             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::Gamma), Gammas(Gammas.begin(), Gammas.end()) {
+    computeOperandPacks();
+    computeOrderedValues();
+    computeCost(TTI);
+  }
+
+  // Cmp pack
+  VectorPack(const VectorPackContext *VPCtx,
+             llvm::ArrayRef<llvm::CmpInst *> Cmps, llvm::BitVector Elements,
+             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::Cmp), Cmps(Cmps.begin(), Cmps.end()) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);
@@ -189,6 +198,7 @@ public:
   bool isStore() const { return Kind == Store; }
   bool isLoad() const { return Kind == Load; }
   bool isPHI() const { return Kind == Phi; }
+  bool isGamma() const { return Kind == Gamma; }
   bool isReduction() const { return Rdx.hasValue(); }
   const ReductionInfo &getReductionInfo() const {
     assert(isReduction());
@@ -205,7 +215,9 @@ public:
 
   const llvm::BitVector &getElements() const { return Elements; }
 
-  llvm::ArrayRef<const OperandPack *> getOperandPacks() const { return OperandPacks; }
+  llvm::ArrayRef<const OperandPack *> getOperandPacks() const {
+    return OperandPacks;
+  }
 
   llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                     IntrinsicBuilder &Builder) const;

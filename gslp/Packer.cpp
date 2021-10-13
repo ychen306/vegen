@@ -224,6 +224,22 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
   }
 }
 
+static bool matchPackableCmps(ArrayRef<Value *> Values,
+                              SmallVectorImpl<CmpInst *> &Cmps) {
+  for (auto *V : Values) {
+    auto *Cmp = dyn_cast_or_null<CmpInst>(V);
+    if (!Cmp)
+      return false;
+    Cmps.push_back(Cmp);
+  }
+
+  auto Opcode = Cmps.front()->getOpcode();
+  auto Pred = Cmps.front()->getPredicate();
+  return all_of(drop_begin(Cmps), [&](auto *Cmp) {
+    return Cmp->getOpcode() == Opcode && Cmp->getPredicate() == Pred;
+  });
+}
+
 static bool matchPackableGEPs(ArrayRef<Value *> Values,
                               SmallVectorImpl<GetElementPtrInst *> &GEPs) {
   GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(Values.front());
@@ -306,14 +322,46 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
   if (AllPHIs) {
     SmallVector<PHINode *> PHIs;
-    for (auto *V : *OP)
-      PHIs.push_back(cast<PHINode>(V));
-    OPI.Producers.push_back(VPCtx.createPhiPack(PHIs, TTI));
+    unsigned NumIncomings = cast<PHINode>(OP->front())->getNumIncomingValues();
+    for (auto *V : *OP) {
+      // Don't bother pack phis with different number of incomings
+      auto *PN = cast<PHINode>(V);
+      if (PN->getNumIncomingValues() != NumIncomings) {
+        OPI.Feasible = false;
+        return OPI;
+      }
+      PHIs.push_back(PN);
+    }
+    bool Convergent = true;
+    for (unsigned i = 0; i < NumIncomings; i++) {
+      SmallVector<const ControlCondition *> EdgeConds;
+      for (auto *PN : PHIs)
+        EdgeConds.push_back(
+            getEdgeCondition(PN->getIncomingBlock(i), PN->getParent()));
+      if (!is_splat(EdgeConds)) {
+        Convergent = false;
+      }
+    }
+    if (Convergent) {
+      OPI.Producers.push_back(VPCtx.createPhiPack(PHIs, TTI));
+    } else {
+      SmallVector<const GammaNode *> Gammas;
+      for (auto *PN : PHIs)
+        Gammas.push_back(CDA.getGamma(PN));
+      OPI.Producers.push_back(VPCtx.createGammaPack(Gammas, TTI));
+    }
     return OPI;
   }
 
   if (HasUndef) {
     OPI.Feasible = false;
+    return OPI;
+  }
+
+  SmallVector<CmpInst *, 4> Cmps;
+  if (matchPackableCmps(*OP, Cmps)) {
+    OPI.Producers.push_back(
+        VPCtx.createCmpPack(Cmps, OPI.Elements, Depended, TTI));
     return OPI;
   }
 

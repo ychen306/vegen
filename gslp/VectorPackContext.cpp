@@ -13,13 +13,17 @@ struct VectorPackCache {
   using StorePackKey = decltype(VectorPack::Stores);
   using PHIPackKey = decltype(VectorPack::PHIs);
   using GEPPackKey = decltype(VectorPack::GEPs);
+  using GammaPackKey = decltype(VectorPack::Gammas);
+  using CmpPackKey = decltype(VectorPack::Cmps);
 
   std::map<GeneralPackKey, std::unique_ptr<VectorPack>> GeneralPacks;
   std::map<std::pair<LoadPackKey, bool>, std::unique_ptr<VectorPack>> LoadPacks;
   std::map<std::pair<StorePackKey, bool>, std::unique_ptr<VectorPack>>
       StorePacks;
   std::map<PHIPackKey, std::unique_ptr<VectorPack>> PHIPacks;
+  std::map<GammaPackKey, std::unique_ptr<VectorPack>> GammaPacks;
   std::map<GEPPackKey, std::unique_ptr<VectorPack>> GEPPacks;
+  std::map<CmpPackKey, std::unique_ptr<VectorPack>> CmpPacks;
   std::map<Instruction *, std::unique_ptr<VectorPack>> ReductionPacks;
 };
 
@@ -73,6 +77,18 @@ VectorPack *VectorPackContext::createStorePack(ArrayRef<StoreInst *> Stores,
   return VP.get();
 }
 
+VectorPack *VectorPackContext::createCmpPack(ArrayRef<CmpInst *> Cmps,
+                                               BitVector Elements,
+                                               BitVector Depended,
+                                               TargetTransformInfo *TTI) const {
+  VectorPackCache::CmpPackKey Key(Cmps.begin(), Cmps.end());
+  auto &VP = PackCache->CmpPacks[Key];
+  if (VP)
+    return VP.get();
+  VP.reset(new VectorPack(this, Cmps, Elements, Depended, TTI));
+  return VP.get();
+}
+
 VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
                                              TargetTransformInfo *TTI) const {
   BitVector Elements(getNumValues());
@@ -83,6 +99,20 @@ VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
   if (!VP) {
     VP.reset(
         new VectorPack(this, PHIs, Elements, BitVector(getNumValues()), TTI));
+  }
+  return VP.get();
+}
+
+VectorPack *VectorPackContext::createGammaPack(ArrayRef<const GammaNode *> Gammas,
+                                             TargetTransformInfo *TTI) const {
+  BitVector Elements(getNumValues());
+  for (auto *G : Gammas)
+    Elements.set(getScalarId(G->PN));
+  VectorPackCache::GammaPackKey Key(Gammas.begin(), Gammas.end());
+  auto &VP = PackCache->GammaPacks[Key];
+  if (!VP) {
+    VP.reset(
+        new VectorPack(this, Gammas, Elements, BitVector(getNumValues()), TTI));
   }
   return VP.get();
 }
@@ -161,15 +191,18 @@ OperandPack *VectorPackContext::getCanonicalOperandPack(OperandPack OP) const {
 }
 
 ConditionPack *VectorPackContext::getConditionPack(
-    ArrayRef<const ControlCondition *> Conds) const {
-  auto It = ConditionPackCache.find(Conds);
+    ArrayRef<const ControlCondition *> Conds, Optional<const ControlCondition *> MaybeCommon) const {
+  const ControlCondition *CommonC = MaybeCommon ? *MaybeCommon : getGreatestCommonCondition(Conds);
+  auto It = ConditionPackCache.find({Conds, CommonC});
   if (It != ConditionPackCache.end())
     return It->second.get();
+
+  // FIXME: what if Conds are splat?
 
   auto *NewCP = new ConditionPack;
   NewCP->Conds.assign(Conds.begin(), Conds.end());
   NewCP->ElemsToFlip.resize(Conds.size());
-  ConditionPackCache[NewCP->Conds].reset(NewCP);
+  ConditionPackCache[{NewCP->Conds, CommonC}].reset(NewCP);
 
   // See if there are duplicated conditions
   SmallPtrSet<const ControlCondition *, 8> Seen;
@@ -196,10 +229,7 @@ ConditionPack *VectorPackContext::getConditionPack(
         OP.push_back(nullptr);
       }
     }
-
-    // If the parents are all the same, we've converged
-    if (!is_splat(Parents))
-      NewCP->Parent = getConditionPack(Parents);
+    NewCP->Parent = getConditionPack(Parents, CommonC);
     NewCP->OP = getCanonicalOperandPack(OP);
     return NewCP;
   }
@@ -228,7 +258,7 @@ ConditionPack *VectorPackContext::getConditionPack(
       else
         IthConds.push_back(nullptr);
     }
-    NewCP->CPs.push_back(getConditionPack(IthConds));
+    NewCP->CPs.push_back(getConditionPack(IthConds, CommonC));
   }
 
   return NewCP;

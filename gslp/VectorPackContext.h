@@ -9,6 +9,7 @@
 #include <vector>
 
 class ReductionInfo;
+class GammaNode;
 
 class VectorPack;
 struct OperandProducerInfo {
@@ -32,14 +33,16 @@ struct OperandPack : public llvm::SmallVector<llvm::Value *, 8> {
 
 class ControlCondition;
 struct ConditionPack {
-  // Categorize whether we can produce this pack as a vector of AND, OR, or can't vectorize
+  // Categorize whether we can produce this pack as a vector of AND, OR, or
+  // can't vectorize
   enum ConditionKind { CP_And, CP_Or, CP_Infeasible };
   ConditionKind Kind;
   llvm::SmallVector<const ControlCondition *, 4> Conds;
 
   const ConditionPack *Parent = nullptr; // For And
-  const OperandPack *OP = nullptr; // If this is an AND pack
-  llvm::BitVector ElemsToFlip; // a mask indicating which elements of OP should be flipped;
+  const OperandPack *OP = nullptr;       // If this is an AND pack
+  llvm::BitVector
+      ElemsToFlip; // a mask indicating which elements of OP should be flipped;
 
   llvm::SmallVector<const ConditionPack *> CPs; // For Or
 };
@@ -59,7 +62,8 @@ class VectorPackContext {
   mutable llvm::DenseMap<llvm::ArrayRef<llvm::Value *>,
                          std::unique_ptr<OperandPack>>
       OperandCache;
-  mutable llvm::DenseMap<llvm::ArrayRef<const ControlCondition *>,
+  mutable llvm::DenseMap<std::pair<llvm::ArrayRef<const ControlCondition *>,
+                                   const ControlCondition *>,
                          std::unique_ptr<ConditionPack>>
       ConditionPackCache;
 
@@ -95,6 +99,15 @@ public:
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
                             llvm::TargetTransformInfo *TTI) const;
 
+  // Create a vectorized gamma
+  VectorPack *createGammaPack(llvm::ArrayRef<const GammaNode *> Gammas,
+                              llvm::TargetTransformInfo *TTI) const;
+
+  // Create a vectorized comparison
+  VectorPack *createCmpPack(llvm::ArrayRef<llvm::CmpInst *> Cmps,
+                            llvm::BitVector Elements, llvm::BitVector Depended,
+                            llvm::TargetTransformInfo *TTI) const;
+
   // Create a vectorized GEP
   VectorPack *createGEPPack(llvm::ArrayRef<llvm::GetElementPtrInst *> GEPs,
                             llvm::BitVector Elements, llvm::BitVector Depended,
@@ -106,7 +119,9 @@ public:
                   llvm::TargetTransformInfo *TTI) const;
 
   OperandPack *getCanonicalOperandPack(OperandPack OP) const;
-  ConditionPack *getConditionPack(llvm::ArrayRef<const ControlCondition *>) const;
+  ConditionPack *getConditionPack(
+      llvm::ArrayRef<const ControlCondition *>,
+      llvm::Optional<const ControlCondition *> MaybeCommon = llvm::None) const;
 
   // Remove duplicate elements in OP
   const OperandPack *dedup(const OperandPack *) const;

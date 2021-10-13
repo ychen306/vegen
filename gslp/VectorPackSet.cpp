@@ -338,6 +338,12 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
 
+  errs() << "!!! packs <<<\n";
+  for (auto *VP : AllPacks)
+    errs() << *VP << '\n';
+  errs() << ">>>>>\n";
+  abort();
+
   auto &LI = Pkr.getLoopInfo();
   auto *TTI = Pkr.getTTI();
 
