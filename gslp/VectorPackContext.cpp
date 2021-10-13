@@ -197,8 +197,8 @@ ConditionPack *VectorPackContext::getConditionPack(
       }
     }
 
-    bool AllNull = Parents.front() == nullptr && is_splat(Parents);
-    if (!AllNull)
+    // If the parents are all the same, we've converged
+    if (!is_splat(Parents))
       NewCP->Parent = getConditionPack(Parents);
     NewCP->OP = getCanonicalOperandPack(OP);
     return NewCP;
