@@ -1,7 +1,7 @@
 #include "VectorPackContext.h"
+#include "ControlDependence.h"
 #include "Reduction.h"
 #include "VectorPack.h"
-#include "ControlDependence.h"
 #include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
@@ -160,12 +160,6 @@ OperandPack *VectorPackContext::getCanonicalOperandPack(OperandPack OP) const {
   return (OperandCache[*NewOP] = std::move(NewOP)).get();
 }
 
-// Categorize whether we can produce this pack as a vector of AND, OR, or can't vectorize
-// enum ConditionKind { CP_And, CP_Or, CP_Infeasible };
-// ConditionKind Kind;
-// llvm::SmallVector<const ControlCondition *, 4> Conds;
-// const OperandPack *OP; // If this is an AND pack
-
 ConditionPack *VectorPackContext::getConditionPack(
     ArrayRef<const ControlCondition *> Conds) const {
   auto It = ConditionPackCache.find(Conds);
@@ -218,7 +212,8 @@ ConditionPack *VectorPackContext::getConditionPack(
 
   unsigned MaxNumTerms = 0;
   for (auto *C : Conds) {
-    if (!C) continue;
+    if (!C)
+      continue;
     auto *Or = cast<ConditionOr>(C);
     if (MaxNumTerms < Or->Conds.size())
       MaxNumTerms = Or->Conds.size();
