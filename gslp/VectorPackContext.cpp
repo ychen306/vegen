@@ -204,14 +204,6 @@ ConditionPack *VectorPackContext::getConditionPack(
   NewCP->ElemsToFlip.resize(Conds.size());
   ConditionPackCache[{NewCP->Conds, CommonC}].reset(NewCP);
 
-  // See if there are duplicated conditions
-  SmallPtrSet<const ControlCondition *, 8> Seen;
-  for (auto *C : Conds)
-    if (!Seen.insert(C).second) {
-      NewCP->Kind = ConditionPack::CP_Infeasible;
-      return NewCP;
-    }
-
   if (all_of(Conds, [](auto *C) { return !C || isa<ConditionAnd>(C); })) {
     SmallVector<const ControlCondition *> Parents;
     OperandPack OP;

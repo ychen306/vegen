@@ -150,6 +150,14 @@ static Value *getOrEmitConditionPack(
     assert(CP->OP);
     Value *Cond =
         gatherOperandPack(*CP->OP, ValueIndex, MaterializedPacks, Builder);
+    if (CP->ElemsToFlip.count()) {
+      SmallVector<Constant *, 8> Mask;
+      auto &Ctx = Builder.getContext();
+      Mask.resize(CP->Conds.size(), ConstantInt::getFalse(Ctx));
+      for (unsigned i : CP->ElemsToFlip.set_bits())
+        Mask[i] = ConstantInt::getTrue(Ctx);
+      Cond = Builder.CreateXor(Cond, ConstantVector::get(Mask));
+    }
     if (!CP->Parent)
       return Cond;
     auto *ParentCond =
