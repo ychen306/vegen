@@ -168,10 +168,6 @@ private:
 
   llvm::Value *emitVectorGeneral(llvm::ArrayRef<llvm::Value *> Operands,
                                  IntrinsicBuilder &Builder) const;
-  llvm::Value *emitVectorLoad(llvm::ArrayRef<llvm::Value *> Operands,
-                              IntrinsicBuilder &Builder) const;
-  llvm::Value *emitVectorStore(llvm::ArrayRef<llvm::Value *> Operands,
-                               IntrinsicBuilder &Builder) const;
   llvm::Value *emitVectorPhi(llvm::ArrayRef<llvm::Value *> Operands,
                              IntrinsicBuilder &Builder) const;
 
@@ -194,6 +190,12 @@ public:
   dependedValues() const {
     return VPCtx->iter_values(Depended);
   }
+  llvm::Value *emitVectorLoad(llvm::ArrayRef<llvm::Value *> Operands,
+                              llvm::Value *Mask,
+                              IntrinsicBuilder &Builder) const;
+  llvm::Value *emitVectorStore(llvm::ArrayRef<llvm::Value *> Operands,
+                               llvm::Value *Mask,
+                               IntrinsicBuilder &Builder) const;
 
   bool isStore() const { return Kind == Store; }
   bool isLoad() const { return Kind == Load; }

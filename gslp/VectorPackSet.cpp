@@ -157,13 +157,8 @@ static Value *getOrEmitConditionPack(
                                MaterializedCondPacks, Builder);
     return Builder.CreateAnd(ParentCond, Cond);
   }
-}
 
-static BasicBlock *getBlockForPack(const VectorPack *VP) {
-  for (auto *V : VP->elementValues())
-    if (auto *I = dyn_cast<Instruction>(V))
-      return I->getParent();
-  llvm_unreachable("not block for pack");
+  llvm_unreachable("OR pack not supported");
 }
 
 void VectorPackSet::add(const VectorPack *VP) {
@@ -219,7 +214,8 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
 // together.
 static std::vector<Instruction *> schedule(Function *F,
                                            ArrayRef<const VectorPack *> Packs,
-                                           GlobalDependenceAnalysis &DA) {
+                                           Packer &Pkr) {
+  auto &DA = Pkr.getDA();
   if (Packs.empty())
     return {};
 
@@ -232,16 +228,30 @@ static std::vector<Instruction *> schedule(Function *F,
   // Schedule the instruction to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
   const VectorPackContext *VPCtx = Packs[0]->getContext();
-  using InstOrPack = PointerUnion<Instruction *, const VectorPack *>;
+  using SchedulerItem = PointerUnion<Instruction *, const VectorPack *, const ControlCondition *>;
   DenseSet<void *> Reordered;
   std::vector<Instruction *> ReorderedInsts;
-  std::function<void(InstOrPack)> Schedule = [&](InstOrPack IOP) {
-    bool Inserted = Reordered.insert(IOP.getOpaqueValue()).second;
+  std::function<void(SchedulerItem)> Schedule = [&](SchedulerItem Item) {
+    bool Inserted = Reordered.insert(Item.getOpaqueValue()).second;
     if (!Inserted)
       return;
 
-    auto *I = IOP.dyn_cast<Instruction *>();
-    auto *VP = IOP.dyn_cast<const VectorPack *>();
+    auto *I = Item.dyn_cast<Instruction *>();
+    auto *VP = Item.dyn_cast<const VectorPack *>();
+
+    // Make sure all of the control-dependent conditions are scheduled
+    if (Item.is<const ControlCondition *>()) {
+      auto *C = Item.dyn_cast<const ControlCondition *>();
+      if (auto *And = dyn_cast_or_null<ConditionAnd>(C)) {
+        Schedule(And->Parent);
+        if (auto *CondInst = dyn_cast<Instruction>(And->Cond))
+          Schedule(CondInst);
+      } else if (auto *Or = dyn_cast_or_null<ConditionOr>(C)) {
+        for (auto *C2 : Or->Conds)
+          Schedule(C2);
+      }
+      return;
+    }
 
     if (I && !VPCtx->isKnownValue(I)) {
       // If this is an unknown instruction,
@@ -264,11 +274,16 @@ static std::vector<Instruction *> schedule(Function *F,
     // Figure out the dependence
     std::vector<Value *> DependedValues;
     if (I) {
+      // Make sure the control conditions are scheduled before the instruction
+      Schedule(Pkr.getBlockCondition(I->getParent()));
       auto Depended = DA.getDepended(const_cast<Instruction *>(I));
       for (auto *V : VPCtx->iter_values(Depended))
         DependedValues.push_back(V);
     } else {
       assert(VP);
+      // Make sure the control conditions are scheduled before the pack
+      for (auto *V : VP->elementValues())
+        Schedule(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
       for (auto *V : VP->dependedValues())
         DependedValues.push_back(V);
     }
@@ -364,12 +379,22 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   PackToValueTy MaterializedPacks;
   DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
 
-  auto &LI = Pkr.getLoopInfo();
-  auto *TTI = Pkr.getTTI();
   auto *VPCtx = Pkr.getContext();
 
+  auto GetLoadStoreMask = [&](ArrayRef<Value *> Vals) -> Value * {
+    SmallVector<const ControlCondition *> Conds;
+    for (auto *V : Vals)
+      Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+    auto *CP = VPCtx->getConditionPack(Conds);
+    // nullptr means it's all true
+    if (!CP)
+      return nullptr;
+    return getOrEmitConditionPack(CP, ValueIndex, MaterializedPacks,
+                                  MaterializedCondPacks, Builder);
+  };
+
   // Schedule the instructions
-  std::vector<Instruction *> OrderedInsts = schedule(F, AllPacks, Pkr.getDA());
+  std::vector<Instruction *> OrderedInsts = schedule(F, AllPacks, Pkr);
 
   // Remove the basic blocks from F
   std::vector<BasicBlock *> OldBlocks;
@@ -424,7 +449,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
             gatherOperandPack(Vals, ValueIndex, MaterializedPacks, Builder));
       }
       auto *Sel = GateVals.back();
-      auto CondsAndVals = drop_begin(zip(reverse(GateConds), reverse(GateVals)));
+      auto CondsAndVals =
+          drop_begin(zip(reverse(GateConds), reverse(GateVals)));
       Value *C, *V;
       for (auto CondAndVal : CondsAndVals) {
         std::tie(C, V) = CondAndVal;
@@ -439,13 +465,20 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         Operands.push_back(
             gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
       }
+
       // Now we can emit the vector instruction
-      VecInst = VP->emit(Operands, Builder);
+      ArrayRef<Value *> Vals = VP->getOrderedValues();
+      if (VP->isLoad())
+        VecInst = VP->emitVectorLoad(Operands, GetLoadStoreMask(Vals), Builder);
+      else if (VP->isStore())
+        VecInst = VP->emitVectorStore(Operands, GetLoadStoreMask(Vals), Builder);
+      else
+        VecInst = VP->emit(Operands, Builder);
     }
 
     // Conservatively extract all elements.
     // Let the later cleanup passes clean up dead extracts.
-    if (!isa<StoreInst>(VecInst) && !VP->isReduction()) {
+    if (!VP->isStore() && !VP->isReduction()) {
       for (auto &Item : enumerate(VP->getOrderedValues())) {
         if (auto *V = Item.value()) {
           auto *Extract = Builder.CreateExtractElement(VecInst, Item.index());

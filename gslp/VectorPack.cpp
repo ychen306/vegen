@@ -140,7 +140,7 @@ template <typename LoadStores> Align getCommonAlignment(LoadStores Insts) {
 }
 } // namespace
 
-Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
+Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
                                   IntrinsicBuilder &Builder) const {
   auto *FirstLoad = Loads[0];
   auto &DL = FirstLoad->getParent()->getModule()->getDataLayout();
@@ -158,8 +158,10 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
   // Emit the load
   Instruction *VecLoad;
   if (IsGatherScatter)
-    VecLoad =
-        Builder.CreateMaskedGather(Operands.front(), getCommonAlignment(Loads));
+    VecLoad = Builder.CreateMaskedGather(Operands.front(),
+                                         getCommonAlignment(Loads), Mask);
+  else if (Mask)
+    VecLoad = Builder.CreateMaskedLoad(VecPtr, FirstLoad->getAlign(), Mask);
   else
     VecLoad = Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
 
@@ -170,18 +172,15 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands,
   return propagateMetadata(VecLoad, Values);
 }
 
-Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands,
+Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands, Value *Mask,
                                    IntrinsicBuilder &Builder) const {
-
-  // This is the value we want to store
-
   // Emit the vector store
   Instruction *VecStore;
   if (IsGatherScatter) {
     auto *Ptrs = Operands[0];
     auto *Values = Operands[1];
-    VecStore =
-        Builder.CreateMaskedScatter(Values, Ptrs, getCommonAlignment(Stores));
+    VecStore = Builder.CreateMaskedScatter(Values, Ptrs,
+                                           getCommonAlignment(Stores), Mask);
   } else {
     Value *VecValue = Operands.front();
     auto *FirstStore = Stores.front();
@@ -189,6 +188,10 @@ Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands,
     // Figure out the store alignment
     unsigned Alignment = FirstStore->getAlignment();
     unsigned AS = FirstStore->getPointerAddressSpace();
+    auto &DL = FirstStore->getParent()->getModule()->getDataLayout();
+    if (!Alignment)
+      Alignment =
+          DL.getABITypeAlignment(FirstStore->getValueOperand()->getType());
 
     // Cast the scalar pointer to vector pointer
     assert(Operands.size() == 1);
@@ -196,15 +199,11 @@ Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands,
     Value *VecPtr =
         Builder.CreateBitCast(ScalarPtr, VecValue->getType()->getPointerTo(AS));
 
-    VecStore = Builder.CreateStore(VecValue, VecPtr);
-
-    // Fix the vector store alignment
-    auto &DL = FirstStore->getParent()->getModule()->getDataLayout();
-    if (!Alignment)
-      Alignment =
-          DL.getABITypeAlignment(FirstStore->getValueOperand()->getType());
-
-    cast<StoreInst>(VecStore)->setAlignment(Align(Alignment));
+    if (!Mask)
+      VecStore = Builder.CreateAlignedStore(VecValue, VecPtr, Align(Alignment));
+    else
+      VecStore =
+          Builder.CreateMaskedStore(VecValue, VecPtr, Align(Alignment), Mask);
   }
 
   SmallVector<Value *, 4> Stores_(Stores.begin(), Stores.end());
@@ -246,7 +245,9 @@ static void getGEPOperands(unsigned i, ArrayRef<GetElementPtrInst *> GEPs,
     Operands.push_back(GEP->getOperand(i));
 }
 
-static void getOperandPacksFromCondition(const ConditionPack *CP, SmallVectorImpl<const OperandPack *> &OPs) {
+static void
+getOperandPacksFromCondition(const ConditionPack *CP,
+                             SmallVectorImpl<const OperandPack *> &OPs) {
   if (CP->Parent) {
     getOperandPacksFromCondition(CP->Parent, OPs);
   } else {
@@ -304,7 +305,8 @@ void VectorPack::computeOperandPacks() {
         Conds.push_back(G->Conds[i]);
         ValOP.push_back(G->Vals[i]);
       }
-      getOperandPacksFromCondition(VPCtx->getConditionPack(Conds), OperandPacks);
+      getOperandPacksFromCondition(VPCtx->getConditionPack(Conds),
+                                   OperandPacks);
       OperandPacks.push_back(VPCtx->getCanonicalOperandPack(ValOP));
     }
   } break;
@@ -348,7 +350,9 @@ static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
   return Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idxs);
 }
 
-static Value *emitVectorCmp(ArrayRef<CmpInst *> Cmps, ArrayRef<Value *> Operands, IntrinsicBuilder &Builder) {
+static Value *emitVectorCmp(ArrayRef<CmpInst *> Cmps,
+                            ArrayRef<Value *> Operands,
+                            IntrinsicBuilder &Builder) {
   auto Pred = Cmps.front()->getPredicate();
   assert(Operands.size() == 2);
   return Builder.CreateCmp(Pred, Operands[0], Operands[1]);
@@ -362,16 +366,14 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
   switch (Kind) {
   case General:
     return emitVectorGeneral(Operands, Builder);
-  case Load:
-    return emitVectorLoad(Operands, Builder);
-  case Store:
-    return emitVectorStore(Operands, Builder);
   case Phi:
     return emitVectorPhi(Operands, Builder);
   case GEP:
     return emitVectorGEP(GEPs, Operands, Builder);
   case Cmp:
     return emitVectorCmp(Cmps, Operands, Builder);
+  case Load:
+  case Store:
   case Reduction:
   case Gamma:
     llvm_unreachable("Don't call emit on reduction and gamma pack directly");
