@@ -231,6 +231,7 @@ ConditionPack *VectorPackContext::getConditionPack(
     }
     NewCP->Parent = getConditionPack(Parents, CommonC);
     NewCP->OP = getCanonicalOperandPack(OP);
+    NewCP->Kind = ConditionPack::CP_And;
     return NewCP;
   }
 
@@ -261,5 +262,6 @@ ConditionPack *VectorPackContext::getConditionPack(
     NewCP->CPs.push_back(getConditionPack(IthConds, CommonC));
   }
 
+  NewCP->Kind = ConditionPack::CP_Or;
   return NewCP;
 }

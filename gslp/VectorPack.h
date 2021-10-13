@@ -53,7 +53,7 @@ private:
   ///////////////
 
   // For side-effectul packs like loads and stores
-  const ConditionPack *CP;
+  const ConditionPack *CP = nullptr;
 
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
   llvm::SmallVector<const OperandPack *, 4> OperandPacks;
