@@ -490,78 +490,17 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
 
+  // Another pass to delete trivially dead instructions
+  bool Changed;
+  do {
+    SmallVector<Instruction *> ReallyDeadInsts;
+    for (Instruction &I : instructions(F))
+      if (isInstructionTriviallyDead(&I))
+        ReallyDeadInsts.push_back(&I);
+    for (auto *I : ReallyDeadInsts)
+      I->eraseFromParent();
+    Changed = !ReallyDeadInsts.empty();
+  } while (Changed);
+
   errs() << *F << '\n';
-
-
-#if 0
-    for (auto *VP : OrderedPacks) {
-      if (VP->isPHI())
-        PHIPacks.push_back(VP);
-      // Delay emitting reduction until later
-      if (VP->isReduction()) {
-        auto *L = LI.getLoopFor(BB);
-        assert(L->getLoopLatch());
-        RdxPacks[L->getLoopLatch()].push_back(VP);
-        continue;
-      }
-      // Get the operands ready.
-      SmallVector<Value *, 2> Operands;
-      unsigned OperandId = 0;
-      for (auto *OP : VP->getOperandPacks()) {
-        VP->setOperandGatherPoint(OperandId, Builder);
-        Value *Gathered;
-        // Just pass in undef for PHI nodes, we will patch them up later
-        if (VP->isPHI())
-          Gathered = UndefValue::get(getVectorType(*OP));
-        else
-          Gathered =
-              gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder);
-        Operands.push_back(Gathered);
-        OperandId++;
-      }
-
-      Instruction *PackLeader = nullptr;
-      for (auto *V : VP->elementValues())
-        if (auto *I = dyn_cast<Instruction>(V)) {
-          PackLeader = I;
-          break;
-        }
-      assert(PackLeader);
-      Builder.SetInsertPoint(PackLeader);
-
-      // Now we can emit the vector instruction
-      auto *VecInst = VP->emit(Operands, Builder);
-
-      // Conservatively extract all elements.
-      // Let the later cleanup passes clean up dead extracts.
-      if (!isa<StoreInst>(VecInst) && !VP->isReduction()) {
-        unsigned LaneId = 0;
-        if (isa<PHINode>(VecInst))
-          Builder.SetInsertPoint(BB->getFirstNonPHI());
-        auto OutputLanes = VP->getOrderedValues();
-        for (unsigned i = 0, e = OutputLanes.size(); i != e; i++) {
-          if (auto *V = OutputLanes[i]) {
-            auto *Extract = Builder.CreateExtractElement(VecInst, i);
-            V->replaceAllUsesWith(Extract);
-          }
-        }
-      }
-
-      // Mark the packed values as dead so we can delete them later
-      for (auto *V : VP->elementValues()) {
-        if (auto *I = dyn_cast<Instruction>(V))
-          DeadInsts.push_back(I);
-      }
-
-      // Update the value index
-      // to track where the originally scalar values are produced
-      auto OutputLanes = VP->getOrderedValues();
-      for (unsigned i = 0, e = OutputLanes.size(); i != e; i++)
-        if (auto *V = OutputLanes[i])
-          ValueIndex[V] = {VP, i};
-
-      // Map the pack to its materialized value
-      MaterializedPacks[VP] = VecInst;
-    }
-#endif
 }
