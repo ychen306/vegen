@@ -246,6 +246,18 @@ static void getGEPOperands(unsigned i, ArrayRef<GetElementPtrInst *> GEPs,
     Operands.push_back(GEP->getOperand(i));
 }
 
+static void getOperandPacksFromCondition(const ConditionPack *CP, SmallVectorImpl<const OperandPack *> &OPs) {
+  if (CP->Parent) {
+    getOperandPacksFromCondition(CP->Parent, OPs);
+  } else {
+    for (auto *CP2 : CP->CPs)
+      getOperandPacksFromCondition(CP2, OPs);
+  }
+
+  if (CP->OP)
+    OPs.push_back(CP->OP);
+}
+
 void VectorPack::computeOperandPacks() {
   switch (Kind) {
   case General:
@@ -278,6 +290,24 @@ void VectorPack::computeOperandPacks() {
         OPs.emplace_back().assign(Operands);
     }
     canonicalizeOperandPacks(OPs);
+  } break;
+  case Gamma: {
+    unsigned NumIncomings = Gammas.front()->PN->getNumIncomingValues();
+    assert(all_of(Gammas, [&](auto *G2) {
+      return G2->PN->getNumIncomingValues() == NumIncomings;
+    }));
+
+    for (unsigned i = 0; i < NumIncomings; i++) {
+      SmallVector<const ControlCondition *> Conds;
+      OperandPack ValOP;
+      for (auto *G : Gammas) {
+        Conds.push_back(G->Conds[i]);
+        ValOP.push_back(G->Vals[i]);
+      }
+      getOperandPacksFromCondition(VPCtx->getConditionPack(Conds), OperandPacks);
+      OperandPacks.push_back(VPCtx->getCanonicalOperandPack(ValOP));
+    }
+
   } break;
 
   } // end switch

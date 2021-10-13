@@ -54,7 +54,7 @@ private:
   ///////////////
 
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
-  llvm::SmallVector<OperandPack *, 4> OperandPacks;
+  llvm::SmallVector<const OperandPack *, 4> OperandPacks;
 
   int Cost;
   int ProducingCost;
@@ -205,7 +205,7 @@ public:
 
   const llvm::BitVector &getElements() const { return Elements; }
 
-  llvm::ArrayRef<OperandPack *> getOperandPacks() const { return OperandPacks; }
+  llvm::ArrayRef<const OperandPack *> getOperandPacks() const { return OperandPacks; }
 
   llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                     IntrinsicBuilder &Builder) const;
