@@ -27,24 +27,24 @@ unsigned getBitWidth(Value *V, const DataLayout *DL) {
 }
 
 template <typename AccessType>
-VectorPack *createMemPack(const VectorPackContext *VPCtx,
-                          ArrayRef<AccessType *> Accesses,
+VectorPack *createMemPack(Packer *Pkr, ArrayRef<AccessType *> Accesses,
                           const BitVector &Elements, const BitVector &Depended,
                           TargetTransformInfo *TTI);
 
 template <>
-VectorPack *createMemPack(const VectorPackContext *VPCtx,
-                          ArrayRef<StoreInst *> Stores,
+VectorPack *createMemPack(Packer *Pkr, ArrayRef<StoreInst *> Stores,
                           const BitVector &Elements, const BitVector &Depended,
                           TargetTransformInfo *TTI) {
-  return VPCtx->createStorePack(Stores, Elements, Depended, TTI);
+  return Pkr->getContext()->createStorePack(
+      Stores, Pkr->getConditionPack(Stores), Elements, Depended, TTI);
 }
 
 template <>
-VectorPack *createMemPack(const VectorPackContext *VPCtx,
-                          ArrayRef<LoadInst *> Loads, const BitVector &Elements,
-                          const BitVector &Depended, TargetTransformInfo *TTI) {
-  return VPCtx->createLoadPack(Loads, Elements, Depended, TTI);
+VectorPack *createMemPack(Packer *Pkr, ArrayRef<LoadInst *> Loads,
+                          const BitVector &Elements, const BitVector &Depended,
+                          TargetTransformInfo *TTI) {
+  return Pkr->getContext()->createLoadPack(Loads, Pkr->getConditionPack(Loads),
+                                           Elements, Depended, TTI);
 }
 
 template <typename AccessType>
@@ -64,7 +64,7 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
       Enumerate = [&](std::vector<AccessType *> Accesses, BitVector Elements,
                       BitVector Depended) {
         if (Accesses.size() == VL) {
-          Seeds.push_back(createMemPack<AccessType>(VPCtx, Accesses, Elements,
+          Seeds.push_back(createMemPack<AccessType>(Pkr, Accesses, Elements,
                                                     Depended, TTI));
           return;
         }
@@ -237,8 +237,8 @@ decomposeStorePacks(Packer *Pkr, const VectorPack *VP) {
       Elements.set(VPCtx->getScalarId(SI));
       Depended |= DA.getDepended(SI);
     }
-    Decomposed.push_back(
-        VPCtx->createStorePack(Stores, Elements, Depended, TTI));
+    Decomposed.push_back(VPCtx->createStorePack(
+        Stores, Pkr->getConditionPack(Stores), Elements, Depended, TTI));
   }
   return Decomposed;
 }
@@ -288,8 +288,7 @@ static void improvePlan(Packer *Pkr, Plan &P,
       unsigned RdxLen = std::min<unsigned>(
           greatestPowerOfTwoDivisor(RI->Elts.size()),
           MaxVecWidth / getBitWidth(PN, Pkr->getDataLayout()));
-      Seeds.push_back(VPCtx->createReduction(
-          *RI, RdxLen, TTI));
+      Seeds.push_back(VPCtx->createReduction(*RI, RdxLen, TTI));
     }
   }
 

@@ -153,6 +153,14 @@ public:
                                            llvm::BasicBlock *Dst) const {
     return EdgeConditions.lookup({Src, Dst});
   }
+  // Get the condition pack guarding a list of instructions
+  template <typename InstContainer>
+  const ConditionPack *getConditionPack(const InstContainer &Insts) const {
+    llvm::SmallVector<const ControlCondition *> Conds;
+    for (auto *I : Insts)
+      Conds.push_back(getBlockCondition(I->getParent()));
+    return VPCtx.getConditionPack(Conds);
+  }
 
   llvm::Function *getFunction() const { return F; }
   const OperandProducerInfo &getProducerInfo(const OperandPack *);

@@ -84,12 +84,14 @@ public:
 
   // Create a vectorized load
   VectorPack *createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads,
+                             const ConditionPack *CP,
                              llvm::BitVector Elements, llvm::BitVector Depended,
                              llvm::TargetTransformInfo *TTI,
                              bool IsGather = false) const;
 
   // Create a vectorized store
   VectorPack *createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores,
+                              const ConditionPack *CP,
                               llvm::BitVector Elements,
                               llvm::BitVector Depended,
                               llvm::TargetTransformInfo *TTI,

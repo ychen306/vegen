@@ -76,6 +76,20 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
   return OperandPacks;
 }
 
+static void
+getOperandPacksFromCondition(const ConditionPack *CP,
+                             SmallVectorImpl<const OperandPack *> &OPs) {
+  if (CP->Parent) {
+    getOperandPacksFromCondition(CP->Parent, OPs);
+  } else {
+    for (auto *CP2 : CP->CPs)
+      getOperandPacksFromCondition(CP2, OPs);
+  }
+
+  if (CP->OP)
+    OPs.push_back(CP->OP);
+}
+
 std::vector<OperandPack> VectorPack::computeOperandPacksForLoad() {
   if (!IsGatherScatter) {
     // Only need the single *scalar* pointer, doesn't need packed operand
@@ -194,7 +208,6 @@ Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands, Value *Mask,
           DL.getABITypeAlignment(FirstStore->getValueOperand()->getType());
 
     // Cast the scalar pointer to vector pointer
-    assert(Operands.size() == 1);
     Value *ScalarPtr = FirstStore->getPointerOperand();
     Value *VecPtr =
         Builder.CreateBitCast(ScalarPtr, VecValue->getType()->getPointerTo(AS));
@@ -243,20 +256,6 @@ static void getGEPOperands(unsigned i, ArrayRef<GetElementPtrInst *> GEPs,
                            SmallVectorImpl<Value *> &Operands) {
   for (auto *GEP : GEPs)
     Operands.push_back(GEP->getOperand(i));
-}
-
-static void
-getOperandPacksFromCondition(const ConditionPack *CP,
-                             SmallVectorImpl<const OperandPack *> &OPs) {
-  if (CP->Parent) {
-    getOperandPacksFromCondition(CP->Parent, OPs);
-  } else {
-    for (auto *CP2 : CP->CPs)
-      getOperandPacksFromCondition(CP2, OPs);
-  }
-
-  if (CP->OP)
-    OPs.push_back(CP->OP);
 }
 
 void VectorPack::computeOperandPacks() {
@@ -321,6 +320,9 @@ void VectorPack::computeOperandPacks() {
   } break;
 
   } // end switch
+
+  if (CP)
+    getOperandPacksFromCondition(CP, OperandPacks);
 }
 
 static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,

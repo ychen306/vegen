@@ -212,9 +212,8 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
 
 // Topsort the instructions s.t. instructions in the same packs are grouped
 // together.
-static std::vector<Instruction *> schedule(Function *F,
-                                           ArrayRef<const VectorPack *> Packs,
-                                           Packer &Pkr) {
+static std::vector<Instruction *>
+schedule(Function *F, ArrayRef<const VectorPack *> Packs, Packer &Pkr) {
   auto &DA = Pkr.getDA();
   if (Packs.empty())
     return {};
@@ -228,7 +227,8 @@ static std::vector<Instruction *> schedule(Function *F,
   // Schedule the instruction to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
   const VectorPackContext *VPCtx = Packs[0]->getContext();
-  using SchedulerItem = PointerUnion<Instruction *, const VectorPack *, const ControlCondition *>;
+  using SchedulerItem =
+      PointerUnion<Instruction *, const VectorPack *, const ControlCondition *>;
   DenseSet<void *> Reordered;
   std::vector<Instruction *> ReorderedInsts;
   std::function<void(SchedulerItem)> Schedule = [&](SchedulerItem Item) {
@@ -250,18 +250,6 @@ static std::vector<Instruction *> schedule(Function *F,
         for (auto *C2 : Or->Conds)
           Schedule(C2);
       }
-      return;
-    }
-
-    if (I && !VPCtx->isKnownValue(I)) {
-      // If this is an unknown instruction,
-      // we must just inserted it for packed PHIs.
-      // Don't even bother with checking dependence,
-      // because these instructions are right before the terminator.
-      assert(isa<ShuffleVectorInst>(I) || isa<InsertElementInst>(I) ||
-             isa<BranchInst>(I));
-      assert(!ValueToPackMap.count(I));
-      ReorderedInsts.push_back(I);
       return;
     }
 
@@ -471,7 +459,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       if (VP->isLoad())
         VecInst = VP->emitVectorLoad(Operands, GetLoadStoreMask(Vals), Builder);
       else if (VP->isStore())
-        VecInst = VP->emitVectorStore(Operands, GetLoadStoreMask(Vals), Builder);
+        VecInst =
+            VP->emitVectorStore(Operands, GetLoadStoreMask(Vals), Builder);
       else
         VecInst = VP->emit(Operands, Builder);
     }

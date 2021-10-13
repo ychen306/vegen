@@ -51,36 +51,32 @@ VectorPack *VectorPackContext::createVectorPack(
   return VP.get();
 }
 
-VectorPack *VectorPackContext::createLoadPack(ArrayRef<LoadInst *> Loads,
-                                              BitVector Elements,
-                                              BitVector Depended,
-                                              TargetTransformInfo *TTI,
-                                              bool IsGather) const {
+VectorPack *VectorPackContext::createLoadPack(
+    ArrayRef<LoadInst *> Loads, const ConditionPack *CP, BitVector Elements,
+    BitVector Depended, TargetTransformInfo *TTI, bool IsGather) const {
   VectorPackCache::LoadPackKey Key(Loads.begin(), Loads.end());
   auto &VP = PackCache->LoadPacks[{Key, IsGather}];
   if (VP)
     return VP.get();
-  VP.reset(new VectorPack(this, IsGather, Loads, Elements, Depended, TTI));
+  VP.reset(new VectorPack(this, IsGather, CP, Loads, Elements, Depended, TTI));
   return VP.get();
 }
 
-VectorPack *VectorPackContext::createStorePack(ArrayRef<StoreInst *> Stores,
-                                               BitVector Elements,
-                                               BitVector Depended,
-                                               TargetTransformInfo *TTI,
-                                               bool IsScatter) const {
+VectorPack *VectorPackContext::createStorePack(
+    ArrayRef<StoreInst *> Stores, const ConditionPack *CP, BitVector Elements,
+    BitVector Depended, TargetTransformInfo *TTI, bool IsScatter) const {
   VectorPackCache::StorePackKey Key(Stores.begin(), Stores.end());
   auto &VP = PackCache->StorePacks[{Key, IsScatter}];
   if (VP)
     return VP.get();
-  VP.reset(new VectorPack(this, IsScatter, Stores, Elements, Depended, TTI));
+  VP.reset(new VectorPack(this, IsScatter, CP, Stores, Elements, Depended, TTI));
   return VP.get();
 }
 
 VectorPack *VectorPackContext::createCmpPack(ArrayRef<CmpInst *> Cmps,
-                                               BitVector Elements,
-                                               BitVector Depended,
-                                               TargetTransformInfo *TTI) const {
+                                             BitVector Elements,
+                                             BitVector Depended,
+                                             TargetTransformInfo *TTI) const {
   VectorPackCache::CmpPackKey Key(Cmps.begin(), Cmps.end());
   auto &VP = PackCache->CmpPacks[Key];
   if (VP)
@@ -103,8 +99,9 @@ VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
   return VP.get();
 }
 
-VectorPack *VectorPackContext::createGammaPack(ArrayRef<const GammaNode *> Gammas,
-                                             TargetTransformInfo *TTI) const {
+VectorPack *
+VectorPackContext::createGammaPack(ArrayRef<const GammaNode *> Gammas,
+                                   TargetTransformInfo *TTI) const {
   BitVector Elements(getNumValues());
   for (auto *G : Gammas)
     Elements.set(getScalarId(G->PN));
@@ -191,8 +188,10 @@ OperandPack *VectorPackContext::getCanonicalOperandPack(OperandPack OP) const {
 }
 
 ConditionPack *VectorPackContext::getConditionPack(
-    ArrayRef<const ControlCondition *> Conds, Optional<const ControlCondition *> MaybeCommon) const {
-  const ControlCondition *CommonC = MaybeCommon ? *MaybeCommon : getGreatestCommonCondition(Conds);
+    ArrayRef<const ControlCondition *> Conds,
+    Optional<const ControlCondition *> MaybeCommon) const {
+  const ControlCondition *CommonC =
+      MaybeCommon ? *MaybeCommon : getGreatestCommonCondition(Conds);
   auto It = ConditionPackCache.find({Conds, CommonC});
   if (It != ConditionPackCache.end())
     return It->second.get();

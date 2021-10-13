@@ -52,6 +52,9 @@ private:
   llvm::SmallVector<llvm::CmpInst *, 4> Cmps;
   ///////////////
 
+  // For side-effectul packs like loads and stores
+  const ConditionPack *CP;
+
   llvm::SmallVector<llvm::Value *, 4> OrderedValues;
   llvm::SmallVector<const OperandPack *, 4> OperandPacks;
 
@@ -75,10 +78,11 @@ private:
 
   // Load Pack
   VectorPack(const VectorPackContext *VPCtx, bool IsGatherScatter,
-             llvm::ArrayRef<llvm::LoadInst *> Loads, llvm::BitVector Elements,
-             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
+             const ConditionPack *CP, llvm::ArrayRef<llvm::LoadInst *> Loads,
+             llvm::BitVector Elements, llvm::BitVector Depended,
+             llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Load), IsGatherScatter(IsGatherScatter),
+        Kind(PackKind::Load), IsGatherScatter(IsGatherScatter), CP(CP),
         Loads(Loads.begin(), Loads.end()) {
     computeOperandPacks();
     computeOrderedValues();
@@ -87,10 +91,11 @@ private:
 
   // Store Pack
   VectorPack(const VectorPackContext *VPCtx, bool IsGatherScatter,
-             llvm::ArrayRef<llvm::StoreInst *> Stores, llvm::BitVector Elements,
-             llvm::BitVector Depended, llvm::TargetTransformInfo *TTI)
+             const ConditionPack *CP, llvm::ArrayRef<llvm::StoreInst *> Stores,
+             llvm::BitVector Elements, llvm::BitVector Depended,
+             llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
-        Kind(PackKind::Store), IsGatherScatter(IsGatherScatter),
+        Kind(PackKind::Store), IsGatherScatter(IsGatherScatter), CP(CP),
         Stores(Stores.begin(), Stores.end()) {
     computeOperandPacks();
     computeOrderedValues();

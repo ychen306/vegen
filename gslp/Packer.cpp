@@ -218,7 +218,8 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
       while (Loads.size() < PowerOf2Ceil(OP.size()))
         Loads.push_back(nullptr);
       Extensions.push_back(
-          VPCtx->createLoadPack(Loads, Elements, Depended, Pkr->getTTI()));
+          VPCtx->createLoadPack(Loads, Pkr->getConditionPack(Loads), Elements,
+                                Depended, Pkr->getTTI()));
       return;
     }
   }
@@ -313,8 +314,9 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     // FIXME: make sure the loads have the same type?
     for (auto *V : *OP)
       Loads.push_back(cast<LoadInst>(V));
-    OPI.LoadProducers.push_back(VPCtx.createLoadPack(Loads, Elements, Depended,
-                                                     TTI, true /*is gather*/));
+    OPI.LoadProducers.push_back(
+        VPCtx.createLoadPack(Loads, getConditionPack(Loads), Elements, Depended,
+                             TTI, true /*is gather*/));
     if (OPI.LoadProducers.empty())
       OPI.Feasible = false;
     return OPI;
