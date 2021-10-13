@@ -487,10 +487,11 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     MaterializedPacks[VP] = VecInst;
   }
 
-  errs() << *F << '\n';
-
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
+
+  errs() << *F << '\n';
+
 
 #if 0
     for (auto *VP : OrderedPacks) {
