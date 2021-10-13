@@ -197,7 +197,8 @@ ConditionPack *VectorPackContext::getConditionPack(
   if (It != ConditionPackCache.end())
     return It->second.get();
 
-  // FIXME: what if Conds are splat?
+  if (all_of(Conds, [CommonC](auto *C) { return C == CommonC; }))
+    return nullptr;
 
   auto *NewCP = new ConditionPack;
   NewCP->Conds.assign(Conds.begin(), Conds.end());

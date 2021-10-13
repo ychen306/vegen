@@ -204,6 +204,10 @@ public:
     assert(isReduction());
     return *Rdx;
   };
+  llvm::ArrayRef<const GammaNode *> getGammas() const {
+    assert(isGamma());
+    return Gammas;
+  }
 
   llvm::ArrayRef<llvm::Value *> getOrderedValues() const {
     return OrderedValues;

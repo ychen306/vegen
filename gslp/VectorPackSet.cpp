@@ -16,10 +16,10 @@ using namespace llvm;
 // Get the vector value representing `OP'.
 // If `OP` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
-Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
-                                        const ValueIndexTy &ValueIndex,
-                                        const PackToValueTy &MaterializedPacks,
-                                        IntrinsicBuilder &Builder) {
+static Value *gatherOperandPack(const OperandPack &OP,
+                                const ValueIndexTy &ValueIndex,
+                                const PackToValueTy &MaterializedPacks,
+                                IRBuilderBase &Builder) {
   struct GatherEdge {
     unsigned SrcIndex;
     unsigned DestIndex;
@@ -136,6 +136,27 @@ Value *VectorPackSet::gatherOperandPack(const OperandPack &OP,
   }
 
   return Acc;
+}
+
+static Value *getOrEmitConditionPack(
+    const ConditionPack *CP, const ValueIndexTy &ValueIndex,
+    const PackToValueTy &MaterializedPacks,
+    DenseMap<const ConditionPack *, Value *> &MaterializedCondPacks,
+    IRBuilderBase &Builder) {
+  if (auto *V = MaterializedCondPacks.lookup(CP))
+    return V;
+
+  if (CP->Kind == ConditionPack::CP_And) {
+    assert(CP->OP);
+    Value *Cond =
+        gatherOperandPack(*CP->OP, ValueIndex, MaterializedPacks, Builder);
+    if (!CP->Parent)
+      return Cond;
+    auto *ParentCond =
+        getOrEmitConditionPack(CP->Parent, ValueIndex, MaterializedPacks,
+                               MaterializedCondPacks, Builder);
+    return Builder.CreateAnd(ParentCond, Cond);
+  }
 }
 
 static BasicBlock *getBlockForPack(const VectorPack *VP) {
@@ -275,11 +296,15 @@ static std::vector<Instruction *> schedule(Function *F,
         ReorderedInsts.push_back(I);
   };
 
-  for (auto &I : instructions(F)) {
-    // Ignore branches which we will generate from
-    // scratch according to control-dep
-    if (!I.isTerminator())
-      Schedule(&I);
+  ReversePostOrderTraversal<Function *> RPO(F);
+  // Schedule in RPO so that we can order return instructions properly
+  for (auto *BB : RPO) {
+    for (auto &I : *BB) {
+      // Ignore branches, which we will generate from
+      // scratch according to control-dep
+      if (isa<ReturnInst>(&I) || !I.isTerminator())
+        Schedule(&I);
+    }
   }
 
   for (auto *VP : Packs)
@@ -337,25 +362,19 @@ static void moveToEnd(Instruction *I, BasicBlock *BB) {
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
-
-  errs() << "!!! packs <<<\n";
-  for (auto *VP : AllPacks)
-    errs() << *VP << '\n';
-  errs() << ">>>>>\n";
-  abort();
+  DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
 
   auto &LI = Pkr.getLoopInfo();
   auto *TTI = Pkr.getTTI();
+  auto *VPCtx = Pkr.getContext();
 
   // Schedule the instructions
   std::vector<Instruction *> OrderedInsts = schedule(F, AllPacks, Pkr.getDA());
 
   // Remove the basic blocks from F
   std::vector<BasicBlock *> OldBlocks;
-  for (auto &BB : *F) {
+  for (auto &BB : *F)
     OldBlocks.push_back(&BB);
-    BB.removeFromParent();
-  }
 
   // Now generate code according to the schedule
   auto &Ctx = F->getParent()->getContext();
@@ -374,25 +393,55 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     if (MaterializedPacks.count(VP))
       continue;
 
-    // Get the operands ready.
-    SmallVector<Value *, 2> Operands;
-    for (auto &Item : enumerate(VP->getOperandPacks())) {
-      auto *OP = Item.value();
-      VP->setOperandGatherPoint(Item.index(), Builder);
-      Operands.push_back(
-          gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
-    }
-
     // Get or create a new basic block to emit the pack
     SmallVector<const ControlCondition *, 8> Conds;
     for (auto *V : VP->elementValues())
-      Conds.push_back(
-          Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+      Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
     Builder.SetInsertPoint(
         BBuilder.getBlockFor(getGreatestCommonCondition(Conds)));
 
-    // Now we can emit the vector instruction
-    auto *VecInst = VP->emit(Operands, Builder);
+    Value *VecInst;
+    if (VP->isGamma()) {
+      // Special case to emit gamma pack
+      ArrayRef<const GammaNode *> Gammas = VP->getGammas();
+      unsigned NumIncomings = Gammas.front()->PN->getNumIncomingValues();
+      assert(all_of(Gammas, [&](auto *G2) {
+        return G2->PN->getNumIncomingValues() == NumIncomings;
+      }));
+
+      SmallVector<Value *, 8> GateConds, GateVals;
+      for (unsigned i = 0; i < NumIncomings; i++) {
+        SmallVector<const ControlCondition *> Conds;
+        OperandPack Vals;
+        for (auto *G : Gammas) {
+          Conds.push_back(G->Conds[i]);
+          Vals.push_back(G->Vals[i]);
+        }
+        auto *CP = VPCtx->getConditionPack(Conds);
+        GateConds.push_back(getOrEmitConditionPack(
+            CP, ValueIndex, MaterializedPacks, MaterializedCondPacks, Builder));
+        GateVals.push_back(
+            gatherOperandPack(Vals, ValueIndex, MaterializedPacks, Builder));
+      }
+      auto *Sel = GateVals.back();
+      auto CondsAndVals = drop_begin(zip(reverse(GateConds), reverse(GateVals)));
+      Value *C, *V;
+      for (auto CondAndVal : CondsAndVals) {
+        std::tie(C, V) = CondAndVal;
+        Sel = Builder.CreateSelect(C, V, Sel);
+      }
+      VecInst = Sel;
+    } else {
+      // For other instructions, we just get gather their operands and emit the
+      // vector instruction Get the operands ready.
+      SmallVector<Value *, 2> Operands;
+      for (auto *OP : VP->getOperandPacks()) {
+        Operands.push_back(
+            gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
+      }
+      // Now we can emit the vector instruction
+      VecInst = VP->emit(Operands, Builder);
+    }
 
     // Conservatively extract all elements.
     // Let the later cleanup passes clean up dead extracts.
@@ -404,7 +453,22 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         }
       }
     }
+
+    // Update the value index
+    // to track where the originally scalar values are produced
+    auto OutputLanes = VP->getOrderedValues();
+    for (unsigned i = 0, e = OutputLanes.size(); i != e; i++)
+      if (auto *V = OutputLanes[i])
+        ValueIndex[V] = {VP, i};
+
+    // Map the pack to its materialized value
+    MaterializedPacks[VP] = VecInst;
   }
+
+  errs() << *F << '\n';
+
+  for (auto *BB : OldBlocks)
+    BB->eraseFromParent();
 
 #if 0
     for (auto *VP : OrderedPacks) {

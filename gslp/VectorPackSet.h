@@ -10,6 +10,24 @@
 
 class Packer;
 
+// This tells us where a value is located in a pack
+struct VectorPackIndex {
+  const VectorPack *VP;
+  unsigned Idx;
+
+  bool operator<(const VectorPackIndex &Other) const {
+    return std::tie(VP, Idx) < std::tie(Other.VP, Other.Idx);
+  }
+  bool operator==(const VectorPackIndex &Other) const {
+    return VP == Other.VP && Idx == Other.Idx;
+  }
+};
+
+// Mapping a value to the pack that produce them.
+using ValueIndexTy = llvm::DenseMap<const llvm::Value *, VectorPackIndex>;
+// Mapping VectorPack -> their materialized values.
+using PackToValueTy = llvm::DenseMap<const VectorPack *, llvm::Value *>;
+
 class VectorPackSet {
   llvm::Function *F;
   std::vector<const VectorPack *> AllPacks;
@@ -17,29 +35,6 @@ class VectorPackSet {
   llvm::BitVector PackedValues;
   llvm::DenseMap<llvm::Value *, const VectorPack *> ValueToPackMap;
 
-  // This tells us where a value is located in a pack
-  struct VectorPackIndex {
-    const VectorPack *VP;
-    unsigned Idx;
-
-    bool operator<(const VectorPackIndex &Other) const {
-      return std::tie(VP, Idx) < std::tie(Other.VP, Other.Idx);
-    }
-    bool operator==(const VectorPackIndex &Other) const {
-      return VP == Other.VP && Idx == Other.Idx;
-    }
-  };
-
-  // Mapping a value to the pack that produce them.
-  using ValueIndexTy = llvm::DenseMap<const llvm::Value *, VectorPackIndex>;
-  // Mapping VectorPack -> their materialized values.
-  using PackToValueTy = llvm::DenseMap<const VectorPack *, llvm::Value *>;
-
-  // Get the vector value representing OpndPack.
-  static llvm::Value *gatherOperandPack(const OperandPack &OpndPack,
-                                        const ValueIndexTy &ValueIndex,
-                                        const PackToValueTy &MaterializedPacks,
-                                        IntrinsicBuilder &Builder);
   void add(const VectorPack *VP);
 
 public:

@@ -106,7 +106,7 @@ void Plan::incVectorUses(const OperandPack *OP) {
 }
 
 bool Plan::isAlive(llvm::Instruction *I) const {
-  return /*I->isTerminator() ||*/ isa<StoreInst>(I) || isa<CallInst>(I) ||
+  return isa<ReturnInst>(I) ||isa<StoreInst>(I) || isa<CallInst>(I) ||
          isa<InvokeInst>(I) || NumScalarUses.lookup(I) ||
          !InstToOperandsMap.lookup(I).empty();
 }
