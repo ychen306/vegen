@@ -14,13 +14,20 @@
 
 using namespace llvm;
 
+static cl::opt<bool> RescheduleScalars(
+    "reschedule-scalar",
+    cl::desc(
+        "run VectorPackSet::codegen and reschdule even when not vectorizing"),
+    cl::init(false));
+
 // Get the vector value representing `OP'.
 // If `OP` is not directly produced by another Pack,
 // we need to emit code to either swizzle it together.
-static Value *gatherOperandPack(const OperandPack &OP,
-                                const ValueIndexTy &ValueIndex,
-                                const PackToValueTy &MaterializedPacks,
-                                IRBuilderBase &Builder) {
+static Value *
+gatherOperandPack(const OperandPack &OP, const ValueIndexTy &ValueIndex,
+                  const PackToValueTy &MaterializedPacks,
+                  const DenseMap<PHINode *, AllocaInst *> &DemotedPHIs,
+                  IRBuilderBase &Builder) {
   struct GatherEdge {
     unsigned SrcIndex;
     unsigned DestIndex;
@@ -43,6 +50,10 @@ static Value *gatherOperandPack(const OperandPack &OP,
       // Remember we need to gather from this vector to the `i`th element
       SrcPacks[VPIdx.VP].push_back({VPIdx.Idx, i});
     } else {
+      if (auto *PN = dyn_cast<PHINode>(V)) {
+        V = DemotedPHIs.lookup(PN);
+        assert(V);
+      }
       // Remember that we need to insert `V` as the `i`th element
       SrcScalars[V].push_back(i);
     }
@@ -143,14 +154,15 @@ static Value *getOrEmitConditionPack(
     const ConditionPack *CP, const ValueIndexTy &ValueIndex,
     const PackToValueTy &MaterializedPacks,
     DenseMap<const ConditionPack *, Value *> &MaterializedCondPacks,
+    const DenseMap<PHINode *, AllocaInst *> &DemotedPHIs,
     IRBuilderBase &Builder) {
   if (auto *V = MaterializedCondPacks.lookup(CP))
     return V;
 
   if (CP->Kind == ConditionPack::CP_And) {
     assert(CP->OP);
-    Value *Cond =
-        gatherOperandPack(*CP->OP, ValueIndex, MaterializedPacks, Builder);
+    Value *Cond = gatherOperandPack(*CP->OP, ValueIndex, MaterializedPacks,
+                                    DemotedPHIs, Builder);
     if (CP->ElemsToFlip.count()) {
       SmallVector<Constant *, 8> Mask;
       auto &Ctx = Builder.getContext();
@@ -163,7 +175,7 @@ static Value *getOrEmitConditionPack(
       return Cond;
     auto *ParentCond =
         getOrEmitConditionPack(CP->Parent, ValueIndex, MaterializedPacks,
-                               MaterializedCondPacks, Builder);
+                               MaterializedCondPacks, DemotedPHIs, Builder);
     return Builder.CreateAnd(ParentCond, Cond);
   }
 
@@ -224,8 +236,6 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
 static std::vector<Instruction *>
 schedule(Function *F, ArrayRef<const VectorPack *> Packs, Packer &Pkr) {
   auto &DA = Pkr.getDA();
-  if (Packs.empty())
-    return {};
 
   // Mapping values to where they are packed
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
@@ -235,7 +245,7 @@ schedule(Function *F, ArrayRef<const VectorPack *> Packs, Packer &Pkr) {
 
   // Schedule the instruction to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
-  const VectorPackContext *VPCtx = Packs[0]->getContext();
+  const VectorPackContext *VPCtx = Pkr.getContext();
   using SchedulerItem =
       PointerUnion<Instruction *, const VectorPack *, const ControlCondition *>;
   DenseSet<void *> Reordered;
@@ -372,23 +382,14 @@ static void moveToEnd(Instruction *I, BasicBlock *BB) {
 }
 
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
+  if (AllPacks.empty() && !RescheduleScalars)
+    return;
+
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
   DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
 
   auto *VPCtx = Pkr.getContext();
-
-  auto GetLoadStoreMask = [&](ArrayRef<Value *> Vals) -> Value * {
-    SmallVector<const ControlCondition *> Conds;
-    for (auto *V : Vals)
-      Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
-    auto *CP = VPCtx->getConditionPack(Conds);
-    // nullptr means it's all true
-    if (!CP)
-      return nullptr;
-    return getOrEmitConditionPack(CP, ValueIndex, MaterializedPacks,
-                                  MaterializedCondPacks, Builder);
-  };
 
   // Schedule the instructions
   std::vector<Instruction *> OrderedInsts = schedule(F, AllPacks, Pkr);
@@ -419,6 +420,18 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     return GetBlock(C);
   };
 
+  auto GetLoadStoreMask = [&](ArrayRef<Value *> Vals) -> Value * {
+    SmallVector<const ControlCondition *> Conds;
+    for (auto *V : Vals)
+      Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+    auto *CP = VPCtx->getConditionPack(Conds);
+    // nullptr means it's all true
+    if (!CP)
+      return nullptr;
+    return getOrEmitConditionPack(CP, ValueIndex, MaterializedPacks,
+                                  MaterializedCondPacks, DemotedPHIs, Builder);
+  };
+
   // Now generate code according to the schedule
   for (auto *I : OrderedInsts) {
     auto *Cond = Pkr.getBlockCondition(I->getParent());
@@ -426,7 +439,30 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
     // I is not packed
     if (!VP) {
-      moveToEnd(I, GetBlock(Cond));
+      auto *PN = dyn_cast<PHINode>(I);
+      if (!PN) {
+        moveToEnd(I, GetBlock(Cond));
+        continue;
+      }
+
+      // Demote the phi to memory
+      auto *Alloca =
+          new AllocaInst(PN->getType(), 0, "demoted", &Entry->front());
+      Allocas.push_back(Alloca);
+      DemotedPHIs[PN] = Alloca;
+      for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
+        auto *EdgeCond =
+            Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
+        auto *BB = GetLastBlockFor(EdgeCond);
+        if (auto *Terminator = BB->getTerminator())
+          Builder.SetInsertPoint(Terminator);
+        else
+          Builder.SetInsertPoint(BB);
+        Builder.CreateStore(PN->getIncomingValue(i), Alloca);
+      }
+      Builder.SetInsertPoint(GetBlock(Cond));
+      auto *Reload = Builder.CreateLoad(PN->getType(), Alloca);
+      PN->replaceAllUsesWith(Reload);
       continue;
     }
 
@@ -459,9 +495,10 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         }
         auto *CP = VPCtx->getConditionPack(Conds);
         GateConds.push_back(getOrEmitConditionPack(
-            CP, ValueIndex, MaterializedPacks, MaterializedCondPacks, Builder));
-        GateVals.push_back(
-            gatherOperandPack(Vals, ValueIndex, MaterializedPacks, Builder));
+            CP, ValueIndex, MaterializedPacks, MaterializedCondPacks,
+            DemotedPHIs, Builder));
+        GateVals.push_back(gatherOperandPack(
+            Vals, ValueIndex, MaterializedPacks, DemotedPHIs, Builder));
       }
       auto *Sel = GateVals.back();
       auto CondsAndVals =
@@ -474,20 +511,22 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       VecInst = Sel;
     } else if (VP->isPHI()) {
       auto *VecTy = getVectorType(*VP);
-      auto *Alloca = new AllocaInst(VecTy, 0, "demoted", &Entry->front());
+      auto *Alloca = new AllocaInst(VecTy, 0, "vector-phi", &Entry->front());
       // Track the alloca so we can promote it back to phi later
       Allocas.push_back(Alloca);
       auto *PN = cast<PHINode>(*VP->elementValues().begin());
       ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
       for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
         IntrinsicBuilder::InsertPointGuard Guard(Builder);
-        auto *Cond = Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
+        auto *Cond =
+            Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
         auto *BB = GetLastBlockFor(Cond);
         if (auto *Terminator = BB->getTerminator())
           Builder.SetInsertPoint(Terminator);
         else
           Builder.SetInsertPoint(BB);
-        auto *Gathered = gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
+        auto *Gathered = gatherOperandPack(
+            *OPs[i], ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
         Builder.CreateStore(Gathered, Alloca);
       }
       VecInst = Builder.CreateLoad(VecTy, Alloca);
@@ -496,8 +535,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       // vector instruction Get the operands ready.
       SmallVector<Value *, 2> Operands;
       for (auto *OP : VP->getOperandPacks()) {
-        Operands.push_back(
-            gatherOperandPack(*OP, ValueIndex, MaterializedPacks, Builder));
+        Operands.push_back(gatherOperandPack(*OP, ValueIndex, MaterializedPacks,
+                                             DemotedPHIs, Builder));
       }
 
       // Now we can emit the vector instruction
