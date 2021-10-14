@@ -223,35 +223,6 @@ Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands, Value *Mask,
   return propagateMetadata(VecStore, Stores_);
 }
 
-Value *VectorPack::emitVectorPhi(ArrayRef<Value *> Operands,
-                                 IntrinsicBuilder &Builder) const {
-  auto *BB = PHIs.front()->getParent();
-  Builder.SetInsertPoint(&*BB->begin());
-  auto *FirstPHI = PHIs.front();
-  unsigned NumIncomings = FirstPHI->getNumIncomingValues();
-
-  auto *VecTy = FixedVectorType::get(FirstPHI->getType(), PHIs.size());
-  auto *VecPHI = Builder.CreatePHI(VecTy, NumIncomings);
-
-  std::set<BasicBlock *> Visited;
-  // Values in operands follow the order of ::getUserPack,
-  // which follows the basic block order of the first phi.
-  for (unsigned i = 0; i < NumIncomings; i++) {
-    auto *BB = FirstPHI->getIncomingBlock(i);
-    // Apparently sometimes a phi node can have more than one
-    // incoming value for the same basic block...
-    if (Visited.count(BB)) {
-      VecPHI->addIncoming(VecPHI->getIncomingValueForBlock(BB), BB);
-      continue;
-    }
-    auto *VecIncoming = Operands[i];
-    VecPHI->addIncoming(VecIncoming, BB);
-    Visited.insert(BB);
-  }
-  assert(VecPHI->getNumIncomingValues() == FirstPHI->getNumIncomingValues());
-  return VecPHI;
-}
-
 static void getGEPOperands(unsigned i, ArrayRef<GetElementPtrInst *> GEPs,
                            SmallVectorImpl<Value *> &Operands) {
   for (auto *GEP : GEPs)
@@ -368,8 +339,6 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
   switch (Kind) {
   case General:
     return emitVectorGeneral(Operands, Builder);
-  case Phi:
-    return emitVectorPhi(Operands, Builder);
   case GEP:
     return emitVectorGEP(GEPs, Operands, Builder);
   case Cmp:
@@ -378,6 +347,7 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
   case Store:
   case Reduction:
   case Gamma:
+  case Phi:
     llvm_unreachable("Don't call emit on reduction and gamma pack directly");
   }
 }

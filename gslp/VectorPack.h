@@ -173,8 +173,6 @@ private:
 
   llvm::Value *emitVectorGeneral(llvm::ArrayRef<llvm::Value *> Operands,
                                  IntrinsicBuilder &Builder) const;
-  llvm::Value *emitVectorPhi(llvm::ArrayRef<llvm::Value *> Operands,
-                             IntrinsicBuilder &Builder) const;
 
 public:
   VectorPack(const VectorPack &Other) = default;

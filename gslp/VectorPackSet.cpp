@@ -10,6 +10,7 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
+#include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
 using namespace llvm;
 
@@ -397,16 +398,35 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto &BB : *F)
     OldBlocks.push_back(&BB);
 
-  // Now generate code according to the schedule
   auto &Ctx = F->getParent()->getContext();
-  BlockBuilder BBuilder(BasicBlock::Create(Ctx, "entry", F));
+  auto *Entry = BasicBlock::Create(Ctx, "entry", F);
+  BlockBuilder BBuilder(Entry);
+
+  // Instead of moving PHIs around,
+  // we will demote them and implement control-flow join through memory
+  DenseMap<PHINode *, AllocaInst *> DemotedPHIs;
+  // Track the last used block for a given condition,
+  // these are the blocks where we will store the incoming values to the demoted
+  // allocas.
+  SmallVector<AllocaInst *> Allocas;
+  DenseMap<const ControlCondition *, BasicBlock *> LastBlockForCond;
+  auto GetBlock = [&](const ControlCondition *C) {
+    return LastBlockForCond[C] = BBuilder.getBlockFor(C);
+  };
+  auto GetLastBlockFor = [&](const ControlCondition *C) {
+    if (auto *BB = LastBlockForCond.lookup(C))
+      return BB;
+    return GetBlock(C);
+  };
+
+  // Now generate code according to the schedule
   for (auto *I : OrderedInsts) {
     auto *Cond = Pkr.getBlockCondition(I->getParent());
     auto *VP = ValueToPackMap.lookup(I);
 
     // I is not packed
     if (!VP) {
-      moveToEnd(I, BBuilder.getBlockFor(Cond));
+      moveToEnd(I, GetBlock(Cond));
       continue;
     }
 
@@ -418,8 +438,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     SmallVector<const ControlCondition *, 8> Conds;
     for (auto *V : VP->elementValues())
       Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
-    Builder.SetInsertPoint(
-        BBuilder.getBlockFor(getGreatestCommonCondition(Conds)));
+    Builder.SetInsertPoint(GetBlock(getGreatestCommonCondition(Conds)));
 
     Value *VecInst;
     if (VP->isGamma()) {
@@ -453,6 +472,25 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         Sel = Builder.CreateSelect(C, V, Sel);
       }
       VecInst = Sel;
+    } else if (VP->isPHI()) {
+      auto *VecTy = getVectorType(*VP);
+      auto *Alloca = new AllocaInst(VecTy, 0, "demoted", &Entry->front());
+      // Track the alloca so we can promote it back to phi later
+      Allocas.push_back(Alloca);
+      auto *PN = cast<PHINode>(*VP->elementValues().begin());
+      ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
+      for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
+        IntrinsicBuilder::InsertPointGuard Guard(Builder);
+        auto *Cond = Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
+        auto *BB = GetLastBlockFor(Cond);
+        if (auto *Terminator = BB->getTerminator())
+          Builder.SetInsertPoint(Terminator);
+        else
+          Builder.SetInsertPoint(BB);
+        auto *Gathered = gatherOperandPack(*OPs[i], ValueIndex, MaterializedPacks, Builder);
+        Builder.CreateStore(Gathered, Alloca);
+      }
+      VecInst = Builder.CreateLoad(VecTy, Alloca);
     } else {
       // For other instructions, we just get gather their operands and emit the
       // vector instruction Get the operands ready.
@@ -497,6 +535,9 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
+
+  DominatorTree DT(*F);
+  PromoteMemToReg(Allocas, DT);
 
   // Another pass to delete trivially dead instructions
   bool Changed;
