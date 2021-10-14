@@ -16,8 +16,8 @@
 ; CHECK-NEXT:  br label %[[JOIN]]
 
 ; CHECK:[[JOIN]]:
-; CHECK-NEXT:  %demoted{{.*}} = phi float [ %add, %0 ], [ %sub, %3 ]
-; CHECK-NEXT:  store float %demoted.0, float* getelementptr inbounds ([4 x float], [4 x float]* @a, i64 0, i64 0)
+; CHECK-NEXT:  [[DEMOTED:%demoted.*]] = phi float [ %add, %0 ], [ %sub, %3 ]
+; CHECK-NEXT:  store float [[DEMOTED]], float* getelementptr inbounds ([4 x float], [4 x float]* @a, i64 0, i64 0)
 ; CHECK-NEXT:  ret void
 
 
