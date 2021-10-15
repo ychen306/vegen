@@ -8,6 +8,7 @@ set(LIB_PACKING_SRC
 
   ControlDependence.cpp
   BlockBuilder.cpp
+  VLoop.cpp
 
   Reduction.cpp
 
