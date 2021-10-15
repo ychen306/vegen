@@ -12,10 +12,24 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
   Src &= ToRemove;
 }
 
+VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
+             GlobalDependenceAnalysis *DA, LoopToVLoopMapTy &LoopToVLoopMap)
+    : IsTopLevel(true), Parent(nullptr) {
+  for (auto *L : LI.getTopLevelLoops())
+    SubLoops.emplace_back(new VLoop(LI, L, VPCtx, DA, LoopToVLoopMap));
+
+  for (auto &BB : *VPCtx->getFunction())
+    if (!LI.getLoopFor(&BB)) {
+      for (auto &I : BB)
+        TopLevelInsts.push_back(&I);
+    }
+}
+
 VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
-             GlobalDependenceAnalysis *DA)
-    : Depended(VPCtx->getNumValues()), Insts(VPCtx->getNumValues()), L(L),
-      Parent(nullptr) {
+             GlobalDependenceAnalysis *DA, LoopToVLoopMapTy &LoopToVLoopMap)
+    : IsTopLevel(false), Depended(VPCtx->getNumValues()),
+      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr) {
+  LoopToVLoopMap[L] = this;
   assert(L->isRotatedForm());
 
   auto *LoopBr = cast<BranchInst>(L->getLoopLatch()->getTerminator());
@@ -25,7 +39,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
 
   // Build the sub-loops first
   for (auto *SubL : *L) {
-    auto *SubVL = new VLoop(LI, SubL, VPCtx, DA);
+    auto *SubVL = new VLoop(LI, SubL, VPCtx, DA, LoopToVLoopMap);
     SubLoops.emplace_back(SubVL);
     SubVL->Parent = this;
     Depended |= SubVL->getDepended();
@@ -118,12 +132,13 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
   return isSafeToFuse(VL1->Parent, VL2->Parent, SE);
 }
 
-void VLoop::fuse(VLoop *VL1, VLoop *VL2) {
+void VLoop::fuse(VLoop *VL1, VLoop *VL2, LoopToVLoopMapTy &LoopToVLoopMap) {
   auto *Parent = VL1->Parent;
   if (Parent != VL2->Parent) {
     assert(Parent && VL2->Parent);
-    fuse(VL1->Parent, VL2->Parent);
+    fuse(VL1->Parent, VL2->Parent, LoopToVLoopMap);
   }
+  LoopToVLoopMap[VL2->L] = VL1;
   VL1->Insts |= VL2->Insts;
   VL1->Depended |= VL2->Depended;
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
