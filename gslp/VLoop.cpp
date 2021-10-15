@@ -1,4 +1,5 @@
 #include "VLoop.h"
+#include "ControlDependence.h"
 #include "DependenceAnalysis.h"
 #include "VectorPackContext.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -13,10 +14,11 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
 }
 
 VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
-             GlobalDependenceAnalysis *DA, LoopToVLoopMapTy &LoopToVLoopMap)
-    : IsTopLevel(true), Parent(nullptr) {
+             GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
+             LoopToVLoopMapTy &LoopToVLoopMap)
+    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr) {
   for (auto *L : LI.getTopLevelLoops())
-    SubLoops.emplace_back(new VLoop(LI, L, VPCtx, DA, LoopToVLoopMap));
+    SubLoops.emplace_back(new VLoop(LI, L, VPCtx, DA, CDA, LoopToVLoopMap));
 
   for (auto &BB : *VPCtx->getFunction())
     if (!LI.getLoopFor(&BB)) {
@@ -26,20 +28,22 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
 }
 
 VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
-             GlobalDependenceAnalysis *DA, LoopToVLoopMapTy &LoopToVLoopMap)
+             GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
+             LoopToVLoopMapTy &LoopToVLoopMap)
     : IsTopLevel(false), Depended(VPCtx->getNumValues()),
+      LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
       Insts(VPCtx->getNumValues()), L(L), Parent(nullptr) {
   LoopToVLoopMap[L] = this;
   assert(L->isRotatedForm());
 
   auto *LoopBr = cast<BranchInst>(L->getLoopLatch()->getTerminator());
-  LoopCond = LoopBr->getCondition();
-  assert(LoopCond);
-  LoopIfTrue = LoopBr->getSuccessor(0) == L->getHeader();
+  ContCond = LoopBr->getCondition();
+  assert(ContCond);
+  ContIfTrue = LoopBr->getSuccessor(0) == L->getHeader();
 
   // Build the sub-loops first
   for (auto *SubL : *L) {
-    auto *SubVL = new VLoop(LI, SubL, VPCtx, DA, LoopToVLoopMap);
+    auto *SubVL = new VLoop(LI, SubL, VPCtx, DA, CDA, LoopToVLoopMap);
     SubLoops.emplace_back(SubVL);
     SubVL->Parent = this;
     Depended |= SubVL->getDepended();
@@ -50,7 +54,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
     if (LI.getLoopFor(BB) != L)
       continue;
     for (auto &I : *BB) {
-      Depended |= DA->getDepended(&I);
+      Depended |= DA.getDepended(&I);
       TopLevelInsts.push_back(&I);
       Insts.set(VPCtx->getScalarId(&I));
     }

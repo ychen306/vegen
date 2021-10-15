@@ -15,6 +15,8 @@ class ScalarEvolution;
 
 class VectorPackContext;
 class GlobalDependenceAnalysis;
+class ControlDependenceAnalysis;
+class ControlCondition;
 
 class VLoop;
 using LoopToVLoopMapTy = llvm::DenseMap<llvm::Loop *, VLoop *>;
@@ -29,18 +31,21 @@ class VLoop {
   llvm::SmallVector<llvm::Instruction *> TopLevelInsts;
   llvm::SmallVector<std::unique_ptr<VLoop>, 4> SubLoops;
 
-  llvm::Value *LoopCond;
-  bool LoopIfTrue; // indicate how LoopCond is used
+  llvm::Value *ContCond;
+  bool ContIfTrue; // indicate how ContCond is used
+
+  const ControlCondition *LoopCond;
 
   VLoop *Parent;
   llvm::Loop *L; // the original loop
 
   VLoop(llvm::LoopInfo &, llvm::Loop *, VectorPackContext *,
-        GlobalDependenceAnalysis *, LoopToVLoopMapTy &);
+        GlobalDependenceAnalysis &, ControlDependenceAnalysis &,
+        LoopToVLoopMapTy &);
 
 public:
-  VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis *,
-        LoopToVLoopMapTy &);
+  VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis &,
+        ControlDependenceAnalysis &, LoopToVLoopMapTy &);
 
   llvm::ArrayRef<llvm::Instruction *> getInstructions() const {
     return TopLevelInsts;
