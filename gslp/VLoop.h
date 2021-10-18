@@ -54,6 +54,7 @@ public:
     return SubLoops;
   }
   const llvm::BitVector &getDepended() const { return Depended; }
+  const ControlCondition *getLoopCond() const { return LoopCond; }
 
   static bool isSafeToFuse(const VLoop *, const VLoop *,
                            llvm::ScalarEvolution &);

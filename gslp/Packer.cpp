@@ -64,11 +64,12 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                EquivalenceClasses<BasicBlock *> *UnrolledBlocks,
                bool Preplanning)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
-      CDA(*LI, *DT, *PDT), LDA(*AA, *DI, *SE, *DT, *LI, *LVI), BO(&F),
-      MM(Insts, F), CompatChecker(*LI, *DT, *PDT, LDA, SE, &VPCtx, &DA,
-                                  true /*precompute*/, UnrolledBlocks),
-      SE(SE), DT(DT), PDT(PDT), LI(LI), SupportedInsts(Insts.vec()), LVI(LVI),
-      TTI(TTI), BFI(BFI) {
+      CDA(*LI, *DT, *PDT), LDA(*AA, *DI, *SE, *DT, *LI, *LVI),
+
+      TopVL(*LI, &VPCtx, DA, CDA, LoopToVLoopMap),
+
+      BO(&F), MM(Insts, F), SE(SE), DT(DT), PDT(PDT), LI(LI),
+      SupportedInsts(Insts.vec()), LVI(LVI), TTI(TTI), BFI(BFI) {
 
   for (auto &BB : F) {
     BlockConditions[&BB] = CDA.getConditionForBlock(&BB);
@@ -294,7 +295,9 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     AllPHIs &= isa<PHINode>(V);
 
     unsigned InstId = VPCtx.getScalarId(I);
-    if (!OPI.Feasible || !checkIndependence(DA, VPCtx, I, Elements, Depended))
+    if (!OPI.Feasible || !checkIndependence(DA, VPCtx, I, Elements, Depended) ||
+        any_of(VisitedInsts,
+               [&](auto *Visited) { return !isCompatible(I, Visited); }))
       OPI.Feasible = false;
     Elements.set(InstId);
     Depended |= DA.getDepended(I);
@@ -422,12 +425,18 @@ float Packer::getScalarCost(Instruction *I) {
       TTI::OK_AnyValue, TTI::OP_None, TTI::OP_None, Operands, I);
 }
 
-bool Packer::isControlCompatible(Instruction *I1, Instruction *I2) const {
+bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
   if (I1->getParent() == I2->getParent())
     return true;
 
-  if (!BO.comesBefore(I1->getParent(), I2->getParent()))
-    std::swap(I1, I2);
+  return VLoop::isSafeToFuse(getVLoopFor(I1), getVLoopFor(I2), *SE);
+}
 
-  return CompatChecker.isControlCompatible(I2, I1->getParent());
+VLoop *Packer::getVLoopFor(Instruction *I) {
+  auto *L = LI->getLoopFor(I->getParent());
+  return LoopToVLoopMap.lookup(L);
+}
+
+void Packer::fuseLoops(VLoop *VL1, VLoop *VL2) {
+  VLoop::fuse(VL1, VL2, LoopToVLoopMap);
 }

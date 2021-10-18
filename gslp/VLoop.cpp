@@ -121,6 +121,10 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
   if (VL1 == VL2)
     return true;
 
+  // The loops should be control-equivalent
+  if (VL1->LoopCond != VL2->LoopCond)
+    return false;
+
   // Loop level mismatch
   if (!VL1 || !VL2)
     return false;
@@ -137,6 +141,7 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
 }
 
 void VLoop::fuse(VLoop *VL1, VLoop *VL2, LoopToVLoopMapTy &LoopToVLoopMap) {
+  assert(VL1 != VL2 && "can't fuse the same loop with itself");
   auto *Parent = VL1->Parent;
   if (Parent != VL2->Parent) {
     assert(Parent && VL2->Parent);

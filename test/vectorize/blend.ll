@@ -2,10 +2,10 @@
 
 ; CHECK:  %0 = load <4 x float>, <4 x float>* bitcast ([4 x float]* @a to <4 x float>*)
 ; CHECK-NEXT:  %1 = load <4 x float>, <4 x float>* bitcast ([4 x float]* @b to <4 x float>*)
-; CHECK-NEXT:  %2 = fcmp olt <4 x float> %0, %1
-; CHECK-NEXT:  %3 = fsub <4 x float> %0, %1
-; CHECK-NEXT:  %4 = fadd <4 x float> %0, %1
-; CHECK-NEXT:  %5 = select <4 x i1> %2, <4 x float> %4, <4 x float> %3
+; CHECK-DAG:  [[CMP:%.*]] = fcmp olt <4 x float> %0, %1
+; CHECK-DAG:  [[SUB:%.*]] = fsub <4 x float> %0, %1
+; CHECK-DAG:  [[ADD:%.*]] = fadd <4 x float> %0, %1
+; CHECK-NEXT:  %5 = select <4 x i1> [[CMP]], <4 x float> [[ADD]], <4 x float> [[SUB]]
 ; CHECK-NEXT:  store <4 x float> %5, <4 x float>* bitcast ([4 x float]* @c to <4 x float>*)
 ; CHECK-NEXT:  ret void
 

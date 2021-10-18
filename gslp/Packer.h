@@ -7,6 +7,7 @@
 #include "InstSema.h"
 #include "MatchManager.h"
 #include "VectorPackContext.h"
+#include "VLoop.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -85,11 +86,13 @@ class Packer {
   VectorPackContext VPCtx;
   GlobalDependenceAnalysis DA;
   ControlDependenceAnalysis CDA;
+  LoopToVLoopMapTy LoopToVLoopMap;
+  VLoop TopVL;
+
   // FIXME: make this not mutable
   mutable LazyDependenceAnalysis LDA;
   MatchManager MM;
   BlockOrdering BO;
-  ControlCompatibilityChecker CompatChecker;
 
   llvm::ScalarEvolution *SE;
   llvm::DominatorTree *DT;
@@ -165,7 +168,10 @@ public:
   llvm::Function *getFunction() const { return F; }
   const OperandProducerInfo &getProducerInfo(const OperandPack *);
   float getScalarCost(llvm::Instruction *);
-  bool isControlCompatible(llvm::Instruction *, llvm::Instruction *) const;
+  bool isCompatible(llvm::Instruction *, llvm::Instruction *);
+  VLoop *getVLoopFor(llvm::Instruction *);
+  VLoop &getTopVLoop() { return TopVL; }
+  void fuseLoops(VLoop *, VLoop *);
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

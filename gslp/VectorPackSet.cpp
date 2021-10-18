@@ -233,30 +233,45 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
 
 // Topsort the instructions s.t. instructions in the same packs are grouped
 // together.
-static std::vector<Instruction *>
-schedule(Function *F, ArrayRef<const VectorPack *> Packs, Packer &Pkr) {
+static std::vector<PointerUnion<Instruction *, VLoop *>>
+schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
+         Packer &Pkr) {
   auto &DA = Pkr.getDA();
-
-  // Mapping values to where they are packed
-  DenseMap<Value *, const VectorPack *> ValueToPackMap;
-  for (auto *VP : Packs)
-    for (Value *V : VP->elementValues())
-      ValueToPackMap[V] = VP;
 
   // Schedule the instruction to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
   const VectorPackContext *VPCtx = Pkr.getContext();
-  using SchedulerItem =
-      PointerUnion<Instruction *, const VectorPack *, const ControlCondition *>;
+  using SchedulerItem = PointerUnion<Instruction *, const VectorPack *,
+                                     const ControlCondition *, VLoop *>;
   DenseSet<void *> Reordered;
-  std::vector<Instruction *> ReorderedInsts;
+  std::vector<PointerUnion<Instruction *, VLoop *>> ScheduledItems;
+
+  // mapping a nested loop to the *sub loop of VL* that contains it
+  DenseMap<VLoop *, VLoop *> SubLoopMap;
+  for (auto &SubVL : VL.getSubLoops()) {
+    SmallVector<VLoop *> Worklist{SubVL.get()};
+    while (!Worklist.empty()) {
+      auto *SubVL2 = Worklist.pop_back_val();
+      for (auto &SubSubVL : SubVL2->getSubLoops()) {
+        SubLoopMap[SubSubVL.get()] = SubVL.get();
+        Worklist.push_back(SubSubVL.get());
+      }
+    }
+  }
+
   std::function<void(SchedulerItem)> Schedule = [&](SchedulerItem Item) {
     bool Inserted = Reordered.insert(Item.getOpaqueValue()).second;
     if (!Inserted)
       return;
 
     auto *I = Item.dyn_cast<Instruction *>();
+    // If either I is contained in a sub loop, just schedule sub loop instead of
+    // the instruction itself
+    if (auto *SubVL = I ? SubLoopMap.lookup(Pkr.getVLoopFor(I)) : nullptr)
+      return Schedule(SubVL);
+
     auto *VP = Item.dyn_cast<const VectorPack *>();
+    auto *SubVL = Item.dyn_cast<VLoop *>();
 
     // Make sure all of the control-dependent conditions are scheduled
     if (Item.is<const ControlCondition *>()) {
@@ -273,10 +288,8 @@ schedule(Function *F, ArrayRef<const VectorPack *> Packs, Packer &Pkr) {
     }
 
     // We need to reorder a packed instruction *together* with its pack
-    if (I && ValueToPackMap.count(I)) {
-      Schedule(ValueToPackMap[const_cast<Instruction *>(I)]);
-      return;
-    }
+    if (auto *VP = I ? ValueToPackMap.lookup(I) : nullptr)
+      return Schedule(VP);
 
     // Figure out the dependence
     std::vector<Value *> DependedValues;
@@ -286,12 +299,18 @@ schedule(Function *F, ArrayRef<const VectorPack *> Packs, Packer &Pkr) {
       auto Depended = DA.getDepended(const_cast<Instruction *>(I));
       for (auto *V : VPCtx->iter_values(Depended))
         DependedValues.push_back(V);
-    } else {
-      assert(VP);
+    } else if (VP) {
       // Make sure the control conditions are scheduled before the pack
       for (auto *V : VP->elementValues())
         Schedule(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
       for (auto *V : VP->dependedValues())
+        DependedValues.push_back(V);
+    } else {
+      assert(SubVL);
+      // Make sure the control condition (guarding the loop preheader) are
+      // scheduled first
+      Schedule(SubVL->getLoopCond());
+      for (auto *V : VPCtx->iter_values(SubVL->getDepended()))
         DependedValues.push_back(V);
     }
 
@@ -300,39 +319,25 @@ schedule(Function *F, ArrayRef<const VectorPack *> Packs, Packer &Pkr) {
       if (auto *I = dyn_cast<Instruction>(V))
         Schedule(I);
 
-#ifndef NDEBUG
-    for (auto *V : DependedValues)
-      if (auto *I2 = dyn_cast<Instruction>(V))
-        assert(std::count(ReorderedInsts.begin(), ReorderedInsts.end(), I2));
-#endif
-
     // Now finalize ordering of this (pack of) instruction(s)
-    if (I) {
-      ReorderedInsts.push_back(I);
-      return;
-    }
+    if (I)
+      return ScheduledItems.push_back(I);
+    else if (SubVL)
+      return ScheduledItems.push_back(SubVL);
 
     assert(VP);
     for (auto *V : VP->getOrderedValues())
       if (auto *I = dyn_cast_or_null<Instruction>(V))
-        ReorderedInsts.push_back(I);
+        ScheduledItems.push_back(I);
   };
 
-  ReversePostOrderTraversal<Function *> RPO(F);
-  // Schedule in RPO so that we can order return instructions properly
-  for (auto *BB : RPO) {
-    for (auto &I : *BB) {
-      // Ignore branches, which we will generate from
-      // scratch according to control-dep
-      if (isa<ReturnInst>(&I) || !I.isTerminator())
-        Schedule(&I);
-    }
-  }
+  for (auto *I : VL.getInstructions())
+    if (isa<ReturnInst>(I) || !I->isTerminator())
+      Schedule(I);
+  for (auto &SubVL : VL.getSubLoops())
+    Schedule(SubVL.get());
 
-  for (auto *VP : Packs)
-    Schedule(VP);
-
-  return ReorderedInsts;
+  return ScheduledItems;
 }
 
 static Value *emitReduction(RecurKind Kind, Value *A, Value *B,
@@ -385,6 +390,16 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   if (AllPacks.empty() && !RescheduleScalars)
     return;
 
+  // Fuse the loops for packs involving multiple loops
+  for (auto *VP : AllPacks) {
+    auto *VL = Pkr.getVLoopFor(cast<Instruction>(*VP->elementValues().begin()));
+    for (auto *V : VP->elementValues()) {
+      auto *VL2 = Pkr.getVLoopFor(cast<Instruction>(V));
+      if (VL != VL2)
+        Pkr.fuseLoops(VL, VL2);
+    }
+  }
+
   ValueIndexTy ValueIndex;
   PackToValueTy MaterializedPacks;
   DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
@@ -392,7 +407,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   auto *VPCtx = Pkr.getContext();
 
   // Schedule the instructions
-  std::vector<Instruction *> OrderedInsts = schedule(F, AllPacks, Pkr);
+  std::vector<PointerUnion<Instruction *, VLoop *>> SchedulingItems =
+      schedule(Pkr.getTopVLoop(), ValueToPackMap, Pkr);
 
   // Remove the basic blocks from F
   std::vector<BasicBlock *> OldBlocks;
@@ -433,7 +449,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   };
 
   // Now generate code according to the schedule
-  for (auto *I : OrderedInsts) {
+  for (auto &InstOrLoop : SchedulingItems) {
+    auto *I = InstOrLoop.dyn_cast<Instruction *>();
     auto *Cond = Pkr.getBlockCondition(I->getParent());
     auto *VP = ValueToPackMap.lookup(I);
 
