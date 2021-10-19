@@ -14,7 +14,7 @@ ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI,
   Function *F = DT.getRootNode()->getBlock()->getParent();
   ReversePostOrderTraversal<Function *> RPO(F);
   for (auto *BB : RPO) {
-    auto *Br = dyn_cast<BranchInst>(BB->getTerminator());
+    auto *Br = dyn_cast_or_null<BranchInst>(BB->getTerminator());
     if (Br && Br->isConditional())
       (void)getCanonicalValue(Br->getCondition());
   }
