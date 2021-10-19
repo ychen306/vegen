@@ -156,6 +156,7 @@ static Value *getOrEmitConditionPack(
     DenseMap<const ConditionPack *, Value *> &MaterializedCondPacks,
     const DenseMap<PHINode *, AllocaInst *> &DemotedPHIs,
     IRBuilderBase &Builder) {
+  assert(CP);
   if (auto *V = MaterializedCondPacks.lookup(CP))
     return V;
 

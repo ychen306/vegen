@@ -337,17 +337,20 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
       }
       PHIs.push_back(PN);
     }
+    bool AllEtas = all_of(PHIs, [&](auto *PN) {
+        auto *VL = getVLoopFor(PN);
+        return VL && VL->getEta(PN);
+        });
     bool Convergent = true;
     for (unsigned i = 0; i < NumIncomings; i++) {
       SmallVector<const ControlCondition *> EdgeConds;
       for (auto *PN : PHIs)
         EdgeConds.push_back(
             getEdgeCondition(PN->getIncomingBlock(i), PN->getParent()));
-      if (!is_splat(EdgeConds)) {
+      if (!is_splat(EdgeConds))
         Convergent = false;
-      }
     }
-    if (Convergent) {
+    if (Convergent || AllEtas) {
       OPI.Producers.push_back(VPCtx.createPhiPack(PHIs, TTI));
     } else {
       SmallVector<const GammaNode *> Gammas;
