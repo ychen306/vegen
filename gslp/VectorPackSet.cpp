@@ -702,8 +702,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
 
-  F->dump();
-
   DominatorTree DT(*F);
   PromoteMemToReg(Allocas, DT);
   fixDefUseDominance(F, DT);
