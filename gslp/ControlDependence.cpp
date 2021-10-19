@@ -197,10 +197,8 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   if (auto *L = LI.getLoopFor(BB)) {
     // We track the control condition of the main loop body separately
     auto *Header = L->getHeader();
-    if (DT.dominates(Header, BB) && PDT.dominates(BB, Header)) {
-      errs() << BB->getName() << " is control-flow equivalent to entry\n";
+    if (DT.dominates(Header, BB) && PDT.dominates(BB, Header))
       return nullptr;
-    }
   }
 
   SmallVector<const ControlCondition *> CondsToJoin;
