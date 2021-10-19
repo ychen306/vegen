@@ -148,6 +148,11 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
 const ControlCondition *
 ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
                                                BasicBlock *Dst) {
+  // Special treatment for loop exit edge
+  auto *L = LI.getLoopFor(Src);
+  if (L && L->getExitingBlock() == Src && L->getExitBlock() == Dst)
+    return getConditionForBlock(L->getLoopPreheader());
+
   auto *SrcCond = getConditionForBlock(Src);
   auto *Br = cast<BranchInst>(Src->getTerminator());
   if (Br->isUnconditional())
@@ -192,15 +197,11 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   if (auto *L = LI.getLoopFor(BB)) {
     // We track the control condition of the main loop body separately
     auto *Header = L->getHeader();
-    if (DT.dominates(Header, BB) && PDT.dominates(BB, Header))
+    if (DT.dominates(Header, BB) && PDT.dominates(BB, Header)) {
+      errs() << BB->getName() << " is control-flow equivalent to entry\n";
       return nullptr;
+    }
   }
-
-  // Fast path:
-  // If BB post-dominates its idom, BB has the same control condition
-  BasicBlock *IDom = Node->getIDom()->getBlock();
-  if (PDT.dominates(BB, IDom))
-    return BlockConditions[BB] = getConditionForBlock(IDom);
 
   SmallVector<const ControlCondition *> CondsToJoin;
   for (auto *BB2 : getControlDependentBlocks(BB)) {

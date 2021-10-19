@@ -69,7 +69,8 @@ VectorPack *VectorPackContext::createStorePack(
   auto &VP = PackCache->StorePacks[{Key, IsScatter}];
   if (VP)
     return VP.get();
-  VP.reset(new VectorPack(this, IsScatter, CP, Stores, Elements, Depended, TTI));
+  VP.reset(
+      new VectorPack(this, IsScatter, CP, Stores, Elements, Depended, TTI));
   return VP.get();
 }
 
@@ -86,30 +87,25 @@ VectorPack *VectorPackContext::createCmpPack(ArrayRef<CmpInst *> Cmps,
 }
 
 VectorPack *VectorPackContext::createPhiPack(ArrayRef<PHINode *> PHIs,
+                                             BitVector Elements,
+                                             BitVector Depended,
                                              TargetTransformInfo *TTI) const {
-  BitVector Elements(getNumValues());
-  for (auto *PHI : PHIs)
-    Elements.set(getScalarId(PHI));
   VectorPackCache::PHIPackKey Key(PHIs.begin(), PHIs.end());
   auto &VP = PackCache->PHIPacks[Key];
   if (!VP) {
-    VP.reset(
-        new VectorPack(this, PHIs, Elements, BitVector(getNumValues()), TTI));
+    VP.reset(new VectorPack(this, PHIs, Elements, Depended, TTI));
   }
   return VP.get();
 }
 
 VectorPack *
 VectorPackContext::createGammaPack(ArrayRef<const GammaNode *> Gammas,
+                                   BitVector Elements, BitVector Depended,
                                    TargetTransformInfo *TTI) const {
-  BitVector Elements(getNumValues());
-  for (auto *G : Gammas)
-    Elements.set(getScalarId(G->PN));
   VectorPackCache::GammaPackKey Key(Gammas.begin(), Gammas.end());
   auto &VP = PackCache->GammaPacks[Key];
   if (!VP) {
-    VP.reset(
-        new VectorPack(this, Gammas, Elements, BitVector(getNumValues()), TTI));
+    VP.reset(new VectorPack(this, Gammas, Elements, Depended, TTI));
   }
   return VP.get();
 }

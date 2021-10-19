@@ -84,25 +84,27 @@ public:
 
   // Create a vectorized load
   VectorPack *createLoadPack(llvm::ArrayRef<llvm::LoadInst *> Loads,
-                             const ConditionPack *CP,
-                             llvm::BitVector Elements, llvm::BitVector Depended,
+                             const ConditionPack *CP, llvm::BitVector Elements,
+                             llvm::BitVector Depended,
                              llvm::TargetTransformInfo *TTI,
                              bool IsGather = false) const;
 
   // Create a vectorized store
   VectorPack *createStorePack(llvm::ArrayRef<llvm::StoreInst *> Stores,
-                              const ConditionPack *CP,
-                              llvm::BitVector Elements,
+                              const ConditionPack *CP, llvm::BitVector Elements,
                               llvm::BitVector Depended,
                               llvm::TargetTransformInfo *TTI,
                               bool IsScatter = false) const;
 
   // Create a vectorized phi
   VectorPack *createPhiPack(llvm::ArrayRef<llvm::PHINode *> PHIs,
+                            llvm::BitVector Elements, llvm::BitVector Depended,
                             llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized gamma
   VectorPack *createGammaPack(llvm::ArrayRef<const GammaNode *> Gammas,
+                              llvm::BitVector Elements,
+                              llvm::BitVector Depended,
                               llvm::TargetTransformInfo *TTI) const;
 
   // Create a vectorized comparison

@@ -397,7 +397,7 @@ static void moveToEnd(Instruction *I, BasicBlock *BB) {
   assert(I->getParent() == BB);
 }
 
-static Value *emitEta(Value *Init, Value *Iter, BasicBlock *Preheader,
+static PHINode *emitEta(Value *Init, Value *Iter, BasicBlock *Preheader,
                     BasicBlock *Header, BasicBlock *Latch) {
   auto *PN = PHINode::Create(Init->getType(), 2);
   PN->addIncoming(Init, Preheader);
@@ -488,6 +488,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         return BB;
       return GetBlock(C);
     };
+
+    SmallVector<std::pair<PHINode *, OperandPack>> EtasToPatch;
 
     // Now generate code according to the schedule
     for (auto &InstOrLoop : schedule(VL, ValueToPackMap, Pkr)) {
@@ -602,32 +604,33 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
           auto *InitVec = gatherOperandPack(
               InitOP, ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
           assert(Latch && Latch->getTerminator());
-          Builder.SetInsertPoint(Latch->getTerminator());
-          auto *IterVec = gatherOperandPack(
-              IterOP, ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
-          emitEta(InitVec, IterVec, Preheader, Header, Latch);
-        }
+          auto *Eta = emitEta(InitVec, UndefValue::get(getVectorType(*VP)), Preheader, Header, Latch);
+          EtasToPatch.emplace_back(Eta, IterOP);
+          VecInst = Eta;
+        } else  {
+          auto *PN = cast<PHINode>(*VP->elementValues().begin());
+          auto *VecTy = getVectorType(*VP);
+          auto *Alloca = new AllocaInst(VecTy, 0, PN->getName()+".vector", &Entry->front());
+          // Track the alloca so we can promote it back to phi later
+          Allocas.push_back(Alloca);
 
-        auto *VecTy = getVectorType(*VP);
-        auto *Alloca = new AllocaInst(VecTy, 0, "vector-phi", &Entry->front());
-        // Track the alloca so we can promote it back to phi later
-        Allocas.push_back(Alloca);
-        auto *PN = cast<PHINode>(*VP->elementValues().begin());
-        ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
-        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
-          IntrinsicBuilder::InsertPointGuard Guard(Builder);
-          auto *Cond =
+          ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
+
+          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
+            IntrinsicBuilder::InsertPointGuard Guard(Builder);
+            auto *Cond =
               Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
-          auto *BB = GetLastBlockFor(Cond);
-          if (auto *Terminator = BB->getTerminator())
-            Builder.SetInsertPoint(Terminator);
-          else
-            Builder.SetInsertPoint(BB);
-          auto *Gathered = gatherOperandPack(
-              *OPs[i], ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
-          Builder.CreateStore(Gathered, Alloca);
+            auto *BB = GetLastBlockFor(Cond);
+            if (auto *Terminator = BB->getTerminator())
+              Builder.SetInsertPoint(Terminator);
+            else
+              Builder.SetInsertPoint(BB);
+            auto *Gathered = gatherOperandPack(
+                *OPs[i], ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
+            Builder.CreateStore(Gathered, Alloca);
+          }
+          VecInst = Builder.CreateLoad(VecTy, Alloca);
         }
-        VecInst = Builder.CreateLoad(VecTy, Alloca);
       } else {
         // For other instructions, we just get gather their operands and
         // emit the vector instruction Get the operands ready.
@@ -642,9 +645,10 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         if (VP->isLoad())
           VecInst =
               VP->emitVectorLoad(Operands, GetLoadStoreMask(Vals), Builder);
-        else if (VP->isStore())
+        else if (VP->isStore()) {
           VecInst =
               VP->emitVectorStore(Operands, GetLoadStoreMask(Vals), Builder);
+        }
         else
           VecInst = VP->emit(Operands, Builder);
       }
@@ -672,8 +676,19 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     }
 
     // Join all of the blocks to the latch
-    if (VL.isLoop())
+    if (VL.isLoop()) {
       BranchInst::Create(Latch, GetBlock(nullptr));
+
+      // Patch the eta nodes
+      Builder.SetInsertPoint(Latch->getTerminator());
+      for (auto &Pair : EtasToPatch) {
+        PHINode *Eta = Pair.first;
+        OperandPack &IterOP = Pair.second;
+        auto *IterVec = gatherOperandPack(
+            IterOP, ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
+        Eta->setIncomingValue(1, IterVec);
+      }
+    }
 
     return {Header, Exit};
   };
@@ -686,6 +701,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
+
+  F->dump();
 
   DominatorTree DT(*F);
   PromoteMemToReg(Allocas, DT);

@@ -338,9 +338,9 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
       PHIs.push_back(PN);
     }
     bool AllEtas = all_of(PHIs, [&](auto *PN) {
-        auto *VL = getVLoopFor(PN);
-        return VL && VL->getEta(PN);
-        });
+      auto *VL = getVLoopFor(PN);
+      return VL && VL->getEta(PN);
+    });
     bool Convergent = true;
     for (unsigned i = 0; i < NumIncomings; i++) {
       SmallVector<const ControlCondition *> EdgeConds;
@@ -350,13 +350,16 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
       if (!is_splat(EdgeConds))
         Convergent = false;
     }
+
     if (Convergent || AllEtas) {
-      OPI.Producers.push_back(VPCtx.createPhiPack(PHIs, TTI));
+      OPI.Producers.push_back(
+          VPCtx.createPhiPack(PHIs, Elements, Depended, TTI));
     } else {
       SmallVector<const GammaNode *> Gammas;
       for (auto *PN : PHIs)
         Gammas.push_back(CDA.getGamma(PN));
-      OPI.Producers.push_back(VPCtx.createGammaPack(Gammas, TTI));
+      OPI.Producers.push_back(
+          VPCtx.createGammaPack(Gammas, Elements, Depended, TTI));
     }
     return OPI;
   }
