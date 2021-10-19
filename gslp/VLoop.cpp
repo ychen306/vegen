@@ -144,8 +144,8 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
     return true;
 
   // The loops should be control-equivalent
-  //if (VL1->LoopCond != VL2->LoopCond)
-  //  return false;
+  if (VL1->LoopCond != VL2->LoopCond)
+    return false;
 
   // Loop level mismatch
   if (!VL1 || !VL2)

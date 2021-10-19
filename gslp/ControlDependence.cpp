@@ -1,9 +1,53 @@
 #include "ControlDependence.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Instructions.h"
 
 using namespace llvm;
+
+ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI,
+                                                     DominatorTree &DT,
+                                                     PostDominatorTree &PDT)
+    : LI(LI), DT(DT), PDT(PDT) {
+  // Run a half-ass GVN over the control conditions
+  Function *F = DT.getRootNode()->getBlock()->getParent();
+  ReversePostOrderTraversal<Function *> RPO(F);
+  for (auto *BB : RPO) {
+    auto *Br = dyn_cast<BranchInst>(BB->getTerminator());
+    if (Br && Br->isConditional())
+      (void)getCanonicalValue(Br->getCondition());
+  }
+}
+
+Value *ControlDependenceAnalysis::getCanonicalValue(Value *V) {
+  if (auto *V2 = CanonicalValues.lookup(V))
+    return V2;
+
+  unsigned Opcode, Extra;
+  Value *A, *B;
+  if (auto *BO = dyn_cast<BinaryOperator>(V)) {
+    Opcode = BO->getOpcode();
+    Extra = 0;
+    A = BO->getOperand(0);
+    B = BO->getOperand(1);
+  } else if (auto *Cmp = dyn_cast<CmpInst>(V)) {
+    Opcode = Cmp->getOpcode();
+    Extra = Cmp->getPredicate();
+    A = Cmp->getOperand(0);
+    B = Cmp->getOperand(1);
+  } else {
+    return V;
+  }
+
+  BinaryInstruction Inst{Opcode, Extra, getCanonicalValue(A),
+                         getCanonicalValue(B)};
+  if (auto *V2 = CanonicalInsts.lookup(Inst))
+    return CanonicalValues[V] = V2;
+  CanonicalInsts[Inst] = V;
+  CanonicalValues[V] = V;
+  return V;
+}
 
 static unsigned maxDepth(ArrayRef<const ControlCondition *> Conds) {
   if (Conds.empty())
@@ -53,6 +97,7 @@ getGreatestCommonCondition(ArrayRef<const ControlCondition *> Conds) {
 const ControlCondition *
 ControlDependenceAnalysis::getAnd(const ControlCondition *Parent, Value *Cond,
                                   bool IsTrue) {
+  Cond = getCanonicalValue(Cond);
   AndKeyT Key(Parent, Cond);
   auto &Slot = IsTrue ? UniqueAndOfTrue[Key] : UniqueAndOfFalse[Key];
   if (!Slot) {
@@ -90,7 +135,8 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
   auto *G = new GammaNode;
   G->PN = PN;
   It->second.reset(G);
-  Value *V; BasicBlock *BB;
+  Value *V;
+  BasicBlock *BB;
   for (auto Pair : zip(PN->incoming_values(), PN->blocks())) {
     std::tie(V, BB) = Pair;
     G->Vals.push_back(V);

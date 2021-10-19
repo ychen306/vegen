@@ -2,6 +2,7 @@
 #define CONTROL_DEPENDENCE_H
 
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Support/Casting.h"
 #include <map>
@@ -68,6 +69,31 @@ struct GammaNode {
   llvm::SmallVector<const ControlCondition *, 2> Conds;
 };
 
+struct BinaryInstruction {
+  unsigned Opcode, Extra;
+  llvm::Value *A, *B;
+};
+
+namespace llvm {
+template <> struct DenseMapInfo<BinaryInstruction> {
+  static inline BinaryInstruction getEmptyKey() {
+    return {0, 0, nullptr, nullptr};
+  }
+  static inline BinaryInstruction getTombstoneKey() {
+    return {1, 0, nullptr, nullptr};
+  }
+  static inline unsigned getHashValue(const BinaryInstruction &Inst) {
+    using namespace llvm;
+    return hash_combine(Inst.Opcode, hash_value(Inst.A), hash_value(Inst.B));
+  }
+  static bool isEqual(const BinaryInstruction &Inst1,
+                      const BinaryInstruction &Inst2) {
+    return std::tie(Inst1.Opcode, Inst1.Extra, Inst1.A, Inst1.B) ==
+           std::tie(Inst2.Opcode, Inst2.Extra, Inst2.A, Inst2.B);
+  }
+};
+} // namespace llvm
+
 class ControlDependenceAnalysis {
   llvm::LoopInfo &LI;
   llvm::DominatorTree &DT;
@@ -83,6 +109,10 @@ class ControlDependenceAnalysis {
 
   llvm::DenseMap<llvm::PHINode *, std::unique_ptr<GammaNode>> Gammas;
 
+  llvm::DenseMap<BinaryInstruction, llvm::Value *> CanonicalInsts;
+  llvm::DenseMap<llvm::Value *, llvm::Value *> CanonicalValues;
+  llvm::Value *getCanonicalValue(llvm::Value *);
+
   // use std::map to avoid reallocation/iterator stability
   std::map<llvm::BasicBlock *, llvm::SmallPtrSet<llvm::BasicBlock *, 4>>
       ControlDependentBlocks;
@@ -92,8 +122,7 @@ class ControlDependenceAnalysis {
 
 public:
   ControlDependenceAnalysis(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
-                            llvm::PostDominatorTree &PDT)
-      : LI(LI), DT(DT), PDT(PDT) {}
+                            llvm::PostDominatorTree &PDT);
   const ControlCondition *getConditionForBlock(llvm::BasicBlock *);
   const ControlCondition *getConditionForEdge(llvm::BasicBlock *,
                                               llvm::BasicBlock *);
