@@ -249,9 +249,8 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
   // mapping a nested loop to the *sub loop of VL* that contains it
   DenseMap<VLoop *, VLoop *> SubLoopMap;
   for (auto &SubVL : VL.getSubLoops()) {
-    SmallVector<VLoop *> Worklist{SubVL.get()};
-    errs() << "!!1 mapping sub loop: " << SubVL .get() << '\n';
     SubLoopMap[SubVL.get()] = SubVL.get();
+    SmallVector<VLoop *> Worklist{SubVL.get()};
     while (!Worklist.empty()) {
       for (auto &SubSubVL : Worklist.pop_back_val()->getSubLoops()) {
         SubLoopMap[SubSubVL.get()] = SubVL.get();
@@ -325,13 +324,6 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
         DependedValues.push_back(V);
     }
 
-    if (I) {
-      errs() << "!!! scanning dependences of " << *I << '\n';
-      for (auto *V : DependedValues) {
-        errs() << '\t' << *V << '\n';
-        errs() << "\t\t in sub loop? " << SubLoopMap.count(Pkr.getVLoopFor(cast<Instruction>(V))) << '\n';
-      }
-    }
     // Recurse on the depended values
     for (auto *V : DependedValues)
       if (auto *I = dyn_cast<Instruction>(V))
@@ -499,7 +491,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     // Now generate code according to the schedule
     for (auto &InstOrLoop : schedule(VL, ValueToPackMap, Pkr)) {
       if (auto *SubVL = InstOrLoop.dyn_cast<VLoop *>()) {
-        errs() << "Processing sub loop\n";
         BasicBlock *SubLoopHeader, *SubLoopExit;
         auto *LoopCond = SubVL->getLoopCond();
         auto *Preheader = BBuilder.getBlockFor(LoopCond);
@@ -511,7 +502,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
 
       auto *I = InstOrLoop.dyn_cast<Instruction *>();
       assert(I);
-      errs() << "Processing instruction " << *I << '\n';
 
       auto *Cond = Pkr.getBlockCondition(I->getParent());
       auto *VP = ValueToPackMap.lookup(I);
@@ -688,7 +678,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   };
 
   CodeGenLoop(Pkr.getTopVLoop(), nullptr);
-  errs() << *F << '\n';
 
   for (auto *BB : OldBlocks)
     for (auto &I : *BB)
@@ -712,6 +701,4 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       I->eraseFromParent();
     Changed = !ReallyDeadInsts.empty();
   } while (Changed);
-
-  errs() << *F << '\n';
 }
