@@ -30,6 +30,7 @@ class BlockBuilder {
 public:
   BlockBuilder(llvm::BasicBlock *EntryBB);
   llvm::BasicBlock *getBlockFor(const ControlCondition *);
+  void setBlockForCondition(llvm::BasicBlock *, const ControlCondition *);
 };
 
 #endif

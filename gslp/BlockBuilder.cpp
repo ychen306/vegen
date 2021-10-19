@@ -172,6 +172,11 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   return BB;
 }
 
+void BlockBuilder::setBlockForCondition(llvm::BasicBlock *BB, const ControlCondition *C) {
+  assert(ActiveConds.count(C) && "can only set block for active condition");
+  ActiveConds[C] = BB;
+}
+
 const ControlCondition *BlockBuilder::getDummyCondition() {
   return reinterpret_cast<const ControlCondition *>(DummyCounter++);
 }

@@ -428,7 +428,6 @@ float Packer::getScalarCost(Instruction *I) {
 bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
   if (I1->getParent() == I2->getParent())
     return true;
-
   return VLoop::isSafeToFuse(getVLoopFor(I1), getVLoopFor(I2), *SE);
 }
 

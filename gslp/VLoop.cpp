@@ -16,9 +16,12 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
 VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              LoopToVLoopMapTy &LoopToVLoopMap)
-    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr) {
-  for (auto *L : LI.getTopLevelLoops())
-    SubLoops.emplace_back(new VLoop(LI, L, VPCtx, DA, CDA, LoopToVLoopMap));
+    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr) {
+  for (auto *L : LI.getTopLevelLoops()) {
+    auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, LoopToVLoopMap);
+    SubVL->Parent = this;
+    SubLoops.emplace_back(SubVL);
+  }
 
   for (auto &BB : *VPCtx->getFunction())
     if (!LI.getLoopFor(&BB)) {
@@ -36,12 +39,16 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   LoopToVLoopMap[L] = this;
   assert(L->isRotatedForm());
 
-  auto *LoopBr = cast<BranchInst>(L->getLoopLatch()->getTerminator());
+  auto *Preheader = L->getLoopPreheader();
+  auto *Header = L->getHeader();
+  auto *Latch = L->getLoopLatch();
+
+  auto *LoopBr = cast<BranchInst>(Latch->getTerminator());
   ContCond = LoopBr->getCondition();
   assert(ContCond);
   ContIfTrue = LoopBr->getSuccessor(0) == L->getHeader();
 
-  // Build the sub-loops first
+  // Build the sub-loops
   for (auto *SubL : *L) {
     auto *SubVL = new VLoop(LI, SubL, VPCtx, DA, CDA, LoopToVLoopMap);
     SubLoops.emplace_back(SubVL);
@@ -50,6 +57,14 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
     Insts |= SubVL->Insts;
   }
 
+  // Figure out the eta nodes
+  for (PHINode &PN : Header->phis()) {
+    assert(PN.getNumIncomingValues() == 2);
+    Etas.try_emplace(&PN, PN.getIncomingValueForBlock(Preheader),
+        PN.getIncomingValueForBlock(Latch));
+  }
+
+  // Process the top-level instructions
   for (auto *BB : L->blocks()) {
     if (LI.getLoopFor(BB) != L)
       continue;
@@ -61,6 +76,13 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   }
 
   setSubtract(Depended, Insts);
+}
+
+llvm::Optional<EtaNode> VLoop::getEta(PHINode *PN) const {
+  auto It = Etas.find(PN);
+  if (It != Etas.end())
+    return It->second;
+  return None;
 }
 
 static bool haveIdenticalTripCounts(const Loop *L1, const Loop *L2,
@@ -122,8 +144,8 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
     return true;
 
   // The loops should be control-equivalent
-  if (VL1->LoopCond != VL2->LoopCond)
-    return false;
+  //if (VL1->LoopCond != VL2->LoopCond)
+  //  return false;
 
   // Loop level mismatch
   if (!VL1 || !VL2)
@@ -143,14 +165,16 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
 void VLoop::fuse(VLoop *VL1, VLoop *VL2, LoopToVLoopMapTy &LoopToVLoopMap) {
   assert(VL1 != VL2 && "can't fuse the same loop with itself");
   auto *Parent = VL1->Parent;
-  if (Parent != VL2->Parent) {
-    assert(Parent && VL2->Parent);
+  if (Parent != VL2->Parent)
     fuse(VL1->Parent, VL2->Parent, LoopToVLoopMap);
-  }
   LoopToVLoopMap[VL2->L] = VL1;
   VL1->Insts |= VL2->Insts;
   VL1->Depended |= VL2->Depended;
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
+  for (auto KV : VL2->Etas)
+    VL1->Etas.insert(KV);
+
+  assert(Parent);
   auto It = llvm::find_if(Parent->SubLoops, [VL2](std::unique_ptr<VLoop> &VL) {
     return VL.get() == VL2;
   });

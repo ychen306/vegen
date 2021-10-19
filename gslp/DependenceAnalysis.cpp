@@ -274,11 +274,19 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
         auto *OpInst = dyn_cast<Instruction>(V);
         // Ignore loop carried dependences, which can only come from phi nodes
         if (OpInst && DT.dominates(&I, OpInst)) {
-          assert(isa<PHINode>(I));
+          assert(isa<PHINode>(&I));
           continue;
         }
         if (OpInst)
           Dependences[&I].push_back(OpInst);
+      }
+
+      if (isa<ReturnInst>(&I)) {
+        // Return instruction depends on previous writes
+        for (Instruction *PrevRef : MemRefs)
+          if (PrevRef->mayWriteToMemory())
+            Dependences[&I].push_back(PrevRef);
+        continue;
       }
 
       if (NoAlias || !I.mayReadOrWriteMemory())
