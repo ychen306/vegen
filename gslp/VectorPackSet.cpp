@@ -34,7 +34,7 @@ class VectorCodeGen {
   DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
   // Instead of moving PHIs around,
   // we will demote them and implement control-flow join through memory
-  DenseMap<PHINode *, AllocaInst *> DemotedPHIs;
+  DenseMap<PHINode *, Value *> DemotedPHIs;
   // Track the last used block for a given condition,
   // these are the blocks where we will store the incoming values to the demoted
   // allocas.
@@ -51,8 +51,7 @@ class VectorCodeGen {
 public:
   VectorCodeGen(Packer &Pkr, IntrinsicBuilder &Builder,
                 const DenseMap<Value *, const VectorPack *> &ValueToPackMap)
-      : Pkr(Pkr), VPCtx(Pkr.getContext()), F(Pkr.getFunction()),
-      Entry(nullptr),
+      : Pkr(Pkr), VPCtx(Pkr.getContext()), F(Pkr.getFunction()), Entry(nullptr),
         Builder(Builder), ValueToPackMap(ValueToPackMap) {}
 
   void run();
@@ -536,8 +535,29 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
   SmallVector<std::pair<PHINode *, OperandPack>> EtasToPatch;
 
+  // Schedule the instructions and loops according to data dependence
+  auto Schedule = schedule(VL, ValueToPackMap, Pkr);
+
+  // Pick out the reduction packs, which we will emit last
+  SmallPtrSet<const VectorPack *, 4> RdxPacks;
+  // Also keep track of the reduction phis
+  SmallPtrSet<PHINode *, 4> RdxPhis;
+  SmallPtrSet<Value *, 4> OldRdxOps;
+  for (auto &InstOrLoop : Schedule) {
+    auto *I = InstOrLoop.dyn_cast<Instruction *>();
+    if (!I)
+      continue;
+    auto *VP = ValueToPackMap.lookup(I);
+    if (VP && VP->isReduction()) {
+      auto &RI = VP->getReductionInfo();
+      RdxPacks.insert(VP);
+      RdxPhis.insert(RI.Phi);
+      OldRdxOps.insert(RI.Ops.begin(), RI.Ops.end());
+    }
+  }
+
   // Now generate code according to the schedule
-  for (auto &InstOrLoop : schedule(VL, ValueToPackMap, Pkr)) {
+  for (auto &InstOrLoop : Schedule) {
     // Emit the sub-loop recursively
     if (auto *SubVL = InstOrLoop.dyn_cast<VLoop *>()) {
       BasicBlock *SubLoopHeader, *SubLoopExit;
@@ -557,17 +577,28 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     // I is not packed
     if (!VP) {
+      // I is being reduced by a reduction pack so will be dead later
+      if (OldRdxOps.count(I))
+        continue;
+
       auto *PN = dyn_cast<PHINode>(I);
       if (!PN) {
         moveToEnd(I, GetBlock(Cond));
         continue;
       }
 
+      // Skip reduction phis, which will become dead after vectorization
+      if (RdxPhis.count(PN))
+        continue;
+
       if (auto EtaOrNone = VL.getEta(PN)) {
         auto &Eta = *EtaOrNone;
         assert(Header && Exit);
+        auto *Init = Eta.Init;
+        if (auto *Demoted = DemotedPHIs.lookup(dyn_cast<PHINode>(Init)))
+          Init = Demoted;
         PN->replaceAllUsesWith(
-            emitEta(Eta.Init, Eta.Iter, Preheader, Header, Latch));
+            emitEta(Init, Eta.Iter, Preheader, Header, Latch));
         continue;
       }
 
@@ -575,7 +606,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       auto *Alloca = new AllocaInst(
           PN->getType(), 0, PN->getName() + ".demoted", &Entry->front());
       Allocas.push_back(Alloca);
-      DemotedPHIs[PN] = Alloca;
       for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
         auto *EdgeCond =
             Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
@@ -589,11 +619,16 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       Builder.SetInsertPoint(GetBlock(Cond));
       auto *Reload = Builder.CreateLoad(PN->getType(), Alloca);
       PN->replaceAllUsesWith(Reload);
+      DemotedPHIs[PN] = Reload;
       continue;
     }
 
     // I is packed but we've already lowered that pack
     if (MaterializedPacks.count(VP))
+      continue;
+
+    // Delay reduction until last
+    if (VP->isReduction())
       continue;
 
     // Get or create a new basic block to emit the pack
@@ -715,6 +750,62 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     MaterializedPacks[VP] = VecInst;
   }
 
+  // Emit the reductions.
+  auto *TTI = Pkr.getTTI();
+  assert(RdxPacks.empty() || VL.isLoop());
+  for (auto *VP : RdxPacks) {
+    ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
+    auto *VecTy = getVectorType(*OPs.front());
+    auto &RI = VP->getReductionInfo();
+
+    SmallVector<PHINode *, 4> VecPhis;
+    SmallVector<Value *, 4> RdxOps;
+    for (auto *OP : OPs) {
+      // Emit the vector phi, specify the incomings later
+      Builder.SetInsertPoint(&Header->front());
+      auto *VecPhi = Builder.CreatePHI(VecTy, 2 /*num incoming*/);
+      VecPhis.push_back(VecPhi);
+
+      // Gather operand in the latch
+      Builder.SetInsertPoint(Latch->getTerminator());
+      auto *Operand = gatherOperandPack(*OP);
+      RdxOps.push_back(emitReduction(RI.Kind, VecPhi, Operand, Builder));
+    }
+
+    // Patch up the vector phi
+    Value *IdentityVector;
+    if (RecurrenceDescriptor::isMinMaxRecurrenceKind(RI.Kind)) {
+      Builder.SetInsertPoint(Preheader->getTerminator());
+      IdentityVector =
+          Builder.CreateVectorSplat(VecTy->getElementCount(), RI.StartValue);
+    } else {
+      auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
+          RI.Kind, RI.Phi->getType());
+      IdentityVector =
+          ConstantVector::getSplat(VecTy->getElementCount(), Identity);
+    }
+
+    for (auto Pair : zip(VecPhis, RdxOps)) {
+      PHINode *VecPhi = std::get<0>(Pair);
+      Value *RdxOp = std::get<1>(Pair);
+      VecPhi->addIncoming(IdentityVector, Preheader);
+      VecPhi->addIncoming(RdxOp, Latch);
+    }
+
+    // Do horizontal-reduction on the vector in the exit block
+    //// Reduce the vector in the exit block
+    Builder.SetInsertPoint(Exit);
+    Value *RdxOp = RdxOps.front();
+    for (auto *RdxOp2 : drop_begin(RdxOps))
+      RdxOp = emitReduction(RI.Kind, RdxOp, RdxOp2, Builder);
+
+    auto *HorizontalRdx =
+        createSimpleTargetReduction(Builder, TTI, RdxOp, RI.Kind);
+    auto *Reduced =
+        emitReduction(RI.Kind, HorizontalRdx, RI.StartValue, Builder);
+    RI.Ops.front()->replaceAllUsesWith(Reduced);
+  }
+
   // Join all of the blocks to the latch
   if (VL.isLoop()) {
     BranchInst::Create(Latch, GetBlock(nullptr));
@@ -740,6 +831,7 @@ void VectorCodeGen::run() {
   // Allocate a new dedicated entry block
   Entry = BasicBlock::Create(Builder.getContext(), "entry", F);
 
+  // Emit the top level loop, which will then recursively the sub loops
   emitLoop(Pkr.getTopVLoop(), nullptr);
 
   // Remove the old blocks
