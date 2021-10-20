@@ -1,7 +1,6 @@
 #ifndef PACKER_H
 #define PACKER_H
 
-#include "CodeMotionUtil.h"
 #include "ControlDependence.h"
 #include "DependenceAnalysis.h"
 #include "InstSema.h"

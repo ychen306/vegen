@@ -1,4 +1,4 @@
-; RUN: %opt -gslp -reschedule-scalar %s -S | FileCheck %s
+; RUN: %opt -gslp -reschedule-scalar -no-unroll %s -S | FileCheck %s
 
 ; CHECK:   call void (...) @init()
 ; CHECK-NEXT:   %call3 = call i32 (...) @cont()

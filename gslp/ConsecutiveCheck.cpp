@@ -1,10 +1,11 @@
 #define DEBUG_TYPE "vegen"
 
-#include "CodeMotionUtil.h" // haveIdenticalTripCounts
+#include "VLoop.h" // haveIdenticalTripCounts
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/ADT/EquivalenceClasses.h"
 
 using namespace llvm;
 

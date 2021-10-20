@@ -1,6 +1,5 @@
 #include "VectorPackSet.h"
 #include "BlockBuilder.h"
-#include "CodeMotionUtil.h"
 #include "ControlDependence.h"
 #include "Packer.h"
 #include "llvm/ADT/EquivalenceClasses.h"
@@ -8,6 +7,7 @@
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
@@ -260,7 +260,6 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
     }
   }
 
-
   DenseSet<Instruction *> TopLevelInsts;
   for (auto *I : VL.getInstructions())
     TopLevelInsts.insert(I);
@@ -398,12 +397,73 @@ static void moveToEnd(Instruction *I, BasicBlock *BB) {
 }
 
 static PHINode *emitEta(Value *Init, Value *Iter, BasicBlock *Preheader,
-                    BasicBlock *Header, BasicBlock *Latch) {
+                        BasicBlock *Header, BasicBlock *Latch) {
   auto *PN = PHINode::Create(Init->getType(), 2);
   PN->addIncoming(Init, Preheader);
   PN->addIncoming(Iter, Latch);
   Header->getInstList().push_front(PN);
   return PN;
+}
+
+static void fixDefUseDominance(Function *F, DominatorTree &DT) {
+  // Find instructions not dominating their uses.
+  // This happens when we move things across branches.
+  DenseMap<Instruction *, SmallVector<Instruction *, 4>> BrokenUseDefs;
+  for (Instruction &I : instructions(F)) {
+    for (User *U : I.users()) {
+      // Special case when the user is a phi-node
+      if (auto *PN = dyn_cast<PHINode>(U)) {
+        BasicBlock *IncomingBlock;
+        Value *IncomingValue;
+        for (auto Incoming : zip(PN->blocks(), PN->incoming_values())) {
+          std::tie(IncomingBlock, IncomingValue) = Incoming;
+          if (IncomingValue == &I &&
+              !DT.dominates(I.getParent(), IncomingBlock)) {
+            BrokenUseDefs[&I].push_back(PN);
+            break;
+          }
+        }
+        continue;
+      }
+
+      auto *UserInst = dyn_cast<Instruction>(U);
+      if (UserInst && !DT.dominates(&I, UserInst))
+        BrokenUseDefs[&I].push_back(UserInst);
+    }
+  }
+
+  SmallVector<AllocaInst *> Allocas;
+  for (auto &KV : BrokenUseDefs) {
+    Instruction *I = KV.first;
+    ArrayRef<Instruction *> Users = KV.second;
+
+    auto *Alloca = new AllocaInst(I->getType(), 0, I->getName() + ".mem",
+                                  &*F->getEntryBlock().getFirstInsertionPt());
+    new StoreInst(I, Alloca, I->getNextNode());
+    Allocas.push_back(Alloca);
+    for (Instruction *UserInst : Users) {
+      if (auto *PN = dyn_cast<PHINode>(UserInst)) {
+        // Need to do the reload in predecessor for the phinodes
+        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
+          Value *V = PN->getIncomingValue(i);
+          if (V != I)
+            continue;
+          auto *Reload = new LoadInst(
+              I->getType(), Alloca, I->getName() + ".reload",
+              PN->getIncomingBlock(i)->getTerminator() /*insert before*/);
+          PN->setIncomingValue(i, Reload);
+        }
+        continue;
+      }
+      auto *Reload =
+          new LoadInst(I->getType(), Alloca, I->getName() + ".reload",
+                       UserInst /*insert before*/);
+      UserInst->replaceUsesOfWith(I, Reload);
+    }
+  }
+
+  PromoteMemToReg(Allocas, DT);
+  assert(!verifyFunction(*F, &errs()));
 }
 
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
@@ -520,13 +580,14 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         if (auto EtaOrNone = VL.getEta(PN)) {
           auto &Eta = *EtaOrNone;
           assert(Header && Exit);
-          PN->replaceAllUsesWith(emitEta(Eta.Init, Eta.Iter, Preheader, Header, Latch));
+          PN->replaceAllUsesWith(
+              emitEta(Eta.Init, Eta.Iter, Preheader, Header, Latch));
           continue;
         }
 
         // Demote the phi to memory
-        auto *Alloca =
-            new AllocaInst(PN->getType(), 0, PN->getName() + ".demoted", &Entry->front());
+        auto *Alloca = new AllocaInst(
+            PN->getType(), 0, PN->getName() + ".demoted", &Entry->front());
         Allocas.push_back(Alloca);
         DemotedPHIs[PN] = Alloca;
         for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
@@ -604,13 +665,15 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
           auto *InitVec = gatherOperandPack(
               InitOP, ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
           assert(Latch && Latch->getTerminator());
-          auto *Eta = emitEta(InitVec, UndefValue::get(getVectorType(*VP)), Preheader, Header, Latch);
+          auto *Eta = emitEta(InitVec, UndefValue::get(getVectorType(*VP)),
+                              Preheader, Header, Latch);
           EtasToPatch.emplace_back(Eta, IterOP);
           VecInst = Eta;
-        } else  {
+        } else {
           auto *PN = cast<PHINode>(*VP->elementValues().begin());
           auto *VecTy = getVectorType(*VP);
-          auto *Alloca = new AllocaInst(VecTy, 0, PN->getName()+".vector", &Entry->front());
+          auto *Alloca = new AllocaInst(VecTy, 0, PN->getName() + ".vector",
+                                        &Entry->front());
           // Track the alloca so we can promote it back to phi later
           Allocas.push_back(Alloca);
 
@@ -619,7 +682,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
           for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
             IntrinsicBuilder::InsertPointGuard Guard(Builder);
             auto *Cond =
-              Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
+                Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
             auto *BB = GetLastBlockFor(Cond);
             if (auto *Terminator = BB->getTerminator())
               Builder.SetInsertPoint(Terminator);
@@ -648,8 +711,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         else if (VP->isStore()) {
           VecInst =
               VP->emitVectorStore(Operands, GetLoadStoreMask(Vals), Builder);
-        }
-        else
+        } else
           VecInst = VP->emit(Operands, Builder);
       }
 
@@ -684,8 +746,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       for (auto &Pair : EtasToPatch) {
         PHINode *Eta = Pair.first;
         OperandPack &IterOP = Pair.second;
-        auto *IterVec = gatherOperandPack(
-            IterOP, ValueIndex, MaterializedPacks, DemotedPHIs, Builder);
+        auto *IterVec = gatherOperandPack(IterOP, ValueIndex, MaterializedPacks,
+                                          DemotedPHIs, Builder);
         Eta->setIncomingValue(1, IterVec);
       }
     }

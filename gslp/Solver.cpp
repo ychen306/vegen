@@ -5,6 +5,7 @@
 #include "VectorPackSet.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Analysis/LoopInfo.h"
 
 using namespace llvm;
 

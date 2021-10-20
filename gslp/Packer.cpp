@@ -1,7 +1,5 @@
 #include "Packer.h"
-#include "CodeMotionUtil.h"
 #include "ConsecutiveCheck.h"
-#include "ControlEquivalence.h"
 #include "MatchManager.h"
 #include "VectorPack.h"
 #include "llvm/Analysis/LoopInfo.h"

@@ -77,4 +77,7 @@ public:
   static void fuse(VLoop *, VLoop *, LoopToVLoopMapTy &);
 };
 
+bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,
+                             llvm::ScalarEvolution &);
+
 #endif

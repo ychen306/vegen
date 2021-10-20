@@ -61,7 +61,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   for (PHINode &PN : Header->phis()) {
     assert(PN.getNumIncomingValues() == 2);
     Etas.try_emplace(&PN, PN.getIncomingValueForBlock(Preheader),
-        PN.getIncomingValueForBlock(Latch));
+                     PN.getIncomingValueForBlock(Latch));
   }
 
   // Process the top-level instructions
@@ -85,8 +85,8 @@ llvm::Optional<EtaNode> VLoop::getEta(PHINode *PN) const {
   return None;
 }
 
-static bool haveIdenticalTripCounts(const Loop *L1, const Loop *L2,
-                                    ScalarEvolution &SE) {
+bool haveIdenticalTripCounts(const Loop *L1, const Loop *L2,
+                             ScalarEvolution &SE) {
   if (L1 == L2)
     return true;
 
