@@ -20,7 +20,7 @@ static void test1() {
   auto *F =
       Function::Create(FTy, GlobalValue::LinkageTypes::InternalLinkage, "foo");
 
-  BlockBuilder Builder(BasicBlock::Create(Ctx, "entry", F));
+  BlockBuilder Builder(BasicBlock::Create(Ctx, "entry", F), [](Value *V) { return V; });
   DominatorTree DT(*F);
   PostDominatorTree PDT(*F);
   LoopInfo LI(DT);
@@ -53,7 +53,7 @@ static void test2() {
   auto *F =
       Function::Create(FTy, GlobalValue::LinkageTypes::InternalLinkage, "foo");
 
-  BlockBuilder Builder(BasicBlock::Create(Ctx, "entry", F));
+  BlockBuilder Builder(BasicBlock::Create(Ctx, "entry", F), [](Value *V) { return V; });
   DominatorTree DT(*F);
   PostDominatorTree PDT(*F);
   LoopInfo LI(DT);
@@ -86,7 +86,7 @@ static void test3() {
   auto *F =
       Function::Create(FTy, GlobalValue::LinkageTypes::InternalLinkage, "foo");
 
-  BlockBuilder Builder(BasicBlock::Create(Ctx, "entry", F));
+  BlockBuilder Builder(BasicBlock::Create(Ctx, "entry", F), [](Value *V) { return V; });
   DominatorTree DT(*F);
   PostDominatorTree PDT(*F);
   LoopInfo LI(DT);

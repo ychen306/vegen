@@ -14,6 +14,7 @@ class Packer;
 struct VectorPackIndex {
   const VectorPack *VP;
   unsigned Idx;
+  llvm::Value *Extracted;
 
   bool operator<(const VectorPackIndex &Other) const {
     return std::tie(VP, Idx) < std::tie(Other.VP, Other.Idx);

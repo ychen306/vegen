@@ -4,9 +4,11 @@
 
 using namespace llvm;
 
-BlockBuilder::BlockBuilder(BasicBlock *EntryBB)
+BlockBuilder::BlockBuilder(
+    BasicBlock *EntryBB,
+    std::function<llvm::Value *(llvm::Value *)> EmitCondition)
     : Ctx(EntryBB->getContext()), F(EntryBB->getParent()),
-      ActiveConds({{nullptr, EntryBB}}) {}
+      EmitCondition(EmitCondition), ActiveConds({{nullptr, EntryBB}}) {}
 
 BasicBlock *BlockBuilder::createBlock() {
   return BasicBlock::Create(Ctx, "", F);
@@ -96,7 +98,8 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   if (auto *And = dyn_cast<ConditionAnd>(C)) {
     auto *IfTrue = createBlock();
     auto *IfFalse = createBlock();
-    BranchInst::Create(IfTrue, IfFalse, And->Cond, getBlockFor(And->Parent));
+    BranchInst::Create(IfTrue, IfFalse, EmitCondition(And->Cond),
+                       getBlockFor(And->Parent));
     auto *BB = And->IsTrue ? IfTrue : IfFalse;
 
     assert(ActiveConds.count(And->Parent));
@@ -172,7 +175,8 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   return BB;
 }
 
-void BlockBuilder::setBlockForCondition(llvm::BasicBlock *BB, const ControlCondition *C) {
+void BlockBuilder::setBlockForCondition(llvm::BasicBlock *BB,
+                                        const ControlCondition *C) {
   assert(ActiveConds.count(C) && "can only set block for active condition");
   ActiveConds[C] = BB;
 }

@@ -68,7 +68,8 @@ Value *VectorCodeGen::getLoadStoreMask(ArrayRef<Value *> Vals) {
   auto *SomeVal = *find_if(Vals, [](Value *V) { return V; });
   auto *C = Pkr.getBlockCondition(cast<Instruction>(SomeVal)->getParent());
   for (auto *V : Vals)
-    Conds.push_back(V ? Pkr.getBlockCondition(cast<Instruction>(V)->getParent()) : C);
+    Conds.push_back(V ? Pkr.getBlockCondition(cast<Instruction>(V)->getParent())
+                      : C);
   auto *CP = VPCtx->getConditionPack(Conds);
   // nullptr means it's all true
   if (!CP)
@@ -525,7 +526,12 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   }
 
   // For the top level "loop", the loop header is just the entry block
-  BlockBuilder BBuilder(VL.isLoop() ? Header : Entry);
+  BlockBuilder BBuilder(VL.isLoop() ? Header : Entry, [&](Value *Cond) {
+    auto It = ValueIndex.find(Cond);
+    if (It == ValueIndex.end())
+      return Cond;
+    return It->second.Extracted;
+  });
   DenseMap<const ControlCondition *, BasicBlock *> LastBlockForCond;
   auto GetBlock = [&](const ControlCondition *C) {
     return LastBlockForCond[C] = BBuilder.getBlockFor(C);
@@ -597,7 +603,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       if (auto EtaOrNone = VL.getEta(PN)) {
         auto &Eta = *EtaOrNone;
         assert(Header && Exit);
-        auto *NewPN = emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch);
+        auto *NewPN =
+            emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch);
         PN->replaceAllUsesWith(NewPN);
         ReplacedPHIs[PN] = NewPN;
         continue;
@@ -734,18 +741,13 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     if (!VP->isStore() && !VP->isReduction()) {
       for (auto &Item : enumerate(VP->getOrderedValues())) {
         if (auto *V = Item.value()) {
-          auto *Extract = Builder.CreateExtractElement(VecInst, Item.index());
+          unsigned i = Item.index();
+          auto *Extract = Builder.CreateExtractElement(VecInst, i);
           V->replaceAllUsesWith(Extract);
+          ValueIndex[V] = {VP, i, Extract};
         }
       }
     }
-
-    // Update the value index
-    // to track where the originally scalar values are produced
-    auto OutputLanes = VP->getOrderedValues();
-    for (unsigned i = 0, e = OutputLanes.size(); i != e; i++)
-      if (auto *V = OutputLanes[i])
-        ValueIndex[V] = {VP, i};
 
     // Map the pack to its materialized value
     MaterializedPacks[VP] = VecInst;
@@ -802,8 +804,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     auto *HorizontalRdx =
         createSimpleTargetReduction(Builder, TTI, RdxOp, RI.Kind);
-    auto *Reduced =
-        emitReduction(RI.Kind, HorizontalRdx, useScalar(RI.StartValue), Builder);
+    auto *Reduced = emitReduction(RI.Kind, HorizontalRdx,
+                                  useScalar(RI.StartValue), Builder);
     RI.Ops.front()->replaceAllUsesWith(Reduced);
   }
 
@@ -811,8 +813,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   AllocaInst *BreakAlloca = nullptr;
   if (auto *BreakCond = VL.getBreakCond()) {
     auto &Ctx = Builder.getContext();
-    BreakAlloca =
-        new AllocaInst(Type::getInt1Ty(Ctx), 0, "break_cond", Header->getFirstNonPHI());
+    BreakAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "break_cond",
+                                 Header->getFirstNonPHI());
     Allocas.push_back(BreakAlloca);
     // By default, we don't break
     new StoreInst(ConstantInt::getFalse(Ctx), BreakAlloca,
