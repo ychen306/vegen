@@ -188,11 +188,12 @@ ConditionPack *VectorPackContext::getConditionPack(
     Optional<const ControlCondition *> MaybeCommon) const {
   const ControlCondition *CommonC =
       MaybeCommon ? *MaybeCommon : getGreatestCommonCondition(Conds);
+
   auto It = ConditionPackCache.find({Conds, CommonC});
   if (It != ConditionPackCache.end())
     return It->second.get();
 
-  if (all_of(Conds, [CommonC](auto *C) { return C == CommonC; }))
+  if (all_of(Conds, [CommonC](auto *C) { return !C || C == CommonC; }))
     return nullptr;
 
   auto *NewCP = new ConditionPack;
