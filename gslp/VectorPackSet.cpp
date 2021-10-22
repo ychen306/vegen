@@ -65,8 +65,10 @@ public:
 
 Value *VectorCodeGen::getLoadStoreMask(ArrayRef<Value *> Vals) {
   SmallVector<const ControlCondition *> Conds;
+  auto *SomeVal = *find_if(Vals, [](Value *V) { return V; });
+  auto *C = Pkr.getBlockCondition(cast<Instruction>(SomeVal)->getParent());
   for (auto *V : Vals)
-    Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+    Conds.push_back(V ? Pkr.getBlockCondition(cast<Instruction>(V)->getParent()) : C);
   auto *CP = VPCtx->getConditionPack(Conds);
   // nullptr means it's all true
   if (!CP)

@@ -159,8 +159,10 @@ public:
   template <typename InstContainer>
   const ConditionPack *getConditionPack(const InstContainer &Insts) const {
     llvm::SmallVector<const ControlCondition *> Conds;
+    auto *SomeInst = *llvm::find_if(Insts, [](auto *Inst) { return Inst; });
+    auto *C = getBlockCondition(SomeInst->getParent());
     for (auto *I : Insts)
-      Conds.push_back(getBlockCondition(I->getParent()));
+      Conds.push_back(I ? getBlockCondition(I->getParent()) : C);
     return VPCtx.getConditionPack(Conds);
   }
 
