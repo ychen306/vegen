@@ -48,6 +48,11 @@ class VectorCodeGen {
   std::pair<BasicBlock *, BasicBlock *>
   emitLoop(VLoop &VL, BasicBlock *Preheader = nullptr);
 
+  Value *useScalar(Value *V) const {
+    auto *Demoted = DemotedPHIs.lookup(dyn_cast<PHINode>(V));
+    return Demoted ? Demoted : V;
+  }
+
 public:
   VectorCodeGen(Packer &Pkr, IntrinsicBuilder &Builder,
                 const DenseMap<Value *, const VectorPack *> &ValueToPackMap)
@@ -95,12 +100,8 @@ Value *VectorCodeGen::gatherOperandPack(const OperandPack &OP) {
       // Remember we need to gather from this vector to the `i`th element
       SrcPacks[VPIdx.VP].push_back({VPIdx.Idx, i});
     } else {
-      if (auto *PN = dyn_cast<PHINode>(V)) {
-        V = DemotedPHIs.lookup(PN);
-        assert(V);
-      }
       // Remember that we need to insert `V` as the `i`th element
-      SrcScalars[V].push_back(i);
+      SrcScalars[useScalar(V)].push_back(i);
     }
   }
 
@@ -594,11 +595,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       if (auto EtaOrNone = VL.getEta(PN)) {
         auto &Eta = *EtaOrNone;
         assert(Header && Exit);
-        auto *Init = Eta.Init;
-        if (auto *Demoted = DemotedPHIs.lookup(dyn_cast<PHINode>(Init)))
-          Init = Demoted;
         PN->replaceAllUsesWith(
-            emitEta(Init, Eta.Iter, Preheader, Header, Latch));
+            emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch));
         continue;
       }
 
@@ -802,7 +800,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *HorizontalRdx =
         createSimpleTargetReduction(Builder, TTI, RdxOp, RI.Kind);
     auto *Reduced =
-        emitReduction(RI.Kind, HorizontalRdx, RI.StartValue, Builder);
+        emitReduction(RI.Kind, HorizontalRdx, useScalar(RI.StartValue), Builder);
     RI.Ops.front()->replaceAllUsesWith(Reduced);
   }
 
