@@ -34,7 +34,7 @@ class VectorCodeGen {
   DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
   // Instead of moving PHIs around,
   // we will demote them and implement control-flow join through memory
-  DenseMap<PHINode *, Value *> DemotedPHIs;
+  DenseMap<PHINode *, Value *> ReplacedPHIs;
   // Track the last used block for a given condition,
   // these are the blocks where we will store the incoming values to the demoted
   // allocas.
@@ -49,7 +49,7 @@ class VectorCodeGen {
   emitLoop(VLoop &VL, BasicBlock *Preheader = nullptr);
 
   Value *useScalar(Value *V) const {
-    auto *Demoted = DemotedPHIs.lookup(dyn_cast<PHINode>(V));
+    auto *Demoted = ReplacedPHIs.lookup(dyn_cast<PHINode>(V));
     return Demoted ? Demoted : V;
   }
 
@@ -595,8 +595,9 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       if (auto EtaOrNone = VL.getEta(PN)) {
         auto &Eta = *EtaOrNone;
         assert(Header && Exit);
-        PN->replaceAllUsesWith(
-            emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch));
+        auto *NewPN = emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch);
+        PN->replaceAllUsesWith(NewPN);
+        ReplacedPHIs[PN] = NewPN;
         continue;
       }
 
@@ -617,7 +618,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       Builder.SetInsertPoint(GetBlock(Cond));
       auto *Reload = Builder.CreateLoad(PN->getType(), Alloca);
       PN->replaceAllUsesWith(Reload);
-      DemotedPHIs[PN] = Reload;
+      ReplacedPHIs[PN] = Reload;
       continue;
     }
 
