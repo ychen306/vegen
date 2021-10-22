@@ -343,12 +343,9 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
     if (I) {
       // Make sure the control conditions are scheduled before the instruction
       Schedule(Pkr.getBlockCondition(I->getParent()));
-      errs() << "!!! reporting dependences of " << *I << "<<<<<<\n";
       for (auto *V : VPCtx->iter_values(DA.getDepended(I))) {
-        errs() << '\t' << *V << '\n';
         DependedValues.push_back(V);
       }
-      errs() << ">>>>>>.\n";
     } else if (VP) {
       // Make sure the control conditions are scheduled before the pack
       for (auto *V : VP->elementValues())
@@ -563,7 +560,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   for (auto &InstOrLoop : Schedule) {
     // Emit the sub-loop recursively
     if (auto *SubVL = InstOrLoop.dyn_cast<VLoop *>()) {
-      errs() << "Processing loop: " << SubVL << '\n';
       BasicBlock *SubLoopHeader, *SubLoopExit;
       auto *LoopCond = SubVL->getLoopCond();
       auto *Preheader = BBuilder.getBlockFor(LoopCond);
@@ -575,9 +571,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     auto *I = InstOrLoop.dyn_cast<Instruction *>();
     assert(I);
-    errs() << "Processing instruction " << *I
-      << ", vl = " << Pkr.getVLoopFor(I)
-      << "\n";
 
     auto *Cond = Pkr.getBlockCondition(I->getParent());
     auto *VP = ValueToPackMap.lookup(I);

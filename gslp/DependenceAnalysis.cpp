@@ -271,10 +271,8 @@ class LoopAwareRPO {
       return;
     SmallVector<BasicBlock *, 4> Exits;
     L->getExitBlocks(Exits);
-    for (auto *Exit : Exits) {
-      errs() << "visiting " << Exit->getName() << " from " << L << '\n';
+    for (auto *Exit : Exits)
       visitBlock(Exit);
-    }
 
     LoopStack.push_back(L);
     visitBlock(L->getHeader());
@@ -289,19 +287,14 @@ class LoopAwareRPO {
 
     for (auto *Succ : successors(BB)) {
       auto *SuccL = LI.getLoopFor(Succ);
-      if (SuccL == curLoop()) {
-        errs() << "visiting " << Succ->getName() << " from " << BB->getName() << '\n';
+      if (SuccL == curLoop())
         visitBlock(Succ);
-      }
-      else if (!curLoop() || curLoop()->contains(Succ)) {
-        errs() << "visiting " << SuccL << " from " << BB->getName() << '\n';
+      else if (!curLoop() || curLoop()->contains(Succ))
         visitLoop(SuccL);
-      }
       // otherwise Succ is an exit block,
       // which we don't deal with here (we will with that in visit Loop)
     }
 
-    errs() << "pushing " << BB->getName() << '\n';
     RPO.push_back(BB);
   }
 
@@ -333,7 +326,6 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
 
   DenseSet<Instruction *> Processed;
   for (auto *BB : RPO) {
-    errs() << "RPO : " << BB->getName() << '\n';
     for (auto &I : *BB) {
       Processed.insert(&I);
       // Get the SSA dependences
