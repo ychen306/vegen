@@ -254,6 +254,70 @@ bool LazyDependenceAnalysis::depends(Instruction *I1, Instruction *I2) {
   return Dep && !Dep->isInput();
 }
 
+namespace {
+class LoopAwareRPO {
+  LoopInfo &LI;
+
+  SmallPtrSet<Loop *, 8> VisitedLoops;
+  DenseSet<BasicBlock *> VisitedBlocks;
+
+  std::vector<BasicBlock *> RPO;
+  SmallVector<Loop *, 8> LoopStack { nullptr };
+
+  Loop *curLoop() const { return LoopStack.back(); }
+
+  void visitLoop(Loop *L) {
+    if (!VisitedLoops.insert(L).second)
+      return;
+    SmallVector<BasicBlock *, 4> Exits;
+    L->getExitBlocks(Exits);
+    for (auto *Exit : Exits) {
+      errs() << "visiting " << Exit->getName() << " from " << L << '\n';
+      visitBlock(Exit);
+    }
+
+    LoopStack.push_back(L);
+    visitBlock(L->getHeader());
+    LoopStack.pop_back();
+  }
+
+  void visitBlock(BasicBlock *BB) {
+    if (!VisitedBlocks.insert(BB).second)
+      return;
+
+    assert(LI.getLoopFor(BB) == curLoop());
+
+    for (auto *Succ : successors(BB)) {
+      auto *SuccL = LI.getLoopFor(Succ);
+      if (SuccL == curLoop()) {
+        errs() << "visiting " << Succ->getName() << " from " << BB->getName() << '\n';
+        visitBlock(Succ);
+      }
+      else if (!curLoop() || curLoop()->contains(Succ)) {
+        errs() << "visiting " << SuccL << " from " << BB->getName() << '\n';
+        visitLoop(SuccL);
+      }
+      // otherwise Succ is an exit block,
+      // which we don't deal with here (we will with that in visit Loop)
+    }
+
+    errs() << "pushing " << BB->getName() << '\n';
+    RPO.push_back(BB);
+  }
+
+public:
+  using iterator = decltype(RPO)::const_iterator;
+  LoopAwareRPO(Function *F, LoopInfo &LI) : LI(LI) {
+    visitBlock(&F->getEntryBlock());
+    std::reverse(RPO.begin(), RPO.end());
+  }
+
+  iterator begin() const { return RPO.begin(); }
+  iterator end() const { return RPO.end(); }
+};
+
+}
+
 // FIXME: change this to use LazyDependenceAnalysis
 GlobalDependenceAnalysis::GlobalDependenceAnalysis(
     AliasAnalysis &AA, ScalarEvolution &SE, DominatorTree &DT, LoopInfo &LI,
@@ -264,9 +328,12 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
   // Scan the CFG in rpo (pred before succ) to discover the *direct* dependences
   // Mapping inst -> <users>
   DenseMap<Instruction *, SmallVector<Instruction *, 8>> Dependences;
-  ReversePostOrderTraversal<Function *> RPO(F);
+  LoopAwareRPO RPO(F, LI);
+  //ReversePostOrderTraversal<Function *> RPO(F);
+
   DenseSet<Instruction *> Processed;
   for (auto *BB : RPO) {
+    errs() << "RPO : " << BB->getName() << '\n';
     for (auto &I : *BB) {
       Processed.insert(&I);
       // Get the SSA dependences

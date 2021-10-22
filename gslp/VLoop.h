@@ -46,6 +46,9 @@ class VLoop {
   llvm::Value *ContCond;
   bool ContIfTrue; // indicate how ContCond is used
 
+  // Condition for breaking from the loop (not including failing ContCond)
+  const ControlCondition *BreakCond;
+
   const ControlCondition *LoopCond;
 
   VLoop *Parent;
@@ -67,6 +70,7 @@ public:
   }
   const llvm::BitVector &getDepended() const { return Depended; }
   const ControlCondition *getLoopCond() const { return LoopCond; }
+  const ControlCondition *getBreakCond() const { return BreakCond; }
   bool isLoop() const { return L; }
   llvm::Optional<EtaNode> getEta(llvm::PHINode *) const;
   llvm::Value *getContinueCondition() const { return ContCond; }

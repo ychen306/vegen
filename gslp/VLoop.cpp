@@ -16,7 +16,8 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
 VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              LoopToVLoopMapTy &LoopToVLoopMap)
-    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr) {
+    : IsTopLevel(true), Parent(nullptr), BreakCond(nullptr), LoopCond(nullptr),
+      L(nullptr) {
   for (auto *L : LI.getTopLevelLoops()) {
     auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, LoopToVLoopMap);
     SubVL->Parent = this;
@@ -42,6 +43,29 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   auto *Preheader = L->getLoopPreheader();
   auto *Header = L->getHeader();
   auto *Latch = L->getLoopLatch();
+
+  // Figure out the loop-exit condition (except edges leaving the latch)
+  SmallVector<Loop::Edge, 4> ExitEdges;
+  SmallVector<const ControlCondition *, 4> ExitConds;
+  L->getExitEdges(ExitEdges);
+  for (auto &E : ExitEdges) {
+    if (E.first != Latch)
+      ExitConds.push_back(CDA.getConditionForEdge(E.first, E.second));
+  }
+  BreakCond = ExitConds.empty() ? nullptr : CDA.getOr(ExitConds);
+
+#if 0
+  SmallVector<BasicBlock *> Exits;
+  L->getUniqueExitBlocks(Exits);
+  //for (auto *Pred : predecessors(Exits.front()))
+  //  errs() << '\t' << *CDA.getConditionForEdge(Pred, Exits.front()) << '\n';
+  for (auto *Exit : Exits) {
+    errs() << Exit->getName() <<  ": " << *CDA.getConditionForBlock(Exit) << '\n';
+    for (auto *Pred : predecessors(Exit))
+      errs() << "\t" << *CDA.getConditionForEdge(Pred, Exit) << '\n';
+  }
+  errs() << *LoopCond << '\n';
+#endif
 
   auto *LoopBr = cast<BranchInst>(Latch->getTerminator());
   ContCond = LoopBr->getCondition();

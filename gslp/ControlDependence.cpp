@@ -148,16 +148,32 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
 const ControlCondition *
 ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
                                                BasicBlock *Dst) {
-  // Special treatment for loop exit edge
-  auto *L = LI.getLoopFor(Src);
-  if (L && L->getExitingBlock() == Src && L->getExitBlock() == Dst)
-    return getConditionForBlock(L->getLoopPreheader());
-
   auto *SrcCond = getConditionForBlock(Src);
   auto *Br = cast<BranchInst>(Src->getTerminator());
-  if (Br->isUnconditional())
+
+  // Ignore backedges
+  auto *L = LI.getLoopFor(Src);
+  if (Br->isUnconditional() || (L && L->isLoopLatch(Src)))
     return SrcCond;
   return getAnd(SrcCond, Br->getCondition(), Br->getSuccessor(0) == Dst);
+}
+
+static const ControlCondition *concat(ControlDependenceAnalysis &CDA,
+                                      const ControlCondition *CondA,
+                                      const ControlCondition *CondB) {
+  if (!CondA)
+    return CondB;
+  if (!CondB)
+    return CondA;
+
+  if (auto *And = dyn_cast<ConditionAnd>(CondB))
+    return CDA.getAnd(concat(CDA, CondA, And->Parent), And->Cond, And->IsTrue);
+
+  auto *Or = cast<ConditionOr>(CondB);
+  SmallVector<const ControlCondition *> Conds;
+  for (auto *C : Or->Conds)
+    Conds.push_back(concat(CDA, CondA, C));
+  return CDA.getOr(Conds);
 }
 
 // This is the same as computing the post dominance frontier of BB
@@ -181,6 +197,17 @@ ControlDependenceAnalysis::getControlDependentBlocks(BasicBlock *BB) {
         Blocks.insert(BB2);
 
   return Blocks;
+}
+
+// If BB is an exit block, return the loop that it's returning from
+// Assume all loops have dedicated exits
+static Loop *getExitingLoop(LoopInfo &LI, BasicBlock *BB) {
+  assert(pred_size(BB) > 0);
+  auto *Pred = *pred_begin(BB);
+  auto *L = LI.getLoopFor(Pred);
+  if (L != LI.getLoopFor(BB))
+    return L;
+  return nullptr;
 }
 
 const ControlCondition *
@@ -214,7 +241,17 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
     assert(DstBB);
     CondsToJoin.push_back(getConditionForEdge(BB2, DstBB));
   }
+
   sort(CondsToJoin);
+
+  auto *ExitingL = getExitingLoop(LI, BB);
+  // Special case for non-unique exit block
+  if (ExitingL && !ExitingL->getUniqueExitBlock()) {
+    auto *PreheaderC = getConditionForBlock(ExitingL->getLoopPreheader());
+    for (auto &C : CondsToJoin)
+      C = concat(*this, PreheaderC, C);
+  }
+
   return BlockConditions[BB] = getOr(CondsToJoin);
 }
 

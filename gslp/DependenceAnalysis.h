@@ -39,8 +39,6 @@ class VectorPackContext;
 class GlobalDependenceAnalysis {
   // Mapping an instruction -> instructions that it transitively depends on
   llvm::DenseMap<llvm::Instruction *, llvm::BitVector> TransitiveClosure;
-  // Mapp an instruction -> instructions that are indepenpendent
-  llvm::DenseMap<llvm::Instruction *, llvm::BitVector> IndependentInsts;
 
 public:
   GlobalDependenceAnalysis(llvm::AliasAnalysis &, llvm::ScalarEvolution &,
