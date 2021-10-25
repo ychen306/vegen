@@ -65,6 +65,14 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
       Enumerate = [&](std::vector<AccessType *> Accesses, BitVector Elements,
                       BitVector Depended) {
         if (Accesses.size() == VL) {
+          // Make sure we can compute the addresses speculatively if we are doing masked load/stores
+          SmallVector<const ControlCondition *, 8> Conds;
+          for (auto *Access : Accesses)
+            Conds.push_back(Pkr->getBlockCondition(Access->getParent()));
+          auto *C = getGreatestCommonCondition(Conds);
+          if (!Pkr->canSpeculateAt(Accesses.front()->getPointerOperand(), C))
+            return;
+
           Seeds.push_back(createMemPack<AccessType>(Pkr, Accesses, Elements,
                                                     Depended, TTI));
           return;

@@ -542,3 +542,13 @@ void VectorPack::getPackedInstructions(
     Worklist.append(I->value_op_begin(), I->value_op_end());
   }
 }
+
+Value *VectorPack::getLoadStorePointer() const {
+  if (IsGatherScatter)
+    return nullptr;
+  if (isLoad())
+    return Loads.front()->getPointerOperand();
+  else if (isStore())
+    return Stores.front()->getPointerOperand();
+  return nullptr;
+}

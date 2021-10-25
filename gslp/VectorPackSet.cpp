@@ -568,6 +568,39 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     }
   }
 
+  // Scan the consectuive loads/stores and find those addresses that we need to speculatively compute
+  SmallPtrSet<const VectorPack *, 4> ConsecMemPacks;
+  for (auto &InstOrLoop : Schedule) {
+    auto *I = InstOrLoop.dyn_cast<Instruction *>();
+    if (!I)
+      continue;
+    auto *VP = ValueToPackMap.lookup(I);
+    if (VP && VP->getLoadStorePointer())
+      ConsecMemPacks.insert(VP);
+  }
+  // Mapping address computation to the condition to speculate at
+  DenseMap<Instruction *, const ControlCondition *> AddressesToSpeculate;
+  for (auto *VP : ConsecMemPacks) {
+    // Figure out the condition under which we should speculate the address
+    SmallVector<const ControlCondition *, 8> Conds;
+    for (auto *V : VP->elementValues())
+      Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+    auto *C = getGreatestCommonCondition(Conds);
+
+    auto *Addr = getLoadStorePointerOperand(VP->getOrderedValues().front());
+    auto *AddrComp = dyn_cast<Instruction>(Addr);
+
+    // If the address doesn't come from an instruction, there's nothing to speculate
+    if (!AddrComp)
+      continue;
+
+    // If we always compute the address under condition C, we don't need to speculate
+    if (isImplied(Pkr.getBlockCondition(AddrComp->getParent()), C))
+      continue;
+
+    AddressesToSpeculate.try_emplace(AddrComp, C);
+  }
+
   // Now generate code according to the schedule
   for (auto &InstOrLoop : Schedule) {
     // Emit the sub-loop recursively
@@ -587,8 +620,19 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *Cond = Pkr.getBlockCondition(I->getParent());
     auto *VP = ValueToPackMap.lookup(I);
 
+    bool Speculated = false;
+    auto It = AddressesToSpeculate.find(I);
+    if (It != AddressesToSpeculate.end()) {
+      moveToEnd(It->first, GetBlock(It->second));
+      Speculated = true;
+    }
+
     // I is not packed
     if (!VP) {
+      // We've moved this instruction already
+      if (Speculated)
+        continue;
+
       // I is being reduced by a reduction pack so will be dead later
       if (OldRdxOps.count(I))
         continue;

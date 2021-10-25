@@ -4,6 +4,7 @@
 #include "VectorPack.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/Analysis/ValueTracking.h" // isSafeToSpeculativelyExecute
 
 using namespace llvm;
 
@@ -156,6 +157,27 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
   }
 }
 
+// Check if we can speculatively compute a value at a given control condition
+bool Packer::canSpeculateAt(Value *V, const ControlCondition *C) {
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I)
+    return true;
+  // Easy case: no need to speculate because I always executes
+  if (isImplied(getBlockCondition(I->getParent()), C))
+    return true;
+  if (!isSafeToSpeculativelyExecute(I))
+    return false;
+  // Check if the operands of I are always available at condition C
+  for (Value *O : I->operands()) {
+    auto *OI = dyn_cast<Instruction>(O);
+    if (!OI)
+      continue;
+    if (!isImplied(getBlockCondition(OI->getParent()), C))
+      return false;
+  }
+  return true;
+}
+
 // Assuming all elements of `OP` are loads, try to find an extending load pack.
 static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
                                    SmallVectorImpl<VectorPack *> &Extensions) {
@@ -213,6 +235,14 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
       CurLoad = NextLI;
     }
     if (Elements.count() == LoadSet.size()) {
+      // Need to check if we can speculatively compute the address of this load pack
+      SmallVector<const ControlCondition *, 8> Conds;
+      for (auto *Ld : Loads)
+        Conds.push_back(Pkr->getBlockCondition(Ld->getParent()));
+      auto *C = getGreatestCommonCondition(Conds);
+      if (!Pkr->canSpeculateAt(Loads.front()->getPointerOperand(), C))
+        return;
+
       // Pad
       while (Loads.size() < PowerOf2Ceil(OP.size()))
         Loads.push_back(nullptr);
@@ -310,6 +340,7 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
   if (AllLoads) {
     findExtendingLoadPacks(*OP, this, OPI.LoadProducers);
+
     // TODO: add a pack to disable gathers?
     SmallVector<LoadInst *, 8> Loads;
     // FIXME: make sure the loads have the same type?

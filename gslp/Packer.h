@@ -170,6 +170,7 @@ public:
   VLoop *getVLoopFor(llvm::Instruction *);
   VLoop &getTopVLoop() { return TopVL; }
   void fuseLoops(VLoop *, VLoop *);
+  bool canSpeculateAt(llvm::Value *V, const ControlCondition *C);
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

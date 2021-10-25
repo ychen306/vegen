@@ -139,4 +139,9 @@ const ControlCondition *getGreatestCommonCondition(const ControlCondition *,
 const ControlCondition *
     getGreatestCommonCondition(llvm::ArrayRef<const ControlCondition *>);
 
+// Check if C1 is implied by C2
+static inline bool isImplied(const ControlCondition *C1, const ControlCondition *C2) {
+  return C1 == C2 || getGreatestCommonCondition({C1, C2}) == C1;
+}
+
 #endif // CONTROL_DEPENDENCE_H

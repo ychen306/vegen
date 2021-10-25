@@ -214,6 +214,9 @@ public:
     return Gammas;
   }
 
+  // Get the pointer of a *consecutive* load or store pack
+  llvm::Value *getLoadStorePointer() const;
+
   llvm::ArrayRef<llvm::Value *> getOrderedValues() const {
     return OrderedValues;
   }
