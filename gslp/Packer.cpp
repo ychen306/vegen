@@ -238,7 +238,8 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
       // Need to check if we can speculatively compute the address of this load pack
       SmallVector<const ControlCondition *, 8> Conds;
       for (auto *Ld : Loads)
-        Conds.push_back(Pkr->getBlockCondition(Ld->getParent()));
+        if (Ld)
+          Conds.push_back(Pkr->getBlockCondition(Ld->getParent()));
       auto *C = getGreatestCommonCondition(Conds);
       if (!Pkr->canSpeculateAt(Loads.front()->getPointerOperand(), C))
         return;
