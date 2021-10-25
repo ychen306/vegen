@@ -23,6 +23,9 @@ static cl::opt<bool> RescheduleScalars(
 static cl::opt<bool> DumpAfterErasingOldBlocks("dump-after-erasing-old-blocks",
                                                cl::init(false));
 
+static cl::opt<bool> DumpBeforeErasingOldBlocks("dump-before-erasing-old-blocks",
+                                               cl::init(false));
+
 namespace {
 class VectorCodeGen {
   Packer &Pkr;
@@ -904,6 +907,9 @@ void VectorCodeGen::run() {
 
   // Emit the top level loop, which will then recursively the sub loops
   emitLoop(Pkr.getTopVLoop(), nullptr);
+
+  if (DumpBeforeErasingOldBlocks)
+    F->dump();
 
   // Remove the old blocks
   for (auto *BB : OldBlocks)
