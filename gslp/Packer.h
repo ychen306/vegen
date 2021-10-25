@@ -88,8 +88,6 @@ class Packer {
   LoopToVLoopMapTy LoopToVLoopMap;
   VLoop TopVL;
 
-  // FIXME: make this not mutable
-  mutable LazyDependenceAnalysis LDA;
   MatchManager MM;
   BlockOrdering BO;
 
@@ -134,7 +132,6 @@ public:
   AccessLayoutInfo &getLoadInfo() { return LoadInfo; }
   AccessLayoutInfo &getStoreInfo() { return StoreInfo; }
   GlobalDependenceAnalysis &getDA() { return DA; }
-  LazyDependenceAnalysis &getLDA() { return LDA; }
   llvm::TargetTransformInfo *getTTI() const { return TTI; }
   llvm::BlockFrequencyInfo *getBFI() const { return BFI; }
 
