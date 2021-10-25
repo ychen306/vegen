@@ -20,6 +20,9 @@ static cl::opt<bool> RescheduleScalars(
         "run VectorPackSet::codegen and reschdule even when not vectorizing"),
     cl::init(false));
 
+static cl::opt<bool> DumpAfterErasingOldBlocks("dump-after-erasing-old-blocks",
+                                               cl::init(false));
+
 namespace {
 class VectorCodeGen {
   Packer &Pkr;
@@ -864,6 +867,9 @@ void VectorCodeGen::run() {
       I.dropAllReferences();
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
+
+  if (DumpAfterErasingOldBlocks)
+    F->dump();
 
   // Restore SSA
   DominatorTree DT(*F);
