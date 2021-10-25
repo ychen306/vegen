@@ -239,7 +239,7 @@ class LoopAwareRPO {
   DenseSet<BasicBlock *> VisitedBlocks;
 
   std::vector<BasicBlock *> RPO;
-  SmallVector<Loop *, 8> LoopStack { nullptr };
+  SmallVector<Loop *, 8> LoopStack{nullptr};
 
   Loop *curLoop() const { return LoopStack.back(); }
 
@@ -286,7 +286,7 @@ public:
   iterator end() const { return RPO.end(); }
 };
 
-}
+} // namespace
 
 // FIXME: change this to use LazyDependenceAnalysis
 GlobalDependenceAnalysis::GlobalDependenceAnalysis(
@@ -299,7 +299,7 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
   // Mapping inst -> <users>
   DenseMap<Instruction *, SmallVector<Instruction *, 8>> Dependences;
   LoopAwareRPO RPO(F, LI);
-  //ReversePostOrderTraversal<Function *> RPO(F);
+  // ReversePostOrderTraversal<Function *> RPO(F);
 
   DenseSet<Instruction *> Processed;
   for (auto *BB : RPO) {
@@ -317,19 +317,12 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
           Dependences[&I].push_back(OpInst);
       }
 
-      if (isa<ReturnInst>(&I)) {
-        // Return instruction depends on previous writes
-        for (Instruction *PrevRef : MemRefs)
-          if (PrevRef->mayWriteToMemory())
-            Dependences[&I].push_back(PrevRef);
-        continue;
-      }
-
-      if (NoAlias || !I.mayReadOrWriteMemory())
+      if (!isa<ReturnInst>(&I) && (NoAlias || !I.mayReadOrWriteMemory()))
         continue;
 
       for (Instruction *PrevRef : MemRefs)
-        if ((PrevRef->mayWriteToMemory() || I.mayWriteToMemory()) &&
+        if ((isa<ReturnInst>(PrevRef) || PrevRef->mayWriteToMemory() ||
+             I.mayWriteToMemory()) &&
             isAliased(&I, PrevRef, AA, SE, DT, LI, LVI))
           Dependences[&I].push_back(PrevRef);
 
