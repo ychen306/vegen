@@ -568,6 +568,10 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       RdxPacks.insert(VP);
       RdxPhis.insert(RI.Phi);
       OldRdxOps.insert(RI.Ops.begin(), RI.Ops.end());
+      if (RecurrenceDescriptor::isMinMaxRecurrenceKind(RI.Kind)) {
+        for (auto *I : RI.Ops)
+          OldRdxOps.insert(cast<SelectInst>(I)->getCondition());
+      }
     }
   }
 
