@@ -834,7 +834,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     if (RecurrenceDescriptor::isMinMaxRecurrenceKind(RI.Kind)) {
       Builder.SetInsertPoint(Preheader->getTerminator());
       IdentityVector =
-          Builder.CreateVectorSplat(VecTy->getElementCount(), RI.StartValue);
+          Builder.CreateVectorSplat(VecTy->getElementCount(), useScalar(RI.StartValue));
     } else {
       auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
           RI.Kind, RI.Phi->getType());
