@@ -85,7 +85,7 @@ class Packer {
   VectorPackContext VPCtx;
   GlobalDependenceAnalysis DA;
   ControlDependenceAnalysis CDA;
-  LoopToVLoopMapTy LoopToVLoopMap;
+  VLoopInfo VLI;
   VLoop TopVL;
 
   MatchManager MM;

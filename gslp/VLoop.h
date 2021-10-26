@@ -5,6 +5,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/EquivalenceClasses.h"
 
 namespace llvm {
 class Loop;
@@ -21,7 +22,16 @@ class ControlDependenceAnalysis;
 class ControlCondition;
 
 class VLoop;
-using LoopToVLoopMapTy = llvm::DenseMap<llvm::Loop *, VLoop *>;
+class VLoopInfo {
+  llvm::DenseMap<llvm::Loop *, VLoop *> LoopToVLoopMap;
+  // Loops that we can't fuse because of non-identical trip count
+  llvm::EquivalenceClasses<VLoop *> CoIteratingLoops;
+public:
+  void coiterate(VLoop *, VLoop *);
+  VLoop *getVLoop(llvm::Loop *) const;
+  void setVLoop(llvm::Loop *, VLoop *);
+  void fuse(VLoop *, VLoop *);
+};
 
 // This represents the eta nodes in Gated SSA
 struct EtaNode {
@@ -31,6 +41,7 @@ struct EtaNode {
 };
 
 class VLoop {
+  friend class VLoopInfo;
   bool IsTopLevel; // True if this VLoop doesn't represent any actual loop but
                    // the whole function
 
@@ -56,11 +67,11 @@ class VLoop {
 
   VLoop(llvm::LoopInfo &, llvm::Loop *, VectorPackContext *,
         GlobalDependenceAnalysis &, ControlDependenceAnalysis &,
-        LoopToVLoopMapTy &);
+        VLoopInfo &);
 
 public:
   VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis &,
-        ControlDependenceAnalysis &, LoopToVLoopMapTy &);
+        ControlDependenceAnalysis &, VLoopInfo &);
 
   llvm::ArrayRef<llvm::Instruction *> getInstructions() const {
     return TopLevelInsts;
@@ -78,7 +89,7 @@ public:
 
   static bool isSafeToFuse(const VLoop *, const VLoop *,
                            llvm::ScalarEvolution &);
-  static void fuse(VLoop *, VLoop *, LoopToVLoopMapTy &);
+  static bool isSafeToCoIterate(const VLoop *, const VLoop *);
 };
 
 bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,

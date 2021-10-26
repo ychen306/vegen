@@ -65,7 +65,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
       CDA(*LI, *DT, *PDT), 
 
-      TopVL(*LI, &VPCtx, DA, CDA, LoopToVLoopMap),
+      TopVL(*LI, &VPCtx, DA, CDA, VLI),
 
       BO(&F), MM(Insts, F), SE(SE), DT(DT), PDT(PDT), LI(LI),
       SupportedInsts(Insts.vec()), LVI(LVI), TTI(TTI), BFI(BFI) {
@@ -469,9 +469,9 @@ bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
 
 VLoop *Packer::getVLoopFor(Instruction *I) {
   auto *L = LI->getLoopFor(I->getParent());
-  return LoopToVLoopMap.lookup(L);
+  return VLI.getVLoop(L);
 }
 
 void Packer::fuseLoops(VLoop *VL1, VLoop *VL2) {
-  VLoop::fuse(VL1, VL2, LoopToVLoopMap);
+  VLI.fuse(VL1, VL2);
 }

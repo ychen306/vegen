@@ -15,11 +15,11 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
 
 VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
-             LoopToVLoopMapTy &LoopToVLoopMap)
+             VLoopInfo &VLI)
     : IsTopLevel(true), Parent(nullptr), BreakCond(nullptr), LoopCond(nullptr),
       L(nullptr) {
   for (auto *L : LI.getTopLevelLoops()) {
-    auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, LoopToVLoopMap);
+    auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, VLI);
     SubVL->Parent = this;
     SubLoops.emplace_back(SubVL);
   }
@@ -33,11 +33,11 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
 
 VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
-             LoopToVLoopMapTy &LoopToVLoopMap)
+             VLoopInfo &VLI)
     : IsTopLevel(false), Depended(VPCtx->getNumValues()),
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
       Insts(VPCtx->getNumValues()), L(L), Parent(nullptr) {
-  LoopToVLoopMap[L] = this;
+  VLI.setVLoop(L, this);
   assert(L->isRotatedForm());
 
   auto *Preheader = L->getLoopPreheader();
@@ -74,7 +74,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
 
   // Build the sub-loops
   for (auto *SubL : *L) {
-    auto *SubVL = new VLoop(LI, SubL, VPCtx, DA, CDA, LoopToVLoopMap);
+    auto *SubVL = new VLoop(LI, SubL, VPCtx, DA, CDA, VLI);
     SubLoops.emplace_back(SubVL);
     SubVL->Parent = this;
     Depended |= SubVL->getDepended();
@@ -186,12 +186,32 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
   return isSafeToFuse(VL1->Parent, VL2->Parent, SE);
 }
 
-void VLoop::fuse(VLoop *VL1, VLoop *VL2, LoopToVLoopMapTy &LoopToVLoopMap) {
+bool VLoop::isSafeToCoIterate(const VLoop *VL1, const VLoop *VL2) {
+  if (VL1 == VL2)
+    return true;
+
+  // The loops should be control-equivalent
+  if (VL1->LoopCond != VL2->LoopCond)
+    return false;
+
+  // Loop level mismatch
+  if (!VL1 || !VL2)
+    return false;
+
+  // Make sure the loops are independent
+  if (VL1->Insts.anyCommon(VL2->Depended) ||
+      VL2->Insts.anyCommon(VL1->Depended))
+    return false;
+
+  return isSafeToCoIterate(VL1->Parent, VL2->Parent);
+}
+
+void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   assert(VL1 != VL2 && "can't fuse the same loop with itself");
   auto *Parent = VL1->Parent;
   if (Parent != VL2->Parent)
-    fuse(VL1->Parent, VL2->Parent, LoopToVLoopMap);
-  LoopToVLoopMap[VL2->L] = VL1;
+    fuse(VL1->Parent, VL2->Parent);
+  setVLoop(VL2->L, VL1);
   VL1->Insts |= VL2->Insts;
   VL1->Depended |= VL2->Depended;
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
@@ -204,4 +224,16 @@ void VLoop::fuse(VLoop *VL1, VLoop *VL2, LoopToVLoopMapTy &LoopToVLoopMap) {
   });
   assert(It != Parent->SubLoops.end());
   Parent->SubLoops.erase(It);
+}
+
+void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
+  CoIteratingLoops.unionSets(VL1, VL2);
+}
+
+VLoop *VLoopInfo::getVLoop(Loop *L) const {
+  return LoopToVLoopMap.lookup(L);
+}
+
+void VLoopInfo::setVLoop(Loop *L, VLoop *VL) {
+  LoopToVLoopMap[L] = VL;
 }
