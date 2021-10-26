@@ -186,6 +186,8 @@ bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
   return isSafeToFuse(VL1->Parent, VL2->Parent, SE);
 }
 
+// FIXME : move this to VLoopInfo and check all loops that we are already
+// coiterating with VL1 or VL2
 bool VLoop::isSafeToCoIterate(const VLoop *VL1, const VLoop *VL2) {
   if (VL1 == VL2)
     return true;
@@ -230,10 +232,6 @@ void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
   CoIteratingLoops.unionSets(VL1, VL2);
 }
 
-VLoop *VLoopInfo::getVLoop(Loop *L) const {
-  return LoopToVLoopMap.lookup(L);
-}
+VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }
 
-void VLoopInfo::setVLoop(Loop *L, VLoop *VL) {
-  LoopToVLoopMap[L] = VL;
-}
+void VLoopInfo::setVLoop(Loop *L, VLoop *VL) { LoopToVLoopMap[L] = VL; }
