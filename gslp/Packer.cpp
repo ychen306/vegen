@@ -464,7 +464,7 @@ float Packer::getScalarCost(Instruction *I) {
 bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
   if (I1->getParent() == I2->getParent())
     return true;
-  return VLoop::isSafeToFuse(getVLoopFor(I1), getVLoopFor(I2), *SE);
+  return VLoop::isSafeToCoIterate(getVLoopFor(I1), getVLoopFor(I2));
 }
 
 VLoop *Packer::getVLoopFor(Instruction *I) {
@@ -472,6 +472,9 @@ VLoop *Packer::getVLoopFor(Instruction *I) {
   return VLI.getVLoop(L);
 }
 
-void Packer::fuseLoops(VLoop *VL1, VLoop *VL2) {
-  VLI.fuse(VL1, VL2);
+void Packer::fuseOrCoIterateLoops(VLoop *VL1, VLoop *VL2) {
+  if (VL1->haveIdenticalTripCounts(VL2, *SE))
+    VLI.fuse(VL1, VL2);
+  else
+    VLI.coiterate(VL1, VL2);
 }

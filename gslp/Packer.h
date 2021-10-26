@@ -139,6 +139,7 @@ public:
   llvm::DominatorTree &getDT() const { return *DT; }
   llvm::PostDominatorTree &getPDT() const { return *PDT; }
   llvm::LoopInfo &getLoopInfo() const { return *LI; }
+  VLoopInfo &getVLoopInfo() { return VLI; }
   llvm::LazyValueInfo &getLVI() const { return *LVI; }
 
   const llvm::DataLayout *getDataLayout() const {
@@ -169,7 +170,7 @@ public:
   bool isCompatible(llvm::Instruction *, llvm::Instruction *);
   VLoop *getVLoopFor(llvm::Instruction *);
   VLoop &getTopVLoop() { return TopVL; }
-  void fuseLoops(VLoop *, VLoop *);
+  void fuseOrCoIterateLoops(VLoop *, VLoop *);
   bool canSpeculateAt(llvm::Value *V, const ControlCondition *C);
 };
 

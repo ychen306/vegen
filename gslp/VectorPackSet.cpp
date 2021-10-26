@@ -285,6 +285,7 @@ static std::vector<PointerUnion<Instruction *, VLoop *>>
 schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
          Packer &Pkr) {
   auto &DA = Pkr.getDA();
+  auto &VLI = Pkr.getVLoopInfo();
 
   // Schedule the instruction to the pack dependence.
   // In particular, we want the instructions to be packed stay together.
@@ -330,6 +331,13 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
     auto *VP = Item.dyn_cast<const VectorPack *>();
     auto *SubVL = Item.dyn_cast<VLoop *>();
 
+    // If we are coiterating this loop with some other loops, don't schedule this loop on its own
+    if (SubVL) {
+      auto *LeaderVL = VLI.getCoIteratingLeader(SubVL);
+      if (SubVL != LeaderVL)
+        return Schedule(LeaderVL);
+    }
+
     // Make sure all of the control-dependent conditions are scheduled
     if (Item.is<const ControlCondition *>()) {
       auto *C = Item.dyn_cast<const ControlCondition *>();
@@ -367,8 +375,9 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
       // Make sure the control condition (guarding the loop preheader) are
       // scheduled first
       Schedule(SubVL->getLoopCond());
-      for (auto *V : VPCtx->iter_values(SubVL->getDepended()))
-        DependedValues.push_back(V);
+      for (auto *CoVL : VLI.getCoIteratingLoops(SubVL))
+        for (auto *V : VPCtx->iter_values(CoVL->getDepended()))
+          DependedValues.push_back(V);
     }
 
     // Recurse on the depended values
@@ -953,7 +962,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     for (auto *V : VP->elementValues()) {
       auto *VL2 = Pkr.getVLoopFor(cast<Instruction>(V));
       if (VL != VL2) {
-        Pkr.fuseLoops(VL, VL2);
+        Pkr.fuseOrCoIterateLoops(VL, VL2);
         assert(Pkr.getVLoopFor(cast<Instruction>(V)) == VL);
       }
     }

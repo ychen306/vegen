@@ -54,6 +54,18 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   }
   BreakCond = ExitConds.empty() ? nullptr : CDA.getOr(ExitConds);
 
+  SmallVector<BasicBlock *> Exits;
+  L->getUniqueExitBlocks(Exits);
+  // Assume LCSSA so the live-outs are guarded by PHIs
+  for (auto *Exit : Exits) {
+    for (auto &PN : Exit->phis()) {
+      for (Value *V : PN.incoming_values()) {
+        if (auto *I = dyn_cast<Instruction>(V))
+          LiveOuts.insert(I);
+      }
+    }
+  }
+
 #if 0
   SmallVector<BasicBlock *> Exits;
   L->getUniqueExitBlocks(Exits);
@@ -162,30 +174,6 @@ bool haveIdenticalTripCounts(const Loop *L1, const Loop *L2,
          Expr1->getOperand(1) == Expr2->getOperand(1);
 }
 
-bool VLoop::isSafeToFuse(const VLoop *VL1, const VLoop *VL2,
-                         ScalarEvolution &SE) {
-  if (VL1 == VL2)
-    return true;
-
-  // The loops should be control-equivalent
-  if (VL1->LoopCond != VL2->LoopCond)
-    return false;
-
-  // Loop level mismatch
-  if (!VL1 || !VL2)
-    return false;
-
-  if (!haveIdenticalTripCounts(VL1->L, VL2->L, SE))
-    return false;
-
-  // Make sure the loops are independent
-  if (VL1->Insts.anyCommon(VL2->Depended) ||
-      VL2->Insts.anyCommon(VL1->Depended))
-    return false;
-
-  return isSafeToFuse(VL1->Parent, VL2->Parent, SE);
-}
-
 // FIXME : move this to VLoopInfo and check all loops that we are already
 // coiterating with VL1 or VL2
 bool VLoop::isSafeToCoIterate(const VLoop *VL1, const VLoop *VL2) {
@@ -206,6 +194,10 @@ bool VLoop::isSafeToCoIterate(const VLoop *VL1, const VLoop *VL2) {
     return false;
 
   return isSafeToCoIterate(VL1->Parent, VL2->Parent);
+}
+
+bool VLoop::haveIdenticalTripCounts(VLoop *VL2, llvm::ScalarEvolution &SE) {
+  return ::haveIdenticalTripCounts(L, VL2->L, SE);
 }
 
 void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
@@ -234,4 +226,7 @@ void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
 
 VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }
 
-void VLoopInfo::setVLoop(Loop *L, VLoop *VL) { LoopToVLoopMap[L] = VL; }
+void VLoopInfo::setVLoop(Loop *L, VLoop *VL) {
+  LoopToVLoopMap[L] = VL; 
+  CoIteratingLoops.insert(VL);
+}

@@ -3,9 +3,9 @@
 
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/EquivalenceClasses.h"
+#include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/ADT/SmallVector.h"
 
 namespace llvm {
 class Loop;
@@ -26,11 +26,23 @@ class VLoopInfo {
   llvm::DenseMap<llvm::Loop *, VLoop *> LoopToVLoopMap;
   // Loops that we can't fuse because of non-identical trip count
   llvm::EquivalenceClasses<VLoop *> CoIteratingLoops;
+
 public:
   void coiterate(VLoop *, VLoop *);
   VLoop *getVLoop(llvm::Loop *) const;
   void setVLoop(llvm::Loop *, VLoop *);
   void fuse(VLoop *, VLoop *);
+
+  auto getCoIteratingLoops(VLoop *VL) {
+    auto It = CoIteratingLoops.findValue(VL);
+    assert(It != CoIteratingLoops.end());
+    return llvm::make_range(CoIteratingLoops.member_begin(It),
+                            CoIteratingLoops.member_end());
+  }
+
+  auto getCoIteratingLeader(VLoop *VL) {
+    return CoIteratingLoops.getLeaderValue(VL);
+  }
 };
 
 // This represents the eta nodes in Gated SSA
@@ -53,6 +65,7 @@ class VLoop {
   llvm::SmallVector<std::unique_ptr<VLoop>, 4> SubLoops;
   // Mapping phi nodes to their equivalent etas
   llvm::SmallDenseMap<llvm::PHINode *, EtaNode, 8> Etas;
+  llvm::SmallPtrSet<llvm::Instruction *, 4> LiveOuts;
 
   llvm::Value *ContCond;
   bool ContIfTrue; // indicate how ContCond is used
@@ -66,8 +79,7 @@ class VLoop {
   llvm::Loop *L; // the original loop
 
   VLoop(llvm::LoopInfo &, llvm::Loop *, VectorPackContext *,
-        GlobalDependenceAnalysis &, ControlDependenceAnalysis &,
-        VLoopInfo &);
+        GlobalDependenceAnalysis &, ControlDependenceAnalysis &, VLoopInfo &);
 
 public:
   VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis &,
@@ -87,9 +99,9 @@ public:
   llvm::Value *getContinueCondition() const { return ContCond; }
   bool continueIfTrue() const { return ContIfTrue; }
 
-  static bool isSafeToFuse(const VLoop *, const VLoop *,
-                           llvm::ScalarEvolution &);
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
+
+  bool haveIdenticalTripCounts(VLoop *, llvm::ScalarEvolution &);
 };
 
 bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,
