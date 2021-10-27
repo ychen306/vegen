@@ -141,6 +141,7 @@ public:
   llvm::LoopInfo &getLoopInfo() const { return *LI; }
   VLoopInfo &getVLoopInfo() { return VLI; }
   llvm::LazyValueInfo &getLVI() const { return *LVI; }
+  ControlDependenceAnalysis &getCDA() { return CDA; }
 
   const llvm::DataLayout *getDataLayout() const {
     return &F->getParent()->getDataLayout();

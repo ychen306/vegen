@@ -158,22 +158,22 @@ ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
   return getAnd(SrcCond, Br->getCondition(), Br->getSuccessor(0) == Dst);
 }
 
-static const ControlCondition *concat(ControlDependenceAnalysis &CDA,
-                                      const ControlCondition *CondA,
-                                      const ControlCondition *CondB) {
+const ControlCondition *
+ControlDependenceAnalysis::concat(const ControlCondition *CondA,
+                                  const ControlCondition *CondB) {
   if (!CondA)
     return CondB;
   if (!CondB)
     return CondA;
 
   if (auto *And = dyn_cast<ConditionAnd>(CondB))
-    return CDA.getAnd(concat(CDA, CondA, And->Parent), And->Cond, And->IsTrue);
+    return getAnd(concat(CondA, And->Parent), And->Cond, And->IsTrue);
 
   auto *Or = cast<ConditionOr>(CondB);
   SmallVector<const ControlCondition *> Conds;
   for (auto *C : Or->Conds)
-    Conds.push_back(concat(CDA, CondA, C));
-  return CDA.getOr(Conds);
+    Conds.push_back(concat(CondA, C));
+  return getOr(Conds);
 }
 
 // This is the same as computing the post dominance frontier of BB
@@ -249,7 +249,7 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   if (ExitingL && !ExitingL->getUniqueExitBlock()) {
     auto *PreheaderC = getConditionForBlock(ExitingL->getLoopPreheader());
     for (auto &C : CondsToJoin)
-      C = concat(*this, PreheaderC, C);
+      C = concat(PreheaderC, C);
   }
 
   return BlockConditions[BB] = getOr(CondsToJoin);

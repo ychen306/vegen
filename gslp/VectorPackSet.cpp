@@ -5,6 +5,7 @@
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Verifier.h"
@@ -23,10 +24,12 @@ static cl::opt<bool> RescheduleScalars(
 static cl::opt<bool> DumpAfterErasingOldBlocks("dump-after-erasing-old-blocks",
                                                cl::init(false));
 
-static cl::opt<bool> DumpBeforeErasingOldBlocks("dump-before-erasing-old-blocks",
-                                               cl::init(false));
+static cl::opt<bool>
+    DumpBeforeErasingOldBlocks("dump-before-erasing-old-blocks",
+                               cl::init(false));
 
 namespace {
+
 class VectorCodeGen {
   Packer &Pkr;
   const VectorPackContext *VPCtx;
@@ -35,7 +38,7 @@ class VectorCodeGen {
   IntrinsicBuilder &Builder;
   const DenseMap<Value *, const VectorPack *> &ValueToPackMap;
 
-  ValueIndexTy ValueIndex;
+  DenseMap<const llvm::Value *, VectorPackIndex> ValueIndex;
   PackToValueTy MaterializedPacks;
   DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
   // Instead of moving PHIs around,
@@ -48,7 +51,8 @@ class VectorCodeGen {
 
   Value *gatherOperandPack(const OperandPack &OP);
   Value *getOrEmitConditionPack(const ConditionPack *CP);
-  Value *getLoadStoreMask(ArrayRef<Value *>);
+  Value *getLoadStoreMask(ArrayRef<Value *>,
+                          DenseMap<VLoop *, Value *> *LoopActiveConds);
 
   // Lower a vloop and return the loop-header and exit.
   std::pair<BasicBlock *, BasicBlock *>
@@ -69,12 +73,34 @@ public:
 };
 } // namespace
 
-Value *VectorCodeGen::getLoadStoreMask(ArrayRef<Value *> Vals) {
+const ControlCondition *
+getBlockConditionAux(Packer &Pkr, BasicBlock *BB,
+                     DenseMap<VLoop *, Value *> *LoopActiveConds) {
+  auto *C = Pkr.getBlockCondition(BB);
+  if (!LoopActiveConds)
+    return C;
+  ControlDependenceAnalysis &CDA = Pkr.getCDA();
+  auto &LI = Pkr.getLoopInfo();
+  auto *L = LI.getLoopFor(BB);
+  assert(L);
+  auto &VLI = Pkr.getVLoopInfo();
+  auto *VL = VLI.getVLoop(L);
+  assert(VL);
+  assert(LoopActiveConds->count(VL));
+  return CDA.concat(CDA.getAnd(nullptr, LoopActiveConds->lookup(VL), true), C);
+}
+
+Value *VectorCodeGen::getLoadStoreMask(
+    ArrayRef<Value *> Vals,
+    DenseMap<VLoop *, Value *> *LoopActiveConds = nullptr) {
   SmallVector<const ControlCondition *> Conds;
   auto *SomeVal = *find_if(Vals, [](Value *V) { return V; });
-  auto *C = Pkr.getBlockCondition(cast<Instruction>(SomeVal)->getParent());
+  auto *C = getBlockConditionAux(Pkr, cast<Instruction>(SomeVal)->getParent(),
+                                 LoopActiveConds);
   for (auto *V : Vals)
-    Conds.push_back(V ? Pkr.getBlockCondition(cast<Instruction>(V)->getParent())
+    Conds.push_back(V ? getBlockConditionAux(Pkr,
+                                             cast<Instruction>(V)->getParent(),
+                                             LoopActiveConds)
                       : C);
   auto *CP = VPCtx->getConditionPack(Conds);
   // nullptr means it's all true
@@ -331,7 +357,8 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
     auto *VP = Item.dyn_cast<const VectorPack *>();
     auto *SubVL = Item.dyn_cast<VLoop *>();
 
-    // If we are coiterating this loop with some other loops, don't schedule this loop on its own
+    // If we are coiterating this loop with some other loops, don't schedule
+    // this loop on its own
     if (SubVL) {
       auto *LeaderVL = VLI.getCoIteratingLeader(SubVL);
       if (SubVL != LeaderVL)
@@ -527,13 +554,47 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   BasicBlock *Header = nullptr;
   BasicBlock *Latch = nullptr;
   BasicBlock *Exit = nullptr;
+  SmallVector<VLoop *, 4> CoIteratingLoops;
   auto &Ctx = Builder.getContext();
+
   if (VL.isLoop()) {
     Header = BasicBlock::Create(Ctx, "header", F);
     Latch = BasicBlock::Create(Ctx, "latch", F);
     Exit = BasicBlock::Create(Ctx, "exit", F);
     BranchInst::Create(Header /*if true*/, Preheader /*insert at end*/);
+
     // We will wire latch with exit and header later
+
+    for (auto *CoVL : Pkr.getVLoopInfo().getCoIteratingLoops(&VL))
+      CoIteratingLoops.push_back(CoVL);
+  }
+
+  DenseMap<VLoop *, Value *> LoopActiveConds;
+  bool CoIterating = CoIteratingLoops.size() > 1;
+  if (CoIterating) {
+    assert(Header);
+
+    // Create a dummy phi to represent whether the a co-iterated loop is active
+    auto *Int1Ty = Type::getInt1Ty(Ctx);
+    SmallVector<PHINode *, 4> ActiveConds;
+    for (auto *CoVL : CoIteratingLoops) {
+      auto *PN = PHINode::Create(Int1Ty, 2, "", Header);
+      LoopActiveConds.try_emplace(CoVL, PN);
+      ActiveConds.push_back(PN);
+    }
+
+    auto *VPCtx = Pkr.getContext();
+    // Also create a dummy vector to represent the packed version of the active
+    // conds
+    auto *ActiveVP =
+        VPCtx->createPhiPack(ActiveConds, BitVector(), BitVector(), Pkr.getTTI());
+    for (auto Item : enumerate(ActiveConds))
+      ValueIndex[Item.value()] = {ActiveVP, (unsigned)Item.index(),
+                                  Item.value()};
+    MaterializedPacks[ActiveVP] = PHINode::Create(
+        FixedVectorType::get(Int1Ty, ActiveConds.size()), 2, "", Header);
+    errs() << "1!! " << *MaterializedPacks[ActiveVP] << '\n';
+    abort();
   }
 
   // For the top level "loop", the loop header is just the entry block
@@ -580,7 +641,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     }
   }
 
-  // Scan the consectuive loads/stores and find those addresses that we need to speculatively compute
+  // Scan the consectuive loads/stores and find those addresses that we need to
+  // speculatively compute
   SmallPtrSet<const VectorPack *, 4> ConsecMemPacks;
   for (auto &InstOrLoop : Schedule) {
     auto *I = InstOrLoop.dyn_cast<Instruction *>();
@@ -602,11 +664,13 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *Addr = getLoadStorePointerOperand(VP->getOrderedValues().front());
     auto *AddrComp = dyn_cast<Instruction>(Addr);
 
-    // If the address doesn't come from an instruction, there's nothing to speculate
+    // If the address doesn't come from an instruction, there's nothing to
+    // speculate
     if (!AddrComp)
       continue;
 
-    // If we always compute the address under condition C, we don't need to speculate
+    // If we always compute the address under condition C, we don't need to
+    // speculate
     if (isImplied(Pkr.getBlockCondition(AddrComp->getParent()), C))
       continue;
 
@@ -838,8 +902,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     Value *IdentityVector;
     if (RecurrenceDescriptor::isMinMaxRecurrenceKind(RI.Kind)) {
       Builder.SetInsertPoint(Preheader->getTerminator());
-      IdentityVector =
-          Builder.CreateVectorSplat(VecTy->getElementCount(), useScalar(RI.StartValue));
+      IdentityVector = Builder.CreateVectorSplat(VecTy->getElementCount(),
+                                                 useScalar(RI.StartValue));
     } else {
       auto *Identity = RecurrenceDescriptor::getRecurrenceIdentity(
           RI.Kind, RI.Phi->getType());
@@ -873,15 +937,16 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   if (VL.isLoop()) {
     auto &Ctx = Builder.getContext();
     ContAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "continue_cond",
-                                 Header->getFirstNonPHI());
+                                Header->getFirstNonPHI());
     Allocas.push_back(ContAlloca);
     // By default, we don't continue
     if (auto HeaderTerminator = Header->getTerminator())
       new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, HeaderTerminator);
     else
       new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, Header);
-    // Continue if 
-    new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca, GetBlock(VL.getBackEdgeCond()));
+    // Continue if
+    new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca,
+                  GetBlock(VL.getBackEdgeCond()));
   }
 
   if (VL.isLoop()) {
@@ -955,10 +1020,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     auto *VL = Pkr.getVLoopFor(cast<Instruction>(*VP->elementValues().begin()));
     for (auto *V : VP->elementValues()) {
       auto *VL2 = Pkr.getVLoopFor(cast<Instruction>(V));
-      if (VL != VL2) {
+      if (VL != VL2)
         Pkr.fuseOrCoIterateLoops(VL, VL2);
-        assert(Pkr.getVLoopFor(cast<Instruction>(V)) == VL);
-      }
     }
   }
 

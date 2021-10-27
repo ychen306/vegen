@@ -128,9 +128,9 @@ public:
                                               llvm::BasicBlock *);
   const GammaNode *getGamma(llvm::PHINode *);
 
-  // Should be private but exposed for testing
   const ControlCondition *getAnd(const ControlCondition *, llvm::Value *, bool);
   const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);
+  const ControlCondition *concat(const ControlCondition *, const ControlCondition *);
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ControlCondition &);
