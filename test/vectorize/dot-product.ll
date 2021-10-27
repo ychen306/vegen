@@ -22,16 +22,26 @@
 ; CHECK-NEXT:   [[B:%.*]] = load <4 x float>, <4 x float>* [[B_ADDR]], align 4, !tbaa !3
 ; CHECK-NEXT:   [[VMUL:%.*]] = fmul <4 x float> [[A]], [[B]]
 ; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %3, 1
-; CHECK-NEXT:   %exitcond.not = icmp eq i64 %indvars.iv.next, %wide.trip.count
-; CHECK-NEXT:   br label %latch
+; CHECK-NEXT:   [[SHOULD_BREAK:%.*]] = icmp eq i64 %indvars.iv.next, %wide.trip.count
+; CHECK-NEXT:   br i1 [[SHOULD_BREAK]], label %[[IF_TRUE:.*]], label %[[IF_FALSE:.*]]
 
 ; CHECK: [[LATCH]]:
 ; CHECK-NEXT:   [[VSUM_NEXT]] = fadd <4 x float> [[VSUM]], [[VMUL]]
-; CHECK-NEXT:   br i1 %exitcond.not, label %[[EXIT:.*]], label %[[HEADER:.*]]
+; CHECK-NEXT:   br i1 [[CONT:%.*]], label %[[HEADER]], label %[[EXIT:.*]]
+
 ; CHECK: [[EXIT]]:
 ; CHECK-NEXT:   [[REDUCED:%.*]] = call float @llvm.vector.reduce.fadd.v4f32(float -0.000000e+00, <4 x float> [[VSUM_NEXT]])
 ; CHECK-NEXT:   [[REDUCED2:%.*]] = fadd float [[REDUCED]], 0.000000e+00
 ; CHECK-NEXT:   br label %[[JOIN]]
+
+; CHECK: [[IF_TRUE]]:
+; CHECK-NEXT:   br label %[[MERGE:.*]]
+
+; CHECK: [[IF_FALSE]]:
+; CHECK-NEXT:   br label %[[MERGE]]
+
+; CHECK: [[MERGE]]:
+; CHECK-NEXT:   [[CONT]] = phi i1 [ false, %[[IF_TRUE]] ], [ true, %[[IF_FALSE]] ]
 
 ; CHECK: [[JOIN]]:
 ; CHECK-NEXT:   [[PHI:%.*]] = phi float [ [[REDUCED2]], %[[EXIT]] ], [ 0.000000e+00, %[[NO_LOOP]] ]

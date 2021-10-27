@@ -532,12 +532,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     Header = BasicBlock::Create(Ctx, "header", F);
     Latch = BasicBlock::Create(Ctx, "latch", F);
     Exit = BasicBlock::Create(Ctx, "exit", F);
-    // Wire up the blocks
     BranchInst::Create(Header /*if true*/, Preheader /*insert at end*/);
-    if (VL.continueIfTrue())
-      BranchInst::Create(Header, Exit, VL.getContinueCondition(), Latch);
-    else
-      BranchInst::Create(Exit, Header, VL.getContinueCondition(), Latch);
+    // We will wire latch with exit and header later
   }
 
   // For the top level "loop", the loop header is just the entry block
@@ -751,7 +747,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         assert(Preheader && Preheader->getTerminator());
         Builder.SetInsertPoint(Preheader->getTerminator());
         auto *InitVec = gatherOperandPack(InitOP);
-        assert(Latch && Latch->getTerminator());
+        assert(Latch);
         auto *Eta = emitEta(InitVec, UndefValue::get(getVectorType(*VP)),
                             Preheader, Header, Latch);
         EtasToPatch.emplace_back(Eta, IterOP);
@@ -833,7 +829,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       VecPhis.push_back(VecPhi);
 
       // Gather operand in the latch
-      Builder.SetInsertPoint(Latch->getTerminator());
+      Builder.SetInsertPoint(Latch);
       auto *Operand = gatherOperandPack(*OP);
       RdxOps.push_back(emitReduction(RI.Kind, VecPhi, Operand, Builder));
     }
@@ -872,38 +868,36 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     RI.Ops.front()->replaceAllUsesWith(Reduced);
   }
 
-  // Do early-break (non-latch exit) if necessary
-  AllocaInst *BreakAlloca = nullptr;
-  if (auto *BreakCond = VL.getBreakCond()) {
+  // Check if we need to continue
+  AllocaInst *ContAlloca = nullptr;
+  if (VL.isLoop()) {
     auto &Ctx = Builder.getContext();
-    BreakAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "break_cond",
+    ContAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "continue_cond",
                                  Header->getFirstNonPHI());
-    Allocas.push_back(BreakAlloca);
-    // By default, we don't break
-    new StoreInst(ConstantInt::getFalse(Ctx), BreakAlloca,
-                  Preheader->getTerminator());
-    // Break when we the BreakCond evals to true
-    new StoreInst(ConstantInt::getTrue(Ctx), BreakAlloca, GetBlock(BreakCond));
+    Allocas.push_back(ContAlloca);
+    // By default, we don't continue
+    if (auto HeaderTerminator = Header->getTerminator())
+      new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, HeaderTerminator);
+    else
+      new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, Header);
+    // Continue if 
+    new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca, GetBlock(VL.getBackEdgeCond()));
   }
 
   if (VL.isLoop()) {
-    // Merge all the blocks before going to latch
-    Builder.SetInsertPoint(GetBlock(nullptr));
-    if (BreakAlloca) {
-      assert(VL.isLoop());
-      auto *ShouldBreak = Builder.CreateLoad(Type::getInt1Ty(Ctx), BreakAlloca);
-      Builder.CreateCondBr(ShouldBreak, Exit, Latch);
-    } else if (VL.isLoop()) {
-      Builder.CreateBr(Latch);
-    }
+    // Join everything to the latch
+    BranchInst::Create(Latch, GetBlock(nullptr));
+    Builder.SetInsertPoint(Latch);
 
     // Patch the eta nodes
-    Builder.SetInsertPoint(Latch->getTerminator());
     for (auto &Pair : EtasToPatch) {
       PHINode *Eta = Pair.first;
       OperandPack &IterOP = Pair.second;
       Eta->setIncomingValue(1, gatherOperandPack(IterOP));
     }
+
+    auto *ShouldContinue = Builder.CreateLoad(Type::getInt1Ty(Ctx), ContAlloca);
+    Builder.CreateCondBr(ShouldContinue, Header, Exit);
   }
 
   return {Header, Exit};

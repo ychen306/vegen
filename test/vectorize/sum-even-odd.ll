@@ -13,9 +13,9 @@
 ; CHECK-NEXT:   br label %[[DONE:.*]]
 
 ; CHECK: [[HEADER]]:
-; CHECK-NEXT:   [[IDX0:%.*]] = phi i32 [ 0, %0 ], [ [[IDX0_NEXT:%.*]], %latch ]
-; CHECK-NEXT:   [[IDX1:%.*]] = phi i32 [ 0, %0 ], [ [[IDX1_NEXT:%.*]], %latch ]
-; CHECK-NEXT:   [[SUM_PHI:%.*]] = phi <2 x i32> [ [[INIT]], %0 ], [ [[ITER:%.*]], %latch ]
+; CHECK-NEXT:   [[IDX0:%.*]] = phi i32 [ 0, %0 ], [ [[IDX0_NEXT:%.*]], %[[LATCH:.*]] ]
+; CHECK-NEXT:   [[IDX1:%.*]] = phi i32 [ 0, %0 ], [ [[IDX1_NEXT:%.*]], %[[LATCH]] ]
+; CHECK-NEXT:   [[SUM_PHI:%.*]] = phi <2 x i32> [ [[INIT]], %0 ], [ [[ITER:%.*]], %[[LATCH]] ]
 ; CHECK-NEXT:   %mul = mul nsw i32 2, [[IDX1]]
 ; CHECK-NEXT:   %idxprom = sext i32 %mul to i64
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds i32, i32* %b, i64 %idxprom
@@ -25,19 +25,27 @@
 ; CHECK-DAG:    [[IDX1_NEXT]] = add nsw i32 [[IDX1]], 1
 ; CHECK-DAG:    [[LT_N:%.*]] = icmp slt i32 %inc, %n
 ; CHECK-DAG:    [[IDX0_NEXT]] = add nsw i32 [[IDX0]], 1
-; CHECK-NEXT:   br label %[[LATCH:.*]]
+; CHECK-NEXT:   br i1 [[LT_N]], label %[[IF_TRUE:.*]], label %[[IF_FALSE:.*]]
 
 ; CHECK: [[LATCH]]:
-; CHECK-NEXT:   br i1 [[LT_N]], label %[[HEADER]], label %[[EXIT:.*]]
+; CHECK-NEXT:  br i1 [[CONT:%.*]], label %[[HEADER]], label %[[EXIT:.*]]
 
 ; CHECK: [[EXIT]]:
 ; CHECK-NEXT:   [[OUT_ADDR:%.*]] = bitcast i32* %arrayidx1 to <2 x i32>*
 ; CHECK-NEXT:   store <2 x i32> [[SUM]], <2 x i32>* [[OUT_ADDR]], align 4, !tbaa !3
 ; CHECK-NEXT:   br label %[[DONE]]
 
+; CHECK: [[IF_TRUE]]:
+; CHECK-NEXT:   br label %[[MERGE:.*]]
+
+; CHECK: [[IF_FALSE]]:
+; CHECK-NEXT:   br label %[[MERGE]]
+
+; CHECK: [[MERGE]]:
+; CHECK-NEXT: [[CONT]] = phi i1 [ true, %[[IF_TRUE]] ], [ false, %[[IF_FALSE]] ]
+
 ; CHECK: [[DONE]]:
 ; CHECK-NEXT:   ret void
-
 
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.15.0"

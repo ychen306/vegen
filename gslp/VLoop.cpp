@@ -16,8 +16,7 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
 VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              VLoopInfo &VLI)
-    : IsTopLevel(true), Parent(nullptr), BreakCond(nullptr), LoopCond(nullptr),
-      L(nullptr) {
+    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr) {
   for (auto *L : LI.getTopLevelLoops()) {
     auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, VLI);
     SubVL->Parent = this;
@@ -44,16 +43,6 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   auto *Header = L->getHeader();
   auto *Latch = L->getLoopLatch();
 
-  // Figure out the loop-exit condition (except edges leaving the latch)
-  SmallVector<Loop::Edge, 4> ExitEdges;
-  SmallVector<const ControlCondition *, 4> ExitConds;
-  L->getExitEdges(ExitEdges);
-  for (auto &E : ExitEdges) {
-    if (E.first != Latch)
-      ExitConds.push_back(CDA.getConditionForEdge(E.first, E.second));
-  }
-  BreakCond = ExitConds.empty() ? nullptr : CDA.getOr(ExitConds);
-
   SmallVector<BasicBlock *> Exits;
   L->getUniqueExitBlocks(Exits);
   // Assume LCSSA so the live-outs are guarded by PHIs
@@ -79,10 +68,13 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   errs() << *LoopCond << '\n';
 #endif
 
+  // Figure out the condition for taking the backedge (vs exiting the loop)
   auto *LoopBr = cast<BranchInst>(Latch->getTerminator());
-  ContCond = LoopBr->getCondition();
-  assert(ContCond);
-  ContIfTrue = LoopBr->getSuccessor(0) == L->getHeader();
+  assert(LoopBr->getCondition());
+  // Back edge taken === reaches latch && back edge taken
+  BackEdgeCond =
+      CDA.getAnd(CDA.getConditionForBlock(Latch), LoopBr->getCondition(),
+                 LoopBr->getSuccessor(0) == L->getHeader());
 
   // Build the sub-loops
   for (auto *SubL : *L) {
@@ -227,6 +219,6 @@ void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
 VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }
 
 void VLoopInfo::setVLoop(Loop *L, VLoop *VL) {
-  LoopToVLoopMap[L] = VL; 
+  LoopToVLoopMap[L] = VL;
   CoIteratingLoops.insert(VL);
 }

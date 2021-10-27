@@ -17,7 +17,7 @@
 ; CHECK-NEXT:   br i1 %tobool2.not, label %[[CALL_G:.*]], label %[[CALL_F:.*]]
 
 ; CHECK: [[LATCH:.*]]:
-; CHECK-NEXT:   br i1 %tobool.not, label %[[EXIT:.*]], label %[[HEADER]]
+; CHECK-NEXT:   br i1 [[CONT:%.*]], label %[[HEADER]], label %[[EXIT:.*]]
 
 ; CHECK: [[EXIT]]:
 ; CHECK-NEXT:   br label %[[DONE]]
@@ -35,6 +35,16 @@
 ; CHECK-NEXT:   call void (...) @next()
 ; CHECK-NEXT:   %call = call i32 (...) @cont()
 ; CHECK-NEXT:   %tobool.not = icmp eq i32 %call, 0
+; CHECK-NEXT:   br i1 %tobool.not, label %[[IF_TRUE:.*]], label %[[IF_FALSE:.*]]
+
+; CHECK: [[IF_TRUE]]:
+; CHECK-NEXT:   br label %[[MERGE:.*]]
+
+; CHECK: [[IF_FALSE]]:
+; CHECK-NEXT:   br label %[[MERGE]]
+
+; CHECK: [[MERGE]]:
+; CHECK-NEXT:   [[CONT]] = phi i1 [ false, %[[IF_TRUE]] ], [ true, %[[IF_FALSE]] ]
 ; CHECK-NEXT:   br label %[[LATCH]]
 
 ; CHECK: [[DONE]]:

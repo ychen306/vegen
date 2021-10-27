@@ -67,13 +67,10 @@ class VLoop {
   llvm::SmallDenseMap<llvm::PHINode *, EtaNode, 8> Etas;
   llvm::SmallPtrSet<llvm::Instruction *, 4> LiveOuts;
 
-  llvm::Value *ContCond;
-  bool ContIfTrue; // indicate how ContCond is used
-
-  // Condition for breaking from the loop (not including failing ContCond)
-  const ControlCondition *BreakCond;
-
+  // Should we execute this loop at all
   const ControlCondition *LoopCond;
+  // Is the backedge taken
+  const ControlCondition *BackEdgeCond;
 
   VLoop *Parent;
   llvm::Loop *L; // the original loop
@@ -93,11 +90,9 @@ public:
   }
   const llvm::BitVector &getDepended() const { return Depended; }
   const ControlCondition *getLoopCond() const { return LoopCond; }
-  const ControlCondition *getBreakCond() const { return BreakCond; }
+  const ControlCondition *getBackEdgeCond() const { return BackEdgeCond; }
   bool isLoop() const { return L; }
   llvm::Optional<EtaNode> getEta(llvm::PHINode *) const;
-  llvm::Value *getContinueCondition() const { return ContCond; }
-  bool continueIfTrue() const { return ContIfTrue; }
 
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
 
