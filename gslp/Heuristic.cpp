@@ -17,8 +17,12 @@ static cl::opt<bool> AllowTranspose("allow-transpose", cl::init(false));
 
 float Heuristic::getCost(const VectorPack *VP) {
   float Cost = VP->getProducingCost();
-  for (auto *OP : VP->getOperandPacks())
+  for (auto *OP : VP->getOperandPacks()) {
+    // Hack, don't include the cost of comparison
+    if (all_of(*OP, [](Value *V) { return isa<CmpInst>(V); }))
+      continue;
     Cost += getCost(OP);
+  }
   return Cost;
 }
 
