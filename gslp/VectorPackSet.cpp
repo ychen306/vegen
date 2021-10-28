@@ -753,10 +753,13 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *I = dyn_cast_or_null<Instruction>(V);
     if (!I)
       return nullptr;
+    return Pkr.getVLoopFor(I);
+#if 0
     for (auto *CoVL : CoIteratingLoops)
       if (CoVL->isLiveOut(I))
         return CoVL;
     return nullptr;
+#endif
   };
 
   auto GuardScalarLiveOut = [&](Value *V) {
@@ -791,6 +794,13 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     // Dedicated alloca (which we will promote later) to store the live-out
     auto *OutAlloca = new AllocaInst(V->getType(), 0, "vector-live-out", &Entry->front());
+
+    auto *BB = cast<Instruction>(V)->getParent();
+    if (auto *Terminator = BB->getTerminator())
+      Builder.SetInsertPoint(Terminator);
+    else
+      Builder.SetInsertPoint(BB);
+
     auto *Prev = Builder.CreateLoad(V->getType(), OutAlloca);
     auto *Blend = Builder.CreateSelect(Mask, V, Prev);
     Builder.CreateStore(Blend, OutAlloca);
