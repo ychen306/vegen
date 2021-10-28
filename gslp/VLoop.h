@@ -97,6 +97,7 @@ public:
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
 
   bool haveIdenticalTripCounts(VLoop *, llvm::ScalarEvolution &);
+  bool isLiveOut(llvm::Instruction *I) { return LiveOuts.count(I); }
 };
 
 bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,
