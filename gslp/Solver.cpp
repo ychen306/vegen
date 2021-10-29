@@ -289,6 +289,20 @@ static void getBackEdgePacks(Packer *Pkr, const Plan &P,
   }
 }
 
+
+void tryPackBackEdgeConds(Packer *Pkr, Plan &P, Heuristic &H) {
+  SmallPtrSet<const ConditionPack *, 4> BackEdgePacks;
+  getBackEdgePacks(Pkr, P, BackEdgePacks);
+  SmallVector<const OperandPack *, 4> OPs;
+  for (auto *CP : BackEdgePacks)
+    getOperandPacksFromCondition(CP, OPs);
+  Plan P2 = P;
+  for (auto *OP : OPs)
+    runBottomUpFromOperand(OP, P2, H);
+  if (P2.cost() <= P.cost())
+    P = P2;
+}
+
 static void improvePlan(Packer *Pkr, Plan &P,
                         ArrayRef<const OperandPack *> SeedOperands,
                         CandidatePackSet *Candidates,
@@ -399,12 +413,7 @@ static void improvePlan(Packer *Pkr, Plan &P,
     }
   }
 
-  SmallPtrSet<const ConditionPack *, 4> BackEdgePacks;
-  getBackEdgePacks(Pkr, P, BackEdgePacks);
-  SmallVector<const OperandPack *, 4> BackEdgeCondOPs;
-  for (auto *CP : BackEdgePacks)
-    getOperandPacksFromCondition(CP, BackEdgeCondOPs);
-  Improve(P, BackEdgeCondOPs);
+  tryPackBackEdgeConds(Pkr, P, H);
 
   if (!RefinePlans)
     return;
