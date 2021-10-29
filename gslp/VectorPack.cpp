@@ -76,7 +76,7 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
   return OperandPacks;
 }
 
-static void
+void
 getOperandPacksFromCondition(const ConditionPack *CP,
                              SmallVectorImpl<const OperandPack *> &OPs) {
   if (!CP)

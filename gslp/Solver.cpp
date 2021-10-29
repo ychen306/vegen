@@ -3,9 +3,9 @@
 #include "Packer.h"
 #include "Plan.h"
 #include "VectorPackSet.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Analysis/LoopInfo.h"
 
 using namespace llvm;
 
@@ -65,7 +65,8 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
       Enumerate = [&](std::vector<AccessType *> Accesses, BitVector Elements,
                       BitVector Depended) {
         if (Accesses.size() == VL) {
-          // Make sure we can compute the addresses speculatively if we are doing masked load/stores
+          // Make sure we can compute the addresses speculatively if we are
+          // doing masked load/stores
           SmallVector<const ControlCondition *, 8> Conds;
           for (auto *Access : Accesses)
             Conds.push_back(Pkr->getBlockCondition(Access->getParent()));
@@ -91,7 +92,9 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           auto *NextAccess = cast<AccessType>(Next);
           if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
             continue;
-          if (any_of(Accesses, [&](auto *Access) { return !Pkr->isCompatible(Access, NextAccess); }))
+          if (any_of(Accesses, [&](auto *Access) {
+                return !Pkr->isCompatible(Access, NextAccess);
+              }))
             continue;
 
           auto AccessesExt = Accesses;
@@ -258,6 +261,34 @@ static unsigned greatestPowerOfTwoDivisor(unsigned n) {
   return (n & (~(n - 1)));
 }
 
+static bool haveIdenticalTripCountsAux(Value *A, Value *B, Packer *Pkr) {
+  auto *I1 = cast<Instruction>(A);
+  auto *I2 = cast<Instruction>(B);
+  auto *VL1 = Pkr->getVLoopFor(I1);
+  auto *VL2 = Pkr->getVLoopFor(I2);
+  if (VL1 == VL2)
+    return true;
+  return VL1->haveIdenticalTripCounts(VL2, Pkr->getSE());
+}
+
+// Collect all the back-edge condition packs for packs of values from divergent
+// loops
+static void getBackEdgePacks(Packer *Pkr, const Plan &P,
+                             SmallPtrSetImpl<const ConditionPack *> &BackEdgePacks) {
+  auto *VPCtx = Pkr->getContext();
+  for (auto *VP : P) {
+    auto Vals = VP->getOrderedValues();
+    if (all_of(drop_begin(Vals), [&](Value *V) {
+          return !V || haveIdenticalTripCountsAux(Vals.front(), V, Pkr);
+        }))
+      continue;
+    SmallVector<const ControlCondition *, 8> Conds;
+    for (auto *V : Vals)
+      Conds.push_back(Pkr->getVLoopFor(cast<Instruction>(V))->getBackEdgeCond());
+    BackEdgePacks.insert(VPCtx->getConditionPack(Conds));
+  }
+}
+
 static void improvePlan(Packer *Pkr, Plan &P,
                         ArrayRef<const OperandPack *> SeedOperands,
                         CandidatePackSet *Candidates,
@@ -367,6 +398,13 @@ static void improvePlan(Packer *Pkr, Plan &P,
       errs() << "~COST: " << P.cost() << '\n';
     }
   }
+
+  SmallPtrSet<const ConditionPack *, 4> BackEdgePacks;
+  getBackEdgePacks(Pkr, P, BackEdgePacks);
+  SmallVector<const OperandPack *, 4> BackEdgeCondOPs;
+  for (auto *CP : BackEdgePacks)
+    getOperandPacksFromCondition(CP, BackEdgeCondOPs);
+  Improve(P, BackEdgeCondOPs);
 
   if (!RefinePlans)
     return;

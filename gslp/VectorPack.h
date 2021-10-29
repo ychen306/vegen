@@ -253,4 +253,7 @@ bool isConstantPack(const OperandPack &OpndPack);
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
+void getOperandPacksFromCondition(
+    const ConditionPack *CP, llvm::SmallVectorImpl<const OperandPack *> &OPs);
+
 #endif // VECTOR_PACK_H
