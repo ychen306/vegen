@@ -626,6 +626,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     ControlDependenceAnalysis &CDA = Pkr.getCDA();
 
+    bool VectorizeActiveConds = false;
+
     // Create a dummy phi to represent whether the a co-iterated loop is active
     auto *Int1Ty = Type::getInt1Ty(Ctx);
     auto *Int1_True = ConstantInt::getTrue(Ctx);
@@ -638,21 +640,29 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       LoopActiveConds.try_emplace(CoVL, CDA.getAnd(nullptr, PN, true));
       LoopActivePhis.try_emplace(CoVL, PN);
       ActiveConds.push_back(PN);
+
+      // If any of the back edge cond is packed, then we vectrozie the whole
+      // active conds
+      auto *And = dyn_cast<ConditionAnd>(CoVL->getBackEdgeCond());
+      if (And && ValueToPackMap.count(And->Cond))
+        VectorizeActiveConds = true;
     }
 
-    // Also create a dummy vector
-    // to represent the packed version of the active conds
-    auto *ActiveVP = Pkr.getContext()->createPhiPack(ActiveConds, BitVector(),
-                                                     BitVector(), Pkr.getTTI());
-    for (auto Item : enumerate(ActiveConds))
-      ValueIndex[Item.value()] = {ActiveVP, (unsigned)Item.index(),
-                                  Item.value()};
-    auto *VecTy = FixedVectorType::get(Int1Ty, ActiveConds.size());
-    ActiveVec = PHINode::Create(VecTy, 2, "active-pack", Header);
-    ActiveVec->addIncoming(
-        ConstantVector::getSplat(VecTy->getElementCount(), Int1_True),
-        Preheader);
-    MaterializedPacks[ActiveVP] = ActiveVec;
+    if (VectorizeActiveConds) {
+      // Also create a dummy vector
+      // to represent the packed version of the active conds
+      auto *ActiveVP = Pkr.getContext()->createPhiPack(
+          ActiveConds, BitVector(), BitVector(), Pkr.getTTI());
+      for (auto Item : enumerate(ActiveConds))
+        ValueIndex[Item.value()] = {ActiveVP, (unsigned)Item.index(),
+                                    Item.value()};
+      auto *VecTy = FixedVectorType::get(Int1Ty, ActiveConds.size());
+      ActiveVec = PHINode::Create(VecTy, 2, "active-pack", Header);
+      ActiveVec->addIncoming(
+          ConstantVector::getSplat(VecTy->getElementCount(), Int1_True),
+          Preheader);
+      MaterializedPacks[ActiveVP] = ActiveVec;
+    }
   }
   auto *MaybeLoopActiveConds = CoIterating ? &LoopActiveConds : nullptr;
   auto GetEta = [&](PHINode *PN) -> Optional<EtaNode> {
@@ -1079,7 +1089,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
   if (VL.isLoop()) {
     AllocaInst *ContAlloca = nullptr;
-    if (!CoIterating) {
+    DenseMap<VLoop *, AllocaInst *> ScalarActiveConds;
+    if (!ActiveVec) {
       auto &Ctx = Builder.getContext();
       ContAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "continue_cond",
                                   Header->getFirstNonPHI());
@@ -1089,9 +1100,23 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, HeaderTerminator);
       else
         new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, Header);
-      // Continue if
-      new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca,
-                    GetBlock(VL.getBackEdgeCond()));
+
+      // Continue if ...
+      for (auto *CoVL : CoIteratingLoops) {
+        new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca,
+                      GetBlock(CoVL->getBackEdgeCond()));
+      }
+
+      // Also keep track of whether each co-iterating loops are individually
+      // active
+      for (auto *CoVL : CoIteratingLoops) {
+        auto *ActiveCond = new AllocaInst(Type::getInt1Ty(Ctx), 0, "active",
+                                          Header->getFirstNonPHI());
+        Allocas.push_back(ActiveCond);
+        new StoreInst(ConstantInt::getTrue(Ctx), ActiveCond,
+                      GetBlock(CoVL->getBackEdgeCond()));
+        ScalarActiveConds.try_emplace(CoVL, ActiveCond);
+      }
     }
 
     // Join everything to the latch
@@ -1106,26 +1131,33 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     }
 
     Value *ShouldContinue = nullptr;
-    if (!CoIterating) {
+    if (!ActiveVec) {
       ShouldContinue = Builder.CreateLoad(Type::getInt1Ty(Ctx), ContAlloca);
     } else {
       SmallVector<const ControlCondition *, 8> BackEdgeConds;
       for (auto *CoVL : CoIteratingLoops)
         BackEdgeConds.push_back(CoVL->getBackEdgeCond());
-      auto *NextActiveConds = Builder.CreateAnd(
+      auto *NextActiveVec = Builder.CreateAnd(
           ActiveVec,
           getOrEmitConditionPack(VPCtx->getConditionPack(BackEdgeConds)));
       // Patch up the active conds vector phi
-      assert(ActiveVec);
-      ActiveVec->addIncoming(NextActiveConds, Latch);
+      ActiveVec->addIncoming(NextActiveVec, Latch);
       // We should continue if at least one of the co-iterating loops is active
-      ShouldContinue = Builder.CreateOrReduce(NextActiveConds);
+      ShouldContinue = Builder.CreateOrReduce(NextActiveVec);
       for (auto Item : enumerate(CoIteratingLoops)) {
         unsigned i = Item.index();
         VLoop *CoVL = Item.value();
         assert(LoopActivePhis.count(CoVL));
         LoopActivePhis.lookup(CoVL)->addIncoming(
             Builder.CreateExtractElement(ActiveVec, i), Latch);
+      }
+    }
+
+    if (CoIterating && !ActiveVec) {
+      for (auto *CoVL : CoIteratingLoops) {
+        assert(LoopActivePhis.count(CoVL));
+        LoopActivePhis.lookup(CoVL)->addIncoming(
+            Builder.CreateLoad(ScalarActiveConds.lookup(CoVL)), Latch);
       }
     }
 
