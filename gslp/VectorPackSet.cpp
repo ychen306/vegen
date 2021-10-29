@@ -680,7 +680,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     return It->second.Extracted;
   });
   DenseMap<const ControlCondition *, BasicBlock *> LastBlockForCond;
-  DenseSet<BasicBlock *> LoopBlocks { Header, Exit, Latch };
+  DenseSet<BasicBlock *> LoopBlocks{Header, Exit, Latch};
   auto GetBlock = [&](const ControlCondition *C) {
     auto *BB = BBuilder.getBlockFor(C);
     LoopBlocks.insert(BB);
@@ -769,7 +769,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     if (!I)
       return nullptr;
     return Pkr.getVLoopFor(I);
-    // FIXME: What follows is broken because it doesn't consider control dependence
+    // FIXME: What follows is broken because it doesn't consider control
+    // dependence
 #if 0
     for (auto *CoVL : CoIteratingLoops)
       if (CoVL->isLiveOut(I))
@@ -794,8 +795,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       Builder.SetInsertPoint(BB);
 
     assert(LoopActivePhis.count(VL));
-    auto *OutAlloca =
-        new AllocaInst(V->getType(), 0, V->getName() + ".live-out", &Entry->front());
+    auto *OutAlloca = new AllocaInst(
+        V->getType(), 0, V->getName() + ".live-out", &Entry->front());
 
     auto *Prev = Builder.CreateLoad(V->getType(), OutAlloca);
     auto *Select = Builder.CreateSelect(LoopActivePhis.lookup(VL), V, Prev);
@@ -1207,15 +1208,17 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     MaterializedPacks[VP] = Reload;
   }
 
-  SmallPtrSet<VLoop *, 8> CoIteratingLoopSet(CoIteratingLoops.begin(), CoIteratingLoops.end());
+  SmallPtrSet<VLoop *, 8> CoIteratingLoopSet(CoIteratingLoops.begin(),
+                                             CoIteratingLoops.end());
   for (auto KV : ScalarLiveOutAllocas) {
     Value *V = KV.first;
     auto *Alloca = KV.second;
-    auto *Reload = Builder.CreateLoad(V->getType(), Alloca, Alloca->getName() + ".reload");
+    auto *Reload =
+        Builder.CreateLoad(V->getType(), Alloca, Alloca->getName() + ".reload");
     V->replaceUsesWithIf(Reload, [&](Use &U) {
-        auto *I = dyn_cast<Instruction>(U.getUser());
-        return !I || !LoopBlocks.count(I->getParent());
-        });
+      auto *I = dyn_cast<Instruction>(U.getUser());
+      return !I || !LoopBlocks.count(I->getParent());
+    });
   }
 
   return {Header, Exit};
