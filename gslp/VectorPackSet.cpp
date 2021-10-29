@@ -1031,6 +1031,9 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     MaterializedPacks[VP] = VecInst;
   }
 
+  if (!VL.isLoop())
+    return {nullptr, nullptr};
+
   // Emit the reductions.
   auto *TTI = Pkr.getTTI();
   assert(RdxPacks.empty() || VL.isLoop());
@@ -1087,99 +1090,97 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     RI.Ops.front()->replaceAllUsesWith(Reduced);
   }
 
-  if (VL.isLoop()) {
-    AllocaInst *ContAlloca = nullptr;
-    DenseMap<VLoop *, AllocaInst *> ScalarActiveConds;
-    if (!ActiveVec) {
-      auto &Ctx = Builder.getContext();
-      ContAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "continue_cond",
-                                  Header->getFirstNonPHI());
-      Allocas.push_back(ContAlloca);
-      // By default, we don't continue
-      if (auto HeaderTerminator = Header->getTerminator())
-        new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, HeaderTerminator);
-      else
-        new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, Header);
+  AllocaInst *ContAlloca = nullptr;
+  DenseMap<VLoop *, AllocaInst *> ScalarActiveConds;
+  if (!ActiveVec) {
+    auto &Ctx = Builder.getContext();
+    ContAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "continue_cond",
+                                Header->getFirstNonPHI());
+    Allocas.push_back(ContAlloca);
+    // By default, we don't continue
+    if (auto HeaderTerminator = Header->getTerminator())
+      new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, HeaderTerminator);
+    else
+      new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, Header);
 
-      // Continue if ...
-      for (auto *CoVL : CoIteratingLoops) {
-        new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca,
-                      GetBlock(CoVL->getBackEdgeCond()));
-      }
-
-      // Also keep track of whether each co-iterating loops are individually
-      // active
-      for (auto *CoVL : CoIteratingLoops) {
-        auto *ActiveCond = new AllocaInst(Type::getInt1Ty(Ctx), 0, "active",
-                                          Header->getFirstNonPHI());
-        Allocas.push_back(ActiveCond);
-        new StoreInst(ConstantInt::getTrue(Ctx), ActiveCond,
-                      GetBlock(CoVL->getBackEdgeCond()));
-        ScalarActiveConds.try_emplace(CoVL, ActiveCond);
-      }
+    // Continue if ...
+    for (auto *CoVL : CoIteratingLoops) {
+      new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca,
+                    GetBlock(CoVL->getBackEdgeCond()));
     }
 
-    // Join everything to the latch
-    BranchInst::Create(Latch, GetBlock(nullptr));
-    Builder.SetInsertPoint(Latch);
-
-    // Patch the eta nodes
-    for (auto &Pair : EtasToPatch) {
-      PHINode *Eta = Pair.first;
-      OperandPack &IterOP = Pair.second;
-      Eta->setIncomingValue(1, gatherOperandPack(IterOP));
+    // Also keep track of whether each co-iterating loops are individually
+    // active
+    for (auto *CoVL : CoIteratingLoops) {
+      auto *ActiveCond = new AllocaInst(Type::getInt1Ty(Ctx), 0, "active",
+                                        Header->getFirstNonPHI());
+      Allocas.push_back(ActiveCond);
+      new StoreInst(ConstantInt::getTrue(Ctx), ActiveCond,
+                    GetBlock(CoVL->getBackEdgeCond()));
+      ScalarActiveConds.try_emplace(CoVL, ActiveCond);
     }
+  }
 
-    Value *ShouldContinue = nullptr;
-    if (!ActiveVec) {
-      ShouldContinue = Builder.CreateLoad(Type::getInt1Ty(Ctx), ContAlloca);
-    } else {
-      SmallVector<const ControlCondition *, 8> BackEdgeConds;
-      for (auto *CoVL : CoIteratingLoops)
-        BackEdgeConds.push_back(CoVL->getBackEdgeCond());
-      auto *NextActiveVec = Builder.CreateAnd(
-          ActiveVec,
-          getOrEmitConditionPack(VPCtx->getConditionPack(BackEdgeConds)));
-      // Patch up the active conds vector phi
-      ActiveVec->addIncoming(NextActiveVec, Latch);
-      // We should continue if at least one of the co-iterating loops is active
-      ShouldContinue = Builder.CreateOrReduce(NextActiveVec);
-      for (auto Item : enumerate(CoIteratingLoops)) {
+  // Join everything to the latch
+  BranchInst::Create(Latch, GetBlock(nullptr));
+  Builder.SetInsertPoint(Latch);
+
+  // Patch the eta nodes
+  for (auto &Pair : EtasToPatch) {
+    PHINode *Eta = Pair.first;
+    OperandPack &IterOP = Pair.second;
+    Eta->setIncomingValue(1, gatherOperandPack(IterOP));
+  }
+
+  Value *ShouldContinue = nullptr;
+  if (!ActiveVec) {
+    ShouldContinue = Builder.CreateLoad(Type::getInt1Ty(Ctx), ContAlloca);
+  } else {
+    SmallVector<const ControlCondition *, 8> BackEdgeConds;
+    for (auto *CoVL : CoIteratingLoops)
+      BackEdgeConds.push_back(CoVL->getBackEdgeCond());
+    auto *NextActiveVec = Builder.CreateAnd(
+        ActiveVec,
+        getOrEmitConditionPack(VPCtx->getConditionPack(BackEdgeConds)));
+    // Patch up the active conds vector phi
+    ActiveVec->addIncoming(NextActiveVec, Latch);
+    // We should continue if at least one of the co-iterating loops is active
+    ShouldContinue = Builder.CreateOrReduce(NextActiveVec);
+    for (auto Item : enumerate(CoIteratingLoops)) {
+      unsigned i = Item.index();
+      VLoop *CoVL = Item.value();
+      assert(LoopActivePhis.count(CoVL));
+      LoopActivePhis.lookup(CoVL)->addIncoming(
+          Builder.CreateExtractElement(ActiveVec, i), Latch);
+    }
+  }
+
+  if (CoIterating && !ActiveVec) {
+    for (auto *CoVL : CoIteratingLoops) {
+      assert(LoopActivePhis.count(CoVL));
+      LoopActivePhis.lookup(CoVL)->addIncoming(
+          Builder.CreateLoad(ScalarActiveConds.lookup(CoVL)), Latch);
+    }
+  }
+
+  Builder.CreateCondBr(ShouldContinue, Header, Exit);
+
+  assert(!Exit->getTerminator());
+  Builder.SetInsertPoint(Exit);
+  for (auto KV : LiveOutAllocas) {
+    auto *VP = KV.first;
+    auto *Alloca = KV.second;
+    auto *Reload = Builder.CreateLoad(getVectorType(*VP), Alloca);
+
+    for (auto &Item : enumerate(VP->getOrderedValues())) {
+      if (auto *V = Item.value()) {
         unsigned i = Item.index();
-        VLoop *CoVL = Item.value();
-        assert(LoopActivePhis.count(CoVL));
-        LoopActivePhis.lookup(CoVL)->addIncoming(
-            Builder.CreateExtractElement(ActiveVec, i), Latch);
+        auto *Extract = Builder.CreateExtractElement(Reload, i);
+        V->replaceAllUsesWith(Extract);
+        ValueIndex[V] = {VP, i, Extract};
       }
     }
-
-    if (CoIterating && !ActiveVec) {
-      for (auto *CoVL : CoIteratingLoops) {
-        assert(LoopActivePhis.count(CoVL));
-        LoopActivePhis.lookup(CoVL)->addIncoming(
-            Builder.CreateLoad(ScalarActiveConds.lookup(CoVL)), Latch);
-      }
-    }
-
-    Builder.CreateCondBr(ShouldContinue, Header, Exit);
-
-    assert(!Exit->getTerminator());
-    Builder.SetInsertPoint(Exit);
-    for (auto KV : LiveOutAllocas) {
-      auto *VP = KV.first;
-      auto *Alloca = KV.second;
-      auto *Reload = Builder.CreateLoad(getVectorType(*VP), Alloca);
-
-      for (auto &Item : enumerate(VP->getOrderedValues())) {
-        if (auto *V = Item.value()) {
-          unsigned i = Item.index();
-          auto *Extract = Builder.CreateExtractElement(Reload, i);
-          V->replaceAllUsesWith(Extract);
-          ValueIndex[V] = {VP, i, Extract};
-        }
-      }
-      MaterializedPacks[VP] = Reload;
-    }
+    MaterializedPacks[VP] = Reload;
   }
 
   return {Header, Exit};
