@@ -680,8 +680,10 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     return It->second.Extracted;
   });
   DenseMap<const ControlCondition *, BasicBlock *> LastBlockForCond;
+  DenseSet<BasicBlock *> LoopBlocks { Header, Exit, Latch };
   auto GetBlock = [&](const ControlCondition *C) {
     auto *BB = BBuilder.getBlockFor(C);
+    LoopBlocks.insert(BB);
     LastBlockForCond[C] = BB;
     assert(!BB->getTerminator());
     return BB;
@@ -767,6 +769,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     if (!I)
       return nullptr;
     return Pkr.getVLoopFor(I);
+    // FIXME: What follows is broken because it doesn't consider control dependence
 #if 0
     for (auto *CoVL : CoIteratingLoops)
       if (CoVL->isLiveOut(I))
@@ -775,11 +778,30 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 #endif
   };
 
-  auto GuardScalarLiveOut = [&](Value *V) {
-    if (!GetLoopIfLiveOut(V))
+  DenseMap<Value *, AllocaInst *> ScalarLiveOutAllocas;
+  auto GuardScalarLiveOut = [&](Value *V, VLoop *VL) {
+    if (!CoIterating)
       return;
-    // FIXME: finish this
-    llvm_unreachable("get your shit together");
+
+    // FIXME: this line is broken until we compute loop live-out properly
+    if (!VL->isLiveOut(cast<Instruction>(V)))
+      return;
+
+    auto *BB = cast<Instruction>(V)->getParent();
+    if (auto *Terminator = BB->getTerminator())
+      Builder.SetInsertPoint(Terminator);
+    else
+      Builder.SetInsertPoint(BB);
+
+    assert(LoopActivePhis.count(VL));
+    auto *OutAlloca =
+        new AllocaInst(V->getType(), 0, V->getName() + ".live-out", &Entry->front());
+
+    auto *Prev = Builder.CreateLoad(V->getType(), OutAlloca);
+    auto *Select = Builder.CreateSelect(LoopActivePhis.lookup(VL), V, Prev);
+    Builder.CreateStore(Select, OutAlloca);
+    Allocas.push_back(OutAlloca);
+    ScalarLiveOutAllocas.try_emplace(V, OutAlloca);
   };
 
   DenseMap<const VectorPack *, AllocaInst *> LiveOutAllocas;
@@ -838,6 +860,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *I = InstOrLoop.dyn_cast<Instruction *>();
     assert(I);
 
+    auto *VLForInst = Pkr.getVLoopFor(I);
     auto *Cond = Pkr.getBlockCondition(I->getParent());
     auto *VP = ValueToPackMap.lookup(I);
 
@@ -845,7 +868,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto It = AddressesToSpeculate.find(I);
     if (It != AddressesToSpeculate.end()) {
       moveToEnd(It->first, GetBlock(It->second));
-      GuardScalarLiveOut(It->first);
+      GuardScalarLiveOut(It->first, VLForInst);
       Speculated = true;
     }
 
@@ -862,7 +885,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       auto *PN = dyn_cast<PHINode>(I);
       if (!PN) {
         moveToEnd(I, GetBlock(Cond));
-        GuardScalarLiveOut(I);
+        GuardScalarLiveOut(I, VLForInst);
         continue;
       }
 
@@ -876,7 +899,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         auto *NewPN =
             emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch);
         PN->replaceAllUsesWith(NewPN);
-        GuardScalarLiveOut(NewPN);
+        GuardScalarLiveOut(NewPN, VLForInst);
         ReplacedPHIs[PN] = NewPN;
         continue;
       }
@@ -899,7 +922,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       auto *Reload = Builder.CreateLoad(PN->getType(), Alloca);
       PN->replaceAllUsesWith(Reload);
       ReplacedPHIs[PN] = Reload;
-      GuardScalarLiveOut(Reload);
+      GuardScalarLiveOut(Reload, VLForInst);
       continue;
     }
 
@@ -1167,6 +1190,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
   assert(!Exit->getTerminator());
   Builder.SetInsertPoint(Exit);
+
   for (auto KV : LiveOutAllocas) {
     auto *VP = KV.first;
     auto *Alloca = KV.second;
@@ -1181,6 +1205,17 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       }
     }
     MaterializedPacks[VP] = Reload;
+  }
+
+  SmallPtrSet<VLoop *, 8> CoIteratingLoopSet(CoIteratingLoops.begin(), CoIteratingLoops.end());
+  for (auto KV : ScalarLiveOutAllocas) {
+    Value *V = KV.first;
+    auto *Alloca = KV.second;
+    auto *Reload = Builder.CreateLoad(V->getType(), Alloca, Alloca->getName() + ".reload");
+    V->replaceUsesWithIf(Reload, [&](Use &U) {
+        auto *I = dyn_cast<Instruction>(U.getUser());
+        return !I || !LoopBlocks.count(I->getParent());
+        });
   }
 
   return {Header, Exit};
