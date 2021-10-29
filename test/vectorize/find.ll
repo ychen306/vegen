@@ -24,13 +24,13 @@
 ; CHECK-NEXT:  [[FOUND:%.*]] = icmp eq <4 x i32> [[GATHER]], [[NEEDLES]]
 ; CHECK-NEXT:  [[NEXT_FOUND_OUT]] = select <4 x i1> [[ACTIVE]], <4 x i1> [[FOUND]], <4 x i1> [[FOUND_OUT]]
 ; CHECK-NEXT:  [[IDX_NEXT]] = add <4 x i64> [[IDX]], <i64 1, i64 1, i64 1, i64 1>
-; CHECK-NEXT:  [[LT_N:%.*]] = icmp eq <4 x i64> [[IDX_NEXT]], [[N_SPLAT]]
+; CHECK-NEXT:  [[EQ_N:%.*]] = icmp eq <4 x i64> [[IDX_NEXT]], [[N_SPLAT]]
 ; CHECK-NEXT:  br label %[[LATCH]]
 
 ; CHECK: [[LATCH]]:
-; CHECK-NEXT:  [[NOT_LT_N:%.*]] = xor <4 x i1> [[LT_N]], <i1 true, i1 true, i1 true, i1 true>
+; CHECK-NEXT:  [[NOT_EQ_N:%.*]] = xor <4 x i1> [[EQ_N]], <i1 true, i1 true, i1 true, i1 true>
 ; CHECK-NEXT:  [[NOT_FOUND:%.*]] = xor <4 x i1> [[FOUND]], <i1 true, i1 true, i1 true, i1 true>
-; CHECK-NEXT:  [[TMP:%.*]] = and <4 x i1> [[NOT_FOUND]], [[NOT_LT_N]]
+; CHECK-NEXT:  [[TMP:%.*]] = and <4 x i1> [[NOT_FOUND]], [[NOT_EQ_N]]
 ; CHECK-NEXT:  [[ACTIVE_NEXT]] = and <4 x i1> [[ACTIVE]], [[TMP]]
 ; CHECK-NEXT:  [[SOME_ACTIVE:%.*]] = call i1 @llvm.vector.reduce.or.v4i1(<4 x i1> [[ACTIVE_NEXT]])
 ; CHECK-NEXT:  br i1 [[SOME_ACTIVE]], label %[[HEADER]], label %[[EXIT:.*]]
