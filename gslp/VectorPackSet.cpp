@@ -51,8 +51,9 @@ class VectorCodeGen {
 
   Value *gatherOperandPack(const OperandPack &OP);
   Value *getOrEmitConditionPack(const ConditionPack *CP);
-  Value *getLoadStoreMask(ArrayRef<Value *>,
-                          const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds);
+  Value *getLoadStoreMask(
+      ArrayRef<Value *>,
+      const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds);
 
   // Lower a vloop and return the loop-header and exit.
   std::pair<BasicBlock *, BasicBlock *>
@@ -83,9 +84,9 @@ static const VLoop *getVLoop(Packer &Pkr, BasicBlock *BB) {
   return VL;
 }
 
-static const ControlCondition *
-getBlockConditionAux(Packer &Pkr, BasicBlock *BB,
-                     const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds) {
+static const ControlCondition *getBlockConditionAux(
+    Packer &Pkr, BasicBlock *BB,
+    const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds) {
   auto *C = Pkr.getBlockCondition(BB);
   if (!LoopActiveConds)
     return C;
@@ -93,9 +94,9 @@ getBlockConditionAux(Packer &Pkr, BasicBlock *BB,
   return Pkr.getCDA().concat(LoopActiveConds->lookup(VL), C);
 }
 
-static const ControlCondition *
-getEdgeCondAux(Packer &Pkr, BasicBlock *Src, BasicBlock *Dst,
-                    const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds) {
+static const ControlCondition *getEdgeCondAux(
+    Packer &Pkr, BasicBlock *Src, BasicBlock *Dst,
+    const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds) {
   auto *C = Pkr.getEdgeCondition(Src, Dst);
   if (!LoopActiveConds)
     return C;
@@ -109,7 +110,8 @@ getEdgeCondAux(Packer &Pkr, BasicBlock *Src, BasicBlock *Dst,
 
 Value *VectorCodeGen::getLoadStoreMask(
     ArrayRef<Value *> Vals,
-    const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds = nullptr) {
+    const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds =
+        nullptr) {
   SmallVector<const ControlCondition *> Conds;
   auto *SomeVal = *find_if(Vals, [](Value *V) { return V; });
   auto *C = getBlockConditionAux(Pkr, cast<Instruction>(SomeVal)->getParent(),
@@ -475,7 +477,6 @@ schedule(VLoop &VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
     }
   }
 
-
   return ScheduledItems;
 }
 
@@ -649,8 +650,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *VecTy = FixedVectorType::get(Int1Ty, ActiveConds.size());
     ActiveVec = PHINode::Create(VecTy, 2, "active-pack", Header);
     ActiveVec->addIncoming(
-          ConstantVector::getSplat(VecTy->getElementCount(), Int1_True),
-          Preheader);
+        ConstantVector::getSplat(VecTy->getElementCount(), Int1_True),
+        Preheader);
     MaterializedPacks[ActiveVP] = ActiveVec;
   }
   auto *MaybeLoopActiveConds = CoIterating ? &LoopActiveConds : nullptr;
@@ -685,7 +686,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   auto &VLI = Pkr.getVLoopInfo();
 
   // Schedule the instructions and loops according to data dependence
-  auto Schedule = schedule(VL.isLoop() ? *VLI.getCoIteratingLeader(&VL) : VL, ValueToPackMap, Pkr);
+  auto Schedule = schedule(VL.isLoop() ? *VLI.getCoIteratingLeader(&VL) : VL,
+                           ValueToPackMap, Pkr);
 
   // Pick out the reduction packs, which we will emit last
   SmallPtrSet<const VectorPack *, 4> RdxPacks;
@@ -708,7 +710,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       }
     }
   }
-  assert((RdxPacks.empty() || !CoIterating) && "can't do reduction while coiterating loops");
+  assert((RdxPacks.empty() || !CoIterating) &&
+         "can't do reduction while coiterating loops");
 
   // Scan the consectuive loads/stores and find those addresses that we need to
   // speculatively compute
@@ -793,7 +796,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *Mask = getOrEmitConditionPack(VPCtx->getConditionPack(Conds));
 
     // Dedicated alloca (which we will promote later) to store the live-out
-    auto *OutAlloca = new AllocaInst(V->getType(), 0, "vector-live-out", &Entry->front());
+    auto *OutAlloca =
+        new AllocaInst(V->getType(), 0, "vector-live-out", &Entry->front());
 
     auto *BB = cast<Instruction>(V)->getParent();
     if (auto *Terminator = BB->getTerminator())
@@ -885,7 +889,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       auto *Reload = Builder.CreateLoad(PN->getType(), Alloca);
       PN->replaceAllUsesWith(Reload);
       ReplacedPHIs[PN] = Reload;
-      GuardScalarLiveOut(Reload); 
+      GuardScalarLiveOut(Reload);
       continue;
     }
 
@@ -1073,13 +1077,12 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     RI.Ops.front()->replaceAllUsesWith(Reduced);
   }
 
-
   if (VL.isLoop()) {
     AllocaInst *ContAlloca = nullptr;
     if (!CoIterating) {
       auto &Ctx = Builder.getContext();
       ContAlloca = new AllocaInst(Type::getInt1Ty(Ctx), 0, "continue_cond",
-          Header->getFirstNonPHI());
+                                  Header->getFirstNonPHI());
       Allocas.push_back(ContAlloca);
       // By default, we don't continue
       if (auto HeaderTerminator = Header->getTerminator())
@@ -1088,7 +1091,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, Header);
       // Continue if
       new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca,
-          GetBlock(VL.getBackEdgeCond()));
+                    GetBlock(VL.getBackEdgeCond()));
     }
 
     // Join everything to the latch
@@ -1109,7 +1112,9 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       SmallVector<const ControlCondition *, 8> BackEdgeConds;
       for (auto *CoVL : CoIteratingLoops)
         BackEdgeConds.push_back(CoVL->getBackEdgeCond());
-      auto *NextActiveConds = getOrEmitConditionPack(VPCtx->getConditionPack(BackEdgeConds));
+      auto *NextActiveConds = Builder.CreateAnd(
+          ActiveVec,
+          getOrEmitConditionPack(VPCtx->getConditionPack(BackEdgeConds)));
       // Patch up the active conds vector phi
       assert(ActiveVec);
       ActiveVec->addIncoming(NextActiveConds, Latch);
@@ -1119,7 +1124,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         unsigned i = Item.index();
         VLoop *CoVL = Item.value();
         assert(LoopActivePhis.count(CoVL));
-        LoopActivePhis.lookup(CoVL)->addIncoming(Builder.CreateExtractElement(ActiveVec, i), Latch);
+        LoopActivePhis.lookup(CoVL)->addIncoming(
+            Builder.CreateExtractElement(ActiveVec, i), Latch);
       }
     }
 
