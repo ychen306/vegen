@@ -6,13 +6,8 @@
 ; CHECK-NEXT:  br i1 %cmp224, label %[[PREHEADER:.*]], label %[[SKIP_LOOP:.*]]
 
 ; CHECK: [[PREHEADER]]:
-; CHECK-NEXT:  %gslp.insert = insertelement <4 x i32> undef, i32 %n, i64 0
-; CHECK-NEXT:  %gslp.insert2 = insertelement <4 x i32> %gslp.insert, i32 %n, i64 1
-; CHECK-NEXT:  %gslp.insert3 = insertelement <4 x i32> %gslp.insert2, i32 %n, i64 2
-; CHECK-NEXT:  %gslp.insert4 = insertelement <4 x i32> %gslp.insert3, i32 %n, i64 3
-; CHECK-NEXT:  %3 = bitcast <4 x i32> %gslp.insert4 to <2 x i64>
-; CHECK-NEXT:  %4 = bitcast <2 x i64> %3 to <4 x i32>
-; CHECK-NEXT:  [[N_SPLAT:%.*]] = zext <4 x i32> %4 to <4 x i64>
+; CHECK-NOT: br
+; CHECK:  [[N_SPLAT:%.*]] = zext <4 x i32> %4 to <4 x i64>
 ; CHECK-NEXT:  br label %[[HEADER:.*]]
 
 ; CHECK: [[SKIP_LOOP]]:
