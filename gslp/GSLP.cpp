@@ -270,6 +270,8 @@ bool GSLP::runOnFunction(Function &F) {
     if (Inst.isSupported(TTI))
       SupportedIntrinsics.push_back(&Inst);
   }
+  for (auto &Trunc : VecBindingTable.getTruncates())
+    SupportedIntrinsics.push_back(&Trunc);
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';

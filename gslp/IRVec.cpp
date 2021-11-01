@@ -1,5 +1,7 @@
 #include "IRVec.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/IR/PatternMatch.h"
+#include "llvm/Support/FormatVariadic.h"
 
 using namespace llvm;
 
@@ -114,7 +116,67 @@ IRInstTable::IRInstTable() {
       // Skip singleton pack
       if (VB / Op.getBitwidth() == 1)
         continue;
-      VectorInsts.emplace_back(IRVectorBinding::Create(&Op, VB));
+      VectorInsts.push_back(IRVectorBinding::Create(&Op, VB));
     }
   }
+
+  for (unsigned InWidth : ScalarBitwidths)
+    for (unsigned OutWidth : ScalarBitwidths)
+      if (InWidth > OutWidth)
+        TruncOps.emplace_back(InWidth, OutWidth);
+
+  for (unsigned VL : { 2, 4, 8, 16 })
+    for (auto &TruncOp : TruncOps)
+      VectorTruncs.push_back(VectorTruncate::Create(&TruncOp, VL));
+}
+
+bool Truncate::match(Value *V, SmallVectorImpl<Match> &Matches) const {
+  Value *X;
+  using namespace PatternMatch;
+  if (PatternMatch::match(V, m_Trunc(m_Value(X))) && hasBitWidth(X, InWidth) &&
+      hasBitWidth(V, OutWidth)) {
+
+    Matches.push_back({false, {X}, V});
+    return true;
+  }
+  return false;
+}
+
+VectorTruncate VectorTruncate::Create(const Truncate *TruncOp,
+                                      unsigned VecLen) {
+  unsigned InWidth = TruncOp->InWidth, OutWidth = TruncOp->OutWidth;
+  InstSignature Sig = {// bitwidths of the inputs
+                       {InWidth * VecLen},
+                       // bitwidth of the output
+                       {OutWidth * VecLen},
+                       // has imm8?
+                       false};
+
+  std::vector<BoundOperation> LaneOps;
+  for (unsigned i = 0; i < VecLen; i++) {
+    unsigned Lo = i * InWidth, Hi = Lo + InWidth;
+    LaneOps.push_back(BoundOperation(TruncOp, {{0, Lo, Hi}}));
+  }
+  std::string Name = formatv("trunc-i{0}-to-i{1}", InWidth, OutWidth).str();
+  return VectorTruncate(TruncOp, Name, Sig, LaneOps);
+}
+
+Value *VectorTruncate::emit(ArrayRef<Value *> Operands,
+                            IntrinsicBuilder &Builder) const {
+  assert(Operands.size() == 1);
+  auto &Ctx = Builder.getContext();
+  unsigned VL = getLaneOps().size();
+  auto *OutTy = FixedVectorType::get(Type::getIntNTy(Ctx, TruncOp->OutWidth), VL);
+  return Builder.CreateTrunc(Operands.front(), OutTy);
+}
+
+float VectorTruncate::getCost(TargetTransformInfo *TTI,
+                              LLVMContext &Ctx) const {
+  unsigned VL = getLaneOps().size();
+  auto *InTy = FixedVectorType::get(Type::getIntNTy(Ctx, TruncOp->InWidth), VL);
+  auto *OutTy =
+      FixedVectorType::get(Type::getIntNTy(Ctx, TruncOp->OutWidth), VL);
+  return TTI->getCastInstrCost(Instruction::CastOps::Trunc, OutTy, InTy,
+                               TTI::CastContextHint::None,
+                               TTI::TCK_RecipThroughput);
 }
