@@ -85,6 +85,10 @@ unsigned BinaryIROperation::getMaximumVF(TargetTransformInfo *TTI) const {
   return TTI->getLoadStoreVecRegBitWidth(0) / Bitwidth;
 }
 
+std::string BinaryIROperation::getName() const {
+  return formatv("{0}-i{1}", Instruction::getOpcodeName(Opcode), Bitwidth).str();
+}
+
 bool IRVectorBinding::isSupported(TargetTransformInfo *TTI) const {
   return getLaneOps().size() <= Op->getMaximumVF(TTI);
 }

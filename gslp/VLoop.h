@@ -97,9 +97,11 @@ public:
   llvm::Optional<EtaNode> getEta(llvm::PHINode *) const;
 
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
+  static bool isSafeToFuse(VLoop *, VLoop *, llvm::ScalarEvolution &SE);
 
   bool haveIdenticalTripCounts(VLoop *, llvm::ScalarEvolution &);
   bool isLiveOut(llvm::Instruction *I) { return LiveOuts.count(I); }
+  VLoop *getParent() const { return Parent; }
 };
 
 bool haveIdenticalTripCounts(const llvm::Loop *, const llvm::Loop *,

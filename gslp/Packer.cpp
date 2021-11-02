@@ -3,8 +3,8 @@
 #include "MatchManager.h"
 #include "VectorPack.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/IR/InstIterator.h"
 #include "llvm/Analysis/ValueTracking.h" // isSafeToSpeculativelyExecute
+#include "llvm/IR/InstIterator.h"
 
 using namespace llvm;
 
@@ -63,7 +63,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                EquivalenceClasses<BasicBlock *> *UnrolledBlocks,
                bool Preplanning)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
-      CDA(*LI, *DT, *PDT), 
+      CDA(*LI, *DT, *PDT),
 
       TopVL(*LI, &VPCtx, DA, CDA, VLI),
 
@@ -235,7 +235,8 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
       CurLoad = NextLI;
     }
     if (Elements.count() == LoadSet.size()) {
-      // Need to check if we can speculatively compute the address of this load pack
+      // Need to check if we can speculatively compute the address of this load
+      // pack
       SmallVector<const ControlCondition *, 8> Conds;
       for (auto *Ld : Loads)
         if (Ld)
@@ -335,6 +336,7 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   }
 
   OPI.Elements = Elements;
+
 
   if (!OPI.Feasible || OPI.Elements.count() < 2)
     return OPI;
@@ -473,7 +475,7 @@ VLoop *Packer::getVLoopFor(Instruction *I) {
 }
 
 void Packer::fuseOrCoIterateLoops(VLoop *VL1, VLoop *VL2) {
-  if (VL1->haveIdenticalTripCounts(VL2, *SE))
+  if (VLoop::isSafeToFuse(VL1, VL2, *SE))
     VLI.fuse(VL1, VL2);
   else
     VLI.coiterate(VL1, VL2);

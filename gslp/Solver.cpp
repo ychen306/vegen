@@ -167,6 +167,8 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
     SmallVector<const VectorPack *, 4> NewPacks = H.solve(OP).Packs;
     // The packs we are replacing
     SmallPtrSet<const VectorPack *, 4> OldPacks;
+    if (NewPacks.empty())
+      errs() << "no solution for " << *OP << '\n';
 
     for (const VectorPack *VP : NewPacks)
       for (auto *V : VP->elementValues())

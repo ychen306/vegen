@@ -15,9 +15,7 @@ class BinaryIROperation : public Operation {
 public:
   BinaryIROperation(decltype(Opcode) Opcode, unsigned Bitwidth)
       : Opcode(Opcode), Bitwidth(Bitwidth) {}
-  std::string getName() const {
-    return llvm::Instruction::getOpcodeName(Opcode);
-  }
+  std::string getName() const;
   unsigned getBitwidth() const { return Bitwidth; }
   llvm::Instruction::BinaryOps getOpcode() const { return Opcode; }
   bool match(llvm::Value *V,

@@ -55,6 +55,12 @@ class VectorCodeGen {
       ArrayRef<Value *>,
       const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds);
 
+  // Ok, this is bad.
+  DenseMap<VLoop *, Value *> ShouldEnterLoop;
+  DenseMap<VLoop *, Value *> ShouldEnterLoopVec;
+
+  bool shouldVectorizeActiveConds(VLoop *VL) const;
+
   // Lower a vloop and return the loop-header and exit.
   std::pair<BasicBlock *, BasicBlock *>
   emitLoop(VLoop &VL, BasicBlock *Preheader = nullptr);
@@ -74,6 +80,22 @@ public:
 };
 } // namespace
 
+bool VectorCodeGen::shouldVectorizeActiveConds(VLoop *VL) const {
+  for (auto *CoVL : Pkr.getVLoopInfo().getCoIteratingLoops(VL)) {
+    auto *And = dyn_cast<ConditionAnd>(CoVL->getBackEdgeCond());
+    if (And && ValueToPackMap.count(And->Cond))
+      return true;
+  }
+  return false;
+}
+
+static void setInsertAtEndOfBlock(IRBuilderBase &Builder, BasicBlock *BB) {
+  if (auto *Terminator = BB->getTerminator())
+    Builder.SetInsertPoint(Terminator);
+  else
+    Builder.SetInsertPoint(BB);
+}
+
 static const VLoop *getVLoop(Packer &Pkr, BasicBlock *BB) {
   auto &LI = Pkr.getLoopInfo();
   auto *L = LI.getLoopFor(BB);
@@ -82,6 +104,15 @@ static const VLoop *getVLoop(Packer &Pkr, BasicBlock *BB) {
   auto *VL = VLI.getVLoop(L);
   assert(VL);
   return VL;
+}
+
+static const ControlCondition *getLoopCondAux(Packer &Pkr, VLoop *VL, 
+    const DenseMap<VLoop *, const ControlCondition *> *LoopActiveConds) {
+  auto *C = VL->getLoopCond();
+  auto *ParentVL = VL->getParent();
+  if (!LoopActiveConds || !ParentVL)
+    return C;
+  return Pkr.getCDA().concat(LoopActiveConds->lookup(ParentVL), C);
 }
 
 static const ControlCondition *getBlockConditionAux(
@@ -626,17 +657,18 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     ControlDependenceAnalysis &CDA = Pkr.getCDA();
 
+    // FIXME: call shouldVectorizeActiveConds instead
     bool VectorizeActiveConds = false;
 
     // Create a dummy phi to represent whether the a co-iterated loop is active
     auto *Int1Ty = Type::getInt1Ty(Ctx);
-    auto *Int1_True = ConstantInt::getTrue(Ctx);
     SmallVector<PHINode *, 4> ActiveConds;
     for (auto *CoVL : CoIteratingLoops) {
+      assert(ShouldEnterLoop.count(CoVL));
       auto *PN = PHINode::Create(Int1Ty, 2, "active", Header);
       // All the loops are active coming from the preheader.
       // We will specify the active conds coming from the latch later
-      PN->addIncoming(Int1_True, Preheader);
+      PN->addIncoming(ShouldEnterLoop.lookup(CoVL), Preheader);
       LoopActiveConds.try_emplace(CoVL, CDA.getAnd(nullptr, PN, true));
       LoopActivePhis.try_emplace(CoVL, PN);
       ActiveConds.push_back(PN);
@@ -649,6 +681,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     }
 
     if (VectorizeActiveConds) {
+      assert(ShouldEnterLoopVec.count(&VL));
       // Also create a dummy vector
       // to represent the packed version of the active conds
       auto *ActiveVP = Pkr.getContext()->createPhiPack(
@@ -658,9 +691,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
                                     Item.value()};
       auto *VecTy = FixedVectorType::get(Int1Ty, ActiveConds.size());
       ActiveVec = PHINode::Create(VecTy, 2, "active-pack", Header);
-      ActiveVec->addIncoming(
-          ConstantVector::getSplat(VecTy->getElementCount(), Int1_True),
-          Preheader);
+      ActiveVec->addIncoming(ShouldEnterLoopVec.lookup(&VL), Preheader);
       MaterializedPacks[ActiveVP] = ActiveVec;
     }
   }
@@ -742,7 +773,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     // Figure out the condition under which we should speculate the address
     SmallVector<const ControlCondition *, 8> Conds;
     for (auto *V : VP->elementValues())
-      Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+      Conds.push_back(getBlockConditionAux(Pkr, cast<Instruction>(V)->getParent(), MaybeLoopActiveConds));
     auto *C = getGreatestCommonCondition(Conds);
 
     auto *Addr = getLoadStorePointerOperand(VP->getOrderedValues().front());
@@ -755,7 +786,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     // If we always compute the address under condition C, we don't need to
     // speculate
-    if (isImplied(Pkr.getBlockCondition(AddrComp->getParent()), C))
+    if (isImplied(getBlockConditionAux(Pkr, AddrComp->getParent(), MaybeLoopActiveConds), C))
       continue;
 
     AddressesToSpeculate.try_emplace(AddrComp, C);
@@ -850,8 +881,71 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     // Emit the sub-loop recursively
     if (auto *SubVL = InstOrLoop.dyn_cast<VLoop *>()) {
       BasicBlock *SubLoopHeader, *SubLoopExit;
-      auto *LoopCond = SubVL->getLoopCond();
-      auto *Preheader = BBuilder.getBlockFor(LoopCond);
+      SmallVector<const ControlCondition *, 8> Conds;
+      for (auto *CoVL : VLI.getCoIteratingLoops(SubVL))
+        Conds.push_back(getLoopCondAux(Pkr, CoVL, MaybeLoopActiveConds));
+
+      // FIXME: consider the case that loop conds are identical
+      const ControlCondition *LoopCond;
+      BasicBlock *Preheader = nullptr;
+      if (is_splat(Conds)) {
+        LoopCond = Conds.front();
+        Preheader = GetBlock(LoopCond);
+        if (Conds.size() > 1) {
+          for (auto *CoVL : VLI.getCoIteratingLoops(SubVL))
+            ShouldEnterLoop[CoVL] = Builder.getTrue();
+          ShouldEnterLoopVec[SubVL] = Builder.CreateVectorSplat(Conds.size(), Builder.getTrue());
+        }
+      } else if (Conds.size() > 1 && shouldVectorizeActiveConds(SubVL)) {
+        LoopCond = getGreatestCommonCondition(Conds);
+        Preheader = GetBlock(LoopCond);
+        Builder.SetInsertPoint(Preheader);
+        auto *ActiveVecInit = getOrEmitConditionPack(VPCtx->getConditionPack(Conds));
+        ShouldEnterLoopVec[SubVL] = ActiveVecInit;
+        // Extract the active vec's elements in case we need it
+        assert(!Preheader->getTerminator());
+        for (auto Item : enumerate(VLI.getCoIteratingLoops(SubVL)))
+          ShouldEnterLoop[Item.value()] = 
+            Builder.CreateExtractElement(ActiveVecInit, Item.index());
+      } else if (Conds.size() > 1) {
+        if (Header)
+          setInsertAtEndOfBlock(Builder, Header);
+        else {
+          assert(!VL.isLoop());
+          setInsertAtEndOfBlock(Builder, Entry);
+        }
+        auto &Ctx = Builder.getContext();
+        SmallVector<AllocaInst *, 8> ShouldEnterAllocas;
+        for (auto Pair : zip(VLI.getCoIteratingLoops(SubVL), Conds)) {
+          VLoop *CoVL = std::get<0>(Pair);
+          const ControlCondition *Cond = std::get<1>(Pair);
+          // Alloca indicatiung whether we should execute CoVL (which we are coiterating)
+          auto *ShouldEnterAlloca = Builder.CreateAlloca(Type::getInt1Ty(Ctx), 0u/*address space*/);
+          Allocas.push_back(ShouldEnterAlloca);
+          ShouldEnterAllocas.push_back(ShouldEnterAlloca);
+
+          // By default we should not execute CoVL
+          Builder.CreateStore(ConstantInt::getFalse(Ctx), ShouldEnterAlloca);
+
+          // Unless its loop condition is true
+          auto *BB = GetBlock(Cond);
+          if (auto *Terminator = BB->getTerminator())
+            new StoreInst(ConstantInt::getTrue(Ctx), ShouldEnterAlloca, Terminator);
+          else
+            new StoreInst(ConstantInt::getTrue(Ctx), ShouldEnterAlloca, BB);
+        }
+
+        Preheader = GetBlock(Pkr.getCDA().getOr(Conds));
+        for (auto Pair : zip(ShouldEnterAllocas, VLI.getCoIteratingLoops(SubVL))) {
+          AllocaInst *ShouldEnterAlloca = std::get<0>(Pair);
+          VLoop *CoVL = std::get<1>(Pair);
+          ShouldEnterLoop[CoVL] = new LoadInst(Type::getInt1Ty(Ctx), ShouldEnterAlloca, "should-enter", Preheader);
+        }
+      }
+
+      //auto *LoopCond = SubVL->getLoopCond();
+      // Use GetBlock???
+      //auto *Preheader = BBuilder.getBlockFor(LoopCond);
       std::tie(SubLoopHeader, SubLoopExit) = emitLoop(*SubVL, Preheader);
       BBuilder.setBlockForCondition(SubLoopExit, LoopCond);
       LastBlockForCond[LoopCond] = SubLoopExit;
@@ -862,7 +956,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     assert(I);
 
     auto *VLForInst = Pkr.getVLoopFor(I);
-    auto *Cond = Pkr.getBlockCondition(I->getParent());
+    auto *Cond = getBlockConditionAux(Pkr, I->getParent(), MaybeLoopActiveConds);
     auto *VP = ValueToPackMap.lookup(I);
 
     bool Speculated = false;
@@ -938,7 +1032,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     // Get or create a new basic block to emit the pack
     SmallVector<const ControlCondition *, 8> Conds;
     for (auto *V : VP->elementValues())
-      Conds.push_back(Pkr.getBlockCondition(cast<Instruction>(V)->getParent()));
+      Conds.push_back(getBlockConditionAux(Pkr, cast<Instruction>(V)->getParent(), MaybeLoopActiveConds));
 
     Value *VecInst;
     if (VP->isGamma()) {

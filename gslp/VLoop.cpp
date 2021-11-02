@@ -153,15 +153,35 @@ bool haveIdenticalTripCounts(const Loop *L1, const Loop *L2,
          Expr1->getOperand(1) == Expr2->getOperand(1);
 }
 
-// FIXME : move this to VLoopInfo and check all loops that we are already
-// coiterating with VL1 or VL2
-bool VLoop::isSafeToCoIterate(const VLoop *VL1, const VLoop *VL2) {
+bool VLoop::isSafeToFuse(VLoop *VL1, VLoop *VL2, ScalarEvolution &SE) {
   if (VL1 == VL2)
     return true;
 
   // The loops should be control-equivalent
   if (VL1->LoopCond != VL2->LoopCond)
     return false;
+
+  // Loop level mismatch
+  if (!VL1 || !VL2)
+    return false;
+
+  // Make sure the loops are independent
+  if (VL1->Insts.anyCommon(VL2->Depended) ||
+      VL2->Insts.anyCommon(VL1->Depended))
+    return false;
+
+  if (!VL1->haveIdenticalTripCounts(VL2, SE))
+    return false;
+
+  return isSafeToFuse(VL1->Parent, VL2->Parent, SE);
+}
+
+
+// FIXME : move this to VLoopInfo and check all loops that we are already
+// coiterating with VL1 or VL2
+bool VLoop::isSafeToCoIterate(const VLoop *VL1, const VLoop *VL2) {
+  if (VL1 == VL2)
+    return true;
 
   // Loop level mismatch
   if (!VL1 || !VL2)
