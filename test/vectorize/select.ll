@@ -4,16 +4,16 @@ source_filename = "select.c"
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.15.0"
 
-; CHECK:  %0 = bitcast i32* %x to <4 x i32>*
-; CHECK-NEXT:  %1 = load <4 x i32>, <4 x i32>* %0, align 4, !tbaa !3
-; CHECK-NEXT:  %2 = bitcast i32* %y to <4 x i32>*
-; CHECK-NEXT:  %3 = load <4 x i32>, <4 x i32>* %2, align 4, !tbaa !3
-; CHECK-NEXT:  %4 = bitcast i32* %c to <4 x i32>*
-; CHECK-NEXT:  %5 = load <4 x i32>, <4 x i32>* %4, align 4, !tbaa !3
-; CHECK-NEXT:  %6 = icmp eq <4 x i32> %5, zeroinitializer
-; CHECK-NEXT:  %7 = select <4 x i1> %6, <4 x i32> %3, <4 x i32> %1
-; CHECK-NEXT:  %8 = bitcast i32* %out to <4 x i32>*
-; CHECK-NEXT:  store <4 x i32> %7, <4 x i32>* %8, align 4, !tbaa !3
+; CHECK:   [[X_ADDR:%.*]] = bitcast i32* %x to <4 x i32>*
+; CHECK-NEXT:  [[X:%.*]] = load <4 x i32>, <4 x i32>* [[X_ADDR]]
+; CHECK-NEXT:   [[Y_ADDR:%.*]] = bitcast i32* %y to <4 x i32>*
+; CHECK-NEXT:  [[Y:%.*]] = load <4 x i32>, <4 x i32>* [[Y_ADDR]]
+; CHECK-NEXT:   [[C_ADDR:%.*]] = bitcast i32* %c to <4 x i32>*
+; CHECK-NEXT:  [[C:%.*]] = load <4 x i32>, <4 x i32>* [[C_ADDR]]
+; CHECK-NEXT:  [[CMP:%.*]] = icmp eq <4 x i32> [[C]], zeroinitializer
+; CHECK-NEXT:  [[SELECT:%.*]] = select <4 x i1> [[CMP]], <4 x i32> [[Y]], <4 x i32> [[X]]
+; CHECK-NEXT:  [[OUT:%.*]] = bitcast i32* %out to <4 x i32>*
+; CHECK-NEXT:  store <4 x i32> [[SELECT]], <4 x i32>* [[OUT]]
 
 ; Function Attrs: nofree norecurse nounwind ssp uwtable
 define dso_local void @select(i32* noalias nocapture readonly %c, i32* noalias nocapture readonly %x, i32* noalias nocapture readonly %y, i32* noalias nocapture %out) local_unnamed_addr #0 {
