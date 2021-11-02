@@ -55,19 +55,6 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
     }
   }
 
-#if 0
-  SmallVector<BasicBlock *> Exits;
-  L->getUniqueExitBlocks(Exits);
-  //for (auto *Pred : predecessors(Exits.front()))
-  //  errs() << '\t' << *CDA.getConditionForEdge(Pred, Exits.front()) << '\n';
-  for (auto *Exit : Exits) {
-    errs() << Exit->getName() <<  ": " << *CDA.getConditionForBlock(Exit) << '\n';
-    for (auto *Pred : predecessors(Exit))
-      errs() << "\t" << *CDA.getConditionForEdge(Pred, Exit) << '\n';
-  }
-  errs() << *LoopCond << '\n';
-#endif
-
   // Figure out the condition for taking the backedge (vs exiting the loop)
   auto *LoopBr = cast<BranchInst>(Latch->getTerminator());
   assert(LoopBr->getCondition());
@@ -203,12 +190,17 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
   for (auto KV : VL2->Etas)
     VL1->Etas.insert(KV);
+  for (auto &SubVL : VL2->SubLoops)
+    VL1->SubLoops.emplace_back(SubVL.release());
+
+  DeletedLoops.insert(VL2);
 
   assert(Parent);
   auto It = llvm::find_if(Parent->SubLoops, [VL2](std::unique_ptr<VLoop> &VL) {
     return VL.get() == VL2;
   });
   assert(It != Parent->SubLoops.end());
+  assert(It->get() == VL2);
   Parent->SubLoops.erase(It);
 }
 
@@ -216,7 +208,9 @@ void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
   CoIteratingLoops.unionSets(VL1, VL2);
 }
 
-VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }
+VLoop *VLoopInfo::getVLoop(Loop *L) const { 
+  return LoopToVLoopMap.lookup(L);
+}
 
 void VLoopInfo::setVLoop(Loop *L, VLoop *VL) {
   LoopToVLoopMap[L] = VL;

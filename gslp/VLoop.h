@@ -6,6 +6,7 @@
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/DenseSet.h"
 
 namespace llvm {
 class Loop;
@@ -24,6 +25,7 @@ class ControlCondition;
 class VLoop;
 class VLoopInfo {
   llvm::DenseMap<llvm::Loop *, VLoop *> LoopToVLoopMap;
+  llvm::DenseSet<VLoop *> DeletedLoops;
   // Loops that we can't fuse because of non-identical trip count
   llvm::EquivalenceClasses<VLoop *> CoIteratingLoops;
 
