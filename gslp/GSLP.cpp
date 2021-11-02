@@ -272,6 +272,8 @@ bool GSLP::runOnFunction(Function &F) {
   }
   for (auto &Trunc : VecBindingTable.getTruncates())
     SupportedIntrinsics.push_back(&Trunc);
+  for (auto &Select : VecBindingTable.getSelects())
+    SupportedIntrinsics.push_back(&Select);
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';

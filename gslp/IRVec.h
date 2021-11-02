@@ -67,6 +67,28 @@ public:
                 llvm::LLVMContext &Ctx) const override;
 };
 
+struct Select : Operation {
+  unsigned BitWidth;
+  Select(unsigned BitWidth) : BitWidth(BitWidth) {}
+  bool match(llvm::Value *V,
+             llvm::SmallVectorImpl<Match> &Matches) const override;
+};
+
+class VectorSelect : public InstBinding {
+  const Select *SelOp;
+  VectorSelect(const Select *SelOp, std::string Name,
+                  InstSignature Sig, std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        SelOp(SelOp) {}
+
+public:
+  static VectorSelect Create(const Select *SelOp, unsigned VecLen);
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
+};
+
 // Aux class enumerating vector ir that we can emit
 class IRInstTable {
   std::vector<BinaryIROperation> VectorizableOps;
@@ -75,11 +97,15 @@ class IRInstTable {
   std::vector<Truncate> TruncOps;
   std::vector<VectorTruncate> VectorTruncs;
 
+  std::vector<Select> SelectOps;
+  std::vector<VectorSelect> VectorSelects;
+
 public:
   IRInstTable();
   // TODO: rename to get binary vector insts of something like that
   llvm::ArrayRef<IRVectorBinding> getBindings() const { return VectorInsts; }
   llvm::ArrayRef<VectorTruncate> getTruncates() const { return VectorTruncs; }
+  llvm::ArrayRef<VectorSelect> getSelects() const { return VectorSelects; }
 };
 
 #endif // end IR_VEC_H

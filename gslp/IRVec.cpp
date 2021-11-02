@@ -4,6 +4,7 @@
 #include "llvm/Support/FormatVariadic.h"
 
 using namespace llvm;
+using namespace PatternMatch;
 
 static bool isFloat(Instruction::BinaryOps Opcode) {
   switch (Opcode) {
@@ -125,14 +126,20 @@ IRInstTable::IRInstTable() {
       if (InWidth > OutWidth)
         TruncOps.emplace_back(InWidth, OutWidth);
 
-  for (unsigned VL : { 2, 4, 8, 16 })
+  for (unsigned BitWidth : ScalarBitwidths)
+    SelectOps.emplace_back(BitWidth);
+
+  for (unsigned VL : {2, 4, 8, 16}) {
     for (auto &TruncOp : TruncOps)
       VectorTruncs.push_back(VectorTruncate::Create(&TruncOp, VL));
+    for (auto &SelOp : SelectOps)
+      VectorSelects.push_back(VectorSelect::Create(&SelOp, VL));
+  }
+
 }
 
 bool Truncate::match(Value *V, SmallVectorImpl<Match> &Matches) const {
   Value *X;
-  using namespace PatternMatch;
   if (PatternMatch::match(V, m_Trunc(m_Value(X))) && hasBitWidth(X, InWidth) &&
       hasBitWidth(V, OutWidth)) {
 
@@ -166,7 +173,8 @@ Value *VectorTruncate::emit(ArrayRef<Value *> Operands,
   assert(Operands.size() == 1);
   auto &Ctx = Builder.getContext();
   unsigned VL = getLaneOps().size();
-  auto *OutTy = FixedVectorType::get(Type::getIntNTy(Ctx, TruncOp->OutWidth), VL);
+  auto *OutTy =
+      FixedVectorType::get(Type::getIntNTy(Ctx, TruncOp->OutWidth), VL);
   return Builder.CreateTrunc(Operands.front(), OutTy);
 }
 
@@ -179,4 +187,50 @@ float VectorTruncate::getCost(TargetTransformInfo *TTI,
   return TTI->getCastInstrCost(Instruction::CastOps::Trunc, OutTy, InTy,
                                TTI::CastContextHint::None,
                                TTI::TCK_RecipThroughput);
+}
+
+bool Select::match(Value *V, SmallVectorImpl<Match> &Matches) const {
+  Value *Cond, *X, *Y;
+  if (PatternMatch::match(V, m_Select(m_Value(Cond), m_Value(X), m_Value(Y))) &&
+      hasBitWidth(X, BitWidth) && hasBitWidth(Y, BitWidth)) {
+    Matches.push_back({false, {Cond, X, Y}, V});
+    return true;
+  }
+  return false;
+}
+
+VectorSelect VectorSelect::Create(const Select *SelOp, unsigned VecLen) {
+  unsigned BitWidth = SelOp->BitWidth;
+  InstSignature Sig = {// bitwidths of the inputs
+                       {1 * VecLen, BitWidth * VecLen, BitWidth * VecLen},
+                       // bitwidth of the output
+                       {BitWidth * VecLen},
+                       // has imm8?
+                       false};
+
+  std::vector<BoundOperation> LaneOps;
+  for (unsigned i = 0; i < VecLen; i++) {
+    unsigned Lo = i * BitWidth, Hi = Lo + BitWidth;
+    LaneOps.push_back(BoundOperation(SelOp, 
+          {
+            {0,i, i+1}, {1, Lo, Hi}, {2, Lo, Hi},
+          }));
+  }
+  std::string Name = formatv("select-i{0}", BitWidth).str();
+  return VectorSelect(SelOp, Name, Sig, LaneOps);
+}
+
+Value *VectorSelect::emit(ArrayRef<Value *> Operands,
+                          IntrinsicBuilder &Builder) const {
+  assert(Operands.size() == 3);
+  auto *Cond = Operands[0], *X = Operands[1], *Y = Operands[2];
+  if (Y->getType() != X->getType())
+    Y = Builder.CreateBitCast(Y, X->getType());
+  return Builder.CreateSelect(Cond, X, Y);
+}
+
+float VectorSelect::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
+  unsigned VL = getLaneOps().size();
+  auto *VecTy = FixedVectorType::get(Type::getIntNTy(Ctx, SelOp->BitWidth), VL);
+  return TTI->getArithmeticInstrCost(Instruction::Select, VecTy);
 }
