@@ -297,8 +297,10 @@ void tryPackBackEdgeConds(Packer *Pkr, Plan &P, Heuristic &H) {
   for (auto *CP : BackEdgePacks)
     getOperandPacksFromCondition(CP, OPs);
   Plan P2 = P;
-  for (auto *OP : OPs)
+  for (auto *OP : OPs) {
+    errs() << "!! found back edge cond: "<< *OP << '\n';
     runBottomUpFromOperand(OP, P2, H);
+  }
   if (P2.cost() <= P.cost())
     P = P2;
 }

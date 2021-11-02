@@ -102,7 +102,7 @@ IRInstTable::IRInstTable() {
       Instruction::BinaryOps::Or,   Instruction::BinaryOps::Xor};
 
   // enumerate vectorizable scalar ops
-  std::vector<unsigned> ScalarBitwidths = {8, 16, 32, 64};
+  std::vector<unsigned> ScalarBitwidths = {1, 8, 16, 32, 64};
   for (auto Opcode : VectorizableOpcodes)
     for (unsigned SB : ScalarBitwidths) {
       if (isFloat(Opcode) && SB != 32 && SB != 64)
@@ -113,12 +113,22 @@ IRInstTable::IRInstTable() {
   // enumerate vector insts
   std::vector<unsigned> VectorBitwidths = {64, 128, 256, 512};
   for (auto &Op : VectorizableOps) {
+    if (Op.getBitwidth() == 1)
+      continue;
     for (unsigned VB : VectorBitwidths) {
       // Skip singleton pack
       if (VB / Op.getBitwidth() == 1)
         continue;
       VectorInsts.push_back(IRVectorBinding::Create(&Op, VB));
     }
+  }
+
+  // Special case for boolean ops
+  for (auto &Op : VectorizableOps) {
+    if (Op.getBitwidth() != 1)
+      continue;
+    for (unsigned VL : {2, 4, 8, 16})
+      VectorInsts.push_back(IRVectorBinding::Create(&Op, VL));
   }
 
   for (unsigned InWidth : ScalarBitwidths)

@@ -269,7 +269,10 @@ static void dump(raw_ostream &OS, const ControlCondition *C) {
     }
     if (!And->IsTrue)
       OS << "not ";
-    OS << And->Cond->getName();
+    if (And->Cond->hasName())
+      OS << And->Cond->getName();
+    else
+      OS << *And->Cond;
     OS << ')';
     return;
   }

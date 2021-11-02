@@ -1138,6 +1138,12 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     for (auto *CoVL : CoIteratingLoops) {
       auto *ActiveCond = new AllocaInst(Type::getInt1Ty(Ctx), 0, "active",
                                         Header->getFirstNonPHI());
+
+      if (auto HeaderTerminator = Header->getTerminator())
+        new StoreInst(ConstantInt::getFalse(Ctx), ActiveCond, HeaderTerminator);
+      else
+        new StoreInst(ConstantInt::getFalse(Ctx), ActiveCond, Header);
+
       Allocas.push_back(ActiveCond);
       new StoreInst(ConstantInt::getTrue(Ctx), ActiveCond,
                     GetBlock(CoVL->getBackEdgeCond()));
