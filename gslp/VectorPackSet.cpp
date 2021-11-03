@@ -1095,8 +1095,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
 
         for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
-          auto *Cond = getEdgeCondAux(Pkr, PN->getIncomingBlock(i),
-                                      PN->getParent(), MaybeLoopActiveConds);
+          auto *Cond = Pkr.getEdgeCondition(PN->getIncomingBlock(i), PN->getParent());
           auto *BB = GetLastBlockFor(Cond);
           if (auto *Terminator = BB->getTerminator())
             Builder.SetInsertPoint(Terminator);

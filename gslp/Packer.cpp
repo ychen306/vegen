@@ -373,6 +373,7 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
       auto *VL = getVLoopFor(PN);
       return VL && VL->getEta(PN);
     });
+
     bool Convergent = true;
     for (unsigned i = 0; i < NumIncomings; i++) {
       SmallVector<const ControlCondition *> EdgeConds;
