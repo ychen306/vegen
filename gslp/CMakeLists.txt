@@ -10,6 +10,8 @@ set(LIB_PACKING_SRC
   BlockBuilder.cpp
   VLoop.cpp
 
+  RenameAllocas.cpp
+
   Reduction.cpp
 
   DependenceAnalysis.cpp
