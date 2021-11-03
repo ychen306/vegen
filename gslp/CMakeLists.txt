@@ -10,7 +10,9 @@ set(LIB_PACKING_SRC
   BlockBuilder.cpp
   VLoop.cpp
 
+  LoopAwareRPO.cpp
   RenameAllocas.cpp
+  TestRenameAllocas.cpp
 
   Reduction.cpp
 
@@ -45,7 +47,7 @@ if(BUILD_TYPE STREQUAL "RELEASE")
     PROPERTIES COMPILE_FLAGS "-O0")
 endif()
 
-add_library(GSLP MODULE GSLP.cpp TestConsecutiveCheck.cpp)
+add_library(GSLP MODULE GSLP.cpp TestConsecutiveCheck.cpp TestRenameAllocas.cpp)
 add_executable(test-block-builder TestBlockBuilder.cpp)
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core transformutils irreader analysis scalaropts)
 

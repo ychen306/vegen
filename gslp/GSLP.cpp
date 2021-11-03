@@ -6,6 +6,7 @@
 #include "Solver.h"
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
+#include "RenameAllocas.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
