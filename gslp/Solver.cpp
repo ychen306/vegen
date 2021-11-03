@@ -167,8 +167,6 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
     SmallVector<const VectorPack *, 4> NewPacks = H.solve(OP).Packs;
     // The packs we are replacing
     SmallPtrSet<const VectorPack *, 4> OldPacks;
-    if (NewPacks.empty())
-      errs() << "no solution for " << *OP << '\n';
 
     for (const VectorPack *VP : NewPacks)
       for (auto *V : VP->elementValues())
@@ -299,10 +297,8 @@ void tryPackBackEdgeConds(Packer *Pkr, Plan &P, Heuristic &H) {
   for (auto *CP : BackEdgePacks)
     getOperandPacksFromCondition(CP, OPs);
   Plan P2 = P;
-  for (auto *OP : OPs) {
-    errs() << "!! found back edge cond: "<< *OP << '\n';
+  for (auto *OP : OPs)
     runBottomUpFromOperand(OP, P2, H);
-  }
   if (P2.cost() <= P.cost())
     P = P2;
 }
