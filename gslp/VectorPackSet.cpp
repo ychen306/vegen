@@ -935,7 +935,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
             new StoreInst(ConstantInt::getTrue(Ctx), ShouldEnterAlloca, BB);
         }
 
-        Preheader = GetBlock(Pkr.getCDA().getOr(Conds));
+        LoopCond = Pkr.getCDA().getOr(Conds);
+        Preheader = GetBlock(LoopCond);
         for (auto Pair : zip(ShouldEnterAllocas, VLI.getCoIteratingLoops(SubVL))) {
           AllocaInst *ShouldEnterAlloca = std::get<0>(Pair);
           VLoop *CoVL = std::get<1>(Pair);
