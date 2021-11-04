@@ -156,6 +156,7 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
   SmallVector<const OperandPack *> Worklist;
   Worklist.push_back(OP);
   SmallPtrSet<const OperandPack *, 4> Visited;
+
   while (!Worklist.empty()) {
     assert(P.verifyCost());
     auto *OP = Worklist.pop_back_val();
@@ -283,8 +284,9 @@ static void getBackEdgePacks(Packer *Pkr, const Plan &P,
         }))
       continue;
     SmallVector<const ControlCondition *, 8> Conds;
+    auto *SomeVal = *find_if(Vals, [](Value *V) { return V != nullptr; });
     for (auto *V : Vals)
-      Conds.push_back(Pkr->getVLoopFor(cast<Instruction>(V))->getBackEdgeCond());
+      Conds.push_back(Pkr->getVLoopFor(cast<Instruction>(V ? V : SomeVal))->getBackEdgeCond());
     BackEdgePacks.insert(VPCtx->getConditionPack(Conds));
   }
 }
@@ -476,7 +478,7 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
                        ArrayRef<const OperandPack *> SeedOperands,
                        DenseSet<BasicBlock *> *BlocksToIgnore) {
   CandidatePackSet Candidates;
-  Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
+  //Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
   auto *VPCtx = Pkr->getContext();
   Candidates.Inst2Packs.resize(VPCtx->getNumValues());
   for (auto *VP : Candidates.Packs)

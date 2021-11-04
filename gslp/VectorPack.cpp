@@ -505,7 +505,7 @@ FixedVectorType *getVectorType(const OperandPack &OP) {
 }
 
 FixedVectorType *getVectorType(const VectorPack &VP) {
-  unsigned NumLanes = VP.getElements().count();
+  unsigned NumLanes = VP.getOrderedValues().size();
   auto *FirstLane = *VP.elementValues().begin();
   return FixedVectorType::get(FirstLane->getType(), NumLanes);
 }

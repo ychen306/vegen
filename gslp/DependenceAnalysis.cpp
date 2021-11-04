@@ -12,9 +12,11 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+using namespace PatternMatch;
 
 static cl::opt<bool> UseLVI(
     "use-lvi",
@@ -261,6 +263,11 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
         if (OpInst)
           Dependences[&I].push_back(OpInst);
       }
+
+      if (m_Intrinsic<Intrinsic::experimental_noalias_scope_decl>(m_Value()).match(&I) ||
+          m_Intrinsic<Intrinsic::lifetime_start>(m_Value()).match(&I) ||
+          m_Intrinsic<Intrinsic::lifetime_end>(m_Value()).match(&I))
+        continue;
 
       if (!isa<ReturnInst>(&I) && (NoAlias || !I.mayReadOrWriteMemory()))
         continue;
