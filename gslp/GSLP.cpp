@@ -42,6 +42,10 @@
 using namespace llvm;
 using namespace PatternMatch;
 
+namespace llvm {
+FunctionPass *createScalarizerPass();
+}
+
 static cl::opt<std::string>
     WrappersDir("wrappers-dir",
                 cl::desc("Path to the directory containing InstWrappers.*.bc"),
@@ -256,12 +260,14 @@ bool GSLP::runOnFunction(Function &F) {
         !isa<BranchInst>(BB.getTerminator()))
       return false;
 
+#if 0
   // Don't deal with infinite loops
   for (auto *L : LI->getLoopsInPreorder()) {
     auto *Latch = L->getLoopLatch();
     if (Latch && cast<BranchInst>(Latch->getTerminator())->isUnconditional())
       return false;
   }
+#endif
 
   std::vector<const InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts())
@@ -325,6 +331,7 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 // http://adriansampson.net/blog/clangpass.html
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
+  MPM.add(createScalarizerPass());
   MPM.add(createLoopSimplifyPass());
   MPM.add(createLoopRotatePass());
   MPM.add(createLCSSAPass());

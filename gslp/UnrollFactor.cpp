@@ -4,6 +4,7 @@
 #include "Solver.h"
 #include "VectorPack.h"
 #include "VectorPackContext.h"
+#include "RenameAllocas.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -300,8 +301,10 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
   AAResults &AA = AABuilder.getResult();
   DependenceInfo DI(F, &AA, &SE, &LI);
 
+
   // Wrap all the analysis in the packer
   PostDominatorTree PDT(*F);
+  renameAllocas(F, DT, PDT, LI, AA);
   Packer Pkr(Insts, *F, &AA, &LI, &SE, &DT, &PDT, &DI, LVI, TTI, BFI,
              &UnrolledBlocks, false /*preplanning*/);
 

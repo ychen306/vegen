@@ -10,6 +10,7 @@ class DominatorTree;
 class PostDominatorTree;
 class LoopInfo;
 class DataLayout;
+class Function;
 } // namespace llvm
 
 // Find disjoint lifetimes for a given alloca, and assign a new alloca for each
@@ -18,5 +19,9 @@ void renameAllocas(llvm::DominatorTree &, llvm::PostDominatorTree &,
                    llvm::LoopInfo &, llvm::AliasAnalysis &AA,
                    const llvm::DataLayout &,
                    llvm::ArrayRef<llvm::AllocaInst *>);
+
+void renameAllocas(llvm::Function *, llvm::DominatorTree &,
+                   llvm::PostDominatorTree &, llvm::LoopInfo &,
+                   llvm::AliasAnalysis &AA);
 
 #endif // RENAME_ALLOCAS_H

@@ -110,3 +110,12 @@ void renameAllocas(DominatorTree &DT, PostDominatorTree &PDT, LoopInfo &LI,
       reallocateForLifetime(DT, PDT, AA, LT, Alloca);
   }
 }
+
+void renameAllocas(Function *F, DominatorTree &DT, PostDominatorTree &PDT,
+                   LoopInfo &LI, AliasAnalysis &AA) {
+  SmallVector<AllocaInst *, 8> Allocas;
+  for (auto &I : F->getEntryBlock())
+    if (auto *Alloca = dyn_cast<AllocaInst>(&I))
+      Allocas.push_back(Alloca);
+  renameAllocas(DT, PDT, LI, AA, F->getParent()->getDataLayout(), Allocas);
+}

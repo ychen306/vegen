@@ -37,7 +37,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
       Insts(VPCtx->getNumValues()), L(L), Parent(nullptr) {
   VLI.setVLoop(L, this);
-  assert(L->isRotatedForm());
+  //assert(L->isRotatedForm());
 
   auto *Preheader = L->getLoopPreheader();
   auto *Header = L->getHeader();
@@ -57,11 +57,14 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
 
   // Figure out the condition for taking the backedge (vs exiting the loop)
   auto *LoopBr = cast<BranchInst>(Latch->getTerminator());
-  assert(LoopBr->getCondition());
+  auto *LatchCond = CDA.getConditionForBlock(Latch);
   // Back edge taken === reaches latch && back edge taken
-  BackEdgeCond =
-      CDA.getAnd(CDA.getConditionForBlock(Latch), LoopBr->getCondition(),
-                 LoopBr->getSuccessor(0) == L->getHeader());
+  if (LoopBr->isConditional())
+    BackEdgeCond =
+      CDA.getAnd(LatchCond, LoopBr->getCondition(),
+          LoopBr->getSuccessor(0) == L->getHeader());
+  else
+    BackEdgeCond = LatchCond;
 
   // Build the sub-loops
   for (auto *SubL : *L) {
