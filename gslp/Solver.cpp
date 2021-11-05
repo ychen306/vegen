@@ -322,14 +322,14 @@ static void improvePlan(Packer *Pkr, Plan &P,
   }
 
   AccessLayoutInfo &LayoutInfo = Pkr->getStoreInfo();
-  stable_sort(Seeds, [&](const VectorPack *VP1, const VectorPack *VP2) {
-    if (VP1->numElements() != VP2->numElements())
-      return VP1->numElements() > VP2->numElements();
+  stable_sort(Seeds, [&](const VectorPack *VP1, const VectorPack *VP2) -> bool {
     auto *SI1 = cast<StoreInst>(VP1->getOrderedValues().front());
     auto *SI2 = cast<StoreInst>(VP2->getOrderedValues().front());
-    auto Info1 = LayoutInfo.get(SI1);
-    auto Info2 = LayoutInfo.get(SI2);
-    return Info1.Id < Info2.Id;
+    unsigned Id1 = LayoutInfo.get(SI1).Id;
+    unsigned Id2 = LayoutInfo.get(SI2).Id;
+    int NumElems1 = -int(VP1->numElements());
+    int NumElems2 = -int(VP2->numElements());
+    return std::tie(Id1, NumElems1) < std::tie(Id2, NumElems2);
   });
 
   auto &LI = Pkr->getLoopInfo();
