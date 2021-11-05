@@ -12,8 +12,10 @@
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
+#include "llvm/IR/PatternMatch.h"
 
 using namespace llvm;
+using namespace PatternMatch;
 
 static cl::opt<bool> RescheduleScalars(
     "reschedule-scalar",
@@ -975,6 +977,14 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     // I is not packed
     if (!VP) {
+      // Just drop these intrinsics
+      if (m_Intrinsic<Intrinsic::experimental_noalias_scope_decl>(m_Value()).match(I) ||
+          m_Intrinsic<Intrinsic::lifetime_start>(m_Value()).match(I) ||
+          m_Intrinsic<Intrinsic::lifetime_end>(m_Value()).match(I)) {
+        I->eraseFromParent();
+        continue;
+      }
+
       // We've moved this instruction already
       if (Speculated)
         continue;
