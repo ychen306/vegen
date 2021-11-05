@@ -281,6 +281,8 @@ bool GSLP::runOnFunction(Function &F) {
     SupportedIntrinsics.push_back(&Trunc);
   for (auto &Select : VecBindingTable.getSelects())
     SupportedIntrinsics.push_back(&Select);
+  for (auto &UnaryMath : VecBindingTable.getUnaryMathFuncs())
+    SupportedIntrinsics.push_back(&UnaryMath);
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';

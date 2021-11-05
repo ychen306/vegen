@@ -337,7 +337,6 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
   OPI.Elements = Elements;
 
-
   if (!OPI.Feasible || OPI.Elements.count() < 2)
     return OPI;
 
@@ -448,10 +447,31 @@ float Packer::getScalarCost(Instruction *I) {
                                 LI->getAlign(), 0, TTI::TCK_RecipThroughput,
                                 LI);
   }
+
   if (auto *SI = dyn_cast<StoreInst>(I))
     return TTI->getMemoryOpCost(
         Instruction::Store, SI->getValueOperand()->getType(), SI->getAlign(), 0,
         TTI::TCK_RecipThroughput, SI);
+
+  if (auto *CI = dyn_cast<CallInst>(I)) {
+    auto ID = CI->getCalledFunction()->getIntrinsicID();
+    switch (ID) {
+    default:
+      return 1;
+    case Intrinsic::sin:
+    case Intrinsic::cos:
+    case Intrinsic::exp:
+    case Intrinsic::exp2:
+    case Intrinsic::log:
+    case Intrinsic::log10:
+    case Intrinsic::log2:
+    case Intrinsic::fabs:
+      return TTI->getIntrinsicInstrCost(
+          IntrinsicCostAttributes(ID, I->getType(), {I->getType()}),
+          TTI::TCK_RecipThroughput);
+    }
+  }
+
   if (isa<GetElementPtrInst>(I) || isa<PHINode>(I))
     return 0;
   if (!isScalarType(I->getType()))

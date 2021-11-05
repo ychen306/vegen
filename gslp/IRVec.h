@@ -52,8 +52,8 @@ struct Truncate : public Operation {
 
 class VectorTruncate : public InstBinding {
   const Truncate *TruncOp;
-  VectorTruncate(const Truncate *TruncOp, std::string Name,
-                  InstSignature Sig, std::vector<BoundOperation> LaneOps)
+  VectorTruncate(const Truncate *TruncOp, std::string Name, InstSignature Sig,
+                 std::vector<BoundOperation> LaneOps)
       : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
         TruncOp(TruncOp) {}
 
@@ -74,13 +74,37 @@ struct Select : Operation {
 
 class VectorSelect : public InstBinding {
   const Select *SelOp;
-  VectorSelect(const Select *SelOp, std::string Name,
-                  InstSignature Sig, std::vector<BoundOperation> LaneOps)
+  VectorSelect(const Select *SelOp, std::string Name, InstSignature Sig,
+               std::vector<BoundOperation> LaneOps)
       : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
         SelOp(SelOp) {}
 
 public:
   static VectorSelect Create(const Select *SelOp, unsigned VecLen);
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
+};
+
+struct UnaryMath : public Operation {
+  llvm::Intrinsic::ID ID;
+  bool IsDouble;
+
+  UnaryMath(llvm::Intrinsic::ID ID, bool IsDouble) : ID(ID), IsDouble(IsDouble) {}
+  bool match(llvm::Value *V,
+             llvm::SmallVectorImpl<Match> &Matches) const override;
+};
+
+class VectorUnaryMath : public InstBinding {
+  const UnaryMath *Op;
+  VectorUnaryMath(const UnaryMath *Op, std::string Name, InstSignature Sig,
+                  std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        Op(Op) {}
+
+public:
+  static VectorUnaryMath Create(const UnaryMath *Op, unsigned VecLen);
   llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                     IntrinsicBuilder &Builder) const override;
   float getCost(llvm::TargetTransformInfo *TTI,
@@ -98,12 +122,16 @@ class IRInstTable {
   std::vector<Select> SelectOps;
   std::vector<VectorSelect> VectorSelects;
 
+  std::vector<UnaryMath> UnaryMathOps;
+  std::vector<VectorUnaryMath> VectorUnaryMathFuncs;
+
 public:
   IRInstTable();
   // TODO: rename to get binary vector insts of something like that
   llvm::ArrayRef<IRVectorBinding> getBindings() const { return VectorInsts; }
   llvm::ArrayRef<VectorTruncate> getTruncates() const { return VectorTruncs; }
   llvm::ArrayRef<VectorSelect> getSelects() const { return VectorSelects; }
+  llvm::ArrayRef<VectorUnaryMath> getUnaryMathFuncs() const { return VectorUnaryMathFuncs; }
 };
 
 #endif // end IR_VEC_H
