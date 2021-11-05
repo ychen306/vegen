@@ -65,9 +65,14 @@ class VectorCodeGen {
   std::pair<BasicBlock *, BasicBlock *>
   emitLoop(VLoop &VL, BasicBlock *Preheader = nullptr);
 
-  Value *useScalar(Value *V) const {
-    auto *Demoted = ReplacedPHIs.lookup(dyn_cast<PHINode>(V));
-    return Demoted ? Demoted : V;
+  Value *useScalar(Value *V) {
+    if (auto *Demoted = ReplacedPHIs.lookup(dyn_cast<PHINode>(V)))
+      return Demoted;
+    if (ValueToPackMap.lookup(V)) {
+      assert(ValueIndex.count(V));
+      return ValueIndex[V].Extracted;
+    }
+    return V;
   }
 
 public:
@@ -559,7 +564,7 @@ static void moveToEnd(Instruction *I, BasicBlock *BB) {
 
 static PHINode *emitEta(Value *Init, Value *Iter, BasicBlock *Preheader,
                         BasicBlock *Header, BasicBlock *Latch) {
-  auto *PN = PHINode::Create(Init->getType(), 2);
+  auto *PN = PHINode::Create(Init->getType(), 2, "eta");
   PN->addIncoming(Init, Preheader);
   PN->addIncoming(Iter, Latch);
   Header->getInstList().push_front(PN);

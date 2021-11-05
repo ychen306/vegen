@@ -13,7 +13,7 @@
 ; CHECK: [[HEADER]]:
 ; CHECK-NEXT:   [[VSUM:%.*]] = phi <4 x float> [ zeroinitializer, %0 ], [ [[VSUM_NEXT:%.*]], %[[LATCH:.*]] ]
 ; CHECK-NEXT:   [[IDX:%.*]] = phi i64 [ 0, %[[PREHEADER]] ], [ %indvars.iv.next, %[[LATCH]] ]
-; CHECK-NEXT:   [[IDX4:%.*]] = shl nsw i64 %3, 2
+; CHECK-NEXT:   [[IDX4:%.*]] = shl nsw i64 [[IDX]], 2
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds float, float* %a, i64 [[IDX4]]
 ; CHECK-NEXT:   [[A_ADDR:%.*]] = bitcast float* %arrayidx to <4 x float>*
 ; CHECK-NEXT:   [[A:%.*]] = load <4 x float>, <4 x float>* [[A_ADDR]], align 4, !tbaa !3
@@ -21,7 +21,7 @@
 ; CHECK-NEXT:   [[B_ADDR:%.*]] = bitcast float* %arrayidx3 to <4 x float>*
 ; CHECK-NEXT:   [[B:%.*]] = load <4 x float>, <4 x float>* [[B_ADDR]], align 4, !tbaa !3
 ; CHECK-NEXT:   [[VMUL:%.*]] = fmul <4 x float> [[A]], [[B]]
-; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %3, 1
+; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 [[IDX]], 1
 ; CHECK-NEXT:   [[SHOULD_BREAK:%.*]] = icmp eq i64 %indvars.iv.next, %wide.trip.count
 ; CHECK-NEXT:   br i1 [[SHOULD_BREAK]], label %[[IF_TRUE:.*]], label %[[IF_FALSE:.*]]
 

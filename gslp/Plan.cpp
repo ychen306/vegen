@@ -5,8 +5,14 @@
 #include "VectorPack.h"
 #include "VectorPackContext.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+
+static cl::opt<bool>
+    DisableCostVerification("disable-cost-verification",
+                            cl::desc("disable cost verification in planning"),
+                            cl::init(false));
 
 Plan::Plan(Packer *Pkr) : Pkr(Pkr), Cost(0) {
   for (auto &I : instructions(Pkr->getFunction())) {
@@ -20,7 +26,8 @@ void Plan::incScalarUses(Instruction *I) {
   auto It = InstToPackMap.find(I);
   bool NeedToExtract = !NumScalarUses[I] && It != InstToPackMap.end();
   // Pay the extract cost if I is packed
-  if (!NumScalarUses[I] && It != InstToPackMap.end() && !It->second.VP->isReduction()) {
+  if (!NumScalarUses[I] && It != InstToPackMap.end() &&
+      !It->second.VP->isReduction()) {
     assert(!ExtractCosts.count(I));
     const VectorPackSlot &Slot = It->second;
     auto *VecTy = getVectorType(*Slot.VP);
@@ -106,7 +113,7 @@ void Plan::incVectorUses(const OperandPack *OP) {
 }
 
 bool Plan::isAlive(llvm::Instruction *I) const {
-  return isa<ReturnInst>(I) ||isa<StoreInst>(I) || isa<CallInst>(I) ||
+  return isa<ReturnInst>(I) || isa<StoreInst>(I) || isa<CallInst>(I) ||
          isa<InvokeInst>(I) || NumScalarUses.lookup(I) ||
          !InstToOperandsMap.lookup(I).empty();
 }
@@ -178,6 +185,9 @@ void Plan::decScalarUses(Instruction *I) {
 }
 
 bool Plan::verifyCost() const {
+  if (DisableCostVerification)
+    return true;
+
   float TotalExtractCost = 0;
   for (auto KV : ExtractCosts) {
     Instruction *I = KV.first;
@@ -273,8 +283,9 @@ void Plan::removeImpl(const VectorPack *VP) {
       // If there's someone using I, we have to now produce it as a scalar
       if (isAlive(I)) {
         revive(I);
-        // Since we are producing I as a scalar now, we don't need to pay the extract cost
-        // One exception is "Reduction pack" which produces a single scalar that we never extract
+        // Since we are producing I as a scalar now, we don't need to pay the
+        // extract cost One exception is "Reduction pack" which produces a
+        // single scalar that we never extract
         if (!VP->isReduction() && NumScalarUses.lookup(I)) {
           assert(ExtractCosts.count(I));
           Cost -= ExtractCosts[I];

@@ -46,7 +46,7 @@
 ; CHECK-NEXT:  br label %[[DONE]]
 
 ; CHECK:[[HEADER_INNER]]:
-; CHECK-NEXT:  [[IDX_OUT_INNER:%.*]] = phi <4 x i32> [ %vector-live-out32.0, %[[HEADER]] ], [ [[IDX_OUT_INNER_NEXT]], %[[LATCH_INNER:.*]] ]
+; CHECK-NEXT:  [[IDX_OUT_INNER:%.*]] = phi <4 x i32> [ [[IDX]], %[[HEADER]] ], [ [[IDX_OUT_INNER_NEXT]], %[[LATCH_INNER:.*]] ]
 ; CHECK-NEXT:  [[IDX_INNER:%.*]] = phi <4 x i32> [ <i32 -1, i32 -1, i32 -1, i32 -1>, %[[HEADER]] ], [ [[IDX_INNER_NEXT:%.*]], %[[LATCH_INNER]] ]
 ; CHECK-NEXT:  [[K:%.*]] = phi <4 x i64> [ zeroinitializer, %[[HEADER]] ], [ [[K_NEXT:%.*]], %[[LATCH_INNER]] ]
 ; CHECK-NEXT:  [[ACTIVE_INNER:%.*]] = phi <4 x i1> [ [[ACTIVE_INNER_INIT]], %[[HEADER]] ], [ [[ACTIVE_INNER_NEXT:%.*]], %[[LATCH_INNER]] ]

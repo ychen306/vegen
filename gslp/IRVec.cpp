@@ -151,6 +151,8 @@ IRInstTable::IRInstTable() {
     UnaryMathOps.emplace_back(ID, true);
     UnaryMathOps.emplace_back(ID, false);
   }
+  BinaryMathOps.emplace_back(Intrinsic::pow, true);
+  BinaryMathOps.emplace_back(Intrinsic::pow, false);
 
   for (unsigned VL : {2, 4, 8, 16}) {
     for (auto &TruncOp : TruncOps)
@@ -159,6 +161,8 @@ IRInstTable::IRInstTable() {
       VectorSelects.push_back(VectorSelect::Create(&SelOp, VL));
     for (auto &UnaryOp : UnaryMathOps)
       VectorUnaryMathFuncs.push_back(VectorUnaryMath::Create(&UnaryOp, VL));
+    for (auto &BinaryOp : BinaryMathOps)
+      VectorBinaryMathFuncs.push_back(VectorBinaryMath::Create(&BinaryOp, VL));
   }
 }
 
@@ -319,5 +323,68 @@ float VectorUnaryMath::getCost(TargetTransformInfo *TTI,
   auto *VecTy = FixedVectorType::get(Ty, VecLen);
   return TTI->getIntrinsicInstrCost(
       IntrinsicCostAttributes(Op->ID, VecTy, {VecTy}),
+      TTI::TCK_RecipThroughput);
+}
+
+bool BinaryMath::match(Value *V, SmallVectorImpl<Match> &Matches) const {
+  // Match for the right floating type
+  auto &Ctx = V->getContext();
+  if (IsDouble && V->getType() != Type::getDoubleTy(Ctx))
+    return false;
+  bool IsFloat = !IsDouble;
+  if (IsFloat && V->getType() != Type::getFloatTy(Ctx))
+    return false;
+
+  // Match the intrinsic call
+  auto *Call = dyn_cast<CallInst>(V);
+  if (!Call || Call->getCalledFunction()->getIntrinsicID() != ID)
+    return false;
+
+  assert(Call->arg_size() == 2);
+  Matches.push_back({false, {Call->getArgOperand(0), Call->getArgOperand(1)}, V});
+  return true;
+}
+
+VectorBinaryMath VectorBinaryMath::Create(const BinaryMath *Op, unsigned VecLen) {
+  unsigned BitWidth = Op->IsDouble ? 64 : 32;
+  unsigned VectorWidth = BitWidth * VecLen;
+  InstSignature Sig = {// bitwidths of the inputs
+                       {VectorWidth, VectorWidth},
+                       // bitwidth of the output
+                       {VectorWidth},
+                       // has imm8?
+                       false};
+
+  std::vector<BoundOperation> LaneOps;
+  for (unsigned i = 0; i < VecLen; i++) {
+    unsigned Lo = i * BitWidth, Hi = Lo + BitWidth;
+    LaneOps.push_back(BoundOperation(Op, {{0, Lo, Hi}, {1, Lo, Hi}}));
+  }
+
+  std::string Name = formatv("{0}-x-{1}", "builtin-math",
+                             Op->IsDouble ? "double" : "float", VecLen)
+                         .str();
+  return VectorBinaryMath(Op, Name, Sig, LaneOps);
+}
+
+Value *VectorBinaryMath::emit(ArrayRef<Value *> Operands,
+                             IntrinsicBuilder &Builder) const {
+  auto *M = Builder.GetInsertBlock()->getModule();
+  auto &Ctx = Builder.getContext();
+  auto *Ty = Op->IsDouble ? Type::getDoubleTy(Ctx) : Type::getFloatTy(Ctx);
+  unsigned VecLen = getLaneOps().size();
+  auto *F =
+      Intrinsic::getDeclaration(M, Op->ID, {FixedVectorType::get(Ty, VecLen)});
+  assert(Operands.size() == 2);
+  return Builder.CreateCall(F, {Operands[0], Operands[1]});
+}
+
+float VectorBinaryMath::getCost(TargetTransformInfo *TTI,
+                               LLVMContext &Ctx) const {
+  auto *Ty = Op->IsDouble ? Type::getDoubleTy(Ctx) : Type::getFloatTy(Ctx);
+  unsigned VecLen = getLaneOps().size();
+  auto *VecTy = FixedVectorType::get(Ty, VecLen);
+  return TTI->getIntrinsicInstrCost(
+      IntrinsicCostAttributes(Op->ID, VecTy, {VecTy, VecTy}),
       TTI::TCK_RecipThroughput);
 }

@@ -111,6 +111,30 @@ public:
                 llvm::LLVMContext &Ctx) const override;
 };
 
+struct BinaryMath : public Operation {
+  llvm::Intrinsic::ID ID;
+  bool IsDouble;
+
+  BinaryMath(llvm::Intrinsic::ID ID, bool IsDouble) : ID(ID), IsDouble(IsDouble) {}
+  bool match(llvm::Value *V,
+             llvm::SmallVectorImpl<Match> &Matches) const override;
+};
+
+class VectorBinaryMath : public InstBinding {
+  const BinaryMath *Op;
+  VectorBinaryMath(const BinaryMath *Op, std::string Name, InstSignature Sig,
+                  std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        Op(Op) {}
+
+public:
+  static VectorBinaryMath Create(const BinaryMath *Op, unsigned VecLen);
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
+};
+
 // Aux class enumerating vector ir that we can emit
 class IRInstTable {
   std::vector<BinaryIROperation> VectorizableOps;
@@ -125,6 +149,9 @@ class IRInstTable {
   std::vector<UnaryMath> UnaryMathOps;
   std::vector<VectorUnaryMath> VectorUnaryMathFuncs;
 
+  std::vector<BinaryMath> BinaryMathOps;
+  std::vector<VectorBinaryMath> VectorBinaryMathFuncs;
+
 public:
   IRInstTable();
   // TODO: rename to get binary vector insts of something like that
@@ -132,6 +159,7 @@ public:
   llvm::ArrayRef<VectorTruncate> getTruncates() const { return VectorTruncs; }
   llvm::ArrayRef<VectorSelect> getSelects() const { return VectorSelects; }
   llvm::ArrayRef<VectorUnaryMath> getUnaryMathFuncs() const { return VectorUnaryMathFuncs; }
+  llvm::ArrayRef<VectorBinaryMath> getBinaryMathFuncs() const { return VectorBinaryMathFuncs; }
 };
 
 #endif // end IR_VEC_H

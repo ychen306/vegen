@@ -14,15 +14,18 @@ BasicBlock *BlockBuilder::createBlock() {
   return BasicBlock::Create(Ctx, "", F);
 }
 
-static Value *emitCondition(const ControlCondition *Common,
-                            const ControlCondition *C, IRBuilderBase &IRB);
+static Value *
+emitCondition(const ControlCondition *Common, const ControlCondition *C,
+              IRBuilderBase &IRB,
+              std::function<llvm::Value *(llvm::Value *)> EmitCondition);
 // Emit code that computes the disjunction for Conds at BB
-static Value *emitDisjunction(const ControlCondition *Common,
-                              ArrayRef<const ControlCondition *> Conds,
-                              IRBuilderBase &IRB) {
+static Value *
+emitDisjunction(const ControlCondition *Common,
+                ArrayRef<const ControlCondition *> Conds, IRBuilderBase &IRB,
+                std::function<llvm::Value *(llvm::Value *)> EmitCondition) {
   SmallVector<Value *> Values;
   for (auto *C : Conds)
-    Values.push_back(emitCondition(Common, C, IRB));
+    Values.push_back(emitCondition(Common, C, IRB, EmitCondition));
   return IRB.CreateOr(Values);
 }
 
@@ -32,23 +35,30 @@ static Value *CreateAnd(Value *A, Value *B, IRBuilderBase &IRB) {
   return IRB.CreateAnd(A, B);
 }
 
-static Value *emitCondition(const ControlCondition *Common,
-                            const ControlCondition *C, IRBuilderBase &IRB) {
+static Value *
+emitCondition(const ControlCondition *Common, const ControlCondition *C,
+              IRBuilderBase &IRB,
+              std::function<llvm::Value *(llvm::Value *)> EmitCondition) {
   if (C == Common)
     return ConstantInt::getTrue(IRB.getContext());
   assert(C);
   if (auto *And = dyn_cast<ConditionAnd>(C)) {
-    return CreateAnd(emitCondition(Common, And->Parent, IRB),
-                     And->IsTrue ? And->Cond : IRB.CreateNot(And->Cond), IRB);
+    return CreateAnd(emitCondition(Common, And->Parent, IRB, EmitCondition),
+                     And->IsTrue ? EmitCondition(And->Cond)
+                                 : IRB.CreateNot(EmitCondition(And->Cond)),
+                     IRB);
   }
-  return emitDisjunction(Common, cast<ConditionOr>(C)->Conds, IRB);
+  return emitDisjunction(Common, cast<ConditionOr>(C)->Conds, IRB,
+                         EmitCondition);
 }
 
 // Emit code that computes the disjunction for Conds at BB
-static Value *emitDisjunction(BasicBlock *BB, const ControlCondition *Common,
-                              ArrayRef<const ControlCondition *> Conds) {
+static Value *
+emitDisjunction(BasicBlock *BB, const ControlCondition *Common,
+                ArrayRef<const ControlCondition *> Conds,
+                std::function<llvm::Value *(llvm::Value *)> EmitCondition) {
   IRBuilder<> IRB(BB);
-  return emitDisjunction(Common, Conds, IRB);
+  return emitDisjunction(Common, Conds, IRB, EmitCondition);
 }
 
 BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
@@ -164,8 +174,9 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
 
   // Branch conditionally from AuxBB to BB
   auto *DrainBB = createBlock();
-  BranchInst::Create(BB, DrainBB,
-                     emitDisjunction(AuxBB, CommonC, UnjoinedConds), AuxBB);
+  BranchInst::Create(
+      BB, DrainBB,
+      emitDisjunction(AuxBB, CommonC, UnjoinedConds, EmitCondition), AuxBB);
 
   // Create a dummy condition that represents the complement of the disjunction.
   auto *DummyC = getDummyCondition();
