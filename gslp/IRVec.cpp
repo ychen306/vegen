@@ -145,8 +145,10 @@ IRInstTable::IRInstTable() {
     SelectOps.emplace_back(BitWidth);
 
   Intrinsic::ID UnaryIntrins[] = {
-      Intrinsic::sin, Intrinsic::cos,   Intrinsic::exp,  Intrinsic::exp2,
-      Intrinsic::log, Intrinsic::log10, Intrinsic::log2, Intrinsic::fabs};
+      Intrinsic::sin,  Intrinsic::cos,  Intrinsic::exp,
+      Intrinsic::exp2, Intrinsic::log,  Intrinsic::log10,
+      Intrinsic::log2, Intrinsic::fabs, Intrinsic::sqrt,
+  };
   for (auto ID : UnaryIntrins) {
     UnaryMathOps.emplace_back(ID, true);
     UnaryMathOps.emplace_back(ID, false);
@@ -341,11 +343,13 @@ bool BinaryMath::match(Value *V, SmallVectorImpl<Match> &Matches) const {
     return false;
 
   assert(Call->arg_size() == 2);
-  Matches.push_back({false, {Call->getArgOperand(0), Call->getArgOperand(1)}, V});
+  Matches.push_back(
+      {false, {Call->getArgOperand(0), Call->getArgOperand(1)}, V});
   return true;
 }
 
-VectorBinaryMath VectorBinaryMath::Create(const BinaryMath *Op, unsigned VecLen) {
+VectorBinaryMath VectorBinaryMath::Create(const BinaryMath *Op,
+                                          unsigned VecLen) {
   unsigned BitWidth = Op->IsDouble ? 64 : 32;
   unsigned VectorWidth = BitWidth * VecLen;
   InstSignature Sig = {// bitwidths of the inputs
@@ -368,7 +372,7 @@ VectorBinaryMath VectorBinaryMath::Create(const BinaryMath *Op, unsigned VecLen)
 }
 
 Value *VectorBinaryMath::emit(ArrayRef<Value *> Operands,
-                             IntrinsicBuilder &Builder) const {
+                              IntrinsicBuilder &Builder) const {
   auto *M = Builder.GetInsertBlock()->getModule();
   auto &Ctx = Builder.getContext();
   auto *Ty = Op->IsDouble ? Type::getDoubleTy(Ctx) : Type::getFloatTy(Ctx);
@@ -380,7 +384,7 @@ Value *VectorBinaryMath::emit(ArrayRef<Value *> Operands,
 }
 
 float VectorBinaryMath::getCost(TargetTransformInfo *TTI,
-                               LLVMContext &Ctx) const {
+                                LLVMContext &Ctx) const {
   auto *Ty = Op->IsDouble ? Type::getDoubleTy(Ctx) : Type::getFloatTy(Ctx);
   unsigned VecLen = getLaneOps().size();
   auto *VecTy = FixedVectorType::get(Ty, VecLen);
