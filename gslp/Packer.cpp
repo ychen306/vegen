@@ -419,6 +419,8 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     ArrayRef<BoundOperation> LaneOps = Inst->getLaneOps();
     if (LaneOps.size() < NumLanes)
       continue;
+    if (LaneOps.size() != NumLanes)
+      continue;
 
     std::vector<const Operation::Match *> Lanes;
     for (unsigned i = 0; i < NumLanes; i++) {

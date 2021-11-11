@@ -202,6 +202,8 @@ public:
 
   bool isStore() const { return Kind == Store; }
   bool isLoad() const { return Kind == Load; }
+  bool isCmp() const { return Kind == Cmp; }
+  bool isGEP() const { return Kind == GEP; }
   bool isPHI() const { return Kind == Phi; }
   bool isGamma() const { return Kind == Gamma; }
   bool isReduction() const { return Rdx.hasValue(); }

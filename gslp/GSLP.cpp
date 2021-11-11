@@ -141,6 +141,8 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F,
   unsigned PreferVectorWidth = TTI->getLoadStoreVecRegBitWidth(0);
   if (Inst->getName().contains("cvtepi32_epi64"))
     return true;
+  if (Inst->getName().contains("hadd"))
+    return false;
   for (auto &Feature : Inst->getTargetFeatures())
     if (!hasFeature(F, Feature) ||
         Inst->getSignature().OutputBitwidths[0] > PreferVectorWidth)
