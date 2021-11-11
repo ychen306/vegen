@@ -50,6 +50,7 @@ class VectorCodeGen {
   // these are the blocks where we will store the incoming values to the demoted
   // allocas.
   SmallVector<AllocaInst *> Allocas;
+  DenseMap<Value *, Value *> ReplacedUses;
 
   Value *gatherOperandPack(const OperandPack &OP);
   Value *getOrEmitConditionPack(const ConditionPack *CP);
@@ -68,6 +69,7 @@ class VectorCodeGen {
   emitLoop(VLoop &VL, BasicBlock *Preheader = nullptr);
 
   Value *useScalar(Value *V) {
+    assert(!ReplacedUses.count(V));
     if (auto *Demoted = ReplacedPHIs.lookup(dyn_cast<PHINode>(V)))
       return Demoted;
     if (ValueToPackMap.lookup(V)) {
@@ -711,6 +713,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   };
 
   // For the top level "loop", the loop header is just the entry block
+  // FIXME: use useScalar
   BlockBuilder BBuilder(VL.isLoop() ? Header : Entry, [&](Value *Cond) {
     auto It = ValueIndex.find(Cond);
     if (It == ValueIndex.end())
@@ -933,6 +936,11 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
           // By default we should not execute CoVL
           Builder.CreateStore(ConstantInt::getFalse(Ctx), ShouldEnterAlloca);
+        }
+
+        for (auto Pair : zip(Conds, ShouldEnterAllocas)) {
+          const ControlCondition *Cond = std::get<0>(Pair);
+          Value *ShouldEnterAlloca = std::get<1>(Pair);
 
           // Unless its loop condition is true
           auto *BB = GetBlock(Cond);
@@ -1334,6 +1342,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       auto *I = dyn_cast<Instruction>(U.getUser());
       return !I || !LoopBlocks.count(I->getParent());
     });
+    ReplacedUses.try_emplace(V, Reload);
   }
 
   return {Header, Exit};
