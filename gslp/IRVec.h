@@ -23,6 +23,21 @@ public:
   unsigned getMaximumVF(llvm::TargetTransformInfo *) const;
 };
 
+class UnaryIROperation : public Operation {
+  unsigned Opcode;
+  unsigned Bitwidth;
+
+public:
+  UnaryIROperation(unsigned Opcode, unsigned Bitwidth)
+      : Opcode(Opcode), Bitwidth(Bitwidth) {}
+  std::string getName() const;
+  unsigned getBitwidth() const { return Bitwidth; }
+  unsigned getOpcode() const { return Opcode; }
+  bool match(llvm::Value *V,
+             llvm::SmallVectorImpl<Match> &Matches) const override;
+  unsigned getMaximumVF(llvm::TargetTransformInfo *) const;
+};
+
 // TODO: rename this to something like BinaryVectorBinding
 class IRVectorBinding : public InstBinding {
   const BinaryIROperation *Op;
@@ -35,6 +50,24 @@ class IRVectorBinding : public InstBinding {
 public:
   static IRVectorBinding Create(const BinaryIROperation *Op,
                                 unsigned VectorWidth);
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
+  bool isSupported(llvm::TargetTransformInfo *) const;
+};
+
+class UnaryIRVectorBinding : public InstBinding {
+  const UnaryIROperation *Op;
+
+  UnaryIRVectorBinding(const UnaryIROperation *Op, std::string Name,
+                       InstSignature Sig, std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        Op(Op) {}
+
+public:
+  static UnaryIRVectorBinding Create(const UnaryIROperation *Op,
+                                     unsigned VectorWidth);
   llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
                     IntrinsicBuilder &Builder) const override;
   float getCost(llvm::TargetTransformInfo *TTI,
@@ -91,7 +124,8 @@ struct UnaryMath : public Operation {
   llvm::Intrinsic::ID ID;
   bool IsDouble;
 
-  UnaryMath(llvm::Intrinsic::ID ID, bool IsDouble) : ID(ID), IsDouble(IsDouble) {}
+  UnaryMath(llvm::Intrinsic::ID ID, bool IsDouble)
+      : ID(ID), IsDouble(IsDouble) {}
   bool match(llvm::Value *V,
              llvm::SmallVectorImpl<Match> &Matches) const override;
 };
@@ -115,7 +149,8 @@ struct BinaryMath : public Operation {
   llvm::Intrinsic::ID ID;
   bool IsDouble;
 
-  BinaryMath(llvm::Intrinsic::ID ID, bool IsDouble) : ID(ID), IsDouble(IsDouble) {}
+  BinaryMath(llvm::Intrinsic::ID ID, bool IsDouble)
+      : ID(ID), IsDouble(IsDouble) {}
   bool match(llvm::Value *V,
              llvm::SmallVectorImpl<Match> &Matches) const override;
 };
@@ -123,7 +158,7 @@ struct BinaryMath : public Operation {
 class VectorBinaryMath : public InstBinding {
   const BinaryMath *Op;
   VectorBinaryMath(const BinaryMath *Op, std::string Name, InstSignature Sig,
-                  std::vector<BoundOperation> LaneOps)
+                   std::vector<BoundOperation> LaneOps)
       : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
         Op(Op) {}
 
@@ -139,6 +174,9 @@ public:
 class IRInstTable {
   std::vector<BinaryIROperation> VectorizableOps;
   std::vector<IRVectorBinding> VectorInsts;
+
+  std::vector<UnaryIROperation> UnaryOps;
+  std::vector<UnaryIRVectorBinding> UnaryVectorInsts;
 
   std::vector<Truncate> TruncOps;
   std::vector<VectorTruncate> VectorTruncs;
@@ -156,10 +194,17 @@ public:
   IRInstTable();
   // TODO: rename to get binary vector insts of something like that
   llvm::ArrayRef<IRVectorBinding> getBindings() const { return VectorInsts; }
+  llvm::ArrayRef<UnaryIRVectorBinding> getUnarys() const {
+    return UnaryVectorInsts;
+  }
   llvm::ArrayRef<VectorTruncate> getTruncates() const { return VectorTruncs; }
   llvm::ArrayRef<VectorSelect> getSelects() const { return VectorSelects; }
-  llvm::ArrayRef<VectorUnaryMath> getUnaryMathFuncs() const { return VectorUnaryMathFuncs; }
-  llvm::ArrayRef<VectorBinaryMath> getBinaryMathFuncs() const { return VectorBinaryMathFuncs; }
+  llvm::ArrayRef<VectorUnaryMath> getUnaryMathFuncs() const {
+    return VectorUnaryMathFuncs;
+  }
+  llvm::ArrayRef<VectorBinaryMath> getBinaryMathFuncs() const {
+    return VectorBinaryMathFuncs;
+  }
 };
 
 #endif // end IR_VEC_H

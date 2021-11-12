@@ -270,7 +270,7 @@ static bool matchPackableCmps(ArrayRef<Value *> Values,
   auto *Ty = Cmps.front()->getOperand(0)->getType();
   return all_of(drop_begin(Cmps), [&](auto *Cmp) {
     return Cmp->getOpcode() == Opcode && Cmp->getPredicate() == Pred &&
-    Cmp->getOperand(0)->getType() == Ty;
+           Cmp->getOperand(0)->getType() == Ty;
   });
 }
 
@@ -477,11 +477,18 @@ float Packer::getScalarCost(Instruction *I) {
     }
   }
 
+  if (isa<CastInst>(I)) {
+    return TTI->getCastInstrCost(I->getOpcode(), I->getOperand(0)->getType(),
+                                 I->getType(), TTI::getCastContextHint(I),
+                                 TTI::TCK_RecipThroughput);
+  }
+
   if (isa<GetElementPtrInst>(I) || isa<PHINode>(I))
     return 0;
   if (!isScalarType(I->getType()))
     return 1;
-  if (!isa<BinaryOperator>(I) && !isa<CmpInst>(I) && !isa<SelectInst>(I))
+  if (!isa<UnaryOperator>(I) && !isa<BinaryOperator>(I) && !isa<CmpInst>(I) &&
+      !isa<SelectInst>(I))
     return 1;
   SmallVector<const Value *, 4> Operands(I->operand_values());
   return TTI->getArithmeticInstrCost(

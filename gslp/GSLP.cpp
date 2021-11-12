@@ -279,6 +279,10 @@ bool GSLP::runOnFunction(Function &F) {
     if (Inst.isSupported(TTI))
       SupportedIntrinsics.push_back(&Inst);
   }
+  for (auto &Inst : VecBindingTable.getUnarys()) {
+    if (Inst.isSupported(TTI))
+      SupportedIntrinsics.push_back(&Inst);
+  }
   for (auto &Trunc : VecBindingTable.getTruncates())
     SupportedIntrinsics.push_back(&Trunc);
   for (auto &Select : VecBindingTable.getSelects())

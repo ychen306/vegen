@@ -31,6 +31,14 @@ bool BinaryIROperation::match(Value *V, SmallVectorImpl<Match> &Matches) const {
   return Matched;
 }
 
+bool UnaryIROperation::match(Value *V, SmallVectorImpl<Match> &Matches) const {
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I || I->getOpcode() != Opcode || !hasBitWidth(V, Bitwidth))
+    return false;
+  Matches.push_back({false, {I->getOperand(0)}, V});
+  return true;
+}
+
 float IRVectorBinding::getCost(TargetTransformInfo *TTI,
                                LLVMContext &Ctx) const {
   Type *ScalarTy;
@@ -48,6 +56,37 @@ float IRVectorBinding::getCost(TargetTransformInfo *TTI,
   unsigned NumElems = getLaneOps().size();
   auto *VecTy = FixedVectorType::get(ScalarTy, NumElems);
   return TTI->getArithmeticInstrCost(Opcode, VecTy);
+}
+
+float UnaryIRVectorBinding::getCost(TargetTransformInfo *TTI,
+                                    LLVMContext &Ctx) const {
+  unsigned ElemWidth = Op->getBitwidth();
+  auto Opcode = Op->getOpcode();
+  unsigned NumElems = getLaneOps().size();
+
+  if (Opcode == Instruction::FNeg) {
+    auto *Ty = ElemWidth == 32 ? Type::getFloatTy(Ctx) : Type::getDoubleTy(Ctx);
+    auto *VecTy = FixedVectorType::get(Ty, NumElems);
+    return TTI->getArithmeticInstrCost(Opcode, VecTy);
+  }
+
+  return 1.0;
+
+  Type *InTy, *OutTy;
+  if (Opcode == Instruction::SIToFP) {
+    InTy = Type::getIntNTy(Ctx, ElemWidth);
+    OutTy = ElemWidth == 32 ? Type::getFloatTy(Ctx) : Type::getDoubleTy(Ctx);
+  } else if (Opcode == Instruction::FPToSI) {
+    InTy = ElemWidth == 32 ? Type::getFloatTy(Ctx) : Type::getDoubleTy(Ctx);
+    OutTy = Type::getIntNTy(Ctx, ElemWidth);
+  } else {
+    llvm_unreachable("unsupport unary opcode");
+  }
+
+  return TTI->getCastInstrCost(Opcode, FixedVectorType::get(InTy, NumElems),
+                               FixedVectorType::get(OutTy, NumElems),
+                               TTI::CastContextHint::None,
+                               TTI::TCK_RecipThroughput);
 }
 
 IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
@@ -74,6 +113,30 @@ IRVectorBinding IRVectorBinding::Create(const BinaryIROperation *Op,
   return IRVectorBinding(Op, Op->getName(), Sig, LaneOps);
 }
 
+UnaryIRVectorBinding UnaryIRVectorBinding::Create(const UnaryIROperation *Op,
+                                                  unsigned VectorWidth) {
+  // Compute the signature of this UNARY vector inst
+  InstSignature Sig = {// bitwidths of the inputs
+                       {VectorWidth},
+                       // bitwidth of the output
+                       {VectorWidth},
+                       // has imm8?
+                       false};
+
+  unsigned ElemWidth = Op->getBitwidth();
+  assert(VectorWidth % ElemWidth == 0);
+  unsigned NumLanes = VectorWidth / ElemWidth;
+  std::vector<BoundOperation> LaneOps;
+  for (unsigned i = 0; i < NumLanes; i++) {
+    unsigned Lo = i * ElemWidth, Hi = Lo + ElemWidth;
+    LaneOps.push_back(BoundOperation(Op,
+                                     // input binding
+                                     {{0, Lo, Hi}}));
+  }
+
+  return UnaryIRVectorBinding(Op, Op->getName(), Sig, LaneOps);
+}
+
 Value *IRVectorBinding::emit(ArrayRef<Value *> Operands,
                              IntrinsicBuilder &Builder) const {
   assert(Operands.size() == 2);
@@ -81,7 +144,40 @@ Value *IRVectorBinding::emit(ArrayRef<Value *> Operands,
   return Builder.CreateBinOp(Opcode, Operands[0], Operands[1]);
 }
 
+static Value *tryCast(IRBuilderBase &Builder, Value *V, Type *Ty) {
+  if (V->getType() == Ty)
+    return V;
+  return Builder.CreateBitCast(V, Ty);
+}
+
+Value *UnaryIRVectorBinding::emit(ArrayRef<Value *> Operands,
+                                  IntrinsicBuilder &Builder) const {
+  assert(Operands.size() == 1);
+  unsigned ElemWidth = Op->getBitwidth();
+  unsigned VecLen = getLaneOps().size();
+  auto &Ctx = Builder.getContext();
+  auto *FloatTy =
+    FixedVectorType::get(
+      ElemWidth == 32 ? Type::getFloatTy(Ctx) : Type::getDoubleTy(Ctx), VecLen);
+  auto *IntTy = FixedVectorType::get(Type::getIntNTy(Ctx, ElemWidth), VecLen);
+  auto *V = Operands.front();
+  switch (Op->getOpcode()) {
+  case Instruction::SIToFP:
+    return Builder.CreateSIToFP(tryCast(Builder, V, IntTy), FloatTy);
+  case Instruction::FPToSI:
+    return Builder.CreateFPToSI(tryCast(Builder, V, FloatTy), IntTy);
+  case Instruction::FNeg:
+    return Builder.CreateFNeg(tryCast(Builder, V, FloatTy));
+  default:
+    llvm_unreachable("unsupport unary opcode");
+  }
+}
+
 unsigned BinaryIROperation::getMaximumVF(TargetTransformInfo *TTI) const {
+  return TTI->getLoadStoreVecRegBitWidth(0) / Bitwidth;
+}
+
+unsigned UnaryIROperation::getMaximumVF(TargetTransformInfo *TTI) const {
   return TTI->getLoadStoreVecRegBitWidth(0) / Bitwidth;
 }
 
@@ -90,7 +186,15 @@ std::string BinaryIROperation::getName() const {
       .str();
 }
 
+std::string UnaryIROperation::getName() const {
+  return formatv("{0}-{1}", Instruction::getOpcodeName(Opcode), Bitwidth).str();
+}
+
 bool IRVectorBinding::isSupported(TargetTransformInfo *TTI) const {
+  return getLaneOps().size() <= Op->getMaximumVF(TTI);
+}
+
+bool UnaryIRVectorBinding::isSupported(TargetTransformInfo *TTI) const {
   return getLaneOps().size() <= Op->getMaximumVF(TTI);
 }
 
@@ -115,6 +219,14 @@ IRInstTable::IRInstTable() {
       VectorizableOps.emplace_back(Opcode, SB);
     }
 
+  std::vector<unsigned> UnaryOpcodes = {Instruction::SIToFP,
+                                        Instruction::FPToSI, Instruction::FNeg};
+  for (unsigned Opcode : UnaryOpcodes) {
+    for (unsigned SB : {32, 64}) {
+      UnaryOps.emplace_back(Opcode, SB);
+    }
+  }
+
   // enumerate vector insts
   std::vector<unsigned> VectorBitwidths = {64, 128, 256, 512};
   for (auto &Op : VectorizableOps) {
@@ -125,6 +237,14 @@ IRInstTable::IRInstTable() {
       if (VB / Op.getBitwidth() == 1)
         continue;
       VectorInsts.push_back(IRVectorBinding::Create(&Op, VB));
+    }
+  }
+  for (auto &Op : UnaryOps) {
+    for (unsigned VB : VectorBitwidths) {
+      // Skip singleton pack
+      if (VB / Op.getBitwidth() == 1)
+        continue;
+      UnaryVectorInsts.push_back(UnaryIRVectorBinding::Create(&Op, VB));
     }
   }
 
