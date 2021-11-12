@@ -30,6 +30,11 @@ static cl::opt<bool>
     DumpBeforeErasingOldBlocks("dump-before-erasing-old-blocks",
                                cl::init(false));
 
+static bool shouldSkip(const VectorPack *VP) {
+  return false;
+  //return VP->getProducer() && VP->getProducer()->getName().contains("builtin");
+}
+
 namespace {
 
 class VectorCodeGen {
@@ -74,6 +79,8 @@ class VectorCodeGen {
     if (auto *Demoted = ReplacedPHIs.lookup(dyn_cast<PHINode>(V)))
       return Demoted;
     if (ValueToPackMap.lookup(V)) {
+      if (shouldSkip(ValueToPackMap.lookup(V)))
+        return V;
       assert(ValueIndex.count(V));
       return ValueIndex[V].Extracted;
     }
@@ -977,7 +984,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     }
 
     // I is not packed
-    if (!VP) {
+    if (!VP || shouldSkip(VP)) {
       // Just drop these intrinsics
       if (m_Intrinsic<Intrinsic::experimental_noalias_scope_decl>(m_Value())
               .match(I) ||
@@ -1011,6 +1018,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         assert(Header && Exit);
         auto *NewPN =
             emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch);
+        // FIXME: this is broken: when we are co-iterating, only do this for uses in side the loops
         PN->replaceAllUsesWith(NewPN);
         GuardScalarLiveOut(NewPN, VLForInst);
         ReplacedPHIs[PN] = NewPN;
@@ -1149,11 +1157,21 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     // Conservatively extract all elements.
     // Let the later cleanup passes clean up dead extracts.
     if (!VP->isStore() && !VP->isReduction()) {
+      setInsertAtEndOfBlock(Builder, cast<Instruction>(VecInst)->getParent());
       for (auto &Item : enumerate(VP->getOrderedValues())) {
         if (auto *V = Item.value()) {
           unsigned i = Item.index();
           auto *Extract = Builder.CreateExtractElement(VecInst, i);
-          V->replaceAllUsesWith(Extract);
+          if (!CoIterating)
+            V->replaceAllUsesWith(Extract);
+          else {
+            // Only replace uses of V with extract for users inside the loop
+            V->replaceUsesWithIf(Extract, [&](Use &U) {
+                auto *I = dyn_cast<Instruction>(U.getUser());
+                return !I || count_if(CoIteratingLoops, [&](auto *CoVL) {
+                    return Pkr.getVLoopFor(I) == CoVL; });
+                });
+          }
           ValueIndex[V] = {VP, i, Extract};
         }
       }

@@ -267,8 +267,10 @@ static bool matchPackableCmps(ArrayRef<Value *> Values,
 
   auto Opcode = Cmps.front()->getOpcode();
   auto Pred = Cmps.front()->getPredicate();
+  auto *Ty = Cmps.front()->getOperand(0)->getType();
   return all_of(drop_begin(Cmps), [&](auto *Cmp) {
-    return Cmp->getOpcode() == Opcode && Cmp->getPredicate() == Pred;
+    return Cmp->getOpcode() == Opcode && Cmp->getPredicate() == Pred &&
+    Cmp->getOperand(0)->getType() == Ty;
   });
 }
 
@@ -468,6 +470,7 @@ float Packer::getScalarCost(Instruction *I) {
     case Intrinsic::log10:
     case Intrinsic::log2:
     case Intrinsic::fabs:
+    case Intrinsic::pow:
       return TTI->getIntrinsicInstrCost(
           IntrinsicCostAttributes(ID, I->getType(), {I->getType()}),
           TTI::TCK_RecipThroughput);
