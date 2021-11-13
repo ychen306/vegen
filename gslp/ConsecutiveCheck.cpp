@@ -262,7 +262,7 @@ bool isConsecutive(Instruction *A, Instruction *B, const DataLayout &DL,
   if (!Loops.empty())
     PtrSCEVB = AddRecLoopRewriter::rewrite(SE, PtrSCEVB, Loops);
   const SCEV *X = SE.getAddExpr(PtrSCEVA, BaseDelta);
-  return X == PtrSCEVB;
+  return X == PtrSCEVB || SE.getMinusSCEV(PtrSCEVB, PtrSCEVA) == SizeSCEV;
 }
 
 std::vector<std::pair<Instruction *, Instruction *>>

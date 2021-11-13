@@ -29,8 +29,9 @@ void buildAccessDAG(ConsecutiveAccessDAG &DAG, ArrayRef<Instruction *> Accesses,
   for (auto &KV : AccessesByTypes) {
     auto ConsecutiveAccesses =
         findConsecutiveAccesses(*SE, *DL, *LI, KV.second, EquivalentAccesses);
-    for (auto Pair : ConsecutiveAccesses)
+    for (auto Pair : ConsecutiveAccesses) {
       DAG[Pair.first].insert(Pair.second);
+    }
   }
 }
 

@@ -71,8 +71,9 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           for (auto *Access : Accesses)
             Conds.push_back(Pkr->getBlockCondition(Access->getParent()));
           auto *C = getGreatestCommonCondition(Conds);
-          if (!Pkr->canSpeculateAt(Accesses.front()->getPointerOperand(), C))
+          if (!Pkr->canSpeculateAt(Accesses.front()->getPointerOperand(), C)) {
             return;
+          }
 
           Seeds.push_back(createMemPack<AccessType>(Pkr, Accesses, Elements,
                                                     Depended, TTI));
@@ -90,8 +91,9 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           if (BlocksToIgnore && BlocksToIgnore->count(Next->getParent()))
             continue;
           auto *NextAccess = cast<AccessType>(Next);
-          if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended))
+          if (!checkIndependence(DA, *VPCtx, NextAccess, Elements, Depended)) {
             continue;
+          }
           if (any_of(Accesses, [&](auto *Access) {
                 return !Pkr->isCompatible(Access, NextAccess);
               }))
