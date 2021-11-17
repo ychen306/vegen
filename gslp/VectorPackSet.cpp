@@ -249,6 +249,7 @@ Value *VectorCodeGen::gatherOperandPack(const OperandPack &OP) {
     }
 
     auto *Src = MaterializedPacks.lookup(SrcVP);
+    assert(Src);
     auto *Mask = ConstantVector::get(MaskValues);
     Value *Gather;
     // Minor optimization: avoid unnecessary shuffle.
@@ -262,7 +263,7 @@ Value *VectorCodeGen::gatherOperandPack(const OperandPack &OP) {
     PartialGathers.push_back({DefinedBits, Gather});
   }
 
-  Value *Acc;
+  Value *Acc = nullptr;
   if (!PartialGathers.empty()) {
     // 2) Merge the partial gathers
     BitVector DefinedBits = PartialGathers.front().DefinedBits;
@@ -296,6 +297,7 @@ Value *VectorCodeGen::gatherOperandPack(const OperandPack &OP) {
     }
   }
 
+  assert(Acc);
   return Acc;
 }
 
@@ -1177,8 +1179,11 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       }
     }
 
-    // setInsertAtEndOfBlock(Builder, cast<Instruction>(VecInst->getParent());
-    GuardVectorLiveOut(VP, VecInst);
+    if (CoIterating && !VP->isStore()) {
+      // setInsertAtEndOfBlock(Builder, cast<Instruction>(VecInst->getParent());
+      GuardVectorLiveOut(VP, VecInst);
+    }
+
     // Map the pack to its materialized value
     MaterializedPacks[VP] = VecInst;
   }

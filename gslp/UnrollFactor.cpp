@@ -347,8 +347,6 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
       if (!OrigLoops.count(L) && !DupToOrigLoopMap.count(L))
         continue;
 
-      errs() << "!!! loop unroll range " << R.Lo << ", " << R.Hi << '\n';
-
       unsigned MinUF = R.size();
       if (R.Lo / MinUF != R.Hi / MinUF)
         MinUF *= 2;
@@ -429,12 +427,12 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
     computeUnrollFactorImpl(Insts, LVI, TTI, BFI, F, LI, UFs);
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
            << ')' << " " << UFs.lookup(L) << '\n';
-    if (UFs[L] > 1) {
-      for (auto &KV : UFs)
-        if (KV.first != L)
-          KV.second = 0;
-      break;
-    }
+    //if (UFs[L] > 1) {
+    //  for (auto &KV : UFs)
+    //    if (KV.first != L)
+    //      KV.second = 0;
+    //  break;
+    //}
   }
   errs() << "========= final unroll plan ========\n";
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
