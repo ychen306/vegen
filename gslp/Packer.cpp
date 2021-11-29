@@ -123,6 +123,31 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
   }
   errs() << "finished looking for equivalent loads\n";
   VPCtx.registerEquivalentValues(std::move(EquivalentValues));
+
+#if 0
+  // Canonicalize phi argument order by control condition
+  for (auto &BB : F) {
+    // Skip header phi
+    if (LI->isLoopHeader(&BB))
+      continue;
+    for (auto &PN : BB.phis()) {
+      auto Zipped = zip(PN.blocks(), PN.incoming_values());
+      SmallVector<std::pair<BasicBlock *, Value *>> BlockAndVals(Zipped.begin(),
+                                                                 Zipped.end());
+      stable_sort(BlockAndVals, [this](auto Pair1, auto Pair2) {
+        auto *BB1 = Pair1.first;
+        auto *BB2 = Pair2.first;
+        return compareConditions(getBlockCondition(BB1), getBlockCondition(BB2));
+      });
+      errs() << "Before: " << PN << '\n';
+      for (unsigned i = 0; i < BlockAndVals.size(); i++) {
+        PN.setIncomingBlock(i, BlockAndVals[i].first);
+        PN.setIncomingValue(i, BlockAndVals[i].second);
+      }
+      errs( )<< "After: " << PN << '\n';
+    }
+  }
+#endif
 }
 
 AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
@@ -337,6 +362,7 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
     VisitedInsts.push_back(I);
   }
+
 
   OPI.Elements = Elements;
 

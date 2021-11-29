@@ -400,7 +400,7 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     break;
   case Reduction:
     // FIXME: actually compute the cost
-    Cost = 4;
+    Cost = 1;
     break;
   case GEP:
     Cost = 0;
@@ -519,6 +519,11 @@ bool isConstantPack(const OperandPack &OP) {
 
 void VectorPack::getPackedInstructions(
     SmallPtrSetImpl<Instruction *> &Insts) const {
+  if (Kind == Reduction) {
+    Insts.insert(Rdx->Ops.begin(), Rdx->Ops.end());
+    return;
+  }
+
   if (Kind != General) {
     for (auto *V : elementValues())
       Insts.insert(cast<Instruction>(V));

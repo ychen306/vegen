@@ -144,4 +144,7 @@ static inline bool isImplied(const ControlCondition *C1, const ControlCondition 
   return C1 == C2 || getGreatestCommonCondition({C1, C2}) == C1;
 }
 
+// Give a lexicographic order to control conditions
+bool compareConditions(const ControlCondition *, const ControlCondition *);
+
 #endif // CONTROL_DEPENDENCE_H

@@ -291,3 +291,56 @@ raw_ostream &operator<<(raw_ostream &OS, const ControlCondition &C) {
   OS << "(" << &C << ")";
   return OS;
 }
+
+static int compareConditionsImpl(const ControlCondition *C1, const ControlCondition *C2);
+
+static int compareAnd(const ConditionAnd *A1, const ConditionAnd *A2) {
+  if (A1 == A2)
+    return 0;
+  if (A1->IsTrue != A2->IsTrue)
+    return A1->IsTrue ? -1 : 1;
+  int ParentCmp = compareConditionsImpl(A1->Parent, A2->Parent);
+  if (ParentCmp != 0)
+    return ParentCmp;
+  return A1->Cond < A2->Cond ? -1 : 1;
+}
+
+static int compareOr(const ConditionOr *O1, const ConditionOr *O2) {
+  if (O1 == O2)
+    return 0;
+
+  if (O1->Conds.size() != O2->Conds.size())
+    return O1->Conds.size() < O2->Conds.size() ? -1 : 1;
+
+  for (auto Pair : zip(O1->Conds, O2->Conds)) {
+    int Cmp = compareConditionsImpl(std::get<0>(Pair), std::get<1>(Pair));
+    if (Cmp != 0)
+      return Cmp;
+  }
+  return 0;
+}
+
+static int compareConditionsImpl(const ControlCondition *C1, const ControlCondition *C2) {
+  if (C1 == C2)
+    return 0;
+
+  if (!C1)
+    return -1;
+
+  if (!C2)
+    return 1;
+
+  auto *A1 = dyn_cast<ConditionAnd>(C1);
+  auto *A2 = dyn_cast<ConditionAnd>(C2);
+  auto *O1 = dyn_cast<ConditionOr>(C1);
+  auto *O2 = dyn_cast<ConditionOr>(C2);
+  if (A1 && A2)
+    return compareAnd(A1, A2) > 0;
+  if (O1 && O2)
+    return compareOr(O1, O2) > 0;
+  return (bool)A1;
+}
+
+bool compareConditions(const ControlCondition *C1, const ControlCondition *C2) {
+  return compareConditionsImpl(C1, C2) <= 0;
+}
