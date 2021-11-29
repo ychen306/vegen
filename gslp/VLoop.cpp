@@ -78,7 +78,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   // Figure out the eta nodes
   for (PHINode &PN : Header->phis()) {
     assert(PN.getNumIncomingValues() == 2);
-    Etas.try_emplace(&PN, PN.getIncomingValueForBlock(Preheader),
+    Mus.try_emplace(&PN, PN.getIncomingValueForBlock(Preheader),
                      PN.getIncomingValueForBlock(Latch));
   }
 
@@ -96,9 +96,9 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   setSubtract(Depended, Insts);
 }
 
-llvm::Optional<EtaNode> VLoop::getEta(PHINode *PN) const {
-  auto It = Etas.find(PN);
-  if (It != Etas.end())
+llvm::Optional<MuNode> VLoop::getMu(PHINode *PN) const {
+  auto It = Mus.find(PN);
+  if (It != Mus.end())
     return It->second;
   return None;
 }
@@ -211,8 +211,8 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   VL1->Insts |= VL2->Insts;
   VL1->Depended |= VL2->Depended;
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
-  for (auto KV : VL2->Etas)
-    VL1->Etas.insert(KV);
+  for (auto KV : VL2->Mus)
+    VL1->Mus.insert(KV);
   for (auto &SubVL : VL2->SubLoops)
     VL1->SubLoops.emplace_back(SubVL.release());
 

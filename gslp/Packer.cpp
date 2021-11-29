@@ -397,9 +397,9 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
       }
       PHIs.push_back(PN);
     }
-    bool AllEtas = all_of(PHIs, [&](auto *PN) {
+    bool AllMus = all_of(PHIs, [&](auto *PN) {
       auto *VL = getVLoopFor(PN);
-      return VL && VL->getEta(PN);
+      return VL && VL->getMu(PN);
     });
 
     bool Convergent = true;
@@ -412,7 +412,7 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
         Convergent = false;
     }
 
-    if (Convergent || AllEtas) {
+    if (Convergent || AllMus) {
       OPI.Producers.push_back(
           VPCtx.createPhiPack(PHIs, Elements, Depended, TTI));
     } else {

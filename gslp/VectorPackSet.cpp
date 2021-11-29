@@ -577,7 +577,7 @@ static void moveToEnd(Instruction *I, BasicBlock *BB) {
   assert(I->getParent() == BB);
 }
 
-static PHINode *emitEta(Value *Init, Value *Iter, BasicBlock *Preheader,
+static PHINode *emitMu(Value *Init, Value *Iter, BasicBlock *Preheader,
                         BasicBlock *Header, BasicBlock *Latch) {
   auto *PN = PHINode::Create(Init->getType(), 2, "eta");
   PN->addIncoming(Init, Preheader);
@@ -716,10 +716,10 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     }
   }
   auto *MaybeLoopActiveConds = CoIterating ? &LoopActiveConds : nullptr;
-  auto GetEta = [&](PHINode *PN) -> Optional<EtaNode> {
+  auto GetMu = [&](PHINode *PN) -> Optional<MuNode> {
     for (auto *CoVL : CoIteratingLoops)
-      if (auto MaybeEta = CoVL->getEta(PN))
-        return MaybeEta;
+      if (auto MaybeMu = CoVL->getMu(PN))
+        return MaybeMu;
     return None;
   };
 
@@ -746,7 +746,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     return GetBlock(C);
   };
 
-  SmallVector<std::pair<PHINode *, OperandPack>> EtasToPatch;
+  SmallVector<std::pair<PHINode *, OperandPack>> MusToPatch;
   auto &VLI = Pkr.getVLoopInfo();
 
   // Schedule the instructions and loops according to data dependence
@@ -1015,11 +1015,11 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       if (RdxPhis.count(PN))
         continue;
 
-      if (auto EtaOrNone = GetEta(PN)) {
-        auto &Eta = *EtaOrNone;
+      if (auto MuOrNone = GetMu(PN)) {
+        auto &Mu = *MuOrNone;
         assert(Header && Exit);
         auto *NewPN =
-            emitEta(useScalar(Eta.Init), Eta.Iter, Preheader, Header, Latch);
+            emitMu(useScalar(Mu.Init), Mu.Iter, Preheader, Header, Latch);
         // FIXME: this is broken: when we are co-iterating, only do this for uses in side the loops
         PN->replaceAllUsesWith(NewPN);
         GuardScalarLiveOut(NewPN, VLForInst);
@@ -1093,22 +1093,22 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       VecInst = Sel;
     } else if (VP->isPHI()) {
       // Special case when we are packing loop phis
-      if (GetEta(cast<PHINode>(VP->getOrderedValues().front()))) {
+      if (GetMu(cast<PHINode>(VP->getOrderedValues().front()))) {
         OperandPack InitOP, IterOP;
         for (auto *V : VP->getOrderedValues()) {
-          auto MaybeEta = GetEta(cast<PHINode>(V));
-          assert(MaybeEta);
-          InitOP.push_back(MaybeEta->Init);
-          IterOP.push_back(MaybeEta->Iter);
+          auto MaybeMu = GetMu(cast<PHINode>(V));
+          assert(MaybeMu);
+          InitOP.push_back(MaybeMu->Init);
+          IterOP.push_back(MaybeMu->Iter);
         }
         assert(Preheader && Preheader->getTerminator());
         Builder.SetInsertPoint(Preheader->getTerminator());
         auto *InitVec = gatherOperandPack(InitOP);
         assert(Latch);
-        auto *Eta = emitEta(InitVec, UndefValue::get(getVectorType(*VP)),
+        auto *Mu = emitMu(InitVec, UndefValue::get(getVectorType(*VP)),
                             Preheader, Header, Latch);
-        EtasToPatch.emplace_back(Eta, IterOP);
-        VecInst = Eta;
+        MusToPatch.emplace_back(Mu, IterOP);
+        VecInst = Mu;
       } else {
         auto *PN = cast<PHINode>(*VP->elementValues().begin());
         auto *VecTy = getVectorType(*VP);
@@ -1312,10 +1312,10 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   Builder.SetInsertPoint(Latch);
 
   // Patch the eta nodes
-  for (auto &Pair : EtasToPatch) {
-    PHINode *Eta = Pair.first;
+  for (auto &Pair : MusToPatch) {
+    PHINode *Mu = Pair.first;
     OperandPack &IterOP = Pair.second;
-    Eta->setIncomingValue(1, gatherOperandPack(IterOP));
+    Mu->setIncomingValue(1, gatherOperandPack(IterOP));
   }
 
   Value *ShouldContinue = nullptr;

@@ -48,10 +48,10 @@ public:
 };
 
 // This represents the eta nodes in Gated SSA
-struct EtaNode {
+struct MuNode {
   llvm::Value *Init;
   llvm::Value *Iter;
-  EtaNode(llvm::Value *Init, llvm::Value *Iter) : Init(Init), Iter(Iter) {}
+  MuNode(llvm::Value *Init, llvm::Value *Iter) : Init(Init), Iter(Iter) {}
 };
 
 class VLoop {
@@ -66,7 +66,7 @@ class VLoop {
   llvm::SmallVector<llvm::Instruction *> TopLevelInsts;
   llvm::SmallVector<std::unique_ptr<VLoop>, 4> SubLoops;
   // Mapping phi nodes to their equivalent etas
-  llvm::SmallDenseMap<llvm::PHINode *, EtaNode, 8> Etas;
+  llvm::SmallDenseMap<llvm::PHINode *, MuNode, 8> Mus;
   llvm::SmallPtrSet<llvm::Instruction *, 4> LiveOuts;
 
   // Should we execute this loop at all
@@ -94,7 +94,7 @@ public:
   const ControlCondition *getLoopCond() const { return LoopCond; }
   const ControlCondition *getBackEdgeCond() const { return BackEdgeCond; }
   bool isLoop() const { return L; }
-  llvm::Optional<EtaNode> getEta(llvm::PHINode *) const;
+  llvm::Optional<MuNode> getMu(llvm::PHINode *) const;
 
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
   static bool isSafeToFuse(VLoop *, VLoop *, llvm::ScalarEvolution &SE);
