@@ -3,10 +3,10 @@
 
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/DenseSet.h"
 
 namespace llvm {
 class Loop;
@@ -15,6 +15,8 @@ class Value;
 class LoopInfo;
 class ScalarEvolution;
 class PHINode;
+class AllocaInst;
+class LLVMContext;
 } // namespace llvm
 
 class VectorPackContext;
@@ -31,6 +33,8 @@ class VLoopInfo {
 
 public:
   void coiterate(VLoop *, VLoop *);
+  // jam loops that we are coiterating together
+  void doCoiteration(llvm::LLVMContext &, ControlDependenceAnalysis &);
   VLoop *getVLoop(llvm::Loop *) const;
   void setVLoop(llvm::Loop *, VLoop *);
   void fuse(VLoop *, VLoop *);
@@ -45,13 +49,25 @@ public:
   auto getCoIteratingLeader(VLoop *VL) {
     return CoIteratingLoops.getLeaderValue(VL);
   }
+
+  bool isCoIterating(VLoop *VL) const;
 };
 
-// This represents the eta nodes in Gated SSA
+// This represents the mu nodes in Gated SSA
 struct MuNode {
   llvm::Value *Init;
   llvm::Value *Iter;
   MuNode(llvm::Value *Init, llvm::Value *Iter) : Init(Init), Iter(Iter) {}
+};
+
+// This represents a special kind of gated phi
+struct OneHotPhi {
+  const ControlCondition *C;
+  llvm::Value *IfTrue;
+  llvm::Value *IfFalse;
+  OneHotPhi(const ControlCondition *C, llvm::Value *IfTrue,
+            llvm::Value *IfFalse)
+      : C(C), IfTrue(IfTrue), IfFalse(IfFalse) {}
 };
 
 class VLoop {
@@ -67,7 +83,12 @@ class VLoop {
   llvm::SmallVector<std::unique_ptr<VLoop>, 4> SubLoops;
   // Mapping phi nodes to their equivalent etas
   llvm::SmallDenseMap<llvm::PHINode *, MuNode, 8> Mus;
+  llvm::SmallDenseMap<llvm::PHINode *, OneHotPhi, 8> OneHotPhis;
   llvm::SmallPtrSet<llvm::Instruction *, 4> LiveOuts;
+
+  llvm::SmallVector<llvm::AllocaInst *> Allocas;
+
+  llvm::DenseMap<llvm::Instruction *, const ControlCondition *> InstConds;
 
   // Should we execute this loop at all
   const ControlCondition *LoopCond;
@@ -77,12 +98,24 @@ class VLoop {
   VLoop *Parent;
   llvm::Loop *L; // the original loop
 
+  llvm::DenseMap<llvm::Instruction *, llvm::Instruction *> GuardedLiveOuts;
+
   VLoop(llvm::LoopInfo &, llvm::Loop *, VectorPackContext *,
         GlobalDependenceAnalysis &, ControlDependenceAnalysis &, VLoopInfo &);
 
 public:
   VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis &,
         ControlDependenceAnalysis &, VLoopInfo &);
+
+  void addInstruction(llvm::Instruction *I, const ControlCondition *C) {
+    TopLevelInsts.push_back(I);
+    InstConds.insert({I, C});
+  }
+
+  // Create a one-hot gated phi that's true only if the control-condition is
+  // true
+  llvm::Instruction *createOneHotPhi(const ControlCondition *,
+                                     llvm::Value *IfTrue, llvm::Value *IfFalse);
 
   llvm::ArrayRef<llvm::Instruction *> getInstructions() const {
     return TopLevelInsts;
@@ -95,6 +128,7 @@ public:
   const ControlCondition *getBackEdgeCond() const { return BackEdgeCond; }
   bool isLoop() const { return L; }
   llvm::Optional<MuNode> getMu(llvm::PHINode *) const;
+  llvm::Optional<OneHotPhi> getOneHotPhi(llvm::PHINode *) const;
 
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
   static bool isSafeToFuse(VLoop *, VLoop *, llvm::ScalarEvolution &SE);

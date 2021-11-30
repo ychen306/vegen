@@ -25,8 +25,11 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
 
   for (auto &BB : *VPCtx->getFunction())
     if (!LI.getLoopFor(&BB)) {
-      for (auto &I : BB)
+      auto *C = CDA.getConditionForBlock(&BB);
+      for (auto &I : BB) {
         TopLevelInsts.push_back(&I);
+        InstConds[&I] = C;
+      }
     }
 }
 
@@ -37,7 +40,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
       Insts(VPCtx->getNumValues()), L(L), Parent(nullptr) {
   VLI.setVLoop(L, this);
-  //assert(L->isRotatedForm());
+  // assert(L->isRotatedForm());
 
   auto *Preheader = L->getLoopPreheader();
   auto *Header = L->getHeader();
@@ -60,9 +63,8 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   auto *LatchCond = CDA.getConditionForBlock(Latch);
   // Back edge taken === reaches latch && back edge taken
   if (LoopBr->isConditional())
-    BackEdgeCond =
-      CDA.getAnd(LatchCond, LoopBr->getCondition(),
-          LoopBr->getSuccessor(0) == L->getHeader());
+    BackEdgeCond = CDA.getAnd(LatchCond, LoopBr->getCondition(),
+                              LoopBr->getSuccessor(0) == L->getHeader());
   else
     BackEdgeCond = LatchCond;
 
@@ -79,16 +81,18 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   for (PHINode &PN : Header->phis()) {
     assert(PN.getNumIncomingValues() == 2);
     Mus.try_emplace(&PN, PN.getIncomingValueForBlock(Preheader),
-                     PN.getIncomingValueForBlock(Latch));
+                    PN.getIncomingValueForBlock(Latch));
   }
 
   // Process the top-level instructions
   for (auto *BB : L->blocks()) {
     if (LI.getLoopFor(BB) != L)
       continue;
+    auto *C = CDA.getConditionForBlock(BB);
     for (auto &I : *BB) {
       Depended |= DA.getDepended(&I);
       TopLevelInsts.push_back(&I);
+      InstConds[&I] = C;
       Insts.set(VPCtx->getScalarId(&I));
     }
   }
@@ -179,7 +183,6 @@ bool VLoop::isSafeToFuse(VLoop *VL1, VLoop *VL2, ScalarEvolution &SE) {
   return isSafeToFuse(VL1->Parent, VL2->Parent, SE);
 }
 
-
 // FIXME : move this to VLoopInfo and check all loops that we are already
 // coiterating with VL1 or VL2
 bool VLoop::isSafeToCoIterate(const VLoop *VL1, const VLoop *VL2) {
@@ -211,12 +214,16 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   VL1->Insts |= VL2->Insts;
   VL1->Depended |= VL2->Depended;
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
+  for (auto KV : VL2->InstConds)
+    VL1->InstConds.insert(KV);
   for (auto KV : VL2->Mus)
     VL1->Mus.insert(KV);
   for (auto &SubVL : VL2->SubLoops)
     VL1->SubLoops.emplace_back(SubVL.release());
+  VL1->Allocas.append(VL2->Allocas);
 
   DeletedLoops.insert(VL2);
+  VL2->Parent = Parent;
 
   assert(Parent);
   auto It = llvm::find_if(Parent->SubLoops, [VL2](std::unique_ptr<VLoop> &VL) {
@@ -231,9 +238,86 @@ void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
   CoIteratingLoops.unionSets(VL1, VL2);
 }
 
-VLoop *VLoopInfo::getVLoop(Loop *L) const { 
-  return LoopToVLoopMap.lookup(L);
+bool VLoopInfo::isCoIterating(VLoop *VL) const {
+  auto It = CoIteratingLoops.findValue(VL);
+  return std::next(CoIteratingLoops.member_begin(It)) !=
+         CoIteratingLoops.member_end();
 }
+
+void VLoopInfo::doCoiteration(LLVMContext &Ctx,
+                              ControlDependenceAnalysis &CDA) {
+  DenseSet<VLoop *> Visited;
+  std::function<void(VLoop *)> Visit = [&](VLoop *VL) {
+    if (!Visited.insert(VL).second)
+      return;
+
+    // Coiterate the parents if necessary
+    if (isCoIterating(VL->Parent))
+      Visit(VL->Parent);
+
+    auto *ParentVL = VL->Parent;
+
+    auto Members = getCoIteratingLoops(VL);
+    // 1) Transform the loops to
+    //    * add active guard
+    //    * guard the live-outs
+    auto *Int1Ty = Type::getInt1Ty(Ctx);
+    auto *True = ConstantInt::getTrue(Ctx);
+    auto *False = ConstantInt::getFalse(Ctx);
+    SmallVector<const ControlCondition *, 8> LoopConds, BackEdgeConds;
+    for (auto *CoVL : Members) {
+      auto *ActivePhi = PHINode::Create(Int1Ty, 2);
+      auto *Active = CDA.getAnd(nullptr, ActivePhi, true);
+      auto *ShouldContinue = CDA.concat(Active, CoVL->BackEdgeCond);
+
+      // Guard all loops and instructions nested inside CoVL
+      for (auto &KV : CoVL->InstConds)
+        KV.second = CDA.concat(Active, KV.second);
+      for (std::unique_ptr<VLoop> &SubVL : CoVL->SubLoops)
+        SubVL->LoopCond = CDA.concat(Active, SubVL->LoopCond);
+
+      // Guard the live-outs
+      SmallVector<Instruction *> InstsToGuard;
+      for (auto *I : CoVL->TopLevelInsts)
+        if (!I->getType()->isVoidTy())
+          InstsToGuard.push_back(I);
+      for (auto *I : InstsToGuard) {
+        auto *Ty = I->getType();
+        auto *Phi = PHINode::Create(Ty, 2);
+        auto *Guarded =
+            CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Phi);
+        CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
+        CoVL->GuardedLiveOuts[I] = Guarded;
+      }
+
+      ParentVL->addInstruction(ActivePhi, nullptr);
+      CoVL->Mus.try_emplace(
+          ActivePhi,
+          ParentVL->createOneHotPhi(CoVL->LoopCond, True, False) /*init*/,
+          ParentVL->createOneHotPhi(ShouldContinue, True, False) /*recur*/);
+
+      LoopConds.push_back(CoVL->LoopCond);
+      BackEdgeConds.push_back(ShouldContinue);
+    }
+
+    // 2) Fuse them
+    VLoop *Leader = *Members.begin();
+    for (VLoop *CoVL : drop_begin(Members))
+      fuse(Leader, CoVL);
+
+    Leader->LoopCond = getGreatestCommonCondition(LoopConds);
+    Leader->BackEdgeCond = CDA.getOr(BackEdgeConds);
+  };
+}
+
+Instruction *VLoop::createOneHotPhi(const ControlCondition *C, Value *IfTrue, Value *IfFalse) {
+  auto *PN = PHINode::Create(IfTrue->getType(), 2);
+  OneHotPhis.try_emplace(PN, C, IfTrue, IfFalse);
+  addInstruction(PN, nullptr);
+  return PN;
+}
+
+VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }
 
 void VLoopInfo::setVLoop(Loop *L, VLoop *VL) {
   LoopToVLoopMap[L] = VL;
