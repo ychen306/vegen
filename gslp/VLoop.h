@@ -119,6 +119,10 @@ public:
   llvm::ArrayRef<llvm::Instruction *> getInstructions() const {
     return TopLevelInsts;
   }
+  const ControlCondition *getInstCond(llvm::Instruction *I) const {
+    assert(InstConds.count(I));
+    return InstConds.lookup(I);
+  }
   llvm::ArrayRef<std::unique_ptr<VLoop>> getSubLoops() const {
     return SubLoops;
   }
