@@ -218,9 +218,8 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
     VL1->InstConds.insert(KV);
   for (auto KV : VL2->Mus)
     VL1->Mus.insert(KV);
-  for (auto &SubVL : VL2->SubLoops) {
+  for (auto &SubVL : VL2->SubLoops)
     VL1->SubLoops.emplace_back(SubVL.release())->Parent = VL1;
-  }
   VL1->Allocas.append(VL2->Allocas);
 
   DeletedLoops.insert(VL2);
