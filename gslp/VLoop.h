@@ -28,13 +28,16 @@ class VLoop;
 class VLoopInfo {
   llvm::DenseMap<llvm::Loop *, VLoop *> LoopToVLoopMap;
   llvm::DenseSet<VLoop *> DeletedLoops;
+  // Mapping instruction -> (<the loop it's in>, <its guarded value>)
+  llvm::DenseMap<llvm::Instruction *, std::pair<VLoop *, llvm::Instruction *>> GuardedLiveOuts;
   // Loops that we can't fuse because of non-identical trip count
   llvm::EquivalenceClasses<VLoop *> CoIteratingLoops;
 
 public:
   void coiterate(VLoop *, VLoop *);
   // jam loops that we are coiterating together
-  void doCoiteration(llvm::LLVMContext &, ControlDependenceAnalysis &);
+  void doCoiteration(llvm::LLVMContext &, const VectorPackContext &,
+                     GlobalDependenceAnalysis &, ControlDependenceAnalysis &);
   VLoop *getVLoop(llvm::Loop *) const;
   void setVLoop(llvm::Loop *, VLoop *);
   void fuse(VLoop *, VLoop *);
@@ -71,6 +74,7 @@ struct OneHotPhi {
 };
 
 class VLoop {
+  VectorPackContext *VPCtx;
   friend class VLoopInfo;
   bool IsTopLevel; // True if this VLoop doesn't represent any actual loop but
                    // the whole function
@@ -98,8 +102,6 @@ class VLoop {
   VLoop *Parent;
   llvm::Loop *L; // the original loop
 
-  llvm::DenseMap<llvm::Instruction *, llvm::Instruction *> GuardedLiveOuts;
-
   VLoop(llvm::LoopInfo &, llvm::Loop *, VectorPackContext *,
         GlobalDependenceAnalysis &, ControlDependenceAnalysis &, VLoopInfo &);
 
@@ -107,10 +109,7 @@ public:
   VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis &,
         ControlDependenceAnalysis &, VLoopInfo &);
 
-  void addInstruction(llvm::Instruction *I, const ControlCondition *C) {
-    TopLevelInsts.push_back(I);
-    InstConds.insert({I, C});
-  }
+  void addInstruction(llvm::Instruction *I, const ControlCondition *C);
 
   // Create a one-hot gated phi that's true only if the control-condition is
   // true

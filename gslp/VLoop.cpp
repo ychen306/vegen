@@ -16,7 +16,7 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
 VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              VLoopInfo &VLI)
-    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr) {
+    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr), VPCtx(VPCtx) {
   for (auto *L : LI.getTopLevelLoops()) {
     auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, VLI);
     SubVL->Parent = this;
@@ -38,7 +38,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
              VLoopInfo &VLI)
     : IsTopLevel(false), Depended(VPCtx->getNumValues()),
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
-      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr) {
+      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx) {
   VLI.setVLoop(L, this);
   // assert(L->isRotatedForm());
 
@@ -218,8 +218,9 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
     VL1->InstConds.insert(KV);
   for (auto KV : VL2->Mus)
     VL1->Mus.insert(KV);
-  for (auto &SubVL : VL2->SubLoops)
-    VL1->SubLoops.emplace_back(SubVL.release());
+  for (auto &SubVL : VL2->SubLoops) {
+    VL1->SubLoops.emplace_back(SubVL.release())->Parent = VL1;
+  }
   VL1->Allocas.append(VL2->Allocas);
 
   DeletedLoops.insert(VL2);
@@ -235,21 +236,30 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
 }
 
 void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
+  if (VL1->Parent) {
+    assert(VL2->Parent);
+    coiterate(VL1->Parent, VL2->Parent);
+  }
   CoIteratingLoops.unionSets(VL1, VL2);
 }
 
 bool VLoopInfo::isCoIterating(VLoop *VL) const {
+  if (!VL->isLoop())
+    return false;
   auto It = CoIteratingLoops.findValue(VL);
   return std::next(CoIteratingLoops.member_begin(It)) !=
          CoIteratingLoops.member_end();
 }
 
-void VLoopInfo::doCoiteration(LLVMContext &Ctx,
+void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
+                              GlobalDependenceAnalysis &DA,
                               ControlDependenceAnalysis &CDA) {
   DenseSet<VLoop *> Visited;
   std::function<void(VLoop *)> Visit = [&](VLoop *VL) {
     if (!Visited.insert(VL).second)
       return;
+
+    errs() << "!!1 visiting " << VL << '\n';
 
     // Coiterate the parents if necessary
     if (isCoIterating(VL->Parent))
@@ -264,6 +274,7 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx,
     auto *Int1Ty = Type::getInt1Ty(Ctx);
     auto *True = ConstantInt::getTrue(Ctx);
     auto *False = ConstantInt::getFalse(Ctx);
+    VLoop *Leader = *Members.begin();
     SmallVector<const ControlCondition *, 8> LoopConds, BackEdgeConds;
     for (auto *CoVL : Members) {
       auto *ActivePhi = PHINode::Create(Int1Ty, 2);
@@ -286,11 +297,16 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx,
         auto *Phi = PHINode::Create(Ty, 2);
         auto *Guarded =
             CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Phi);
+        DA.addDependences(Guarded, {I});
         CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
-        CoVL->GuardedLiveOuts[I] = Guarded;
+        // Record that that I is a live-out of the co-iterating loop `Leader`
+        // and if you are using I, you should instead use `Guarded` outside of
+        // Leader We will rewrire the out-of-loop uses in another pass (when we
+        // lower back to llvm)
+        GuardedLiveOuts.try_emplace(I, Leader, Guarded);
       }
 
-      ParentVL->addInstruction(ActivePhi, nullptr);
+      CoVL->addInstruction(ActivePhi, nullptr);
       CoVL->Mus.try_emplace(
           ActivePhi,
           ParentVL->createOneHotPhi(CoVL->LoopCond, True, False) /*init*/,
@@ -301,20 +317,34 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx,
     }
 
     // 2) Fuse them
-    VLoop *Leader = *Members.begin();
-    for (VLoop *CoVL : drop_begin(Members))
+    for (VLoop *CoVL : drop_begin(Members)) {
+      assert(CoVL->Parent == Leader->Parent);
       fuse(Leader, CoVL);
+    }
 
     Leader->LoopCond = getGreatestCommonCondition(LoopConds);
     Leader->BackEdgeCond = CDA.getOr(BackEdgeConds);
   };
+
+  for (auto It = CoIteratingLoops.begin(), E = CoIteratingLoops.end(); It != E; It++) {
+    auto *VL = *CoIteratingLoops.findLeader(It);
+    if (isCoIterating(VL))
+      Visit(VL);
+  }
 }
 
-Instruction *VLoop::createOneHotPhi(const ControlCondition *C, Value *IfTrue, Value *IfFalse) {
+Instruction *VLoop::createOneHotPhi(const ControlCondition *C, Value *IfTrue,
+                                    Value *IfFalse) {
   auto *PN = PHINode::Create(IfTrue->getType(), 2);
   OneHotPhis.try_emplace(PN, C, IfTrue, IfFalse);
   addInstruction(PN, nullptr);
   return PN;
+}
+
+void VLoop::addInstruction(Instruction *I, const ControlCondition *C) {
+  TopLevelInsts.push_back(I);
+  InstConds.insert({I, C});
+  VPCtx->addInstruction(I);
 }
 
 VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }

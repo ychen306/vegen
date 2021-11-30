@@ -1443,6 +1443,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
         Pkr.fuseOrCoIterateLoops(VL, VL2);
     }
   }
+  Pkr.getVLoopInfo().doCoiteration(Builder.getContext(), *Pkr.getContext(), Pkr.getDA(), Pkr.getCDA());
+  abort();
 
   VectorCodeGen CodeGen(Pkr, Builder, ValueToPackMap);
   CodeGen.run();
