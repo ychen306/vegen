@@ -237,7 +237,7 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
 // FIXME: change this to use LazyDependenceAnalysis
 GlobalDependenceAnalysis::GlobalDependenceAnalysis(
     AliasAnalysis &AA, ScalarEvolution &SE, DominatorTree &DT, LoopInfo &LI,
-    LazyValueInfo &LVI, Function *F, VectorPackContext *VPCtx, bool NoAlias) {
+    LazyValueInfo &LVI, Function *F, VectorPackContext *VPCtx, bool NoAlias) : VPCtx(VPCtx) {
 
   SmallVector<Instruction *> MemRefs;
 
@@ -301,15 +301,18 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
 #endif
 
   // Now compute transitive closure in topological order
-  for (auto *BB : RPO) {
-    for (auto &I : *BB) {
-      BitVector Depended = BitVector(VPCtx->getNumValues());
-      for (auto *Src : Dependences[&I]) {
-        assert(TransitiveClosure.count(Src));
-        Depended.set(VPCtx->getScalarId(Src));
-        Depended |= TransitiveClosure[Src];
-      }
-      TransitiveClosure[&I] = Depended;
-    }
+  for (auto *BB : RPO)
+    for (auto &I : *BB)
+      addDependences(&I, Dependences[&I]);
+}
+
+void GlobalDependenceAnalysis::addDependences(Instruction *I, ArrayRef<Instruction *> Deps) {
+  assert(VPCtx->isKnownValue(I));
+  BitVector Depended(VPCtx->getNumValues());
+  for (auto *Dep: Deps) {
+    assert(TransitiveClosure.count(Dep));
+    Depended.set(VPCtx->getScalarId(Dep));
+    Depended |= TransitiveClosure[Dep];
   }
+  TransitiveClosure[I] = Depended;
 }

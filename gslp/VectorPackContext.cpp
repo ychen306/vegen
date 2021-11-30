@@ -31,11 +31,16 @@ VectorPackContext::~VectorPackContext() = default;
 
 VectorPackContext::VectorPackContext(Function *F)
     : F(F), PackCache(std::make_unique<VectorPackCache>()) {
-  unsigned i = 0;
-  for (Instruction &I : instructions(F)) {
-    ScalarToIdMap[&I] = i++;
-    Scalars.push_back(&I);
-  }
+  for (Instruction &I : instructions(F))
+    addInstruction(&I);
+  // FIXME: return a tigher bound
+  NumValues = Scalars.size() * 3;
+}
+
+void VectorPackContext::addInstruction(Instruction *I) {
+  unsigned id = ScalarToIdMap.size();
+  ScalarToIdMap[I] = id;
+  Scalars.push_back(I);
 }
 
 VectorPack *VectorPackContext::createVectorPack(

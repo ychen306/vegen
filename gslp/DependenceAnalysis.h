@@ -19,6 +19,7 @@ class VectorPackContext;
 
 // Utility class to track dependency within a function
 class GlobalDependenceAnalysis {
+  VectorPackContext *VPCtx;
   // Mapping an instruction -> instructions that it transitively depends on
   llvm::DenseMap<llvm::Instruction *, llvm::BitVector> TransitiveClosure;
 
@@ -33,6 +34,8 @@ public:
     assert(It != TransitiveClosure.end());
     return It->second;
   }
+
+  void addDependences(llvm::Instruction *, llvm::ArrayRef<llvm::Instruction *> Deps);
 };
 
 #endif // DEPENDENCE_ANALYSIS_H

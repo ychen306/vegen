@@ -67,6 +67,8 @@ class VectorPackContext {
                          std::unique_ptr<ConditionPack>>
       ConditionPackCache;
 
+  unsigned NumValues;
+
 public:
   VectorPackContext(llvm::Function *F);
   ~VectorPackContext();
@@ -147,7 +149,10 @@ public:
     return It->second;
   }
 
-  unsigned getNumValues() const { return Scalars.size(); }
+  void addInstruction(llvm::Instruction *);
+
+  unsigned getNumValues() const { return NumValues; }
+
   llvm::Function *getFunction() const { return F; }
 
   // Fixme : templatize this to decouple use of bitvector
