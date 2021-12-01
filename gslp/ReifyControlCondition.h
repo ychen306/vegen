@@ -5,7 +5,8 @@
 
 namespace llvm {
 class Instruction;
-}
+class LLVMContext;
+} // namespace llvm
 
 class VLoop;
 class GlobalDependenceAnalysis;
@@ -15,7 +16,8 @@ class ControlCondition;
 // insert instruction into VL to actually compute
 // a boolean value that's equivalent to the control condition.
 llvm::Instruction *reifyControlCondition(
-    const ControlCondition *, VLoop *, GlobalDependenceAnalysis &,
+    llvm::LLVMContext &, const ControlCondition *, VLoop *,
+    GlobalDependenceAnalysis &,
     const llvm::DenseMap<const ControlCondition *, llvm::Instruction *>
         &CondToInstMap);
 
