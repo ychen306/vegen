@@ -2,6 +2,7 @@
 #include "BlockBuilder.h"
 #include "ControlDependence.h"
 #include "Packer.h"
+#include "ControlReifier.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -1433,6 +1434,13 @@ void VectorCodeGen::run() {
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   if (AllPacks.empty() && !RescheduleScalars)
     return;
+
+  ControlReifier Reifier(Builder.getContext(), Pkr.getDA());
+  auto &LI = Pkr.getLoopInfo();
+  auto &VLI = Pkr.getVLoopInfo();
+  Reifier.reifyConditionsInLoop(&Pkr.getTopVLoop());
+  for (auto *L : LI.getLoopsInPreorder())
+    Reifier.reifyConditionsInLoop(VLI.getVLoop(L));
 
   // Fuse the loops for packs involving multiple loops
   for (auto *VP : AllPacks) {

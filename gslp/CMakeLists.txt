@@ -10,7 +10,7 @@ set(LIB_PACKING_SRC
   BlockBuilder.cpp
   VLoop.cpp
 
-  ReifyControlCondition.cpp
+  ControlReifier.cpp
 
   LoopAwareRPO.cpp
   RenameAllocas.cpp

@@ -36,6 +36,7 @@ public:
   }
 
   void addDependences(llvm::Instruction *, llvm::ArrayRef<llvm::Instruction *> Deps);
+  void addInstruction(llvm::Instruction *);
 };
 
 #endif // DEPENDENCE_ANALYSIS_H

@@ -316,3 +316,11 @@ void GlobalDependenceAnalysis::addDependences(Instruction *I, ArrayRef<Instructi
   }
   TransitiveClosure[I] = Depended;
 }
+
+void GlobalDependenceAnalysis::addInstruction(Instruction *I) {
+  SmallVector<Instruction *, 2> Deps;
+  for (Value *O : I->operands())
+    if (auto *OI = dyn_cast<Instruction>(O))
+      Deps.push_back(OI);
+  addDependences(I, Deps);
+}

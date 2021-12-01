@@ -205,6 +205,15 @@ bool VLoop::haveIdenticalTripCounts(VLoop *VL2, llvm::ScalarEvolution &SE) {
   return ::haveIdenticalTripCounts(L, VL2->L, SE);
 }
 
+namespace {
+
+template<typename MapTy>
+void mergeMap(MapTy &Dst, const MapTy &Src) {
+  Dst.insert(Src.begin(), Src.end());
+}
+
+}
+
 void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   assert(VL1 != VL2 && "can't fuse the same loop with itself");
   auto *Parent = VL1->Parent;
@@ -214,10 +223,9 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   VL1->Insts |= VL2->Insts;
   VL1->Depended |= VL2->Depended;
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
-  for (auto KV : VL2->InstConds)
-    VL1->InstConds.insert(KV);
-  for (auto KV : VL2->Mus)
-    VL1->Mus.insert(KV);
+  mergeMap(VL1->InstConds, VL2->InstConds);
+  mergeMap(VL1->Mus, VL2->Mus);
+  mergeMap(VL1->OneHotPhis, VL2->OneHotPhis);
   for (auto &SubVL : VL2->SubLoops)
     VL1->SubLoops.emplace_back(SubVL.release())->Parent = VL1;
   VL1->Allocas.append(VL2->Allocas);
@@ -335,6 +343,9 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
 Instruction *VLoop::createOneHotPhi(const ControlCondition *C, Value *IfTrue,
                                     Value *IfFalse) {
   auto *PN = PHINode::Create(IfTrue->getType(), 2);
+  PN->setNumHungOffUseOperands(2);
+  PN->setIncomingValue(0, IfTrue);
+  PN->setIncomingValue(1, IfFalse);
   OneHotPhis.try_emplace(PN, C, IfTrue, IfFalse);
   addInstruction(PN, nullptr);
   return PN;
