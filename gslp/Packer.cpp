@@ -388,15 +388,40 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   if (AllPHIs) {
     SmallVector<PHINode *> PHIs;
     unsigned NumIncomings = cast<PHINode>(OP->front())->getNumIncomingValues();
+    SmallVector<OneHotPhi> OneHots;
+    bool AllOneHots = true;
     for (auto *V : *OP) {
-      // Don't bother pack phis with different number of incomings
+      // Don't bother with packing phis with different number of incomings
       auto *PN = cast<PHINode>(V);
       if (PN->getNumIncomingValues() != NumIncomings) {
         OPI.Feasible = false;
         return OPI;
       }
+
+      // Special case for packing one-hot phis
+      auto *VL = getVLoopFor(PN);
+      if (auto MaybeOneHot = VL->getOneHotPhi(PN)) {
+        OneHots.push_back(*MaybeOneHot);
+      } else {
+        AllOneHots = false;
+      }
+
       PHIs.push_back(PN);
     }
+
+    if (!OneHots.empty()) {
+      if (AllOneHots) {
+        // Piggy back on the phi pack...
+        // FIXME: do this properly
+        OPI.Producers.push_back(
+            VPCtx.createPhiPack(PHIs, Elements, Depended, TTI));
+      } else {
+        // Give up if there's a mix of one-hot phis and regular phis
+        OPI.Feasible = false;
+      }
+      return OPI;
+    }
+
     bool AllMus = all_of(PHIs, [&](auto *PN) {
       auto *VL = getVLoopFor(PN);
       return VL && VL->getMu(PN);
@@ -530,8 +555,7 @@ bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
 }
 
 VLoop *Packer::getVLoopFor(Instruction *I) {
-  auto *L = LI->getLoopFor(I->getParent());
-  return VLI.getVLoop(L);
+  return VLI.getLoopForInst(I);
 }
 
 void Packer::fuseOrCoIterateLoops(VLoop *VL1, VLoop *VL2) {

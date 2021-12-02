@@ -24,7 +24,7 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              VLoopInfo &VLI)
     : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr),
-      VPCtx(VPCtx) {
+      VPCtx(VPCtx), VLI(VLI) {
   for (auto *L : LI.getTopLevelLoops()) {
     auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, VLI);
     SubVL->Parent = this;
@@ -39,6 +39,7 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
         InstConds[&I] = C;
         if (auto *PN = dyn_cast<PHINode>(&I))
           getIncomingPhiConditions(GatedPhis[PN], PN, CDA);
+        VLI.mapInstToLoop(&I, this);
       }
     }
 }
@@ -48,7 +49,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
              VLoopInfo &VLI)
     : IsTopLevel(false), Depended(VPCtx->getNumValues()),
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
-      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx) {
+      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx), VLI(VLI) {
   VLI.setVLoop(L, this);
   // assert(L->isRotatedForm());
 
@@ -104,6 +105,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
       TopLevelInsts.push_back(&I);
       InstConds[&I] = C;
       Insts.set(VPCtx->getScalarId(&I));
+      VLI.mapInstToLoop(&I, this);
       auto *PN = dyn_cast<PHINode>(&I);
       if (PN && !getMu(PN))
         getIncomingPhiConditions(GatedPhis[PN], PN, CDA);
@@ -241,6 +243,8 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   setVLoop(VL2->L, VL1);
   VL1->Insts |= VL2->Insts;
   VL1->Depended |= VL2->Depended;
+  for (auto *I : VL2->TopLevelInsts)
+    mapInstToLoop(I, VL1);
   VL1->TopLevelInsts.append(VL2->TopLevelInsts);
   mergeMap(VL1->InstConds, VL2->InstConds);
   mergeMap(VL1->Mus, VL2->Mus);
@@ -376,6 +380,7 @@ void VLoop::addInstruction(Instruction *I, const ControlCondition *C) {
   TopLevelInsts.push_back(I);
   InstConds.insert({I, C});
   VPCtx->addInstruction(I);
+  VLI.mapInstToLoop(I, this);
 }
 
 VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }

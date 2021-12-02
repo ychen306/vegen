@@ -153,7 +153,7 @@ enumerate(Packer *Pkr, DenseSet<BasicBlock *> *BlocksToIgnore) {
 bool Print = false;
 
 // Run the bottom-up heuristic starting from `OP`
-void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
+void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H, bool OverrideExisting) {
   // Plan Best = P;
   SmallVector<const OperandPack *> Worklist;
   Worklist.push_back(OP);
@@ -175,6 +175,9 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H) {
       for (auto *V : VP->elementValues())
         if (auto *VP2 = P.getProducer(dyn_cast<Instruction>(V)))
           OldPacks.insert(VP2);
+
+    if (!OverrideExisting && !OldPacks.empty())
+      continue;
 
     for (auto *VP2 : OldPacks)
       P.remove(VP2);

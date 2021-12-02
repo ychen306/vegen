@@ -27,6 +27,6 @@ float optimizeBottomUp(
     llvm::DenseSet<llvm::BasicBlock *> *BlocksToIgnore = nullptr);
 float optimizeBottomUp(VectorPackSet &, Packer *, llvm::ArrayRef<const OperandPack *> SeedOperands={});
 
-void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H);
+void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H, bool OverrideExisting=true);
 
 #endif

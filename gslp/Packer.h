@@ -152,6 +152,7 @@ public:
   }
   const ControlCondition *getEdgeCondition(llvm::BasicBlock *Src,
                                            llvm::BasicBlock *Dst) const {
+    assert(EdgeConditions.count({Src, Dst}));
     return EdgeConditions.lookup({Src, Dst});
   }
   // Get the condition pack guarding a list of instructions

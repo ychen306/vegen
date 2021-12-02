@@ -27,6 +27,7 @@ class ControlCondition;
 class VLoop;
 class VLoopInfo {
   llvm::DenseMap<llvm::Loop *, VLoop *> LoopToVLoopMap;
+  llvm::DenseMap<llvm::Instruction *, VLoop *> InstToVLoopMap;
   llvm::DenseSet<VLoop *> DeletedLoops;
   // Mapping instruction -> (<the loop it's in>, <its guarded value>)
   llvm::DenseMap<llvm::Instruction *, std::pair<VLoop *, llvm::Instruction *>> GuardedLiveOuts;
@@ -34,6 +35,9 @@ class VLoopInfo {
   llvm::EquivalenceClasses<VLoop *> CoIteratingLoops;
 
 public:
+  void mapInstToLoop(llvm::Instruction *I, VLoop *VL) {
+    InstToVLoopMap[I] = VL;
+  }
   void coiterate(VLoop *, VLoop *);
   // jam loops that we are coiterating together
   void doCoiteration(llvm::LLVMContext &, const VectorPackContext &,
@@ -41,6 +45,11 @@ public:
   VLoop *getVLoop(llvm::Loop *) const;
   void setVLoop(llvm::Loop *, VLoop *);
   void fuse(VLoop *, VLoop *);
+
+  VLoop *getLoopForInst(llvm::Instruction *I) const {
+    assert(InstToVLoopMap.count(I));
+    return InstToVLoopMap.lookup(I);
+  }
 
   auto getCoIteratingLoops(VLoop *VL) {
     auto It = CoIteratingLoops.findValue(VL);
@@ -75,6 +84,7 @@ struct OneHotPhi {
 
 class VLoop {
   VectorPackContext *VPCtx;
+  VLoopInfo &VLI;
   friend class VLoopInfo;
   bool IsTopLevel; // True if this VLoop doesn't represent any actual loop but
                    // the whole function

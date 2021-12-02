@@ -2,7 +2,10 @@
 #include "BlockBuilder.h"
 #include "ControlDependence.h"
 #include "ControlReifier.h"
+#include "Heuristic.h"
 #include "Packer.h"
+#include "Plan.h"
+#include "Solver.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
@@ -63,7 +66,7 @@ class VectorCodeGen {
 
   Value *gatherOperandPack(const OperandPack &OP);
   Value *getOrEmitMask(ArrayRef<const ControlCondition *>, VLoop *);
-  Value *getLoadStoreMasks(ArrayRef<Value *>, VLoop *);
+  Value *getLoadStoreMask(ArrayRef<Value *>, VLoop *);
 
   // Lower a vloop and return the loop-header and exit.
   std::pair<BasicBlock *, BasicBlock *>
@@ -110,13 +113,18 @@ static const VLoop *getVLoop(Packer &Pkr, BasicBlock *BB) {
   return VL;
 }
 
-Value *VectorCodeGen::getLoadStoreMasks(ArrayRef<Value *> Vals, VLoop *VL) {
-  SmallVector<const ControlCondition *> Conds;
+static void getLoadStoreConds(SmallVectorImpl<const ControlCondition *> &Conds,
+                              ArrayRef<Value *> Vals, VLoop *VL) {
   auto *SomeInst =
       cast<Instruction>(*find_if(Vals, [](Value *V) { return V; }));
   auto *C = VL->getInstCond(SomeInst);
   for (auto *V : Vals)
     Conds.push_back(V ? VL->getInstCond(cast<Instruction>(V)) : C);
+}
+
+Value *VectorCodeGen::getLoadStoreMask(ArrayRef<Value *> Vals, VLoop *VL) {
+  SmallVector<const ControlCondition *> Conds;
+  getLoadStoreConds(Conds, Vals, VL);
   // If the vectorized accesses have the same conditions, we don't need a mask
   if (is_splat(Conds))
     return nullptr;
@@ -307,9 +315,8 @@ bool VectorPackSet::tryAdd(const VectorPack *VP) {
 // Topsort the instructions s.t. instructions in the same packs are grouped
 // together.
 static std::vector<PointerUnion<Instruction *, VLoop *>>
-schedule(VLoop &VL, 
-    ControlReifier &Reifier,
-    const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
+schedule(VLoop &VL, ControlReifier &Reifier,
+         const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
          Packer &Pkr) {
   auto &DA = Pkr.getDA();
   auto &VLI = Pkr.getVLoopInfo();
@@ -786,7 +793,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       VecInst = Sel;
     } else if (VP->isPHI()) {
       // Special case when we are packing loop phis
-      if (VL.getMu(cast<PHINode>(VP->getOrderedValues().front()))) {
+      auto *SomePhi = cast<PHINode>(VP->getOrderedValues().front());
+      if (VL.getMu(SomePhi)) {
         OperandPack InitOP, IterOP;
         for (auto *V : VP->getOrderedValues()) {
           auto MaybeMu = VL.getMu(cast<PHINode>(V));
@@ -802,6 +810,22 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
                           Preheader, Header, Latch);
         MusToPatch.emplace_back(Mu, IterOP);
         VecInst = Mu;
+      } else if (VL.getOneHotPhi(SomePhi)) {
+        SmallVector<const ControlCondition *, 8> Conds;
+        OperandPack IfTrue, IfFalse;
+        for (auto *V : VP->getOrderedValues()) {
+          auto *PN = cast<PHINode>(V);
+          OneHotPhis.push_back(PN);
+          auto OneHot = VL.getOneHotPhi(PN);
+          assert(OneHot);
+          Conds.push_back(OneHot->C);
+          IfTrue.push_back(OneHot->IfTrue);
+          IfFalse.push_back(OneHot->IfFalse);
+        }
+        Builder.SetInsertPoint(GetBlock(getGreatestCommonCondition(Conds)));
+        VecInst = Builder.CreateSelect(getOrEmitMask(Conds, &VL),
+                                       gatherOperandPack(IfTrue),
+                                       gatherOperandPack(IfFalse));
       } else {
         auto *PN = cast<PHINode>(*VP->elementValues().begin());
         auto *VecTy = getVectorType(*VP);
@@ -839,9 +863,11 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       // Now we can emit the vector instruction
       ArrayRef<Value *> Vals = VP->getOrderedValues();
       if (VP->isLoad())
-        VecInst = VP->emitVectorLoad(Operands, getLoadStoreMasks(Vals, &VL), Builder);
+        VecInst =
+            VP->emitVectorLoad(Operands, getLoadStoreMask(Vals, &VL), Builder);
       else if (VP->isStore()) {
-        VecInst = VP->emitVectorStore(Operands, getLoadStoreMasks(Vals, &VL), Builder);
+        VecInst =
+            VP->emitVectorStore(Operands, getLoadStoreMask(Vals, &VL), Builder);
       } else
         VecInst = VP->emit(Operands, Builder);
     }
@@ -1001,6 +1027,43 @@ void VectorCodeGen::run() {
   } while (Changed);
 }
 
+static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
+                         ArrayRef<const VectorPack *> Packs,
+                         ControlReifier &Reifier, Packer &Pkr) {
+  auto *VPCtx = Pkr.getContext();
+  for (auto *VP : Packs) {
+    if (VP->isLoad() || VP->isStore()) {
+      auto Vals = VP->getOrderedValues();
+      auto *I = cast<Instruction>(Vals.front());
+      auto *VL = Pkr.getVLoopFor(I);
+      SmallVector<const ControlCondition *, 8> Conds;
+      getLoadStoreConds(Conds, Vals, VL);
+      // Don't need masking if the pack has uniform conditions
+      if (is_splat(Conds))
+        continue;
+      OperandPack OP;
+      for (auto *C : Conds)
+        OP.push_back(Reifier.getValue(C, VL));
+      Masks.push_back(VPCtx->getCanonicalOperandPack(OP));
+    } else if (VP->isGamma()) {
+      auto Vals = VP->getOrderedValues();
+      auto *I = cast<Instruction>(Vals.front());
+      auto *VL = Pkr.getVLoopFor(I);
+      ArrayRef<const GammaNode *> Gammas = VP->getGammas();
+      unsigned NumIncomings = Gammas.front()->PN->getNumIncomingValues();
+      assert(all_of(Gammas, [&](auto *G2) {
+        return G2->PN->getNumIncomingValues() == NumIncomings;
+      }));
+      for (unsigned i = 0; i < NumIncomings; i++) {
+        OperandPack OP;
+        for (auto *G : Gammas)
+          OP.push_back(Reifier.getValue(G->Conds[i], VL));
+        Masks.push_back(VPCtx->getCanonicalOperandPack(OP));
+      }
+    }
+  }
+}
+
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   if (AllPacks.empty() && !RescheduleScalars)
     return;
@@ -1025,6 +1088,21 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   Pkr.getVLoopInfo().doCoiteration(Builder.getContext(), *Pkr.getContext(),
                                    Pkr.getDA(), Pkr.getCDA());
 
+  // Figure out the masks we need for predicated execution
+  SmallVector<const OperandPack *> Masks;
+  collectMasks(Masks, AllPacks, Reifier, Pkr);
+
+  // Do secondary packing
+  Heuristic H(&Pkr, nullptr);
+  Plan P(&Pkr);
+  for (auto *VP : AllPacks)
+    P.add(VP);
+  for (auto *OP : Masks)
+    runBottomUpFromOperand(OP, P, H, false /*don't override existing packs*/);
+  for (auto *VP : P)
+    tryAdd(VP);
+
+  // Lower everything
   VectorCodeGen CodeGen(Pkr, Builder, Reifier, ValueToPackMap);
   CodeGen.run();
 }
