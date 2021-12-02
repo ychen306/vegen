@@ -11,6 +11,8 @@ class BasicBlock;
 
 class VectorPack;
 class OperandPack;
+class Heuristic;
+class Plan;
 
 struct CandidatePackSet {
   std::vector<const VectorPack *> Packs;
@@ -24,5 +26,7 @@ float optimizeBottomUp(
     llvm::ArrayRef<const OperandPack *> SeedOperands={},
     llvm::DenseSet<llvm::BasicBlock *> *BlocksToIgnore = nullptr);
 float optimizeBottomUp(VectorPackSet &, Packer *, llvm::ArrayRef<const OperandPack *> SeedOperands={});
+
+void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H);
 
 #endif

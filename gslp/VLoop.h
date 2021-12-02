@@ -87,7 +87,8 @@ class VLoop {
   llvm::SmallVector<std::unique_ptr<VLoop>, 4> SubLoops;
   // Mapping phi nodes to their equivalent etas
   llvm::SmallDenseMap<llvm::PHINode *, MuNode, 8> Mus;
-  llvm::SmallDenseMap<llvm::PHINode *, OneHotPhi, 8> OneHotPhis;
+  llvm::DenseMap<llvm::PHINode *, OneHotPhi> OneHotPhis;
+  llvm::DenseMap<llvm::PHINode *, llvm::SmallVector<const ControlCondition *, 4>> GatedPhis;
   llvm::SmallPtrSet<llvm::Instruction *, 4> LiveOuts;
 
   llvm::SmallVector<llvm::AllocaInst *> Allocas;
@@ -132,6 +133,12 @@ public:
   bool isLoop() const { return L; }
   llvm::Optional<MuNode> getMu(llvm::PHINode *) const;
   llvm::Optional<OneHotPhi> getOneHotPhi(llvm::PHINode *) const;
+
+  // Get the incoming condition if the ith phi value
+  const ControlCondition *getIncomingPhiCondition(llvm::PHINode *PN, unsigned i) {
+    assert(GatedPhis.count(PN));
+    return GatedPhis[PN][i];
+  }
 
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
   static bool isSafeToFuse(VLoop *, VLoop *, llvm::ScalarEvolution &SE);

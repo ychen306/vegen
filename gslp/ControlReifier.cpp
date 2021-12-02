@@ -54,6 +54,8 @@ void ControlReifier::reifyConditionsInLoop(VLoop *VL) {
 }
 
 Value *ControlReifier::getValue(const ControlCondition *C, VLoop *VL) {
+  if (!C)
+    return ConstantInt::getTrue(Ctx);
   assert(ReifiedValues.count({C, VL}));
   return ReifiedValues.lookup({C, VL});
 }

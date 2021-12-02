@@ -13,10 +13,18 @@ static void setSubtract(BitVector &Src, BitVector ToRemove) {
   Src &= ToRemove;
 }
 
+static void
+getIncomingPhiConditions(SmallVectorImpl<const ControlCondition *> &Conds,
+                         PHINode *PN, ControlDependenceAnalysis &CDA) {
+  for (auto *SrcBB : PN->blocks())
+    Conds.push_back(CDA.getConditionForEdge(SrcBB, PN->getParent()));
+}
+
 VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              VLoopInfo &VLI)
-    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr), VPCtx(VPCtx) {
+    : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr),
+      VPCtx(VPCtx) {
   for (auto *L : LI.getTopLevelLoops()) {
     auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, VLI);
     SubVL->Parent = this;
@@ -29,6 +37,8 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
       for (auto &I : BB) {
         TopLevelInsts.push_back(&I);
         InstConds[&I] = C;
+        if (auto *PN = dyn_cast<PHINode>(&I))
+          getIncomingPhiConditions(GatedPhis[PN], PN, CDA);
       }
     }
 }
@@ -77,7 +87,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
     Insts |= SubVL->Insts;
   }
 
-  // Figure out the eta nodes
+  // Figure out the mu nodes
   for (PHINode &PN : Header->phis()) {
     assert(PN.getNumIncomingValues() == 2);
     Mus.try_emplace(&PN, PN.getIncomingValueForBlock(Preheader),
@@ -94,6 +104,9 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
       TopLevelInsts.push_back(&I);
       InstConds[&I] = C;
       Insts.set(VPCtx->getScalarId(&I));
+      auto *PN = dyn_cast<PHINode>(&I);
+      if (PN && !getMu(PN))
+        getIncomingPhiConditions(GatedPhis[PN], PN, CDA);
     }
   }
 
@@ -103,6 +116,13 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
 llvm::Optional<MuNode> VLoop::getMu(PHINode *PN) const {
   auto It = Mus.find(PN);
   if (It != Mus.end())
+    return It->second;
+  return None;
+}
+
+llvm::Optional<OneHotPhi> VLoop::getOneHotPhi(PHINode *PN) const {
+  auto It = OneHotPhis.find(PN);
+  if (It != OneHotPhis.end())
     return It->second;
   return None;
 }
@@ -207,12 +227,11 @@ bool VLoop::haveIdenticalTripCounts(VLoop *VL2, llvm::ScalarEvolution &SE) {
 
 namespace {
 
-template<typename MapTy>
-void mergeMap(MapTy &Dst, const MapTy &Src) {
+template <typename MapTy> void mergeMap(MapTy &Dst, const MapTy &Src) {
   Dst.insert(Src.begin(), Src.end());
 }
 
-}
+} // namespace
 
 void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   assert(VL1 != VL2 && "can't fuse the same loop with itself");
@@ -226,6 +245,7 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   mergeMap(VL1->InstConds, VL2->InstConds);
   mergeMap(VL1->Mus, VL2->Mus);
   mergeMap(VL1->OneHotPhis, VL2->OneHotPhis);
+  mergeMap(VL1->GatedPhis, VL2->GatedPhis);
   for (auto &SubVL : VL2->SubLoops)
     VL1->SubLoops.emplace_back(SubVL.release())->Parent = VL1;
   VL1->Allocas.append(VL2->Allocas);
@@ -333,7 +353,8 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
     Leader->BackEdgeCond = CDA.getOr(BackEdgeConds);
   };
 
-  for (auto It = CoIteratingLoops.begin(), E = CoIteratingLoops.end(); It != E; It++) {
+  for (auto It = CoIteratingLoops.begin(), E = CoIteratingLoops.end(); It != E;
+       It++) {
     auto *VL = *CoIteratingLoops.findLeader(It);
     if (isCoIterating(VL))
       Visit(VL);
