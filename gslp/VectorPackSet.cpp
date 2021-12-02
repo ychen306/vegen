@@ -53,7 +53,6 @@ class VectorCodeGen {
 
   DenseMap<const llvm::Value *, VectorPackIndex> ValueIndex;
   PackToValueTy MaterializedPacks;
-  DenseMap<const ConditionPack *, Value *> MaterializedCondPacks;
   // Instead of moving PHIs around,
   // we will demote them and implement control-flow join through memory
   DenseMap<PHINode *, Value *> ReplacedPHIs;
@@ -101,16 +100,6 @@ static void setInsertAtEndOfBlock(IRBuilderBase &Builder, BasicBlock *BB) {
     Builder.SetInsertPoint(Terminator);
   else
     Builder.SetInsertPoint(BB);
-}
-
-static const VLoop *getVLoop(Packer &Pkr, BasicBlock *BB) {
-  auto &LI = Pkr.getLoopInfo();
-  auto *L = LI.getLoopFor(BB);
-  assert(L);
-  auto &VLI = Pkr.getVLoopInfo();
-  auto *VL = VLI.getVLoop(L);
-  assert(VL);
-  return VL;
 }
 
 static void getLoadStoreConds(SmallVectorImpl<const ControlCondition *> &Conds,
@@ -326,9 +315,6 @@ schedule(VLoop &VL, ControlReifier &Reifier,
   const VectorPackContext *VPCtx = Pkr.getContext();
   using SchedulerItem = PointerUnion<Instruction *, const VectorPack *,
                                      const ControlCondition *, VLoop *>;
-  DenseSet<void *> Reordered;
-  std::vector<PointerUnion<Instruction *, VLoop *>> ScheduledItems;
-
   // mapping a nested loop to the *sub loop of VL* that contains it
   DenseMap<VLoop *, VLoop *> SubLoopMap;
   for (auto &SubVL : VL.getSubLoops()) {
@@ -346,6 +332,8 @@ schedule(VLoop &VL, ControlReifier &Reifier,
   for (auto *I : VL.getInstructions())
     TopLevelInsts.insert(I);
 
+  DenseSet<void *> Reordered;
+  std::vector<PointerUnion<Instruction *, VLoop *>> ScheduledItems;
   std::function<void(SchedulerItem)> Schedule = [&](SchedulerItem Item) {
     bool Inserted = Reordered.insert(Item.getOpaqueValue()).second;
     if (!Inserted)
@@ -370,16 +358,6 @@ schedule(VLoop &VL, ControlReifier &Reifier,
       auto *C = Item.dyn_cast<const ControlCondition *>();
       if (auto *I = dyn_cast<Instruction>(Reifier.getValue(C, &VL)))
         Schedule(I);
-#if 0
-      if (auto *And = dyn_cast_or_null<ConditionAnd>(C)) {
-        Schedule(And->Parent);
-        if (auto *CondInst = dyn_cast<Instruction>(And->Cond))
-          Schedule(CondInst);
-      } else if (auto *Or = dyn_cast_or_null<ConditionOr>(C)) {
-        for (auto *C2 : Or->Conds)
-          Schedule(C2);
-      }
-#endif
       return;
     }
 
