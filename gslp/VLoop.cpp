@@ -49,25 +49,14 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
              VLoopInfo &VLI)
     : IsTopLevel(false), Depended(VPCtx->getNumValues()),
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
-      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx), VLI(VLI) {
+      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx),
+      VLI(VLI) {
   VLI.setVLoop(L, this);
   // assert(L->isRotatedForm());
 
   auto *Preheader = L->getLoopPreheader();
   auto *Header = L->getHeader();
   auto *Latch = L->getLoopLatch();
-
-  SmallVector<BasicBlock *> Exits;
-  L->getUniqueExitBlocks(Exits);
-  // Assume LCSSA so the live-outs are guarded by PHIs
-  for (auto *Exit : Exits) {
-    for (auto &PN : Exit->phis()) {
-      for (Value *V : PN.incoming_values()) {
-        if (auto *I = dyn_cast<Instruction>(V))
-          LiveOuts.insert(I);
-      }
-    }
-  }
 
   // Figure out the condition for taking the backedge (vs exiting the loop)
   auto *LoopBr = cast<BranchInst>(Latch->getTerminator());
@@ -313,10 +302,14 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
       auto *ShouldContinue = CDA.concat(Active, CoVL->BackEdgeCond);
 
       // Guard all loops and instructions nested inside CoVL
-      for (auto &KV : CoVL->InstConds)
-        KV.second = CDA.concat(Active, KV.second);
-      for (std::unique_ptr<VLoop> &SubVL : CoVL->SubLoops)
-        SubVL->LoopCond = CDA.concat(Active, SubVL->LoopCond);
+      for (auto &KV : CoVL->InstConds) {
+        auto *Concat = CDA.concat(Active, KV.second);
+        KV.second = Concat;
+      }
+      for (std::unique_ptr<VLoop> &SubVL : CoVL->SubLoops) {
+        auto *Concat = CDA.concat(Active, SubVL->LoopCond);
+        SubVL->LoopCond = Concat;
+      }
 
       // Guard the live-outs
       SmallVector<Instruction *> InstsToGuard;
@@ -388,4 +381,11 @@ VLoop *VLoopInfo::getVLoop(Loop *L) const { return LoopToVLoopMap.lookup(L); }
 void VLoopInfo::setVLoop(Loop *L, VLoop *VL) {
   LoopToVLoopMap[L] = VL;
   CoIteratingLoops.insert(VL);
+}
+
+VLoop *VLoop::isLiveOutOfSubLoop(Instruction *I) const {
+  for (auto &SubLoop : SubLoops)
+    if (VLI.getLoopForInst(I) == SubLoop.get())
+      return SubLoop.get();
+  return nullptr;
 }

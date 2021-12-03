@@ -99,7 +99,6 @@ class VLoop {
   llvm::SmallDenseMap<llvm::PHINode *, MuNode, 8> Mus;
   llvm::DenseMap<llvm::PHINode *, OneHotPhi> OneHotPhis;
   llvm::DenseMap<llvm::PHINode *, llvm::SmallVector<const ControlCondition *, 4>> GatedPhis;
-  llvm::SmallPtrSet<llvm::Instruction *, 4> LiveOuts;
 
   llvm::SmallVector<llvm::AllocaInst *> Allocas;
 
@@ -144,6 +143,9 @@ public:
   llvm::Optional<MuNode> getMu(llvm::PHINode *) const;
   llvm::Optional<OneHotPhi> getOneHotPhi(llvm::PHINode *) const;
 
+  // Check whether I is a the live-out of some sub-loop subvl, if so, return subvl
+  VLoop *isLiveOutOfSubLoop(llvm::Instruction *I) const;
+
   // Get the incoming condition if the ith phi value
   const ControlCondition *getIncomingPhiCondition(llvm::PHINode *PN, unsigned i) {
     assert(GatedPhis.count(PN));
@@ -154,7 +156,6 @@ public:
   static bool isSafeToFuse(VLoop *, VLoop *, llvm::ScalarEvolution &SE);
 
   bool haveIdenticalTripCounts(VLoop *, llvm::ScalarEvolution &);
-  bool isLiveOut(llvm::Instruction *I) { return LiveOuts.count(I); }
   VLoop *getParent() const { return Parent; }
 };
 

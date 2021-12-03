@@ -694,7 +694,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         auto *NewPN =
             emitMu(useScalar(Mu.Init), Mu.Iter, Preheader, Header, Latch);
         // FIXME: this is broken: when we are co-iterating, only do this for
-        // uses in side the loops
+        // uses inside the loops
         PN->replaceAllUsesWith(NewPN);
         ReplacedPHIs[PN] = NewPN;
         continue;
@@ -1046,14 +1046,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   if (AllPacks.empty() && !RescheduleScalars)
     return;
 
-  // Reify control conditions into boolean ir values
-  ControlReifier Reifier(Builder.getContext(), Pkr.getDA());
-  auto &LI = Pkr.getLoopInfo();
-  auto &VLI = Pkr.getVLoopInfo();
-  Reifier.reifyConditionsInLoop(&Pkr.getTopVLoop());
-  for (auto *L : LI.getLoopsInPreorder())
-    Reifier.reifyConditionsInLoop(VLI.getVLoop(L));
-
   // Fuse the loops for packs involving multiple loops
   for (auto *VP : AllPacks) {
     auto *VL = Pkr.getVLoopFor(cast<Instruction>(*VP->elementValues().begin()));
@@ -1065,6 +1057,14 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   }
   Pkr.getVLoopInfo().doCoiteration(Builder.getContext(), *Pkr.getContext(),
                                    Pkr.getDA(), Pkr.getCDA());
+
+  // Reify control conditions into boolean ir values
+  ControlReifier Reifier(Builder.getContext(), Pkr.getDA());
+  auto &LI = Pkr.getLoopInfo();
+  auto &VLI = Pkr.getVLoopInfo();
+  Reifier.reifyConditionsInLoop(&Pkr.getTopVLoop());
+  for (auto *L : LI.getLoopsInPreorder())
+    Reifier.reifyConditionsInLoop(VLI.getVLoop(L));
 
   // Figure out the masks we need for predicated execution
   SmallVector<const OperandPack *> Masks;
