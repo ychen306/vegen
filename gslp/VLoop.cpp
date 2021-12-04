@@ -239,9 +239,9 @@ void VLoopInfo::fuse(VLoop *VL1, VLoop *VL2) {
   mergeMap(VL1->Mus, VL2->Mus);
   mergeMap(VL1->OneHotPhis, VL2->OneHotPhis);
   mergeMap(VL1->GatedPhis, VL2->GatedPhis);
+  mergeMap(VL1->GuardedLiveOuts, VL2->GuardedLiveOuts);
   for (auto &SubVL : VL2->SubLoops)
     VL1->SubLoops.emplace_back(SubVL.release())->Parent = VL1;
-  VL1->Allocas.append(VL2->Allocas);
 
   DeletedLoops.insert(VL2);
   VL2->Parent = Parent;
@@ -279,8 +279,6 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
     if (!Visited.insert(VL).second)
       return;
 
-    errs() << "!!1 visiting " << VL << '\n';
-
     // Coiterate the parents if necessary
     if (isCoIterating(VL->Parent))
       Visit(VL->Parent);
@@ -297,7 +295,7 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
     VLoop *Leader = *Members.begin();
     SmallVector<const ControlCondition *, 8> LoopConds, BackEdgeConds;
     for (auto *CoVL : Members) {
-      auto *ActivePhi = PHINode::Create(Int1Ty, 2);
+      auto *ActivePhi = PHINode::Create(Int1Ty, 2, "active");
       auto *Active = CDA.getAnd(nullptr, ActivePhi, true);
       auto *ShouldContinue = CDA.concat(Active, CoVL->BackEdgeCond);
 
@@ -311,6 +309,11 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
         SubVL->LoopCond = Concat;
       }
 
+      // Also fix the gated phi conditions
+      for (auto &KV : CoVL->GatedPhis)
+        for (auto &C : KV.second)
+          C = CDA.concat(Active, C);
+
       // Guard the live-outs
       SmallVector<Instruction *> InstsToGuard;
       for (auto *I : CoVL->TopLevelInsts)
@@ -318,7 +321,10 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
           InstsToGuard.push_back(I);
       for (auto *I : InstsToGuard) {
         auto *Ty = I->getType();
-        auto *Phi = PHINode::Create(Ty, 2);
+        // FIXME: crate a wrapper to create place holder mu?
+        auto *Phi = PHINode::Create(Ty, 2, "loop.out");
+        CoVL->addInstruction(Phi, nullptr);
+        DA.addDependences(Phi, {});
         auto *Guarded =
             CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Phi);
         DA.addDependences(Guarded, {I});
@@ -327,14 +333,33 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
         // and if you are using I, you should instead use `Guarded` outside of
         // Leader We will rewrire the out-of-loop uses in another pass (when we
         // lower back to llvm)
-        GuardedLiveOuts.try_emplace(I, Leader, Guarded);
+        CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
+      }
+      // For values coming out a sub loop, we take its value only when the loop executes
+      for (auto &SubVL : CoVL->getSubLoops()) {
+        auto *SubLoopCond = SubVL->LoopCond;
+        for (auto *V : VPCtx.iter_values(SubVL->Insts)) {
+          auto *I = cast<Instruction>(V);
+          auto *Ty = I->getType();
+          auto *Phi = PHINode::Create(Ty, 2, "sub_loop.out");
+          CoVL->addInstruction(Phi, nullptr);
+          DA.addDependences(Phi, {});
+          auto *Guarded =
+            CoVL->createOneHotPhi(SubLoopCond, I, Phi);
+          DA.addDependences(Guarded, {I});
+          CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
+          CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
+        }
       }
 
       CoVL->addInstruction(ActivePhi, nullptr);
-      CoVL->Mus.try_emplace(
-          ActivePhi,
-          ParentVL->createOneHotPhi(CoVL->LoopCond, True, False) /*init*/,
-          ParentVL->createOneHotPhi(ShouldContinue, True, False) /*recur*/);
+      DA.addDependences(ActivePhi, {});
+      auto *Init = ParentVL->createOneHotPhi(CoVL->LoopCond, True, False);
+      auto *Recur = CoVL->createOneHotPhi(ShouldContinue, True, False);
+      CoVL->Depended.set(VPCtx.getScalarId(Init));
+      DA.addDependences(Init, {});
+      DA.addDependences(Recur, {});
+      CoVL->Mus.try_emplace(ActivePhi, Init, Recur);
 
       LoopConds.push_back(CoVL->LoopCond);
       BackEdgeConds.push_back(ShouldContinue);
@@ -346,7 +371,13 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
       fuse(Leader, CoVL);
     }
 
-    Leader->LoopCond = getGreatestCommonCondition(LoopConds);
+    SmallPtrSet<const ControlCondition *, 8> Seen;
+    decltype(LoopConds) UniqueLoopConds;
+    for (auto *C : LoopConds)
+      if (Seen.insert(C).second)
+        UniqueLoopConds.push_back(C);
+
+    Leader->LoopCond = CDA.getOr(UniqueLoopConds);
     Leader->BackEdgeCond = CDA.getOr(BackEdgeConds);
   };
 

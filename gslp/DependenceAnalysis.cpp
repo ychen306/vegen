@@ -310,9 +310,9 @@ void GlobalDependenceAnalysis::addDependences(Instruction *I, ArrayRef<Instructi
   assert(VPCtx->isKnownValue(I));
   BitVector Depended(VPCtx->getNumValues());
   for (auto *Dep: Deps) {
-    assert(TransitiveClosure.count(Dep));
     Depended.set(VPCtx->getScalarId(Dep));
-    Depended |= TransitiveClosure[Dep];
+    if (TransitiveClosure.count(Dep))
+      Depended |= TransitiveClosure[Dep];
   }
   TransitiveClosure[I] = Depended;
 }

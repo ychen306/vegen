@@ -168,19 +168,21 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
   auto *ScalarTy = cast<PointerType>(ScalarPtr->getType())->getElementType();
   auto *VecTy = FixedVectorType::get(ScalarTy, Loads.size());
 
-  // Cast the scalar pointer to a vector pointer
-  unsigned AS = FirstLoad->getPointerAddressSpace();
-  Value *VecPtr = Builder.CreateBitCast(ScalarPtr, VecTy->getPointerTo(AS));
 
   // Emit the load
   Instruction *VecLoad;
-  if (IsGatherScatter)
+  if (IsGatherScatter) {
     VecLoad = Builder.CreateMaskedGather(Operands.front(),
                                          getCommonAlignment(Loads), Mask);
-  else if (Mask)
-    VecLoad = Builder.CreateMaskedLoad(VecPtr, FirstLoad->getAlign(), Mask);
-  else
-    VecLoad = Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
+  } else {
+    // Cast the scalar pointer to a vector pointer
+    unsigned AS = FirstLoad->getPointerAddressSpace();
+    Value *VecPtr = Builder.CreateBitCast(ScalarPtr, VecTy->getPointerTo(AS));
+    if (Mask)
+      VecLoad = Builder.CreateMaskedLoad(VecPtr, FirstLoad->getAlign(), Mask);
+    else
+      VecLoad = Builder.CreateAlignedLoad(VecTy, VecPtr, FirstLoad->getAlign());
+  }
 
   std::vector<Value *> Values;
   for (auto *LI : Loads)

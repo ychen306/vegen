@@ -29,8 +29,6 @@ class VLoopInfo {
   llvm::DenseMap<llvm::Loop *, VLoop *> LoopToVLoopMap;
   llvm::DenseMap<llvm::Instruction *, VLoop *> InstToVLoopMap;
   llvm::DenseSet<VLoop *> DeletedLoops;
-  // Mapping instruction -> (<the loop it's in>, <its guarded value>)
-  llvm::DenseMap<llvm::Instruction *, std::pair<VLoop *, llvm::Instruction *>> GuardedLiveOuts;
   // Loops that we can't fuse because of non-identical trip count
   llvm::EquivalenceClasses<VLoop *> CoIteratingLoops;
 
@@ -99,9 +97,8 @@ class VLoop {
   llvm::SmallDenseMap<llvm::PHINode *, MuNode, 8> Mus;
   llvm::DenseMap<llvm::PHINode *, OneHotPhi> OneHotPhis;
   llvm::DenseMap<llvm::PHINode *, llvm::SmallVector<const ControlCondition *, 4>> GatedPhis;
-
-  llvm::SmallVector<llvm::AllocaInst *> Allocas;
-
+  // Mapping instruction -> <its guarded value, i.e., the value that instructions outside of this loop should use>
+  llvm::DenseMap<llvm::Instruction *, llvm::Instruction *> GuardedLiveOuts;
   llvm::DenseMap<llvm::Instruction *, const ControlCondition *> InstConds;
 
   // Should we execute this loop at all
@@ -118,6 +115,8 @@ class VLoop {
 public:
   VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis &,
         ControlDependenceAnalysis &, VLoopInfo &);
+
+  const decltype(GuardedLiveOuts) &getGuardedLiveOuts() const { return GuardedLiveOuts; }
 
   void addInstruction(llvm::Instruction *I, const ControlCondition *C);
 
@@ -143,6 +142,9 @@ public:
   llvm::Optional<MuNode> getMu(llvm::PHINode *) const;
   llvm::Optional<OneHotPhi> getOneHotPhi(llvm::PHINode *) const;
 
+  bool isGatedPhi(llvm::PHINode *PN) const {
+    return GatedPhis.count(PN);
+  }
   // Check whether I is a the live-out of some sub-loop subvl, if so, return subvl
   VLoop *isLiveOutOfSubLoop(llvm::Instruction *I) const;
 

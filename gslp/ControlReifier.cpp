@@ -17,7 +17,8 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
     return It->second;
 
   Value *Reified = nullptr;
-  if (auto *And = dyn_cast<ConditionAnd>(C)) {
+  auto *And = dyn_cast<ConditionAnd>(C);
+  if (And) {
     reify(And->Parent, VL);
 
     Value *Cond = And->Cond;
@@ -43,12 +44,22 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
   }
   assert(Reified);
 
-  return ReifiedValues[{C,VL}] = Reified;
+  ReifiedValues[{C,VL}] = Reified;
+  if (And)
+    reify(And->Complement, VL);
+
+  return Reified;
 }
 
 void ControlReifier::reifyConditionsInLoop(VLoop *VL) {
-  for (auto *I : VL->getInstructions())
+  for (auto *I : VL->getInstructions()) {
     reify(VL->getInstCond(I), VL);
+    auto *PN = dyn_cast<PHINode>(I);
+    if (!PN || !VL->isGatedPhi(PN))
+      continue;
+    for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+      reify(VL->getIncomingPhiCondition(PN, i), VL);
+  }
   for (auto &SubVL : VL->getSubLoops())
     reify(SubVL->getLoopCond(), VL);
 }

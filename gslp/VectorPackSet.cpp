@@ -57,11 +57,13 @@ class VectorCodeGen {
   // we will demote them and implement control-flow join through memory
   DenseMap<PHINode *, Value *> ReplacedPHIs;
   SmallVector<PHINode *> OneHotPhis;
+  SmallVector<PHINode *> MuNodes;
   // Track the last used block for a given condition,
   // these are the blocks where we will store the incoming values to the demoted
   // allocas.
   SmallVector<AllocaInst *> Allocas;
   DenseMap<Value *, Value *> ReplacedUses;
+  DenseMap<Value *, Value *> GuardedLiveOuts;
 
   Value *gatherOperandPack(const OperandPack &OP);
   Value *getOrEmitMask(ArrayRef<const ControlCondition *>, VLoop *);
@@ -83,6 +85,15 @@ class VectorCodeGen {
       return ValueIndex[V].Extracted;
     }
     return V;
+  }
+
+  void fixScalarUses(Instruction *I) {
+    for (unsigned i = 0; i < I->getNumOperands(); i++) {
+      auto *V = I->getOperand(i);
+      if (auto *Guarded = GuardedLiveOuts.lookup(V))
+        V = Guarded;
+      I->setOperand(i, useScalar(V));
+    }
   }
 
 public:
@@ -134,8 +145,11 @@ Value *VectorCodeGen::gatherOperandPack(const OperandPack &OP) {
 
   // Figure out sources of the values in `OP`
   const unsigned NumValues = OP.size();
+  // FIXME: use guarded loop live out whenever necessary
   for (unsigned i = 0; i < NumValues; i++) {
     auto *V = OP[i];
+    if (auto *Guarded = GuardedLiveOuts.lookup(V))
+      V = Guarded;
     // Null means don't care/undef
     if (!V)
       continue;
@@ -356,8 +370,17 @@ schedule(VLoop &VL, ControlReifier &Reifier,
     // Make sure all of the control-dependent conditions are scheduled
     if (Item.is<const ControlCondition *>()) {
       auto *C = Item.dyn_cast<const ControlCondition *>();
-      if (auto *I = dyn_cast<Instruction>(Reifier.getValue(C, &VL)))
+      if (auto *I = dyn_cast<Instruction>(Reifier.getValue(C, &VL))) {
         Schedule(I);
+      }
+#if 0
+      auto *And = dyn_cast_or_null<ConditionAnd>(C);
+      if (And) {
+        if (auto *I = dyn_cast<Instruction>(Reifier.getValue(And->Complement, &VL))) {
+          Schedule(I);
+        }
+      }
+#endif
       return;
     }
 
@@ -375,8 +398,14 @@ schedule(VLoop &VL, ControlReifier &Reifier,
       }
     } else if (VP) {
       // Make sure the control conditions are scheduled before the pack
-      for (auto *V : VP->elementValues())
+      for (auto *V : VP->elementValues()) {
         Schedule(VL.getInstCond(cast<Instruction>(V)));
+        auto *PN = dyn_cast<PHINode>(V);
+        if (PN && VL.isGatedPhi(PN)) {
+          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+            Schedule(VL.getIncomingPhiCondition(PN, i));
+        }
+      }
       for (auto *V : VP->dependedValues())
         DependedValues.push_back(V);
     } else {
@@ -404,6 +433,26 @@ schedule(VLoop &VL, ControlReifier &Reifier,
       if (auto *I = dyn_cast_or_null<Instruction>(V))
         ScheduledItems.push_back(I);
   };
+
+#if 0
+  // Schedule all of the reified control conditions first
+  // Doing this because some of them are dead could be
+  // scheduled after return and breaks the IR.
+  for (auto *I : VL.getInstructions()) {
+    Schedule(VL.getInstCond(I));
+    auto *PN = dyn_cast<PHINode>(I);
+    if (PN && VL.isGatedPhi(PN)) {
+      for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+        Schedule(VL.getIncomingPhiCondition(PN, i));
+    }
+  }
+#endif
+
+  for (auto *I : VL.getInstructions()) {
+    auto *PN = dyn_cast<PHINode>(I);
+    if (PN && VL.getMu(PN))
+      Schedule(I);
+  }
 
   for (auto *I : VL.getInstructions())
     if (isa<ReturnInst>(I) || !I->isTerminator())
@@ -463,7 +512,7 @@ static void moveToEnd(Instruction *I, BasicBlock *BB) {
 
 static PHINode *emitMu(Value *Init, Value *Iter, BasicBlock *Preheader,
                        BasicBlock *Header, BasicBlock *Latch) {
-  auto *PN = PHINode::Create(Init->getType(), 2, "eta");
+  auto *PN = PHINode::Create(Init->getType(), 2, "mu");
   PN->addIncoming(Init, Preheader);
   PN->addIncoming(Iter, Latch);
   Header->getInstList().push_front(PN);
@@ -570,6 +619,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   };
 
   SmallVector<std::pair<PHINode *, OperandPack>> MusToPatch;
+  SmallVector<std::pair<PHINode *, Value *>> ScalarMusToPatch;
   auto &VLI = Pkr.getVLoopInfo();
 
   // Schedule the instructions and loops according to data dependence
@@ -648,13 +698,15 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     auto *I = InstOrLoop.dyn_cast<Instruction *>();
     assert(I);
-
+    
     auto *Cond = VL.getInstCond(I);
     auto *VP = ValueToPackMap.lookup(I);
 
     bool Speculated = false;
     auto It = AddressesToSpeculate.find(I);
     if (It != AddressesToSpeculate.end()) {
+      errs() << "!!1 speculated: " << *I << '\n';
+      fixScalarUses(I);
       moveToEnd(It->first, GetBlock(It->second));
       Speculated = true;
     }
@@ -680,6 +732,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
       auto *PN = dyn_cast<PHINode>(I);
       if (!PN) {
+        fixScalarUses(I);
         moveToEnd(I, GetBlock(Cond));
         continue;
       }
@@ -688,15 +741,16 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       if (RdxPhis.count(PN))
         continue;
 
+      // FIXME: do something like MusToPatch but for scalars
       if (auto MuOrNone = VL.getMu(PN)) {
         auto &Mu = *MuOrNone;
         assert(Header && Exit);
         auto *NewPN =
             emitMu(useScalar(Mu.Init), Mu.Iter, Preheader, Header, Latch);
-        // FIXME: this is broken: when we are co-iterating, only do this for
-        // uses inside the loops
-        PN->replaceAllUsesWith(NewPN);
+        ScalarMusToPatch.emplace_back(NewPN, Mu.Iter);
         ReplacedPHIs[PN] = NewPN;
+        if (!PN->getParent())
+          MuNodes.push_back(PN);
         continue;
       }
 
@@ -715,15 +769,17 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
           auto *EdgeCond = VL.getIncomingPhiCondition(PN, i);
           setInsertAtEndOfBlock(Builder, GetLastBlockFor(EdgeCond));
-          Builder.CreateStore(PN->getIncomingValue(i), Alloca);
+          Builder.CreateStore(useScalar(PN->getIncomingValue(i)), Alloca);
         }
       }
       Builder.SetInsertPoint(GetBlock(Cond));
       auto *Reload = Builder.CreateLoad(PN->getType(), Alloca);
-      PN->replaceAllUsesWith(Reload);
       ReplacedPHIs[PN] = Reload;
       continue;
     }
+
+    if (I->getName() == "arrayidx6")
+      errs() << "!!1 Processing pack " << *VP << '\n';
 
     // I is packed but we've already lowered that pack
     if (MaterializedPacks.count(VP))
@@ -754,7 +810,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         SmallVector<const ControlCondition *> Conds;
         OperandPack Vals;
         for (auto *G : Gammas) {
-          Conds.push_back(G->Conds[i]);
+          Conds.push_back(VL.getIncomingPhiCondition(G->PN, i));
           Vals.push_back(G->Vals[i]);
         }
         GateConds.push_back(getOrEmitMask(Conds, &VL));
@@ -775,8 +831,11 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       if (VL.getMu(SomePhi)) {
         OperandPack InitOP, IterOP;
         for (auto *V : VP->getOrderedValues()) {
-          auto MaybeMu = VL.getMu(cast<PHINode>(V));
+          auto *PN = cast<PHINode>(V);
+          auto MaybeMu = VL.getMu(PN);
           assert(MaybeMu);
+          if (!PN->getParent())
+            MuNodes.push_back(PN);
           InitOP.push_back(MaybeMu->Init);
           IterOP.push_back(MaybeMu->Iter);
         }
@@ -858,8 +917,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         if (auto *V = Item.value()) {
           unsigned i = Item.index();
           auto *Extract = Builder.CreateExtractElement(VecInst, i);
-          // FIXME: deal with guarded loop live outs
-          V->replaceAllUsesWith(Extract);
           ValueIndex[V] = {VP, i, Extract};
         }
       }
@@ -944,18 +1001,24 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   BranchInst::Create(Latch, GetBlock(nullptr));
   Builder.SetInsertPoint(Latch);
 
-  // Patch the eta nodes
+  // Patch the vector mu nodes
   for (auto &Pair : MusToPatch) {
     PHINode *Mu = Pair.first;
     OperandPack &IterOP = Pair.second;
     Mu->setIncomingValue(1, gatherOperandPack(IterOP));
   }
+  for (auto &Pair : ScalarMusToPatch) {
+    fixScalarUses(Pair.first);
+    //errs() << (bool)VL.getOneHotPhi(Pair.second) << '\n';
+  }
 
   Value *ShouldContinue = Builder.CreateLoad(Type::getInt1Ty(Ctx), ContAlloca);
   Builder.CreateCondBr(ShouldContinue, Header, Exit);
 
-  assert(!Exit->getTerminator());
-  Builder.SetInsertPoint(Exit);
+  // Record that instructions outside of this loop should use the guarded live outs
+  for (auto KV : VL.getGuardedLiveOuts()) {
+    GuardedLiveOuts.insert(KV);
+  }
 
   return {Header, Exit};
 };
@@ -979,10 +1042,17 @@ void VectorCodeGen::run() {
   for (auto *BB : OldBlocks)
     for (auto &I : *BB)
       I.dropAllReferences();
+  for (auto *PN : OneHotPhis)
+    PN->dropAllReferences();
+  for (auto *Mu : MuNodes)
+    Mu->dropAllReferences();
+
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
   for (auto *PN : OneHotPhis)
     delete PN;
+  for (auto *Mu : MuNodes)
+    delete Mu;
 
   if (DumpAfterErasingOldBlocks)
     F->dump();
@@ -1034,8 +1104,10 @@ static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
       }));
       for (unsigned i = 0; i < NumIncomings; i++) {
         OperandPack OP;
-        for (auto *G : Gammas)
-          OP.push_back(Reifier.getValue(G->Conds[i], VL));
+        for (auto *G : Gammas) {
+          auto *C = VL->getIncomingPhiCondition(G->PN, i);
+          OP.push_back(Reifier.getValue(C, VL));
+        }
         Masks.push_back(VPCtx->getCanonicalOperandPack(OP));
       }
     }
