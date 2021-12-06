@@ -52,7 +52,8 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
 }
 
 void ControlReifier::reifyConditionsInLoop(VLoop *VL) {
-  for (auto *I : VL->getInstructions()) {
+  SmallVector<Instruction *> Insts(VL->inst_begin(), VL->inst_end());
+  for (auto *I : Insts) {
     reify(VL->getInstCond(I), VL);
     auto *PN = dyn_cast<PHINode>(I);
     if (!PN || !VL->isGatedPhi(PN))

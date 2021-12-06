@@ -128,6 +128,12 @@ public:
   llvm::ArrayRef<llvm::Instruction *> getInstructions() const {
     return TopLevelInsts;
   }
+
+  using inst_iterator = decltype(TopLevelInsts)::const_iterator;
+
+  inst_iterator inst_begin() const { return TopLevelInsts.begin(); }
+  inst_iterator inst_end() const { return TopLevelInsts.end(); }
+
   const ControlCondition *getInstCond(llvm::Instruction *I) const {
     assert(InstConds.count(I));
     return InstConds.lookup(I);

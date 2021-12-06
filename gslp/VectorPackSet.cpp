@@ -342,9 +342,7 @@ schedule(VLoop &VL, ControlReifier &Reifier,
     }
   }
 
-  DenseSet<Instruction *> TopLevelInsts;
-  for (auto *I : VL.getInstructions())
-    TopLevelInsts.insert(I);
+  DenseSet<Instruction *> TopLevelInsts(VL.inst_begin(), VL.inst_end());
 
   DenseSet<void *> Reordered;
   std::vector<PointerUnion<Instruction *, VLoop *>> ScheduledItems;
@@ -433,20 +431,6 @@ schedule(VLoop &VL, ControlReifier &Reifier,
       if (auto *I = dyn_cast_or_null<Instruction>(V))
         ScheduledItems.push_back(I);
   };
-
-#if 0
-  // Schedule all of the reified control conditions first
-  // Doing this because some of them are dead could be
-  // scheduled after return and breaks the IR.
-  for (auto *I : VL.getInstructions()) {
-    Schedule(VL.getInstCond(I));
-    auto *PN = dyn_cast<PHINode>(I);
-    if (PN && VL.isGatedPhi(PN)) {
-      for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
-        Schedule(VL.getIncomingPhiCondition(PN, i));
-    }
-  }
-#endif
 
   for (auto *I : VL.getInstructions()) {
     auto *PN = dyn_cast<PHINode>(I);
