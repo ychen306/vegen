@@ -432,17 +432,27 @@ schedule(VLoop &VL, ControlReifier &Reifier,
         ScheduledItems.push_back(I);
   };
 
+  SmallVector<PHINode *> Mus;
+  SmallVector<Instruction *> Insts;
+  Instruction *Ret = nullptr;
   for (auto *I : VL.getInstructions()) {
     auto *PN = dyn_cast<PHINode>(I);
     if (PN && VL.getMu(PN))
-      Schedule(I);
+      Mus.push_back(PN);
+    else if (!I->isTerminator())
+      Insts.push_back(I);
+    else if (isa<ReturnInst>(I))
+      Ret = I;
   }
 
-  for (auto *I : VL.getInstructions())
-    if (isa<ReturnInst>(I) || !I->isTerminator())
-      Schedule(I);
+  for (auto *PN : Mus)
+    Schedule(PN);
+  for (auto *I : Insts)
+    Schedule(I);
   for (auto &SubVL : VL.getSubLoops())
     Schedule(SubVL.get());
+  if (Ret)
+    Schedule(Ret);
 
   return ScheduledItems;
 }
@@ -761,9 +771,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       ReplacedPHIs[PN] = Reload;
       continue;
     }
-
-    if (I->getName() == "arrayidx6")
-      errs() << "!!1 Processing pack " << *VP << '\n';
 
     // I is packed but we've already lowered that pack
     if (MaterializedPacks.count(VP))
