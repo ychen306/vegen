@@ -9,15 +9,15 @@ bool MatchManager::sortByOutput(const Operation::Match &A,
   return A.Output < B.Output;
 }
 
-void MatchManager::match(llvm::Value *V) {
+void MatchManager::match(Value *V) {
   for (auto &KV : OpMatches) {
     const Operation *Op = KV.first;
     Op->match(V, KV.second);
   }
 }
 
-MatchManager::MatchManager(llvm::ArrayRef<const InstBinding *> Insts,
-                           llvm::Function &F) {
+MatchManager::MatchManager(ArrayRef<const InstBinding *> Insts,
+                           Function &F) {
   for (auto &Inst : Insts)
     for (auto &LaneOp : Inst->getLaneOps())
       OpMatches.FindAndConstruct(LaneOp.getOperation());
@@ -27,7 +27,21 @@ MatchManager::MatchManager(llvm::ArrayRef<const InstBinding *> Insts,
 
   for (auto &KV : OpMatches) {
     auto &Matches = KV.second;
+    std::sort(Matches.begin(), Matches.end(), sortByOutput);
+  }
+}
 
+MatchManager::MatchManager(ArrayRef<const InstBinding *> Insts,
+                           ArrayRef<Instruction *> ToMatch) {
+  for (auto &Inst : Insts)
+    for (auto &LaneOp : Inst->getLaneOps())
+      OpMatches.FindAndConstruct(LaneOp.getOperation());
+
+  for (auto *I : ToMatch)
+    match(I);
+
+  for (auto &KV : OpMatches) {
+    auto &Matches = KV.second;
     std::sort(Matches.begin(), Matches.end(), sortByOutput);
   }
 }
@@ -40,7 +54,7 @@ ArrayRef<Operation::Match> MatchManager::getMatches(const Operation *Op) const {
 
 ArrayRef<Operation::Match>
 MatchManager::getMatchesForOutput(const Operation *Op,
-                                  llvm::Value *Output) const {
+                                  Value *Output) const {
   auto Matches = getMatches(Op);
   Operation::Match DummyMatch{false, {}, Output};
   auto LowerIt = std::lower_bound(Matches.begin(), Matches.end(), DummyMatch,

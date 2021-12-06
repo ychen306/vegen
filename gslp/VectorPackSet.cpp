@@ -399,9 +399,14 @@ schedule(VLoop &VL, ControlReifier &Reifier,
       for (auto *V : VP->elementValues()) {
         Schedule(VL.getInstCond(cast<Instruction>(V)));
         auto *PN = dyn_cast<PHINode>(V);
-        if (PN && VL.isGatedPhi(PN)) {
+        if (!PN)
+          continue;
+        if (VL.isGatedPhi(PN)) {
           for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
             Schedule(VL.getIncomingPhiCondition(PN, i));
+        } else if (auto OneHot = VL.getOneHotPhi(PN)) {
+          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+            Schedule(OneHot->C);
         }
       }
       for (auto *V : VP->dependedValues())
@@ -754,6 +759,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       Allocas.push_back(Alloca);
       auto MaybeOneHot = VL.getOneHotPhi(PN);
       if (MaybeOneHot) {
+        //Alloca->setName("onehot");
         Builder.SetInsertPoint(GetBlock(nullptr));
         Builder.CreateStore(useScalar(MaybeOneHot->IfFalse), Alloca);
         Builder.SetInsertPoint(GetBlock(MaybeOneHot->C));
@@ -838,6 +844,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
                           Preheader, Header, Latch);
         MusToPatch.emplace_back(Mu, IterOP);
         VecInst = Mu;
+        VecInst->setName(SomePhi->getName());
       } else if (VL.getOneHotPhi(SomePhi)) {
         SmallVector<const ControlCondition *, 8> Conds;
         OperandPack IfTrue, IfFalse;
@@ -854,6 +861,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         VecInst = Builder.CreateSelect(getOrEmitMask(Conds, &VL),
                                        gatherOperandPack(IfTrue),
                                        gatherOperandPack(IfFalse));
+        VecInst->setName(SomePhi->getName());
       } else {
         auto *PN = cast<PHINode>(*VP->elementValues().begin());
         auto *VecTy = getVectorType(*VP);
@@ -1037,6 +1045,9 @@ void VectorCodeGen::run() {
     PN->dropAllReferences();
   for (auto *Mu : MuNodes)
     Mu->dropAllReferences();
+  for (auto *I : Reifier.getInsertedInsts())
+    if (!I->getParent())
+      I->dropAllReferences();
 
   for (auto *BB : OldBlocks)
     BB->eraseFromParent();
@@ -1044,6 +1055,9 @@ void VectorCodeGen::run() {
     delete PN;
   for (auto *Mu : MuNodes)
     delete Mu;
+  for (auto *I : Reifier.getInsertedInsts())
+    if (!I->getParent())
+      I->deleteValue();
 
   if (DumpAfterErasingOldBlocks)
     F->dump();
@@ -1066,41 +1080,87 @@ void VectorCodeGen::run() {
   } while (Changed);
 }
 
+namespace {
+using CondVector = SmallVector<const ControlCondition *, 8>;
+struct CondVectorInfo {
+  using VecAndLoop = const std::pair<CondVector, VLoop *>;
+  static VecAndLoop getEmptyKey() {
+    return {{}, nullptr};
+  }
+
+  static VecAndLoop getTombstoneKey() {
+    return {{}, reinterpret_cast<VLoop *>(-1)};
+  };
+
+  static unsigned getHashValue(VecAndLoop &X) {
+    return hash_combine(
+        hash_combine_range(X.first.begin(), X.first.end()),
+        DenseMapInfo<VLoop *>::getHashValue(X.second));
+  }
+
+  static bool isEqual(const VecAndLoop &A, const VecAndLoop &B) {
+    return A.second == B.second && A.first == B.first;
+  }
+};
+
+}
+
 static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
                          ArrayRef<const VectorPack *> Packs,
                          ControlReifier &Reifier, Packer &Pkr) {
+  DenseSet<std::pair<CondVector, VLoop *>, CondVectorInfo> Processed;
   auto *VPCtx = Pkr.getContext();
-  for (auto *VP : Packs) {
-    if (VP->isLoad() || VP->isStore()) {
-      auto Vals = VP->getOrderedValues();
-      auto *I = cast<Instruction>(Vals.front());
-      auto *VL = Pkr.getVLoopFor(I);
-      SmallVector<const ControlCondition *, 8> Conds;
-      getLoadStoreConds(Conds, Vals, VL);
-      // Don't need masking if the pack has uniform conditions
-      if (is_splat(Conds))
-        continue;
+
+  std::function<void (const CondVector &, VLoop *)> ProcessConds
+    = [&](CondVector Conds, VLoop *VL) {
+      if (!Processed.insert({Conds, VL}).second)
+        return;
       OperandPack OP;
       for (auto *C : Conds)
         OP.push_back(Reifier.getValue(C, VL));
       Masks.push_back(VPCtx->getCanonicalOperandPack(OP));
+
+      auto IsOneHotPhi = [&](Value *V) {
+        auto *PN = dyn_cast<PHINode>(V);
+        return PN && VL->getOneHotPhi(PN);
+      };
+
+      if (!all_of(OP, IsOneHotPhi))
+        return;
+
+      // Recursively process the masks of the one-hot phis
+      CondVector CondsRec;
+      for (auto *V : OP)
+        CondsRec.push_back(VL->getOneHotPhi(cast<PHINode>(V))->C);
+      ProcessConds(CondsRec, VL);
+    };
+  
+
+  for (auto *VP : Packs) {
+    auto Vals = VP->getOrderedValues();
+    auto *I = cast<Instruction>(Vals.front());
+    auto *VL = Pkr.getVLoopFor(I);
+    if (VP->isLoad() || VP->isStore()) {
+      CondVector Conds;
+      getLoadStoreConds(Conds, Vals, VL);
+      // Don't need masking if the pack has uniform conditions
+      if (is_splat(Conds))
+        continue;
+      ProcessConds(Conds, VL);
     } else if (VP->isGamma()) {
-      auto Vals = VP->getOrderedValues();
-      auto *I = cast<Instruction>(Vals.front());
-      auto *VL = Pkr.getVLoopFor(I);
       ArrayRef<const GammaNode *> Gammas = VP->getGammas();
       unsigned NumIncomings = Gammas.front()->PN->getNumIncomingValues();
       assert(all_of(Gammas, [&](auto *G2) {
         return G2->PN->getNumIncomingValues() == NumIncomings;
       }));
       for (unsigned i = 0; i < NumIncomings; i++) {
-        OperandPack OP;
-        for (auto *G : Gammas) {
-          auto *C = VL->getIncomingPhiCondition(G->PN, i);
-          OP.push_back(Reifier.getValue(C, VL));
-        }
-        Masks.push_back(VPCtx->getCanonicalOperandPack(OP));
+        CondVector Conds;
+        for (auto *G : Gammas)
+          Conds.push_back(VL->getIncomingPhiCondition(G->PN, i));
+        ProcessConds(Conds, VL);
       }
+    } else if (VP->isPHI() && VL->getOneHotPhi(cast<PHINode>(I))) {
+      assert(false);
     }
   }
 }
@@ -1129,16 +1189,35 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *L : LI.getLoopsInPreorder())
     Reifier.reifyConditionsInLoop(VLI.getVLoop(L));
 
+  Pkr.matchSecondaryInsts(Reifier.getInsertedInsts());
+
   // Figure out the masks we need for predicated execution
-  SmallVector<const OperandPack *> Masks;
-  collectMasks(Masks, AllPacks, Reifier, Pkr);
+  SmallVector<const OperandPack *> Seeds;
+  collectMasks(Seeds, AllPacks, Reifier, Pkr);
+  auto *VPCtx = Pkr.getContext();
+  for (auto *VP : AllPacks) {
+    auto Vals = VP->getOrderedValues();
+    auto *I = cast<Instruction>(Vals.front());
+    auto *VL = Pkr.getVLoopFor(I);
+    auto &Guarded = VL->getGuardedLiveOuts();
+    if (!Guarded.count(I))
+      continue;
+    OperandPack OP;
+    for (auto *V : Vals) {
+      auto *I = cast<Instruction>(V);
+      assert(Guarded.count(I));
+      assert(VL->getOneHotPhi(cast<PHINode>(Guarded.lookup(I))));
+      OP.push_back(Guarded.lookup(I));
+    }
+    Seeds.push_back(VPCtx->getCanonicalOperandPack(OP));
+  }
 
   // Do secondary packing
   Heuristic H(&Pkr, nullptr);
   Plan P(&Pkr);
   for (auto *VP : AllPacks)
     P.add(VP);
-  for (auto *OP : Masks)
+  for (auto *OP : Seeds)
     runBottomUpFromOperand(OP, P, H, false /*don't override existing packs*/);
   for (auto *VP : P)
     tryAdd(VP);

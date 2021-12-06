@@ -24,12 +24,13 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
     Value *Cond = And->Cond;
     if (!And->IsTrue) {
       auto *Not = BinaryOperator::CreateNot(Cond);
+      InsertedInsts.push_back(Not);
       VL->addInstruction(Not, And->Parent);
       DA.addInstruction(Not);
       Cond = Not;
     }
 
-    auto *Phi = VL->createOneHotPhi(And->Parent, Cond, ConstantInt::getFalse(Ctx));
+    auto *Phi = VL->createOneHotPhi(And->Parent, Cond, ConstantInt::getFalse(Ctx), "reified");
     DA.addInstruction(Phi);
     Reified = Phi;
   } else {
@@ -37,6 +38,7 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
     Reified = reify(Or->Conds.front(), VL);
     for (auto *C2 : drop_begin(Or->Conds)) {
       auto *Tmp = BinaryOperator::CreateOr(Reified, reify(C2, VL));
+      InsertedInsts.push_back(Tmp);
       VL->addInstruction(Tmp, nullptr);
       DA.addInstruction(Tmp);
       Reified = Tmp;
@@ -56,8 +58,15 @@ void ControlReifier::reifyConditionsInLoop(VLoop *VL) {
   for (auto *I : Insts) {
     reify(VL->getInstCond(I), VL);
     auto *PN = dyn_cast<PHINode>(I);
-    if (!PN || !VL->isGatedPhi(PN))
+    if (!PN)
       continue;
+
+    if (auto OneHot = VL->getOneHotPhi(PN))
+      reify(OneHot->C, VL);
+
+    if (!VL->isGatedPhi(PN))
+      continue;
+
     for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
       reify(VL->getIncomingPhiCondition(PN, i), VL);
   }

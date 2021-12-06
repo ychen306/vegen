@@ -7,6 +7,7 @@
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Twine.h"
 
 namespace llvm {
 class Loop;
@@ -17,6 +18,7 @@ class ScalarEvolution;
 class PHINode;
 class AllocaInst;
 class LLVMContext;
+class Twine;
 } // namespace llvm
 
 class VectorPackContext;
@@ -123,7 +125,8 @@ public:
   // Create a one-hot gated phi that's true only if the control-condition is
   // true
   llvm::Instruction *createOneHotPhi(const ControlCondition *,
-                                     llvm::Value *IfTrue, llvm::Value *IfFalse);
+                                     llvm::Value *IfTrue, llvm::Value *IfFalse,
+                                     const llvm::Twine &Name="");
 
   llvm::ArrayRef<llvm::Instruction *> getInstructions() const {
     return TopLevelInsts;

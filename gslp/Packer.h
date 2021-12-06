@@ -89,6 +89,7 @@ class Packer {
   VLoop TopVL;
 
   MatchManager MM;
+  llvm::Optional<MatchManager> SecondaryMM;
   BlockOrdering BO;
 
   llvm::ScalarEvolution *SE;
@@ -143,6 +144,8 @@ public:
   llvm::LazyValueInfo &getLVI() const { return *LVI; }
   ControlDependenceAnalysis &getCDA() { return CDA; }
 
+  llvm::ArrayRef<Operation::Match> findMatches(const Operation *, llvm::Value *);
+
   const llvm::DataLayout *getDataLayout() const {
     return &F->getParent()->getDataLayout();
   }
@@ -174,6 +177,10 @@ public:
   VLoop &getTopVLoop() { return TopVL; }
   void fuseOrCoIterateLoops(VLoop *, VLoop *);
   bool canSpeculateAt(llvm::Value *V, const ControlCondition *C);
+  void matchSecondaryInsts(llvm::ArrayRef<llvm::Instruction *> SecondaryInsts) {
+    assert(!SecondaryMM);
+    SecondaryMM.emplace(getInsts(), SecondaryInsts);
+  }
 };
 
 // Check if `I` is independent from things in `Elements`, which depends on

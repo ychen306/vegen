@@ -23,6 +23,7 @@ class MatchManager {
 
 public:
   MatchManager(llvm::ArrayRef<const InstBinding *> Insts, llvm::Function &F);
+  MatchManager(llvm::ArrayRef<const InstBinding *> Insts, llvm::ArrayRef<llvm::Instruction *>);
 
   llvm::ArrayRef<Operation::Match> getMatches(const Operation *Op) const;
 

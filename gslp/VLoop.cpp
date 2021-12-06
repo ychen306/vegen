@@ -326,7 +326,7 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
         CoVL->addInstruction(Phi, nullptr);
         DA.addDependences(Phi, {});
         auto *Guarded =
-            CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Phi);
+            CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Phi, "loop.out.next");
         DA.addDependences(Guarded, {I});
         CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
         // Record that that I is a live-out of the co-iterating loop `Leader`
@@ -345,7 +345,7 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
           CoVL->addInstruction(Phi, nullptr);
           DA.addDependences(Phi, {});
           auto *Guarded =
-            CoVL->createOneHotPhi(SubLoopCond, I, Phi);
+            CoVL->createOneHotPhi(SubLoopCond, I, Phi, "sub_loop.out.next");
           DA.addDependences(Guarded, {I});
           CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
           CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
@@ -354,11 +354,14 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
 
       CoVL->addInstruction(ActivePhi, nullptr);
       DA.addDependences(ActivePhi, {});
-      auto *Init = ParentVL->createOneHotPhi(CoVL->LoopCond, True, False);
-      auto *Recur = CoVL->createOneHotPhi(ShouldContinue, True, False);
+      auto *Init = ParentVL->createOneHotPhi(CoVL->LoopCond, True, False,  "loop.active.init");
+      auto *Recur = CoVL->createOneHotPhi(ShouldContinue, True, False, "loop.active.recur");
       CoVL->Depended.set(VPCtx.getScalarId(Init));
       DA.addDependences(Init, {});
       DA.addDependences(Recur, {});
+      ActivePhi->setNumHungOffUseOperands(2);
+      ActivePhi->setIncomingValue(0, Init);
+      ActivePhi->setIncomingValue(1, Recur);
       CoVL->Mus.try_emplace(ActivePhi, Init, Recur);
 
       LoopConds.push_back(CoVL->LoopCond);
@@ -390,8 +393,8 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
 }
 
 Instruction *VLoop::createOneHotPhi(const ControlCondition *C, Value *IfTrue,
-                                    Value *IfFalse) {
-  auto *PN = PHINode::Create(IfTrue->getType(), 2);
+                                    Value *IfFalse, const Twine &Name) {
+  auto *PN = PHINode::Create(IfTrue->getType(), 2, Name);
   PN->setNumHungOffUseOperands(2);
   PN->setIncomingValue(0, IfTrue);
   PN->setIncomingValue(1, IfFalse);

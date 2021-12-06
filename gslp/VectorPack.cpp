@@ -475,7 +475,8 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   OS << "PACK<" << ProducerName << ">: (\n";
   for (auto *V : VP.getOrderedValues())
     if (V)
-      OS << *V << '\n';
+      //OS << *V << '\n';
+      OS << V->getName() << '\n';
     else
       OS << "undef\n";
   OS << ")\n";
@@ -486,7 +487,8 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   OS << "[\n";
   for (auto *V : OP)
     if (V) {
-      errs() << *V << "\n";
+      //errs() << *V << "\n";
+      OS << V->getName() << '\n';
     } else
       errs() << "undef\n";
   OS << "\n]";

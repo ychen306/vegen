@@ -319,6 +319,15 @@ static bool matchPackableGEPs(ArrayRef<Value *> Values,
   return true;
 }
 
+ArrayRef<Operation::Match> Packer::findMatches(const Operation *O, Value *V) {
+  auto Matches = MM.getMatchesForOutput(O, V);
+  if (!Matches.empty())
+    return Matches;
+  if (SecondaryMM)
+    return SecondaryMM->getMatchesForOutput(O, V);
+  return {};
+}
+
 const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;
@@ -365,6 +374,9 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
 
   OPI.Elements = Elements;
+
+  if (!OPI.Feasible)
+    errs() << "found infeasible op: " << *OP << '\n';
 
   if (!OPI.Feasible || OPI.Elements.count() < 2)
     return OPI;
@@ -417,6 +429,7 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
             VPCtx.createPhiPack(PHIs, Elements, Depended, TTI));
       } else {
         // Give up if there's a mix of one-hot phis and regular phis
+        errs() << "!!! can't pack mix of regular and on-hot phis: " << *OP << '\n';
         OPI.Feasible = false;
       }
       return OPI;
@@ -428,13 +441,15 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     });
 
     bool Convergent = true;
-    for (unsigned i = 0; i < NumIncomings; i++) {
-      SmallVector<const ControlCondition *> EdgeConds;
-      for (auto *PN : PHIs)
-        EdgeConds.push_back(
-            getEdgeCondition(PN->getIncomingBlock(i), PN->getParent()));
-      if (!is_splat(EdgeConds))
-        Convergent = false;
+    if (!AllMus) {
+      for (unsigned i = 0; i < NumIncomings; i++) {
+        SmallVector<const ControlCondition *> EdgeConds;
+        for (auto *PN : PHIs)
+          EdgeConds.push_back(
+              getEdgeCondition(PN->getIncomingBlock(i), PN->getParent()));
+        if (!is_splat(EdgeConds))
+          Convergent = false;
+      }
     }
 
     if (Convergent || AllMus) {
@@ -478,8 +493,7 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
     std::vector<const Operation::Match *> Lanes;
     for (unsigned i = 0; i < NumLanes; i++) {
-      ArrayRef<Operation::Match> Matches =
-          MM.getMatchesForOutput(LaneOps[i].getOperation(), (*OP)[i]);
+      ArrayRef<Operation::Match> Matches = findMatches(LaneOps[i].getOperation(), (*OP)[i]);
       if (Matches.empty())
         break;
       // FIXME: consider multiple matches for the same operation
