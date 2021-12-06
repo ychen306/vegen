@@ -10,9 +10,9 @@
 using namespace llvm;
 
 static cl::opt<bool>
-    DisableCostVerification("disable-cost-verification",
-                            cl::desc("disable cost verification in planning"),
-                            cl::init(false));
+    EnableCostVerification("verify-costs",
+                           cl::desc("verify cost during vector planning"),
+                           cl::init(false));
 
 Plan::Plan(Packer *Pkr) : Pkr(Pkr), Cost(0) {
   for (auto &I : instructions(Pkr->getFunction())) {
@@ -185,7 +185,7 @@ void Plan::decScalarUses(Instruction *I) {
 }
 
 bool Plan::verifyCost() const {
-  if (DisableCostVerification)
+  if (!EnableCostVerification)
     return true;
 
   float TotalExtractCost = 0;
