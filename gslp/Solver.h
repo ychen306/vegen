@@ -4,6 +4,7 @@
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/ArrayRef.h"
 #include <vector>
+#include <functional>
 
 namespace llvm {
 class BasicBlock;
@@ -27,6 +28,8 @@ float optimizeBottomUp(
     llvm::DenseSet<llvm::BasicBlock *> *BlocksToIgnore = nullptr);
 float optimizeBottomUp(VectorPackSet &, Packer *, llvm::ArrayRef<const OperandPack *> SeedOperands={});
 
-void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H, bool OverrideExisting=true);
+void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H, bool OverrideExisting=true, 
+    std::function<void (const VectorPack *, llvm::SmallVectorImpl<const OperandPack *>&)> GetExtraOperands={}
+    );
 
 #endif

@@ -697,7 +697,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     auto *I = InstOrLoop.dyn_cast<Instruction *>();
     assert(I);
-    
+
     auto *Cond = VL.getInstCond(I);
     auto *VP = ValueToPackMap.lookup(I);
 
@@ -759,7 +759,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       Allocas.push_back(Alloca);
       auto MaybeOneHot = VL.getOneHotPhi(PN);
       if (MaybeOneHot) {
-        //Alloca->setName("onehot");
+        // Alloca->setName("onehot");
         Builder.SetInsertPoint(GetBlock(nullptr));
         Builder.CreateStore(useScalar(MaybeOneHot->IfFalse), Alloca);
         Builder.SetInsertPoint(GetBlock(MaybeOneHot->C));
@@ -1008,13 +1008,14 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   }
   for (auto &Pair : ScalarMusToPatch) {
     fixScalarUses(Pair.first);
-    //errs() << (bool)VL.getOneHotPhi(Pair.second) << '\n';
+    // errs() << (bool)VL.getOneHotPhi(Pair.second) << '\n';
   }
 
   Value *ShouldContinue = Builder.CreateLoad(Type::getInt1Ty(Ctx), ContAlloca);
   Builder.CreateCondBr(ShouldContinue, Header, Exit);
 
-  // Record that instructions outside of this loop should use the guarded live outs
+  // Record that instructions outside of this loop should use the guarded live
+  // outs
   for (auto KV : VL.getGuardedLiveOuts()) {
     GuardedLiveOuts.insert(KV);
   }
@@ -1084,18 +1085,15 @@ namespace {
 using CondVector = SmallVector<const ControlCondition *, 8>;
 struct CondVectorInfo {
   using VecAndLoop = const std::pair<CondVector, VLoop *>;
-  static VecAndLoop getEmptyKey() {
-    return {{}, nullptr};
-  }
+  static VecAndLoop getEmptyKey() { return {{}, nullptr}; }
 
   static VecAndLoop getTombstoneKey() {
     return {{}, reinterpret_cast<VLoop *>(-1)};
   };
 
   static unsigned getHashValue(VecAndLoop &X) {
-    return hash_combine(
-        hash_combine_range(X.first.begin(), X.first.end()),
-        DenseMapInfo<VLoop *>::getHashValue(X.second));
+    return hash_combine(hash_combine_range(X.first.begin(), X.first.end()),
+                        DenseMapInfo<VLoop *>::getHashValue(X.second));
   }
 
   static bool isEqual(const VecAndLoop &A, const VecAndLoop &B) {
@@ -1103,7 +1101,7 @@ struct CondVectorInfo {
   }
 };
 
-}
+} // namespace
 
 static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
                          ArrayRef<const VectorPack *> Packs,
@@ -1111,30 +1109,14 @@ static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
   DenseSet<std::pair<CondVector, VLoop *>, CondVectorInfo> Processed;
   auto *VPCtx = Pkr.getContext();
 
-  std::function<void (const CondVector &, VLoop *)> ProcessConds
-    = [&](CondVector Conds, VLoop *VL) {
-      if (!Processed.insert({Conds, VL}).second)
-        return;
-      OperandPack OP;
-      for (auto *C : Conds)
-        OP.push_back(Reifier.getValue(C, VL));
-      Masks.push_back(VPCtx->getCanonicalOperandPack(OP));
-
-      auto IsOneHotPhi = [&](Value *V) {
-        auto *PN = dyn_cast<PHINode>(V);
-        return PN && VL->getOneHotPhi(PN);
-      };
-
-      if (!all_of(OP, IsOneHotPhi))
-        return;
-
-      // Recursively process the masks of the one-hot phis
-      CondVector CondsRec;
-      for (auto *V : OP)
-        CondsRec.push_back(VL->getOneHotPhi(cast<PHINode>(V))->C);
-      ProcessConds(CondsRec, VL);
-    };
-  
+  auto ProcessConds = [&](CondVector Conds, VLoop *VL) {
+    if (!Processed.insert({Conds, VL}).second)
+      return;
+    OperandPack OP;
+    for (auto *C : Conds)
+      OP.push_back(Reifier.getValue(C, VL));
+    Masks.push_back(VPCtx->getCanonicalOperandPack(OP));
+  };
 
   for (auto *VP : Packs) {
     auto Vals = VP->getOrderedValues();
@@ -1212,13 +1194,33 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     Seeds.push_back(VPCtx->getCanonicalOperandPack(OP));
   }
 
+  // When running the bottom-up heuristic and encountering a pack of one hot
+  // phis, also pack their reified conditions.
+  auto GetExtraOperands = [&](const VectorPack *VP,
+                              SmallVectorImpl<const OperandPack *> &ExtraOPs) {
+    if (!VP->isPHI())
+      return;
+    auto Vals = VP->getOrderedValues();
+    auto *PN = cast<PHINode>(Vals.front());
+    if (!PN)
+      return;
+    auto *VL = Pkr.getVLoopFor(PN);
+    if (!VL->getOneHotPhi(PN))
+      return;
+    OperandPack OP;
+    for (auto *V : Vals)
+      OP.push_back(Reifier.getValue(VL->getOneHotPhi(cast<PHINode>(V))->C, VL));
+    ExtraOPs.push_back(VPCtx->getCanonicalOperandPack(OP));
+  };
+
   // Do secondary packing
   Heuristic H(&Pkr, nullptr);
   Plan P(&Pkr);
   for (auto *VP : AllPacks)
     P.add(VP);
   for (auto *OP : Seeds)
-    runBottomUpFromOperand(OP, P, H, false /*don't override existing packs*/);
+    runBottomUpFromOperand(OP, P, H, false /*don't override existing packs*/,
+                           GetExtraOperands);
   for (auto *VP : P)
     tryAdd(VP);
 

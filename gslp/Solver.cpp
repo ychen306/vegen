@@ -153,7 +153,11 @@ enumerate(Packer *Pkr, DenseSet<BasicBlock *> *BlocksToIgnore) {
 bool Print = false;
 
 // Run the bottom-up heuristic starting from `OP`
-void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H, bool OverrideExisting) {
+void runBottomUpFromOperand(
+    const OperandPack *OP, Plan &P, Heuristic &H, bool OverrideExisting,
+    std::function<void(const VectorPack *,
+                       llvm::SmallVectorImpl<const OperandPack *> &)>
+        GetExtraOperands) {
   // Plan Best = P;
   SmallVector<const OperandPack *> Worklist;
   Worklist.push_back(OP);
@@ -185,6 +189,8 @@ void runBottomUpFromOperand(const OperandPack *OP, Plan &P, Heuristic &H, bool O
       P.add(VP);
       ArrayRef<const OperandPack *> Operands = VP->getOperandPacks();
       Worklist.append(Operands.begin(), Operands.end());
+      if (GetExtraOperands)
+        GetExtraOperands(VP, Worklist);
     }
     // if (P.cost() < Best.cost())
     //  Best = P;
@@ -279,8 +285,9 @@ static bool haveIdenticalTripCountsAux(Value *A, Value *B, Packer *Pkr) {
 
 // Collect all the back-edge condition packs for packs of values from divergent
 // loops
-static void getBackEdgePacks(Packer *Pkr, const Plan &P,
-                             SmallPtrSetImpl<const ConditionPack *> &BackEdgePacks) {
+static void
+getBackEdgePacks(Packer *Pkr, const Plan &P,
+                 SmallPtrSetImpl<const ConditionPack *> &BackEdgePacks) {
   auto *VPCtx = Pkr->getContext();
   for (auto *VP : P) {
     auto Vals = VP->getOrderedValues();
@@ -291,11 +298,11 @@ static void getBackEdgePacks(Packer *Pkr, const Plan &P,
     SmallVector<const ControlCondition *, 8> Conds;
     auto *SomeVal = *find_if(Vals, [](Value *V) { return V != nullptr; });
     for (auto *V : Vals)
-      Conds.push_back(Pkr->getVLoopFor(cast<Instruction>(V ? V : SomeVal))->getBackEdgeCond());
+      Conds.push_back(Pkr->getVLoopFor(cast<Instruction>(V ? V : SomeVal))
+                          ->getBackEdgeCond());
     BackEdgePacks.insert(VPCtx->getConditionPack(Conds));
   }
 }
-
 
 void tryPackBackEdgeConds(Packer *Pkr, Plan &P, Heuristic &H) {
   SmallPtrSet<const ConditionPack *, 4> BackEdgePacks;
@@ -483,7 +490,7 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
                        ArrayRef<const OperandPack *> SeedOperands,
                        DenseSet<BasicBlock *> *BlocksToIgnore) {
   CandidatePackSet Candidates;
-  //Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
+  // Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
   auto *VPCtx = Pkr->getContext();
   Candidates.Inst2Packs.resize(VPCtx->getNumValues());
   for (auto *VP : Candidates.Packs)
