@@ -96,6 +96,25 @@ class VectorCodeGen {
     }
   }
 
+  Value *getReifiedBackEdgeCond(VLoop *VL) {
+    auto *BEC = VL->getBackEdgeCond();
+    auto *Or = dyn_cast<ConditionOr>(BEC);
+
+    // If none of the reified sub-terms of the disjunction
+    // is packed, we will just use the scalar reified value
+    auto IsPacked = [&](const ControlCondition *C) {
+      return ValueToPackMap.count(Reifier.getValue(C, VL));
+    };
+    if (!Or || none_of(Or->Conds, IsPacked))
+      return Reifier.getValue(BEC, VL);
+
+    // If some of the conditions are packed, we will vectorize
+    OperandPack OP;
+    for (auto *C : Or->Conds)
+      OP.push_back(Reifier.getValue(C, VL));
+    return Builder.CreateOrReduce(gatherOperandPack(OP));
+  }
+
 public:
   VectorCodeGen(Packer &Pkr, IntrinsicBuilder &Builder, ControlReifier &Reifier,
                 const DenseMap<Value *, const VectorPack *> &ValueToPackMap)
@@ -984,44 +1003,25 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     RI.Ops.front()->replaceAllUsesWith(Reduced);
   }
 
-  AllocaInst *ContAlloca = new AllocaInst(
-      Type::getInt1Ty(Ctx), 0, "continue_cond", Header->getFirstNonPHI());
-  Allocas.push_back(ContAlloca);
-  // By default, we don't continue
-  if (auto HeaderTerminator = Header->getTerminator())
-    new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, HeaderTerminator);
-  else
-    new StoreInst(ConstantInt::getFalse(Ctx), ContAlloca, Header);
-
-  new StoreInst(ConstantInt::getTrue(Ctx), ContAlloca,
-                GetBlock(VL.getBackEdgeCond()));
-
-  // Join everything to the latch
   BranchInst::Create(Latch, GetBlock(nullptr));
   Builder.SetInsertPoint(Latch);
 
-  // Patch the vector mu nodes
+  // Patch the mu nodes
   for (auto &Pair : MusToPatch) {
     PHINode *Mu = Pair.first;
     OperandPack &IterOP = Pair.second;
     Mu->setIncomingValue(1, gatherOperandPack(IterOP));
   }
-  for (auto &Pair : ScalarMusToPatch) {
+  for (auto &Pair : ScalarMusToPatch)
     fixScalarUses(Pair.first);
-    // errs() << (bool)VL.getOneHotPhi(Pair.second) << '\n';
-  }
 
-  Value *ShouldContinue = Builder.CreateLoad(Type::getInt1Ty(Ctx), ContAlloca);
-  Builder.CreateCondBr(ShouldContinue, Header, Exit);
+  Builder.CreateCondBr(getReifiedBackEdgeCond(&VL), Header, Exit);
 
-  // Record that instructions outside of this loop should use the guarded live
-  // outs
-  for (auto KV : VL.getGuardedLiveOuts()) {
+  for (auto KV : VL.getGuardedLiveOuts())
     GuardedLiveOuts.insert(KV);
-  }
 
   return {Header, Exit};
-};
+}
 
 void VectorCodeGen::run() {
   // Keep track of the old basic blocks, which we will remove after we are done
