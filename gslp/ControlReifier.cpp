@@ -58,12 +58,14 @@ void ControlReifier::reifyConditionsInLoop(VLoop *VL) {
     if (!PN)
       continue;
 
+    // Reify the condition of a one-hot phi
     if (auto OneHot = VL->getOneHotPhi(PN))
       reify(OneHot->C, VL);
 
     if (!VL->isGatedPhi(PN))
       continue;
 
+    // Reify the conditions of a gated phi
     for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
       reify(VL->getIncomingPhiCondition(PN, i), VL);
   }
