@@ -128,6 +128,8 @@ public:
   llvm::Instruction *createOneHotPhi(const ControlCondition *,
                                      llvm::Value *IfTrue, llvm::Value *IfFalse,
                                      const llvm::Twine &Name="");
+  llvm::PHINode *createMu(llvm::Value *Init, const llvm::Twine &Name="");
+  void setRecursiveMuOperand(llvm::PHINode *, llvm::Value *);
 
   llvm::ArrayRef<llvm::Instruction *> getInstructions() const {
     return TopLevelInsts;

@@ -49,8 +49,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
              VLoopInfo &VLI)
     : IsTopLevel(false), Depended(VPCtx->getNumValues()),
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
-      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx),
-      DA(DA),
+      Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx), DA(DA),
       VLI(VLI) {
   VLI.setVLoop(L, this);
   // assert(L->isRotatedForm());
@@ -296,19 +295,25 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
     VLoop *Leader = *Members.begin();
     SmallVector<const ControlCondition *, 8> LoopConds, BackEdgeConds;
     for (auto *CoVL : Members) {
-      auto *ActivePhi = PHINode::Create(Int1Ty, 2, "active");
-      auto *Active = CDA.getAnd(nullptr, ActivePhi, true);
+      // Insert the active guard for CoVL
+      auto *ShouldEnter = ParentVL->createOneHotPhi(CoVL->LoopCond, True, False,
+                                                    "loop.active.init");
+      auto *ActiveMu = CoVL->createMu(ShouldEnter, "active");
+      CoVL->Depended.set(VPCtx.getScalarId(ShouldEnter));
+      auto *Active = CDA.getAnd(nullptr, ActiveMu, true);
       auto *ShouldContinue = CDA.concat(Active, CoVL->BackEdgeCond);
+      CoVL->setRecursiveMuOperand(
+          ActiveMu, CoVL->createOneHotPhi(ShouldContinue, True, False,
+                                          "loop.active.recur"));
+
+      LoopConds.push_back(CoVL->LoopCond);
+      BackEdgeConds.push_back(ShouldContinue);
 
       // Guard all loops and instructions nested inside CoVL
-      for (auto &KV : CoVL->InstConds) {
-        auto *Concat = CDA.concat(Active, KV.second);
-        KV.second = Concat;
-      }
-      for (std::unique_ptr<VLoop> &SubVL : CoVL->SubLoops) {
-        auto *Concat = CDA.concat(Active, SubVL->LoopCond);
-        SubVL->LoopCond = Concat;
-      }
+      for (auto &KV : CoVL->InstConds)
+        KV.second = CDA.concat(Active, KV.second);
+      for (std::unique_ptr<VLoop> &SubVL : CoVL->SubLoops)
+        SubVL->LoopCond = CDA.concat(Active, SubVL->LoopCond);
 
       // Also fix the gated phi conditions
       for (auto &KV : CoVL->GatedPhis)
@@ -318,55 +323,38 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
       // Guard the live-outs
       SmallVector<Instruction *> InstsToGuard;
       for (auto *I : CoVL->TopLevelInsts)
-        if (!I->getType()->isVoidTy())
+        if (!I->getType()->isVoidTy() && I != ActiveMu)
           InstsToGuard.push_back(I);
       for (auto *I : InstsToGuard) {
         auto *Ty = I->getType();
-        // FIXME: crate a wrapper to create place holder mu?
-        auto *Phi = PHINode::Create(Ty, 2, "loop.out");
-        CoVL->addInstruction(Phi, nullptr);
-        auto *Guarded =
-            CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Phi, "loop.out.next");
-        CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
-        // Record that that I is a live-out of the co-iterating loop `Leader`
-        // and if you are using I, you should instead use `Guarded` outside of
-        // Leader We will rewrire the out-of-loop uses in another pass (when we
-        // lower back to llvm)
+        auto *Mu = CoVL->createMu(UndefValue::get(Ty), "loop.out");
+        auto *Guarded = CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Mu,
+                                              "loop.out.next");
+        CoVL->setRecursiveMuOperand(Mu, Guarded);
         CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
       }
-      // For values coming out a sub loop, we take its value only when the loop executes
+      // For values coming out a sub loop, we take its value only when the loop
+      // executes
       for (auto &SubVL : CoVL->getSubLoops()) {
         auto *SubLoopCond = SubVL->LoopCond;
         for (auto *V : VPCtx.iter_values(SubVL->Insts)) {
           auto *I = cast<Instruction>(V);
           auto *Ty = I->getType();
-          auto *Phi = PHINode::Create(Ty, 2, "sub_loop.out");
-          CoVL->addInstruction(Phi, nullptr);
+          auto *Mu = CoVL->createMu(UndefValue::get(Ty), "sub_loop.out");
           auto *Guarded =
-            CoVL->createOneHotPhi(SubLoopCond, I, Phi, "sub_loop.out.next");
-          CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
+              CoVL->createOneHotPhi(SubLoopCond, I, Mu, "sub_loop.out.next");
+          CoVL->setRecursiveMuOperand(Mu, Guarded);
           CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
         }
       }
-
-      CoVL->addInstruction(ActivePhi, nullptr);
-      auto *Init = ParentVL->createOneHotPhi(CoVL->LoopCond, True, False,  "loop.active.init");
-      auto *Recur = CoVL->createOneHotPhi(ShouldContinue, True, False, "loop.active.recur");
-      CoVL->Depended.set(VPCtx.getScalarId(Init));
-      ActivePhi->setNumHungOffUseOperands(2);
-      ActivePhi->setIncomingValue(0, Init);
-      ActivePhi->setIncomingValue(1, Recur);
-      CoVL->Mus.try_emplace(ActivePhi, Init, Recur);
-
-      LoopConds.push_back(CoVL->LoopCond);
-      BackEdgeConds.push_back(ShouldContinue);
     }
 
     // 2) Fuse them
-    for (VLoop *CoVL : drop_begin(Members)) {
-      assert(CoVL->Parent == Leader->Parent);
+    assert(all_of(Members, [Leader](VLoop *CoVL) {
+      return CoVL->Parent == Leader->Parent;
+    }));
+    for (VLoop *CoVL : drop_begin(Members))
       fuse(Leader, CoVL);
-    }
 
     SmallPtrSet<const ControlCondition *, 8> Seen;
     decltype(LoopConds) UniqueLoopConds;
@@ -384,6 +372,23 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
     if (isCoIterating(VL))
       Visit(VL);
   }
+}
+
+PHINode *VLoop::createMu(Value *Init, const Twine &Name) {
+  auto *PN = PHINode::Create(Init->getType(), 2, Name);
+  PN->setNumHungOffUseOperands(1);
+  PN->setIncomingValue(0, Init);
+  Mus.try_emplace(PN, Init, nullptr);
+  addInstruction(PN, nullptr);
+  return PN;
+}
+
+void VLoop::setRecursiveMuOperand(PHINode *PN, Value *V) {
+  assert(Mus.count(PN));
+  Mus.find(PN)->second.Iter = V;
+  assert(PN->getNumOperands() == 1);
+  PN->setNumHungOffUseOperands(2);
+  PN->setIncomingValue(1, V);
 }
 
 Instruction *VLoop::createOneHotPhi(const ControlCondition *C, Value *IfTrue,

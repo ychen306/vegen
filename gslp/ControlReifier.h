@@ -5,6 +5,7 @@
 
 namespace llvm {
 class Instruction;
+class Value;
 class LLVMContext;
 } // namespace llvm
 
