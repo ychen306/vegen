@@ -24,7 +24,7 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              VLoopInfo &VLI)
     : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr),
-      VPCtx(VPCtx), VLI(VLI) {
+      VPCtx(VPCtx), DA(DA), VLI(VLI) {
   for (auto *L : LI.getTopLevelLoops()) {
     auto *SubVL = new VLoop(LI, L, VPCtx, DA, CDA, VLI);
     SubVL->Parent = this;
@@ -50,6 +50,7 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
     : IsTopLevel(false), Depended(VPCtx->getNumValues()),
       LoopCond(CDA.getConditionForBlock(L->getLoopPreheader())),
       Insts(VPCtx->getNumValues()), L(L), Parent(nullptr), VPCtx(VPCtx),
+      DA(DA),
       VLI(VLI) {
   VLI.setVLoop(L, this);
   // assert(L->isRotatedForm());
@@ -324,10 +325,8 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
         // FIXME: crate a wrapper to create place holder mu?
         auto *Phi = PHINode::Create(Ty, 2, "loop.out");
         CoVL->addInstruction(Phi, nullptr);
-        DA.addDependences(Phi, {});
         auto *Guarded =
             CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Phi, "loop.out.next");
-        DA.addDependences(Guarded, {I});
         CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
         // Record that that I is a live-out of the co-iterating loop `Leader`
         // and if you are using I, you should instead use `Guarded` outside of
@@ -343,22 +342,17 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
           auto *Ty = I->getType();
           auto *Phi = PHINode::Create(Ty, 2, "sub_loop.out");
           CoVL->addInstruction(Phi, nullptr);
-          DA.addDependences(Phi, {});
           auto *Guarded =
             CoVL->createOneHotPhi(SubLoopCond, I, Phi, "sub_loop.out.next");
-          DA.addDependences(Guarded, {I});
           CoVL->Mus.try_emplace(Phi, UndefValue::get(Ty), Guarded);
           CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
         }
       }
 
       CoVL->addInstruction(ActivePhi, nullptr);
-      DA.addDependences(ActivePhi, {});
       auto *Init = ParentVL->createOneHotPhi(CoVL->LoopCond, True, False,  "loop.active.init");
       auto *Recur = CoVL->createOneHotPhi(ShouldContinue, True, False, "loop.active.recur");
       CoVL->Depended.set(VPCtx.getScalarId(Init));
-      DA.addDependences(Init, {});
-      DA.addDependences(Recur, {});
       ActivePhi->setNumHungOffUseOperands(2);
       ActivePhi->setIncomingValue(0, Init);
       ActivePhi->setIncomingValue(1, Recur);
@@ -407,6 +401,7 @@ void VLoop::addInstruction(Instruction *I, const ControlCondition *C) {
   TopLevelInsts.push_back(I);
   InstConds.insert({I, C});
   VPCtx->addInstruction(I);
+  DA.addInstruction(I);
   VLI.mapInstToLoop(I, this);
 }
 

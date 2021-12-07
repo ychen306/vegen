@@ -1,7 +1,7 @@
-#include "DependenceAnalysis.h"
-#include "VLoop.h"
 #include "ControlReifier.h"
 #include "ControlDependence.h"
+#include "DependenceAnalysis.h"
+#include "VLoop.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instructions.h"
@@ -26,13 +26,11 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
       auto *Not = BinaryOperator::CreateNot(Cond);
       InsertedInsts.push_back(Not);
       VL->addInstruction(Not, And->Parent);
-      DA.addInstruction(Not);
       Cond = Not;
     }
 
-    auto *Phi = VL->createOneHotPhi(And->Parent, Cond, ConstantInt::getFalse(Ctx), "reified");
-    DA.addInstruction(Phi);
-    Reified = Phi;
+    Reified = VL->createOneHotPhi(And->Parent, Cond, ConstantInt::getFalse(Ctx),
+                                  "reified");
   } else {
     auto *Or = dyn_cast<ConditionOr>(C);
     Reified = reify(Or->Conds.front(), VL);
@@ -40,13 +38,12 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
       auto *Tmp = BinaryOperator::CreateOr(Reified, reify(C2, VL));
       InsertedInsts.push_back(Tmp);
       VL->addInstruction(Tmp, nullptr);
-      DA.addInstruction(Tmp);
       Reified = Tmp;
     }
   }
   assert(Reified);
 
-  ReifiedValues[{C,VL}] = Reified;
+  ReifiedValues[{C, VL}] = Reified;
   if (And)
     reify(And->Complement, VL);
 

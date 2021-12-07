@@ -84,6 +84,7 @@ struct OneHotPhi {
 
 class VLoop {
   VectorPackContext *VPCtx;
+  GlobalDependenceAnalysis &DA;
   VLoopInfo &VLI;
   friend class VLoopInfo;
   bool IsTopLevel; // True if this VLoop doesn't represent any actual loop but
