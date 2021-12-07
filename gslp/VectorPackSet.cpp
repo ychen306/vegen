@@ -1171,6 +1171,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   for (auto *L : LI.getLoopsInPreorder())
     Reifier.reifyConditionsInLoop(VLI.getVLoop(L));
 
+  // The reifier just inserted some new instructions,
+  // run the pattern matcher on them.
   Pkr.matchSecondaryInsts(Reifier.getInsertedInsts());
 
   // Figure out the masks we need for predicated execution
