@@ -427,12 +427,14 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
     computeUnrollFactorImpl(Insts, LVI, TTI, BFI, F, LI, UFs);
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
            << ')' << " " << UFs.lookup(L) << '\n';
-    //if (UFs[L] > 1) {
-    //  for (auto &KV : UFs)
-    //    if (KV.first != L)
-    //      KV.second = 0;
-    //  break;
-    //}
+#if 1
+    if (UFs[L] > 1) {
+      for (auto &KV : UFs)
+        if (KV.first != L)
+          KV.second = 0;
+      break;
+    }
+#endif
   }
   errs() << "========= final unroll plan ========\n";
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {

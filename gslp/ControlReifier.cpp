@@ -30,7 +30,7 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
     }
 
     Reified = VL->createOneHotPhi(And->Parent, Cond, ConstantInt::getFalse(Ctx),
-                                  "reified");
+                                  "reified.onehot");
   } else {
     auto *Or = dyn_cast<ConditionOr>(C);
     Reified = reify(Or->Conds.front(), VL);

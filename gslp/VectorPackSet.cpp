@@ -106,7 +106,7 @@ class VectorCodeGen {
       return ValueToPackMap.count(Reifier.getValue(C, VL));
     };
     if (!Or || none_of(Or->Conds, IsPacked))
-      return Reifier.getValue(BEC, VL);
+      return useScalar(Reifier.getValue(BEC, VL));
 
     // If some of the conditions are packed, we will vectorize
     OperandPack OP;

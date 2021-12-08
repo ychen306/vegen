@@ -34,7 +34,7 @@ VectorPackContext::VectorPackContext(Function *F)
   for (Instruction &I : instructions(F))
     addInstruction(&I);
   // FIXME: return a tigher bound
-  NumValues = Scalars.size() * 3;
+  NumValues = Scalars.size() * 5;
 }
 
 void VectorPackContext::addInstruction(Instruction *I) {

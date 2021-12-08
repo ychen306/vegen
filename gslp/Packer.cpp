@@ -121,7 +121,6 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
         EquivalentValues.unionSets(L1, L2);
     }
   }
-  errs() << "finished looking for equivalent loads\n";
   VPCtx.registerEquivalentValues(std::move(EquivalentValues));
 
 #if 0
@@ -375,9 +374,6 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
   OPI.Elements = Elements;
 
-  if (!OPI.Feasible)
-    errs() << "found infeasible op: " << *OP << '\n';
-
   if (!OPI.Feasible || OPI.Elements.count() < 2)
     return OPI;
 
@@ -429,7 +425,6 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
             VPCtx.createPhiPack(PHIs, Elements, Depended, TTI));
       } else {
         // Give up if there's a mix of one-hot phis and regular phis
-        errs() << "!!! can't pack mix of regular and on-hot phis: " << *OP << '\n';
         OPI.Feasible = false;
       }
       return OPI;

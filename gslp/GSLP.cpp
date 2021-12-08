@@ -349,8 +349,8 @@ static void registerGSLP(const PassManagerBuilder &PMB,
   MPM.add(new GSLP());
 
   if (!DisableCleanup) {
-    MPM.add(createJumpThreadingPass());
     MPM.add(createCFGSimplificationPass());
+    MPM.add(createJumpThreadingPass());
     MPM.add(createInstructionCombiningPass(true /*expensive combines*/));
     MPM.add(createGVNPass());
     MPM.add(createAggressiveDCEPass());

@@ -333,12 +333,15 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
         CoVL->setRecursiveMuOperand(Mu, Guarded);
         CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
       }
+#if 1
       // For values coming out a sub loop, we take its value only when the loop
       // executes
       for (auto &SubVL : CoVL->getSubLoops()) {
         auto *SubLoopCond = SubVL->LoopCond;
         for (auto *V : VPCtx.iter_values(SubVL->Insts)) {
           auto *I = cast<Instruction>(V);
+          if (I->getType()->isVoidTy())
+            continue;
           auto *Ty = I->getType();
           auto *Mu = CoVL->createMu(UndefValue::get(Ty), "sub_loop.out");
           auto *Guarded =
@@ -347,6 +350,7 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
           CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
         }
       }
+#endif
     }
 
     // 2) Fuse them
