@@ -71,7 +71,8 @@ void ControlReifier::reifyConditionsInLoop(VLoop *VL) {
   }
   for (auto &SubVL : VL->getSubLoops())
     reify(SubVL->getLoopCond(), VL);
-  reify(VL->getBackEdgeCond(), VL);
+  if (VL->isLoop())
+    reify(VL->getBackEdgeCond(), VL);
 }
 
 Value *ControlReifier::getValue(const ControlCondition *C, VLoop *VL) {

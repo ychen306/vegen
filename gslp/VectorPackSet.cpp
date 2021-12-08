@@ -616,10 +616,13 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   // For the top level "loop", the loop header is just the entry block
   // FIXME: use useScalar
   BlockBuilder BBuilder(VL.isLoop() ? Header : Entry, [&](Value *Cond) {
+    return useScalar(Cond);
+#if 0
     auto It = ValueIndex.find(Cond);
     if (It == ValueIndex.end())
       return Cond;
     return It->second.Extracted;
+#endif
   });
   DenseMap<const ControlCondition *, BasicBlock *> LastBlockForCond;
   DenseSet<BasicBlock *> LoopBlocks{Header, Exit, Latch};
@@ -776,9 +779,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       auto *Alloca = new AllocaInst(
           PN->getType(), 0, PN->getName() + ".demoted", &Entry->front());
       Allocas.push_back(Alloca);
-      auto MaybeOneHot = VL.getOneHotPhi(PN);
-      if (MaybeOneHot) {
-        // Alloca->setName("onehot");
+      if (auto MaybeOneHot = VL.getOneHotPhi(PN)) {
         Builder.SetInsertPoint(GetBlock(nullptr));
         Builder.CreateStore(useScalar(MaybeOneHot->IfFalse), Alloca);
         Builder.SetInsertPoint(GetBlock(MaybeOneHot->C));
