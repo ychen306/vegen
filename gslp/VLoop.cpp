@@ -327,9 +327,9 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
           InstsToGuard.push_back(I);
       for (auto *I : InstsToGuard) {
         auto *Ty = I->getType();
-        auto *Mu = CoVL->createMu(UndefValue::get(Ty), "loop.out");
+        auto *Mu = CoVL->createMu(UndefValue::get(Ty), I->getName()+".loop.out");
         auto *Guarded = CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Mu,
-                                              "loop.out.next");
+                                              Mu->getName()+".next");
         CoVL->setRecursiveMuOperand(Mu, Guarded);
         CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
       }
@@ -343,9 +343,9 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
           if (I->getType()->isVoidTy())
             continue;
           auto *Ty = I->getType();
-          auto *Mu = CoVL->createMu(UndefValue::get(Ty), "sub_loop.out");
+          auto *Mu = CoVL->createMu(UndefValue::get(Ty), I->getName()+".sub_loop.out");
           auto *Guarded =
-              CoVL->createOneHotPhi(SubLoopCond, I, Mu, "sub_loop.out.next");
+              CoVL->createOneHotPhi(SubLoopCond, I, Mu, Mu->getName()+".next");
           CoVL->setRecursiveMuOperand(Mu, Guarded);
           CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
         }

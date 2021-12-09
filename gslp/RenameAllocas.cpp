@@ -104,7 +104,7 @@ void renameAllocas(DominatorTree &DT, PostDominatorTree &PDT, LoopInfo &LI,
 
     SmallVector<Lifetime, 8> Lifetimes;
     bool Ok = findLifetimes(DT, PDT, LI, AA, DL, Alloca, Lifetimes);
-    if (!Ok)
+    if (!Ok || Lifetimes.empty())
       continue;
     for (auto &LT : drop_begin(Lifetimes))
       reallocateForLifetime(DT, PDT, AA, LT, Alloca);
@@ -117,5 +117,4 @@ void renameAllocas(Function *F, DominatorTree &DT, PostDominatorTree &PDT,
   for (auto &I : F->getEntryBlock())
     if (auto *Alloca = dyn_cast<AllocaInst>(&I))
       Allocas.push_back(Alloca);
-  renameAllocas(DT, PDT, LI, AA, F->getParent()->getDataLayout(), Allocas);
-}
+  renameAllocas(DT, PDT, LI, AA, F->getParent()->getDataLayout(), Allocas); }

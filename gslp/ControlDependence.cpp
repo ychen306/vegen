@@ -145,16 +145,33 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
   return G;
 }
 
+// If BB is an exit block, return the loop that it's returning from
+// Assume all loops have dedicated exits
+static Loop *getExitingLoop(LoopInfo &LI, BasicBlock *BB) {
+  assert(pred_size(BB) > 0);
+  auto *Pred = *pred_begin(BB);
+  auto *L = LI.getLoopFor(Pred);
+  if (L != LI.getLoopFor(BB))
+    return L;
+  return nullptr;
+}
+
 const ControlCondition *
 ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
                                                BasicBlock *Dst) {
   auto *SrcCond = getConditionForBlock(Src);
   auto *Br = cast<BranchInst>(Src->getTerminator());
 
+  if (auto *ExitingL = getExitingLoop(LI, Dst)) {
+    auto *PreheaderC = getConditionForBlock(ExitingL->getLoopPreheader());
+    SrcCond = concat(PreheaderC, SrcCond);
+  }
+
   // Ignore backedges
   auto *L = LI.getLoopFor(Src);
-  if (Br->isUnconditional() || (L && L->isLoopLatch(Src)))
+  if (Br->isUnconditional() || (L && L->isLoopLatch(Src))) {
     return SrcCond;
+  }
   return getAnd(SrcCond, Br->getCondition(), Br->getSuccessor(0) == Dst);
 }
 
@@ -199,17 +216,6 @@ ControlDependenceAnalysis::getControlDependentBlocks(BasicBlock *BB) {
   return Blocks;
 }
 
-// If BB is an exit block, return the loop that it's returning from
-// Assume all loops have dedicated exits
-static Loop *getExitingLoop(LoopInfo &LI, BasicBlock *BB) {
-  assert(pred_size(BB) > 0);
-  auto *Pred = *pred_begin(BB);
-  auto *L = LI.getLoopFor(Pred);
-  if (L != LI.getLoopFor(BB))
-    return L;
-  return nullptr;
-}
-
 const ControlCondition *
 ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   auto It = BlockConditions.find(BB);
@@ -243,15 +249,6 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   }
 
   sort(CondsToJoin);
-
-  auto *ExitingL = getExitingLoop(LI, BB);
-  // Special case for non-unique exit block
-  if (ExitingL && !ExitingL->getUniqueExitBlock()) {
-    auto *PreheaderC = getConditionForBlock(ExitingL->getLoopPreheader());
-    for (auto &C : CondsToJoin)
-      C = concat(PreheaderC, C);
-  }
-
   return BlockConditions[BB] = getOr(CondsToJoin);
 }
 

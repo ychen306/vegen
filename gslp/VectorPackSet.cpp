@@ -169,6 +169,7 @@ Value *VectorCodeGen::gatherOperandPack(const OperandPack &OP) {
     auto *V = OP[i];
     if (auto *Guarded = GuardedLiveOuts.lookup(V))
       V = Guarded;
+
     // Null means don't care/undef
     if (!V)
       continue;
@@ -726,7 +727,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     bool Speculated = false;
     auto It = AddressesToSpeculate.find(I);
     if (It != AddressesToSpeculate.end()) {
-      errs() << "!!1 speculated: " << *I << '\n';
       fixScalarUses(I);
       moveToEnd(It->first, GetBlock(It->second));
       Speculated = true;
