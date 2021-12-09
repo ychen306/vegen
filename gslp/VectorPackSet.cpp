@@ -931,12 +931,23 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     // Conservatively extract all elements.
     // Let the later cleanup passes clean up dead extracts.
     if (!VP->isStore() && !VP->isReduction()) {
-      setInsertAtEndOfBlock(Builder, cast<Instruction>(VecInst)->getParent());
-      for (auto &Item : enumerate(VP->getOrderedValues())) {
-        if (auto *V = Item.value()) {
-          unsigned i = Item.index();
-          auto *Extract = Builder.CreateExtractElement(VecInst, i);
-          ValueIndex[V] = {VP, i, Extract};
+      if (auto *I = dyn_cast<Instruction>(VecInst)) {
+        setInsertAtEndOfBlock(Builder, cast<Instruction>(VecInst)->getParent());
+        for (auto &Item : enumerate(VP->getOrderedValues())) {
+          if (auto *V = Item.value()) {
+            unsigned i = Item.index();
+            auto *Extract = Builder.CreateExtractElement(VecInst, i);
+            ValueIndex[V] = {VP, i, Extract};
+          }
+        }
+      } else {
+        // It's possible that the ir builder constant-folds it into a constant
+        auto *CV = cast<ConstantVector>(VecInst);
+        for (auto &Item : enumerate(VP->getOrderedValues())) {
+          if (auto *V = Item.value()) {
+            unsigned i = Item.index();
+            ValueIndex[V] = {VP, i, CV->getAggregateElement(i)};
+          }
         }
       }
     }
