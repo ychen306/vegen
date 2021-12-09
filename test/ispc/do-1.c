@@ -14,7 +14,7 @@ void kernel(int n, float *restrict ret, float *restrict a) {
 }
 
 int main() {
-  int n = 1024;
+  int n = 1024 + 3;
   float ret[n], a[n];
   for (int i = 0; i < n; i++)
     a[i] = i+1;
