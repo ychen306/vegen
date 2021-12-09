@@ -1,0 +1,2 @@
+config.builddir = "@CMAKE_BINARY_DIR@"
+lit_config.load_config(config, "@CMAKE_SOURCE_DIR@/test/lit.cfg")
