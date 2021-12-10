@@ -458,7 +458,7 @@ schedule(VLoop &VL, ControlReifier &Reifier,
   };
 
   SmallVector<PHINode *> Mus;
-  SmallVector<Instruction *> Insts;
+  SmallVector<Instruction *> Insts, Returns;
   Instruction *Ret = nullptr;
   for (auto *I : VL.getInstructions()) {
     auto *PN = dyn_cast<PHINode>(I);
@@ -467,7 +467,7 @@ schedule(VLoop &VL, ControlReifier &Reifier,
     else if (!I->isTerminator())
       Insts.push_back(I);
     else if (isa<ReturnInst>(I))
-      Ret = I;
+      Returns.push_back(I);
   }
 
   for (auto *PN : Mus)
@@ -476,7 +476,7 @@ schedule(VLoop &VL, ControlReifier &Reifier,
     Schedule(I);
   for (auto &SubVL : VL.getSubLoops())
     Schedule(SubVL.get());
-  if (Ret)
+  for (auto *Ret : Returns)
     Schedule(Ret);
 
   return ScheduledItems;
