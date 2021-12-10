@@ -310,7 +310,8 @@ static bool matchPackableGEPs(ArrayRef<Value *> Values,
 
   for (auto *V : drop_begin(Values)) {
     auto *GEP2 = dyn_cast<GetElementPtrInst>(V);
-    if (GEP2->getNumOperands() != NumOperands ||
+    if (!GEP2 ||
+        GEP2->getNumOperands() != NumOperands ||
         GEP2->getSourceElementType() != Ty)
       return false;
     GEPs.push_back(GEP2);
