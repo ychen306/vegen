@@ -183,6 +183,7 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   ActiveConds[C] = BB;
   ActiveConds[DummyC] = DrainBB;
   SemiActiveConds[CommonC] = {C, DummyC};
+  assert(!ActiveConds.lookup(CommonC));
   return BB;
 }
 
@@ -193,5 +194,5 @@ void BlockBuilder::setBlockForCondition(llvm::BasicBlock *BB,
 }
 
 const ControlCondition *BlockBuilder::getDummyCondition() {
-  return reinterpret_cast<const ControlCondition *>(DummyCounter++);
+  return reinterpret_cast<const ControlCondition *>(++DummyCounter);
 }
