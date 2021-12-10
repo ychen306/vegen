@@ -28,7 +28,7 @@ int main() {
   kernel(n, ret, a);
 
   for (int i = 0; i < n; i++)
-    if (a[i] != 1 + i)
+    if (ret[i] != 1 + i)
       return 1;
   return 0;
 }
