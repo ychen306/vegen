@@ -27,9 +27,6 @@ int main() {
 
   kernel(n, ret, a, 5.);
 
-  for (int i = 0; i < n; i++)
-    printf("%f\n", ret[i]);
-
   for (int i = 0; i < n; i++) {
     float expected = 0;
     if (i == 0)
