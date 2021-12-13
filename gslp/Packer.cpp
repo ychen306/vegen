@@ -101,6 +101,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
   // TODO: find more equivalent instructions based on the equivalent loads
   // Find equivalent loads
 
+#if 0
   EquivalenceClasses<Value *> EquivalentValues;
   for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     auto *L1 = dyn_cast<LoadInst>(&*I);
@@ -122,6 +123,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
     }
   }
   VPCtx.registerEquivalentValues(std::move(EquivalentValues));
+#endif
 
 #if 0
   // Canonicalize phi argument order by control condition
