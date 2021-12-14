@@ -271,6 +271,18 @@ bool VLoopInfo::isCoIterating(VLoop *VL) const {
          CoIteratingLoops.member_end();
 }
 
+bool VLoop::contains(Instruction *I) const {
+  return Insts.test(VPCtx->getScalarId(I));
+}
+
+// Determine whether I has user from out of VL
+static bool hasOutsideUser(VLoop *VL, Instruction *I) {
+  return any_of(I->users(), [VL](User *U) {
+    auto *UI = dyn_cast<Instruction>(U);
+    return UI && !VL->contains(UI);
+  });
+}
+
 void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
                               GlobalDependenceAnalysis &DA,
                               ControlDependenceAnalysis &CDA) {
@@ -326,14 +338,17 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
         if (!I->getType()->isVoidTy() && I != ActiveMu)
           InstsToGuard.push_back(I);
       for (auto *I : InstsToGuard) {
+        if (I->getType() != Int1Ty && !hasOutsideUser(CoVL, I))
+          continue;
         auto *Ty = I->getType();
-        auto *Mu = CoVL->createMu(UndefValue::get(Ty), I->getName()+".loop.out");
+        auto *Mu =
+            CoVL->createMu(UndefValue::get(Ty), I->getName() + ".loop.out");
         auto *Guarded = CoVL->createOneHotPhi(CoVL->InstConds.lookup(I), I, Mu,
-                                              Mu->getName()+".next");
+                                              Mu->getName() + ".next");
         CoVL->setRecursiveMuOperand(Mu, Guarded);
         CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
       }
-#if 1
+
       // For values coming out a sub loop, we take its value only when the loop
       // executes
       for (auto &SubVL : CoVL->getSubLoops()) {
@@ -342,15 +357,17 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
           auto *I = cast<Instruction>(V);
           if (I->getType()->isVoidTy())
             continue;
+          if (I->getType() != Int1Ty && !hasOutsideUser(CoVL, I))
+            continue;
           auto *Ty = I->getType();
-          auto *Mu = CoVL->createMu(UndefValue::get(Ty), I->getName()+".sub_loop.out");
-          auto *Guarded =
-              CoVL->createOneHotPhi(SubLoopCond, I, Mu, Mu->getName()+".next");
+          auto *Mu = CoVL->createMu(UndefValue::get(Ty),
+                                    I->getName() + ".sub_loop.out");
+          auto *Guarded = CoVL->createOneHotPhi(SubLoopCond, I, Mu,
+                                                Mu->getName() + ".next");
           CoVL->setRecursiveMuOperand(Mu, Guarded);
           CoVL->GuardedLiveOuts.try_emplace(I, Guarded);
         }
       }
-#endif
     }
 
     // 2) Fuse them

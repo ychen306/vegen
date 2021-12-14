@@ -160,6 +160,8 @@ public:
   // Check whether I is a the live-out of some sub-loop subvl, if so, return subvl
   VLoop *isLiveOutOfSubLoop(llvm::Instruction *I) const;
 
+  bool contains(llvm::Instruction *) const;
+
   // Get the incoming condition if the ith phi value
   const ControlCondition *getIncomingPhiCondition(llvm::PHINode *PN, unsigned i) {
     assert(GatedPhis.count(PN));
