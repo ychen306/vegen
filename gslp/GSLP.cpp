@@ -143,6 +143,8 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F,
     return true;
   if (Inst->getName().contains("hadd"))
     return false;
+  if (Inst->getName().contains("broadcast"))
+    return false;
   for (auto &Feature : Inst->getTargetFeatures())
     if (!hasFeature(F, Feature) ||
         Inst->getSignature().OutputBitwidths[0] > PreferVectorWidth)
