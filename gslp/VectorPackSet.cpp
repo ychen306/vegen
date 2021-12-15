@@ -669,42 +669,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     }
   }
 
-  // Scan the consectuive loads/stores and find those addresses that we need to
-  // speculatively compute
-  SmallPtrSet<const VectorPack *, 4> ConsecMemPacks;
-  for (auto &InstOrLoop : Schedule) {
-    auto *I = InstOrLoop.dyn_cast<Instruction *>();
-    if (!I)
-      continue;
-    auto *VP = ValueToPackMap.lookup(I);
-    if (VP && VP->getLoadStorePointer())
-      ConsecMemPacks.insert(VP);
-  }
-  // Mapping address computation to the condition to speculate at
-  DenseMap<Instruction *, const ControlCondition *> AddressesToSpeculate;
-  for (auto *VP : ConsecMemPacks) {
-    // Figure out the condition under which we should speculate the address
-    SmallVector<const ControlCondition *, 8> Conds;
-    for (auto *V : VP->elementValues())
-      Conds.push_back(VL.getInstCond(cast<Instruction>(V)));
-    auto *C = getGreatestCommonCondition(Conds);
-
-    auto *Addr = getLoadStorePointerOperand(VP->getOrderedValues().front());
-    auto *AddrComp = dyn_cast<Instruction>(Addr);
-
-    // If the address doesn't come from an instruction, there's nothing to
-    // speculate
-    if (!AddrComp)
-      continue;
-
-    // If we always compute the address under condition C, we don't need to
-    // speculate
-    if (isImplied(VL.getInstCond(AddrComp), C))
-      continue;
-
-    AddressesToSpeculate.try_emplace(AddrComp, C);
-  }
-
   // Now generate code according to the schedule
   for (auto &InstOrLoop : Schedule) {
     // Emit the sub-loop recursively
@@ -724,14 +688,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     auto *Cond = VL.getInstCond(I);
     auto *VP = ValueToPackMap.lookup(I);
 
-    bool Speculated = false;
-    auto It = AddressesToSpeculate.find(I);
-    if (It != AddressesToSpeculate.end()) {
-      fixScalarUses(I);
-      moveToEnd(It->first, GetBlock(It->second));
-      Speculated = true;
-    }
-
     // I is not packed
     if (!VP || shouldSkip(VP)) {
       // Just drop these intrinsics
@@ -742,10 +698,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         I->eraseFromParent();
         continue;
       }
-
-      // We've moved this instruction already
-      if (Speculated)
-        continue;
 
       // I is being reduced by a reduction pack so will be dead later
       if (OldRdxOps.count(I))
@@ -1237,6 +1189,23 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
                            GetExtraOperands);
   for (auto *VP : P)
     tryAdd(VP);
+
+  // Look of consecutive loads/stores and speculatively compute their pointers if necessary
+  for (auto *VP : AllPacks) {
+    auto *Addr = VP->getLoadStorePointer();
+    if (!Addr)
+      continue;
+    auto *AddrComp = dyn_cast<Instruction>(Addr);
+    if (!AddrComp)
+      continue;
+    SmallVector<Instruction *> Insts;
+    for (auto *V : VP->elementValues())
+      Insts.push_back(cast<Instruction>(V));
+    auto *C = Pkr.findSpeculationCond(AddrComp, Insts);
+    auto *VL = Pkr.getVLoopFor(AddrComp);
+    if (!isImplied(VL->getInstCond(AddrComp), C))
+      VL->setInstCond(AddrComp, C);
+  }
 
   // Lower everything
   VectorCodeGen CodeGen(Pkr, Builder, Reifier, ValueToPackMap);

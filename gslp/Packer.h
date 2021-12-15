@@ -177,6 +177,11 @@ public:
   VLoop &getTopVLoop() { return TopVL; }
   void fuseOrCoIterateLoops(VLoop *, VLoop *);
   bool canSpeculateAt(llvm::Value *V, const ControlCondition *C);
+
+  // Given an instruction I and some users of I,
+  // find a relaxed control condition for I so that the users can safely use I
+  const ControlCondition *findSpeculationCond(llvm::Instruction *I, llvm::ArrayRef<llvm::Instruction *> Users);
+
   void matchSecondaryInsts(llvm::ArrayRef<llvm::Instruction *> SecondaryInsts) {
     assert(!SecondaryMM);
     SecondaryMM.emplace(getInsts(), SecondaryInsts);

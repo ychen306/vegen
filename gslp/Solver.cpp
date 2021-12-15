@@ -67,11 +67,10 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
         if (Accesses.size() == VL) {
           // Make sure we can compute the addresses speculatively if we are
           // doing masked load/stores
-          SmallVector<const ControlCondition *, 8> Conds;
-          for (auto *Access : Accesses)
-            Conds.push_back(Pkr->getBlockCondition(Access->getParent()));
-          auto *C = getGreatestCommonCondition(Conds);
-          if (!Pkr->canSpeculateAt(Accesses.front()->getPointerOperand(), C)) {
+          auto *AddrComp = dyn_cast<Instruction>(Accesses.front()->getPointerOperand());
+          SmallVector<Instruction *, 8> AccessInsts(Accesses.begin(), Accesses.end());
+          if (AddrComp && !Pkr->canSpeculateAt(AddrComp, 
+                Pkr->findSpeculationCond(AddrComp, AccessInsts))) {
             return;
           }
 

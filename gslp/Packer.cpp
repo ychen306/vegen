@@ -184,13 +184,40 @@ AccessLayoutInfo::AccessLayoutInfo(const ConsecutiveAccessDAG &AccessDAG) {
   }
 }
 
+static bool supersedes(VLoop *VL1, const ControlCondition *C1, VLoop *VL2,
+                       const ControlCondition *C2) {
+  return (VL1 == VL2 || VL1->contains(VL2)) && isImplied(C1, C2);
+}
+
+const ControlCondition *
+Packer::findSpeculationCond(Instruction *I, ArrayRef<Instruction *> Users) {
+  auto *VL = getVLoopFor(I);
+  SmallVector<const ControlCondition *, 8> Conds;
+  for (auto *U : Users) {
+    auto *UserVL = getVLoopFor(U);
+    if (UserVL == VL)
+      Conds.push_back(VL->getInstCond(U));
+    else {
+      auto SubLoops = VL->getSubLoops();
+      auto It = find_if(SubLoops, [&](auto &SubVL) {
+        return SubVL.get() == UserVL || SubVL->contains(UserVL);
+      });
+      assert(It != SubLoops.end());
+      Conds.push_back((*It)->getLoopCond());
+    }
+  }
+  return getGreatestCommonCondition(Conds);
+}
+
 // Check if we can speculatively compute a value at a given control condition
 bool Packer::canSpeculateAt(Value *V, const ControlCondition *C) {
   auto *I = dyn_cast<Instruction>(V);
   if (!I)
     return true;
   // Easy case: no need to speculate because I always executes
-  if (isImplied(getBlockCondition(I->getParent()), C))
+  auto *VL = getVLoopFor(I);
+  assert(VL);
+  if (isImplied(VL->getInstCond(I), C))
     return true;
   if (!isSafeToSpeculativelyExecute(I))
     return false;
@@ -199,7 +226,8 @@ bool Packer::canSpeculateAt(Value *V, const ControlCondition *C) {
     auto *OI = dyn_cast<Instruction>(O);
     if (!OI)
       continue;
-    if (!isImplied(getBlockCondition(OI->getParent()), C))
+    auto *VLForOI = getVLoopFor(OI);
+    if (!supersedes(VLForOI, VLForOI->getInstCond(OI), VL, C))
       return false;
   }
   return true;
@@ -214,11 +242,14 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
 
   // The set of loads producing elements of `OP`
   SmallPtrSet<Instruction *, 8> LoadSet;
+  SmallVector<Instruction *, 8> LoadInsts;
   for (auto *V : OP) {
     if (!V)
       continue;
-    if (auto *I = dyn_cast<Instruction>(V))
+    if (auto *I = dyn_cast<Instruction>(V)) {
+      LoadInsts.push_back(I);
       LoadSet.insert(I);
+    }
   }
 
   // The loads might jumbled.
@@ -265,11 +296,10 @@ static void findExtendingLoadPacks(const OperandPack &OP, Packer *Pkr,
       // Need to check if we can speculatively compute the address of this load
       // pack
       SmallVector<const ControlCondition *, 8> Conds;
-      for (auto *Ld : Loads)
-        if (Ld)
-          Conds.push_back(Pkr->getBlockCondition(Ld->getParent()));
-      auto *C = getGreatestCommonCondition(Conds);
-      if (!Pkr->canSpeculateAt(Loads.front()->getPointerOperand(), C))
+      auto *AddrComp =
+          dyn_cast<Instruction>(Loads.front()->getPointerOperand());
+      if (AddrComp && !Pkr->canSpeculateAt(
+                          AddrComp, Pkr->findSpeculationCond(AddrComp, LoadInsts)))
         return;
 
       // Pad
@@ -312,8 +342,7 @@ static bool matchPackableGEPs(ArrayRef<Value *> Values,
 
   for (auto *V : drop_begin(Values)) {
     auto *GEP2 = dyn_cast<GetElementPtrInst>(V);
-    if (!GEP2 ||
-        GEP2->getNumOperands() != NumOperands ||
+    if (!GEP2 || GEP2->getNumOperands() != NumOperands ||
         GEP2->getSourceElementType() != Ty)
       return false;
     GEPs.push_back(GEP2);
@@ -373,7 +402,6 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
     VisitedInsts.push_back(I);
   }
-
 
   OPI.Elements = Elements;
 
@@ -491,7 +519,8 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
 
     std::vector<const Operation::Match *> Lanes;
     for (unsigned i = 0; i < NumLanes; i++) {
-      ArrayRef<Operation::Match> Matches = findMatches(LaneOps[i].getOperation(), (*OP)[i]);
+      ArrayRef<Operation::Match> Matches =
+          findMatches(LaneOps[i].getOperation(), (*OP)[i]);
       if (Matches.empty())
         break;
       // FIXME: consider multiple matches for the same operation
@@ -566,9 +595,7 @@ bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
   return VLoop::isSafeToCoIterate(getVLoopFor(I1), getVLoopFor(I2));
 }
 
-VLoop *Packer::getVLoopFor(Instruction *I) {
-  return VLI.getLoopForInst(I);
-}
+VLoop *Packer::getVLoopFor(Instruction *I) { return VLI.getLoopForInst(I); }
 
 void Packer::fuseOrCoIterateLoops(VLoop *VL1, VLoop *VL2) {
   if (VLoop::isSafeToFuse(VL1, VL2, *SE))

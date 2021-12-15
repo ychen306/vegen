@@ -144,6 +144,10 @@ public:
     assert(InstConds.count(I));
     return InstConds.lookup(I);
   }
+  void setInstCond(llvm::Instruction *I, const ControlCondition *C) {
+    assert(InstConds.count(I));
+    InstConds[I] = C;
+  }
   llvm::ArrayRef<std::unique_ptr<VLoop>> getSubLoops() const {
     return SubLoops;
   }
@@ -161,6 +165,7 @@ public:
   VLoop *isLiveOutOfSubLoop(llvm::Instruction *I) const;
 
   bool contains(llvm::Instruction *) const;
+  bool contains(VLoop *) const;
 
   // Get the incoming condition if the ith phi value
   const ControlCondition *getIncomingPhiCondition(llvm::PHINode *PN, unsigned i) {

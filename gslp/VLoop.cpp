@@ -275,6 +275,13 @@ bool VLoop::contains(Instruction *I) const {
   return Insts.test(VPCtx->getScalarId(I));
 }
 
+bool VLoop::contains(VLoop *VL) const {
+  for (auto &SubVL : SubLoops)
+    if (SubVL.get() == VL || SubVL->contains(VL))
+      return true;
+  return true;
+}
+
 // Determine whether I has user from out of VL
 static bool hasOutsideUser(VLoop *VL, Instruction *I) {
   return any_of(I->users(), [VL](User *U) {
