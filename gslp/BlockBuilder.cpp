@@ -72,7 +72,6 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
     SmallPtrSet<const ControlCondition *, 4> Visited;
     SmallVector<const ControlCondition *> Worklist{C};
     assert(SemiActiveConds.count(C));
-    errs() << "!! starting with " << *C << '\n';
     while (!Worklist.empty()) {
       auto *C2 = Worklist.pop_back_val();
       if (!Visited.insert(C2).second)
@@ -83,8 +82,6 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
         continue;
       }
 
-      errs() << "... c2 = " << *C2 << '\n';
-      errs() << "......... " << ActiveConds.count(C2) << '\n';
       auto It = SemiActiveConds.find(C2);
       assert(It != SemiActiveConds.end());
       Worklist.append(It->second.begin(), It->second.end());
@@ -124,21 +121,6 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   }
 
   auto *Or = cast<ConditionOr>(C);
-
-  // If all of the conditions are active, just join all of them.
-  if (all_of(Or->Conds, [&](auto *C2) { return ActiveConds.count(C2); })) {
-    auto *BB = createBlock();
-    for (auto *C2 : Or->Conds) {
-      auto It = ActiveConds.find(C2);
-      assert(It != ActiveConds.end());
-      BranchInst::Create(BB, It->second);
-      ActiveConds.erase(It);
-      SemiActiveConds[C2] = {C};
-    }
-    ActiveConds[C] = BB;
-    return BB;
-  }
-
   // At this point, we need a join but not all the conditions we want are
   // active. Find all the active blocks that are using the greatest common cond.
   SmallPtrSet<const ControlCondition *, 4> Conds;
@@ -177,9 +159,12 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
 
   // Branch conditionally from AuxBB to BB
   auto *DrainBB = createBlock();
-  BranchInst::Create(
-      BB, DrainBB,
-      emitDisjunction(AuxBB, CommonC, UnjoinedConds, EmitCondition), AuxBB);
+  if (UnjoinedConds.empty())
+    BranchInst::Create(DrainBB, AuxBB);
+  else
+    BranchInst::Create(
+        BB, DrainBB,
+        emitDisjunction(AuxBB, CommonC, UnjoinedConds, EmitCondition), AuxBB);
 
   // Create a dummy condition that represents the complement of the disjunction.
   auto *DummyC = getDummyCondition();
