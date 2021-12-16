@@ -630,11 +630,6 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
     assert(!BB->getTerminator());
     return BB;
   };
-  auto GetLastBlockFor = [&](const ControlCondition *C) {
-    if (auto *BB = LastBlockForCond.lookup(C))
-      return BB;
-    return GetBlock(C);
-  };
 
   SmallVector<std::pair<PHINode *, OperandPack>> MusToPatch;
   SmallVector<std::pair<PHINode *, Value *>> ScalarMusToPatch;
@@ -736,7 +731,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       } else {
         for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
           auto *EdgeCond = VL.getIncomingPhiCondition(PN, i);
-          setInsertAtEndOfBlock(Builder, GetLastBlockFor(EdgeCond));
+          setInsertAtEndOfBlock(Builder, GetBlock(EdgeCond));
           Builder.CreateStore(useScalar(PN->getIncomingValue(i)), Alloca);
         }
       }
@@ -842,7 +837,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
         for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
           auto *Cond = VL.getIncomingPhiCondition(PN, i);
-          auto *BB = GetLastBlockFor(Cond);
+          auto *BB = GetBlock(Cond);
           if (auto *Terminator = BB->getTerminator())
             Builder.SetInsertPoint(Terminator);
           else
@@ -1028,6 +1023,7 @@ void VectorCodeGen::run() {
   PromoteMemToReg(Allocas, DT);
   fixDefUseDominance(F, DT);
 
+#if 0
   // Delete trivially dead instructions
   bool Changed;
   do {
@@ -1039,6 +1035,7 @@ void VectorCodeGen::run() {
       I->eraseFromParent();
     Changed = !ReallyDeadInsts.empty();
   } while (Changed);
+#endif
 }
 
 namespace {
