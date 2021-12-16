@@ -46,6 +46,11 @@ namespace llvm {
 FunctionPass *createScalarizerPass();
 }
 
+cl::opt<bool> TestCodeGen(
+    "test-codegen",
+    cl::desc("test lowering from vloop without vectorization"),
+    cl::init(false));
+
 static cl::opt<std::string>
     WrappersDir("wrappers-dir",
                 cl::desc("Path to the directory containing InstWrappers.*.bc"),
@@ -144,6 +149,8 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F,
   if (Inst->getName().contains("hadd"))
     return false;
   if (Inst->getName().contains("broadcast"))
+    return false;
+  if (Inst->getName().contains("fmadd"))
     return false;
   for (auto &Feature : Inst->getTargetFeatures())
     if (!hasFeature(F, Feature) ||
@@ -299,7 +306,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   DenseMap<Loop *, UnrolledLoopTy> DupToOrigLoopMap;
   DenseMap<Instruction *, UnrolledInstruction> UnrolledIterations;
-  if (!DisableUnrolling) {
+  if (!DisableUnrolling && !TestCodeGen) {
     AssumptionCache AC(F);
     DenseMap<Loop *, unsigned> UFs;
     computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
@@ -308,6 +315,8 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   PostDominatorTree PDT(F); // recompute PDT after unrolling
+  if (!TestCodeGen)
+    renameAllocas(&F, *DT, PDT, *LI, *AA);
   Packer Pkr(SupportedIntrinsics, F, AA, LI, SE, DT, &PDT, DI, LVI, TTI, BFI);
 
   // Forward the seeds from the unroller
@@ -316,7 +325,8 @@ bool GSLP::runOnFunction(Function &F) {
     SeedOperands = getSeeds(Pkr, DupToOrigLoopMap, UnrolledIterations);
 
   VectorPackSet Packs(&F);
-  optimizeBottomUp(Packs, &Pkr, SeedOperands);
+  if (!TestCodeGen)
+    optimizeBottomUp(Packs, &Pkr, SeedOperands);
 
   IntrinsicBuilder Builder(*InstWrappers);
   errs() << "Generating vector code\n";

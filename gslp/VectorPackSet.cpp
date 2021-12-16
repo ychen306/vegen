@@ -21,11 +21,7 @@
 using namespace llvm;
 using namespace PatternMatch;
 
-static cl::opt<bool> RescheduleScalars(
-    "reschedule-scalar",
-    cl::desc(
-        "run VectorPackSet::codegen and reschdule even when not vectorizing"),
-    cl::init(false));
+extern cl::opt<bool> TestCodeGen;
 
 static cl::opt<bool> DumpAfterErasingOldBlocks("dump-after-erasing-old-blocks",
                                                cl::init(false));
@@ -1112,8 +1108,8 @@ static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
 }
 
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
-  if (AllPacks.empty() && !RescheduleScalars)
-    return;
+ if (AllPacks.empty() && !TestCodeGen)
+   return;
 
   // Fuse the loops for packs involving multiple loops
   for (auto *VP : AllPacks) {
