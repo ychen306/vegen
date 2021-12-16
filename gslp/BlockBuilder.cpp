@@ -72,6 +72,7 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
     SmallPtrSet<const ControlCondition *, 4> Visited;
     SmallVector<const ControlCondition *> Worklist{C};
     assert(SemiActiveConds.count(C));
+    errs() << "!! starting with " << *C << '\n';
     while (!Worklist.empty()) {
       auto *C2 = Worklist.pop_back_val();
       if (!Visited.insert(C2).second)
@@ -82,6 +83,8 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
         continue;
       }
 
+      errs() << "... c2 = " << *C2 << '\n';
+      errs() << "......... " << ActiveConds.count(C2) << '\n';
       auto It = SemiActiveConds.find(C2);
       assert(It != SemiActiveConds.end());
       Worklist.append(It->second.begin(), It->second.end());
