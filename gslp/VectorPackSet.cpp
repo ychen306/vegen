@@ -31,6 +31,10 @@ static cl::opt<bool>
                                cl::init(false));
 
 static bool shouldSkip(const VectorPack *VP) {
+#if 0
+  return !(VP->isLoad() || VP->isStore());
+  return true;
+#endif
   return false;
   // return VP->getProducer() &&
   // VP->getProducer()->getName().contains("builtin");
