@@ -21,6 +21,7 @@ ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI,
 }
 
 Value *ControlDependenceAnalysis::getCanonicalValue(Value *V) {
+  return V;
   if (auto *V2 = CanonicalValues.lookup(V))
     return V2;
 
