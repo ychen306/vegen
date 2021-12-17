@@ -23,8 +23,12 @@ def run_csmith(seed, outdir=default_outdir):
       print('clang binary timed out, seed =', seed)
       return
   
-    subprocess.check_output(['vegen-clang', src_f.name, '-O3', '-mllvm',
+    try:
+      subprocess.check_output(['vegen-clang', src_f.name, '-O3', '-mllvm',
       '-test-codegen', '-o', vegen_exe.name, '-I/usr/local/include/csmith-2.3.0/'], stderr=subprocess.DEVNULL)
+    except:
+      save_bad_src(src, outdir+'/'+str(seed)+'.c')
+      print('vegen failed at compile time, seed =', seed)
     try:
       vegen_out = subprocess.check_output([vegen_exe.name], timeout=1)
     except subprocess.TimeoutExpired:
@@ -33,6 +37,7 @@ def run_csmith(seed, outdir=default_outdir):
       return
   
     if clang_out != vegen_out:
+      save_bad_src(src, outdir+'/'+str(seed)+'.c')
       print('Found bug in VeGen, seed =', seed)
       return
     else:
