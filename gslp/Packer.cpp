@@ -66,7 +66,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
       CDA(*LI, *DT, *PDT),
 
-      TopVL(*LI, &VPCtx, DA, CDA, VLI),
+      TopVL(*LI, *DT, &VPCtx, DA, CDA, VLI),
 
       BO(&F), MM(Insts, F), SE(SE), DT(DT), PDT(PDT), LI(LI),
       SupportedInsts(Insts.vec()), LVI(LVI), TTI(TTI), BFI(BFI) {

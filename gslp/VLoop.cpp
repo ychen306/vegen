@@ -2,6 +2,7 @@
 #include "ControlDependence.h"
 #include "DependenceAnalysis.h"
 #include "VectorPackContext.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
@@ -20,7 +21,7 @@ getIncomingPhiConditions(SmallVectorImpl<const ControlCondition *> &Conds,
     Conds.push_back(CDA.getConditionForEdge(SrcBB, PN->getParent()));
 }
 
-VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
+VLoop::VLoop(LoopInfo &LI, DominatorTree &DT, VectorPackContext *VPCtx,
              GlobalDependenceAnalysis &DA, ControlDependenceAnalysis &CDA,
              VLoopInfo &VLI)
     : IsTopLevel(true), Parent(nullptr), LoopCond(nullptr), L(nullptr),
@@ -31,7 +32,11 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
     SubLoops.emplace_back(SubVL);
   }
 
-  for (auto &BB : *VPCtx->getFunction())
+  for (auto &BB : *VPCtx->getFunction()) {
+    // Ignore dead basic blocks
+    if (!DT.isReachableFromEntry(&BB))
+      continue;
+
     if (!LI.getLoopFor(&BB)) {
       auto *C = CDA.getConditionForBlock(&BB);
       for (auto &I : BB) {
@@ -42,6 +47,7 @@ VLoop::VLoop(LoopInfo &LI, VectorPackContext *VPCtx,
         VLI.mapInstToLoop(&I, this);
       }
     }
+  }
 }
 
 VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,

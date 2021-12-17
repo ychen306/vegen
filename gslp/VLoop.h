@@ -19,6 +19,7 @@ class PHINode;
 class AllocaInst;
 class LLVMContext;
 class Twine;
+class DominatorTree;
 } // namespace llvm
 
 class VectorPackContext;
@@ -116,7 +117,7 @@ class VLoop {
         GlobalDependenceAnalysis &, ControlDependenceAnalysis &, VLoopInfo &);
 
 public:
-  VLoop(llvm::LoopInfo &, VectorPackContext *, GlobalDependenceAnalysis &,
+  VLoop(llvm::LoopInfo &,  llvm::DominatorTree &, VectorPackContext *, GlobalDependenceAnalysis &,
         ControlDependenceAnalysis &, VLoopInfo &);
 
   const decltype(GuardedLiveOuts) &getGuardedLiveOuts() const { return GuardedLiveOuts; }
