@@ -98,6 +98,9 @@ class VectorCodeGen {
 
   Value *getReifiedBackEdgeCond(VLoop *VL) {
     auto *BEC = VL->getBackEdgeCond();
+    if (!BEC)
+      return Builder.getTrue();
+
     auto *Or = dyn_cast<ConditionOr>(BEC);
 
     // If none of the reified sub-terms of the disjunction
@@ -974,7 +977,12 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   for (auto &Pair : ScalarMusToPatch)
     fixScalarUses(Pair.first);
 
-  Builder.CreateCondBr(getReifiedBackEdgeCond(&VL), Header, Exit);
+  if (VL.getBackEdgeCond()) {
+    Builder.CreateCondBr(getReifiedBackEdgeCond(&VL), Header, Exit);
+  } else {
+    Builder.CreateBr(Header);
+    ReturnInst::Create(Ctx, Exit);
+  }
 
   for (auto KV : VL.getGuardedLiveOuts())
     GuardedLiveOuts.insert(KV);
