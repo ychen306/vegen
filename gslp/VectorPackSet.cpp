@@ -977,12 +977,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   for (auto &Pair : ScalarMusToPatch)
     fixScalarUses(Pair.first);
 
-  if (VL.getBackEdgeCond()) {
-    Builder.CreateCondBr(getReifiedBackEdgeCond(&VL), Header, Exit);
-  } else {
-    Builder.CreateBr(Header);
-    ReturnInst::Create(Ctx, Exit);
-  }
+  Builder.CreateCondBr(getReifiedBackEdgeCond(&VL), Header, Exit);
 
   for (auto KV : VL.getGuardedLiveOuts())
     GuardedLiveOuts.insert(KV);
@@ -1029,6 +1024,15 @@ void VectorCodeGen::run() {
 
   if (DumpAfterErasingOldBlocks)
     F->dump();
+
+  auto *RetTy = F->getReturnType();
+  for (auto &BB : *F)
+    if (!BB.getTerminator()) {
+      if (RetTy->isVoidTy())
+        ReturnInst::Create(F->getContext(), &BB);
+      else
+        ReturnInst::Create(F->getContext(), Constant::getNullValue(RetTy), &BB);
+    }
 
   // Restore SSA
   DominatorTree DT(*F);
