@@ -256,12 +256,13 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
       for (Value *V : I.operand_values()) {
         auto *OpInst = dyn_cast<Instruction>(V);
         // Ignore loop carried dependences, which can only come from phi nodes
-        if (OpInst && DT.dominates(&I, OpInst)) {
+        if (OpInst && (DT.dominates(&I, OpInst) || OpInst == &I)) {
           assert(isa<PHINode>(&I));
           continue;
         }
-        if (OpInst)
+        if (OpInst) {
           Dependences[&I].push_back(OpInst);
+        }
       }
 
       if (m_Intrinsic<Intrinsic::experimental_noalias_scope_decl>(m_Value()).match(&I) ||
