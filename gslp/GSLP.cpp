@@ -354,7 +354,7 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
   MPM.add(createScalarizerPass());
-  MPM.add(createStructurizeCFGPass());
+  MPM.add(createStructurizeCFGPass(false));
   MPM.add(createCFGSimplificationPass());
   MPM.add(createLoopSimplifyPass());
   MPM.add(createLoopRotatePass());
