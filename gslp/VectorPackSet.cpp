@@ -1025,15 +1025,6 @@ void VectorCodeGen::run() {
   if (DumpAfterErasingOldBlocks)
     F->dump();
 
-  auto *RetTy = F->getReturnType();
-  for (auto &BB : *F)
-    if (!BB.getTerminator()) {
-      if (RetTy->isVoidTy())
-        ReturnInst::Create(F->getContext(), &BB);
-      else
-        ReturnInst::Create(F->getContext(), Constant::getNullValue(RetTy), &BB);
-    }
-
   // Restore SSA
   DominatorTree DT(*F);
   PromoteMemToReg(Allocas, DT);

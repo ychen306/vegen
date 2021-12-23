@@ -271,14 +271,10 @@ bool GSLP::runOnFunction(Function &F) {
         !isa<BranchInst>(BB.getTerminator()))
       return false;
 
-#if 0
   // Don't deal with infinite loops
-  for (auto *L : LI->getLoopsInPreorder()) {
-    auto *Latch = L->getLoopLatch();
-    if (Latch && cast<BranchInst>(Latch->getTerminator())->isUnconditional())
+  for (auto *L : LI->getLoopsInPreorder())
+    if (L->hasNoExitBlocks())
       return false;
-  }
-#endif
 
   std::vector<const InstBinding *> SupportedIntrinsics;
   for (InstBinding &Inst : getInsts())
