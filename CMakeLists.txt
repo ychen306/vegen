@@ -42,3 +42,5 @@ configure_file(
   ${CMAKE_SOURCE_DIR}/utils/vegen-opt.in
   ${CMAKE_BINARY_DIR}/vegen-opt
 )
+
+string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")

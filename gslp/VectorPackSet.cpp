@@ -414,6 +414,16 @@ schedule(VLoop &VL, ControlReifier &Reifier,
     if (I) {
       // Make sure the control conditions are scheduled before the instruction
       Schedule(VL.getInstCond(I));
+      auto *PN = dyn_cast<PHINode>(I);
+      if (PN) {
+        if (VL.isGatedPhi(PN)) {
+          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+            Schedule(VL.getIncomingPhiCondition(PN, i));
+        } else if (auto OneHot = VL.getOneHotPhi(PN)) {
+          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+            Schedule(OneHot->C);
+        }
+      }
       for (auto *V : VPCtx->iter_values(DA.getDepended(I))) {
         DependedValues.push_back(V);
       }
