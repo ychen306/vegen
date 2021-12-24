@@ -5,6 +5,10 @@
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/Analysis/PostDominators.h"
+#include "llvm/Transforms/Utils/ValueMapper.h"
+
 #include <map>
 
 namespace llvm {
@@ -15,6 +19,7 @@ class LoopInfo;
 class DominatorTree;
 class PHINode;
 class raw_ostream;
+class Function;
 } // namespace llvm
 
 class ControlCondition {
@@ -96,8 +101,11 @@ template <> struct DenseMapInfo<BinaryInstruction> {
 
 class ControlDependenceAnalysis {
   llvm::LoopInfo &LI;
-  llvm::DominatorTree &DT;
-  llvm::PostDominatorTree &PDT;
+  llvm::DominatorTree DT;
+  llvm::PostDominatorTree PDT;
+  llvm::ValueToValueMapTy VMap;
+  llvm::DenseMap<llvm::BasicBlock *, llvm::BasicBlock *> CloneToOrigMap;
+  llvm::Function *ScratchF;
 
   using OrKeyT = llvm::ArrayRef<const ControlCondition *>;
   llvm::DenseMap<OrKeyT, std::unique_ptr<ConditionOr>> UniqueOrs;
@@ -120,9 +128,13 @@ class ControlDependenceAnalysis {
   const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &
   getControlDependentBlocks(llvm::BasicBlock *);
 
+  llvm::BasicBlock *getCloned(llvm::BasicBlock *BB) const;
+  bool dominates(llvm::BasicBlock *, llvm::BasicBlock *) const;
+  bool postDominates(llvm::BasicBlock *, llvm::BasicBlock *) const;
+
 public:
-  ControlDependenceAnalysis(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
-                            llvm::PostDominatorTree &PDT);
+  ~ControlDependenceAnalysis();
+  ControlDependenceAnalysis(llvm::LoopInfo &LI, llvm::Function *F);
   const ControlCondition *getConditionForBlock(llvm::BasicBlock *);
   const ControlCondition *getConditionForEdge(llvm::BasicBlock *,
                                               llvm::BasicBlock *);

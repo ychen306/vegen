@@ -273,7 +273,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   // Don't deal with infinite loops
   for (auto *L : LI->getLoopsInPreorder())
-    if (L->hasNoExitBlocks())
+    if (!L->isRotatedForm() || L->hasNoExitBlocks())
       return false;
 
   std::vector<const InstBinding *> SupportedIntrinsics;
@@ -350,7 +350,6 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
   MPM.add(createScalarizerPass());
-  MPM.add(createStructurizeCFGPass(false));
   MPM.add(createCFGSimplificationPass());
   MPM.add(createLoopSimplifyPass());
   MPM.add(createLoopRotatePass());
