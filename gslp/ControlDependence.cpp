@@ -184,25 +184,16 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
   return G;
 }
 
-// If BB is an exit block, return the loop that it's returning from
-// Assume all loops have dedicated exits
-static Loop *getExitingLoop(LoopInfo &LI, BasicBlock *BB) {
-  assert(pred_size(BB) > 0);
-  auto *Pred = *pred_begin(BB);
-  auto *L = LI.getLoopFor(Pred);
-  if (L != LI.getLoopFor(BB))
-    return L;
-  return nullptr;
-}
-
 const ControlCondition *
 ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
                                                BasicBlock *Dst) {
   auto *SrcCond = getConditionForBlock(Src);
   auto *Br = cast<BranchInst>(Src->getTerminator());
 
-  if (auto *ExitingL = getExitingLoop(LI, Dst)) {
-    auto *PreheaderC = getConditionForBlock(ExitingL->getLoopPreheader());
+  // Special case for exit edges
+  auto *DstL = LI.getLoopFor(Dst);
+  for (auto *SrcL = LI.getLoopFor(Src); SrcL && SrcL != DstL; SrcL = SrcL->getParentLoop()) {
+    auto *PreheaderC = getConditionForBlock(SrcL->getLoopPreheader());
     SrcCond = concat(PreheaderC, SrcCond);
   }
 
