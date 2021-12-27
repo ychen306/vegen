@@ -74,6 +74,8 @@ VLoop::VLoop(LoopInfo &LI, Loop *L, VectorPackContext *VPCtx,
   else
     BackEdgeCond = LatchCond;
 
+  errs() << "!!! BackEdgeCond = " << *BackEdgeCond << '\n';
+
   // Build the sub-loops
   for (auto *SubL : *L) {
     auto *SubVL = new VLoop(LI, SubL, VPCtx, DA, CDA, VLI);

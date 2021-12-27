@@ -746,9 +746,12 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         Builder.CreateStore(useScalar(MaybeOneHot->IfTrue), Alloca);
         OneHotPhis.push_back(PN);
       } else {
+        errs() << "!!! lowering gated phi: " << *PN << '\n';
         for (unsigned i = 0; i < PN->getNumIncomingValues(); i++) {
           auto *EdgeCond = VL.getIncomingPhiCondition(PN, i);
           setInsertAtEndOfBlock(Builder, GetBlock(EdgeCond));
+          errs() << "\t\t value = " << *PN->getIncomingValue(i)
+            << ", cond = " << *EdgeCond << '\n';
           Builder.CreateStore(useScalar(PN->getIncomingValue(i)), Alloca);
         }
       }
