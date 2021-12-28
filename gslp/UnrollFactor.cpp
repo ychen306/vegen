@@ -429,7 +429,6 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
            << ')' << " " << UFs.lookup(L) << '\n';
 #if 1
     if (UFs[L] > 1) {
-      UFs[L] = 4;
       for (auto &KV : UFs)
         if (KV.first != L)
           KV.second = 0;
