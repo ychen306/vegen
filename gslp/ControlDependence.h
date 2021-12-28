@@ -4,9 +4,9 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/SmallPtrSet.h"
-#include "llvm/Support/Casting.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
 #include <map>
@@ -20,6 +20,8 @@ class DominatorTree;
 class PHINode;
 class raw_ostream;
 class Function;
+class BranchInst;
+class Loop;
 } // namespace llvm
 
 class ControlCondition {
@@ -131,6 +133,8 @@ class ControlDependenceAnalysis {
   llvm::BasicBlock *getCloned(llvm::BasicBlock *BB) const;
   bool dominates(llvm::BasicBlock *, llvm::BasicBlock *) const;
   bool postDominates(llvm::BasicBlock *, llvm::BasicBlock *) const;
+  const ControlCondition *getConditionForBranch(llvm::BranchInst *, bool Taken,
+                                                llvm::Loop *CtxL);
 
 public:
   ~ControlDependenceAnalysis();
@@ -142,7 +146,8 @@ public:
 
   const ControlCondition *getAnd(const ControlCondition *, llvm::Value *, bool);
   const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);
-  const ControlCondition *concat(const ControlCondition *, const ControlCondition *);
+  const ControlCondition *concat(const ControlCondition *,
+                                 const ControlCondition *);
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ControlCondition &);
@@ -152,7 +157,8 @@ const ControlCondition *
     getGreatestCommonCondition(llvm::ArrayRef<const ControlCondition *>);
 
 // Check if C1 is implied by C2
-static inline bool isImplied(const ControlCondition *C1, const ControlCondition *C2) {
+static inline bool isImplied(const ControlCondition *C1,
+                             const ControlCondition *C2) {
   return C1 == C2 || getGreatestCommonCondition({C1, C2}) == C1;
 }
 

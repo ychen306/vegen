@@ -12,11 +12,13 @@ BasicBlock *ControlDependenceAnalysis::getCloned(BasicBlock *BB) const {
   return cast<BasicBlock>(VMap.lookup(BB));
 }
 
-bool ControlDependenceAnalysis::dominates(BasicBlock *BB1, BasicBlock *BB2) const {
+bool ControlDependenceAnalysis::dominates(BasicBlock *BB1,
+                                          BasicBlock *BB2) const {
   return DT.dominates(getCloned(BB1), getCloned(BB2));
 }
 
-bool ControlDependenceAnalysis::postDominates(BasicBlock *BB1, BasicBlock *BB2) const {
+bool ControlDependenceAnalysis::postDominates(BasicBlock *BB1,
+                                              BasicBlock *BB2) const {
   return PDT.dominates(getCloned(BB1), getCloned(BB2));
 }
 
@@ -45,7 +47,7 @@ ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI, Function *F)
       BranchInst::Create(Latch, Latch);
     } else {
       auto *Exit = Br->getSuccessor(0) == Header ? Br->getSuccessor(1)
-                                                : Br->getSuccessor(0);
+                                                 : Br->getSuccessor(0);
       BranchInst::Create(Exit, Latch);
       Br->eraseFromParent();
     }
@@ -184,25 +186,34 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
   return G;
 }
 
-const ControlCondition *
-ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
-                                               BasicBlock *Dst) {
+const ControlCondition *ControlDependenceAnalysis::getConditionForBranch(BranchInst *Br, bool Taken, Loop *CtxL) {
+  assert(Br->isConditional());
+  auto *Src = Br->getParent();
   auto *SrcCond = getConditionForBlock(Src);
-  auto *Br = cast<BranchInst>(Src->getTerminator());
 
   // Special case for exit edges
-  auto *DstL = LI.getLoopFor(Dst);
-  for (auto *SrcL = LI.getLoopFor(Src); SrcL && SrcL != DstL; SrcL = SrcL->getParentLoop()) {
+  for (auto *SrcL = LI.getLoopFor(Src); SrcL && SrcL != CtxL;
+       SrcL = SrcL->getParentLoop()) {
     auto *PreheaderC = getConditionForBlock(SrcL->getLoopPreheader());
     SrcCond = concat(PreheaderC, SrcCond);
   }
 
-  // Ignore backedges
+  // 1) Ignore backedges
+  // 2) Alternatively, if we exit from the latch and there's a single exit block,
+  // then we also ignore the exit condition
   auto *L = LI.getLoopFor(Src);
-  if (Br->isUnconditional() || (L && L->isLoopLatch(Src))) {
+  if (Br->isUnconditional() || (L && L->isLoopLatch(Src) && L->getExitBlock())) {
     return SrcCond;
   }
-  return getAnd(SrcCond, Br->getCondition(), Br->getSuccessor(0) == Dst);
+
+  return getAnd(SrcCond, Br->getCondition(), Taken);
+}
+
+const ControlCondition *
+ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
+                                               BasicBlock *Dst) {
+  auto *Br = cast<BranchInst>(Src->getTerminator());
+  return getConditionForBranch(Br, Br->getSuccessor(0) == Dst, LI.getLoopFor(Dst));
 }
 
 const ControlCondition *
@@ -262,6 +273,10 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   if (It != BlockConditions.end())
     return It->second;
 
+  // Use this rule to propagate conditions for exit-block/edge
+  if (auto *Pred = BB->getUniquePredecessor())
+    return getConditionForEdge(Pred, BB);
+
   // The entry block always executes unconditionally
   auto *Node = DT.getNode(BB);
   if (Node == DT.getRootNode())
@@ -275,17 +290,12 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   }
 
   SmallVector<const ControlCondition *> CondsToJoin;
+  // FIXME: this is broken is BB2 and BB are not in the same loop
   for (auto *BB2 : getControlDependentBlocks(BB)) {
-    BasicBlock *DstBB = nullptr;
     auto *Br = cast<BranchInst>(BB2->getTerminator());
     assert(Br->isConditional());
-    // find the edge taken from the ctrl dependent block
-    if (postDominates(BB, Br->getSuccessor(0)))
-      DstBB = Br->getSuccessor(0);
-    else if (postDominates(BB, Br->getSuccessor(1)))
-      DstBB = Br->getSuccessor(1);
-    assert(DstBB);
-    CondsToJoin.push_back(getConditionForEdge(BB2, DstBB));
+    bool Taken = postDominates(BB, Br->getSuccessor(0));
+    CondsToJoin.push_back(getConditionForBranch(Br, postDominates(BB, Br->getSuccessor(0)), LI.getLoopFor(BB)));
   }
 
   sort(CondsToJoin);

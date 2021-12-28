@@ -273,7 +273,7 @@ bool GSLP::runOnFunction(Function &F) {
 
   // Don't deal with infinite loops
   for (auto *L : LI->getLoopsInPreorder())
-    if (!L->isRotatedForm() || L->hasNoExitBlocks())
+    if (/*!L->isRotatedForm() ||*/ L->hasNoExitBlocks())
       return false;
 
   std::vector<const InstBinding *> SupportedIntrinsics;
