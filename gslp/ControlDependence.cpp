@@ -7,23 +7,8 @@
 
 using namespace llvm;
 
-BasicBlock *ControlDependenceAnalysis::getCloned(BasicBlock *BB) const {
-  assert(VMap.count(BB));
-  return cast<BasicBlock>(VMap.lookup(BB));
-}
-
-bool ControlDependenceAnalysis::dominates(BasicBlock *BB1,
-                                          BasicBlock *BB2) const {
-  return DT.dominates(getCloned(BB1), getCloned(BB2));
-}
-
-bool ControlDependenceAnalysis::postDominates(BasicBlock *BB1,
-                                              BasicBlock *BB2) const {
-  return PDT.dominates(getCloned(BB1), getCloned(BB2));
-}
-
-ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI, Function *F)
-    : LI(LI) {
+ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT)
+    : LI(LI), DT(DT), PDT(PDT) {
 #if 0
   // Run a half-ass GVN over the control conditions
   ReversePostOrderTraversal<Function *> RPO(F);
@@ -34,30 +19,6 @@ ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI, Function *F)
   }
 #endif
 
-  ScratchF = CloneFunction(F, VMap);
-  for (auto &BB : *F)
-    CloneToOrigMap[getCloned(&BB)] = &BB;
-
-  for (auto *L : LI.getLoopsInPreorder()) {
-    auto *Latch = getCloned(L->getLoopLatch());
-    auto *Header = getCloned(L->getHeader());
-    auto *Br = cast<BranchInst>(Latch->getTerminator());
-    if (Br->isUnconditional()) {
-      Br->eraseFromParent();
-      BranchInst::Create(Latch, Latch);
-    } else {
-      auto *Exit = Br->getSuccessor(0) == Header ? Br->getSuccessor(1)
-                                                 : Br->getSuccessor(0);
-      BranchInst::Create(Exit, Latch);
-      Br->eraseFromParent();
-    }
-  }
-  DT = DominatorTree(*ScratchF);
-  PDT = PostDominatorTree(*ScratchF);
-}
-
-ControlDependenceAnalysis::~ControlDependenceAnalysis() {
-  ScratchF->eraseFromParent();
 }
 
 Value *ControlDependenceAnalysis::getCanonicalValue(Value *V) {
@@ -251,16 +212,14 @@ ControlDependenceAnalysis::getControlDependentBlocks(BasicBlock *BB) {
     // Ignore back edge
     if (IsHeader && Pred == Latch)
       continue;
-    if (!postDominates(BB, Pred))
+    if (!PDT.dominates(BB, Pred))
       Blocks.insert(Pred);
   }
 
   // DF_up
-  for (auto *Child : PDT.getNode(getCloned(BB))->children()) {
-    auto *ChildBlock = CloneToOrigMap.lookup(Child->getBlock());
-    assert(ChildBlock);
-    for (auto *BB2 : getControlDependentBlocks(ChildBlock))
-      if (!postDominates(BB, BB2))
+  for (auto *Child : PDT.getNode(BB)->children()) {
+    for (auto *BB2 : getControlDependentBlocks(Child->getBlock()))
+      if (!PDT.dominates(BB, BB2))
         Blocks.insert(BB2);
   }
 
@@ -285,7 +244,7 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   if (auto *L = LI.getLoopFor(BB)) {
     // We track the control condition of the main loop body separately
     auto *Header = L->getHeader();
-    if (dominates(Header, BB) && postDominates(BB, Header))
+    if (DT.dominates(Header, BB) && PDT.dominates(BB, Header))
       return nullptr;
   }
 
@@ -294,8 +253,8 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   for (auto *BB2 : getControlDependentBlocks(BB)) {
     auto *Br = cast<BranchInst>(BB2->getTerminator());
     assert(Br->isConditional());
-    bool Taken = postDominates(BB, Br->getSuccessor(0));
-    CondsToJoin.push_back(getConditionForBranch(Br, postDominates(BB, Br->getSuccessor(0)), LI.getLoopFor(BB)));
+    bool Taken = PDT.dominates(BB, Br->getSuccessor(0));
+    CondsToJoin.push_back(getConditionForBranch(Br, PDT.dominates(BB, Br->getSuccessor(0)), LI.getLoopFor(BB)));
   }
 
   sort(CondsToJoin);

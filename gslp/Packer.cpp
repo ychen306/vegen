@@ -64,7 +64,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                EquivalenceClasses<BasicBlock *> *UnrolledBlocks,
                bool Preplanning)
     : F(&F), VPCtx(&F), DA(*AA, *SE, *DT, *LI, *LVI, &F, &VPCtx, Preplanning),
-      CDA(*LI, &F),
+      CDA(*LI, *DT, *PDT),
 
       TopVL(*LI, *DT, &VPCtx, DA, CDA, VLI),
 

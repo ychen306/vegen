@@ -372,6 +372,8 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
           Instruction::Load, VecTy, LI->getPointerOperand(),
           false /*variable mask*/, getCommonAlignment(Loads),
           TTI::TCK_RecipThroughput, LI);
+      if (Cost > 4)
+        Cost = 4;
     } else {
       Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
                                   TTI::TCK_RecipThroughput, LI);
@@ -475,8 +477,7 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
   OS << "PACK<" << ProducerName << ">: (\n";
   for (auto *V : VP.getOrderedValues())
     if (V)
-      //OS << *V << '\n';
-      OS << V->getName() << '\n';
+      OS << *V << '\n';
     else
       OS << "undef\n";
   OS << ")\n";
@@ -487,8 +488,7 @@ raw_ostream &operator<<(raw_ostream &OS, const OperandPack &OP) {
   OS << "[\n";
   for (auto *V : OP)
     if (V) {
-      //errs() << *V << "\n";
-      OS << V->getName() << '\n';
+      errs() << *V << "\n";
     } else
       errs() << "undef\n";
   OS << "\n]";
