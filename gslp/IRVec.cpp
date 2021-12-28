@@ -257,9 +257,14 @@ IRInstTable::IRInstTable() {
   }
 
   for (unsigned InWidth : ScalarBitwidths)
-    for (unsigned OutWidth : ScalarBitwidths)
+    for (unsigned OutWidth : ScalarBitwidths) {
       if (InWidth > OutWidth)
         TruncOps.emplace_back(InWidth, OutWidth);
+      else if (InWidth < OutWidth) {
+        ExtOps.emplace_back(InWidth, OutWidth, true);
+        ExtOps.emplace_back(InWidth, OutWidth, false);
+      }
+    }
 
   for (unsigned BitWidth : ScalarBitwidths)
     SelectOps.emplace_back(BitWidth);
@@ -279,6 +284,8 @@ IRInstTable::IRInstTable() {
   for (unsigned VL : {2, 4, 8, 16}) {
     for (auto &TruncOp : TruncOps)
       VectorTruncs.push_back(VectorTruncate::Create(&TruncOp, VL));
+    for (auto &ExtOp : ExtOps)
+      VectorExtensions.push_back(VectorExtension::Create(&ExtOp, VL));
     for (auto &SelOp : SelectOps)
       VectorSelects.push_back(VectorSelect::Create(&SelOp, VL));
     for (auto &UnaryOp : UnaryMathOps)
@@ -335,6 +342,62 @@ float VectorTruncate::getCost(TargetTransformInfo *TTI,
   auto *OutTy =
       FixedVectorType::get(Type::getIntNTy(Ctx, TruncOp->OutWidth), VL);
   return TTI->getCastInstrCost(Instruction::CastOps::Trunc, OutTy, InTy,
+                               TTI::CastContextHint::None,
+                               TTI::TCK_RecipThroughput);
+}
+
+bool Extension::match(Value *V, SmallVectorImpl<Match> &Matches) const {
+  Value *X;
+  bool Matched = 
+    (Signed && PatternMatch::match(V, m_SExt(m_Value(X)))) ||
+    (!Signed && PatternMatch::match(V, m_ZExt(m_Value(X))));
+  if (Matched && hasBitWidth(X, InWidth) &&
+      hasBitWidth(V, OutWidth)) {
+    Matches.push_back({false, {X}, V});
+    return true;
+  }
+  return false;
+}
+
+VectorExtension VectorExtension::Create(const Extension *ExtOp,
+                                      unsigned VecLen) {
+  unsigned InWidth = ExtOp->InWidth, OutWidth = ExtOp->OutWidth;
+  InstSignature Sig = {// bitwidths of the inputs
+                       {InWidth * VecLen},
+                       // bitwidth of the output
+                       {OutWidth * VecLen},
+                       // has imm8?
+                       false};
+
+  std::vector<BoundOperation> LaneOps;
+  for (unsigned i = 0; i < VecLen; i++) {
+    unsigned Lo = i * InWidth, Hi = Lo + InWidth;
+    LaneOps.push_back(BoundOperation(ExtOp, {{0, Lo, Hi}}));
+  }
+  std::string Name = formatv("{0}ext-i{1}-to-i{2}", ExtOp->Signed ? 's' : 'z', InWidth, OutWidth).str();
+  return VectorExtension(ExtOp, Name, Sig, LaneOps);
+}
+
+Value *VectorExtension::emit(ArrayRef<Value *> Operands,
+                            IntrinsicBuilder &Builder) const {
+  assert(Operands.size() == 1);
+  auto &Ctx = Builder.getContext();
+  unsigned VL = getLaneOps().size();
+  auto *OutTy =
+      FixedVectorType::get(Type::getIntNTy(Ctx, ExtOp->OutWidth), VL);
+  if (ExtOp->Signed)
+    return Builder.CreateSExt(Operands.front(), OutTy);
+  return Builder.CreateZExt(Operands.front(), OutTy);
+}
+
+float VectorExtension::getCost(TargetTransformInfo *TTI,
+                              LLVMContext &Ctx) const {
+  unsigned VL = getLaneOps().size();
+  auto *InTy = FixedVectorType::get(Type::getIntNTy(Ctx, ExtOp->InWidth), VL);
+  auto *OutTy =
+      FixedVectorType::get(Type::getIntNTy(Ctx, ExtOp->OutWidth), VL);
+  auto Op = ExtOp->Signed ? Instruction::CastOps::SExt : Instruction::CastOps::ZExt;
+  return TTI->getCastInstrCost(Op, OutTy, InTy,
                                TTI::CastContextHint::None,
                                TTI::TCK_RecipThroughput);
 }

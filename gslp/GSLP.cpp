@@ -148,6 +148,8 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F,
     return true;
   if (Inst->getName().contains("hadd"))
     return false;
+  if (Inst->getName().contains("hsub"))
+    return false;
   if (Inst->getName().contains("broadcast"))
     return false;
   if (Inst->getName().contains("fmadd"))
@@ -281,13 +283,15 @@ bool GSLP::runOnFunction(Function &F) {
     if (isSupported(&Inst, F, TTI))
       SupportedIntrinsics.push_back(&Inst);
   for (auto &Inst : VecBindingTable.getBindings()) {
-    if (Inst.isSupported(TTI))
+    //if (Inst.isSupported(TTI))
       SupportedIntrinsics.push_back(&Inst);
   }
   for (auto &Inst : VecBindingTable.getUnarys()) {
-    if (Inst.isSupported(TTI))
+    //if (Inst.isSupported(TTI))
       SupportedIntrinsics.push_back(&Inst);
   }
+  for (auto &Ext : VecBindingTable.getExtensions())
+    SupportedIntrinsics.push_back(&Ext);
   for (auto &Trunc : VecBindingTable.getTruncates())
     SupportedIntrinsics.push_back(&Trunc);
   for (auto &Select : VecBindingTable.getSelects())

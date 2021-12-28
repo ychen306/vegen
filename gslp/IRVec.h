@@ -98,6 +98,30 @@ public:
                 llvm::LLVMContext &Ctx) const override;
 };
 
+struct Extension : public Operation {
+  unsigned InWidth, OutWidth;
+  bool Signed;
+  Extension(unsigned InWidth, unsigned OutWidth, bool Signed)
+      : InWidth(InWidth), OutWidth(OutWidth), Signed(Signed) {}
+  bool match(llvm::Value *V,
+             llvm::SmallVectorImpl<Match> &Matches) const override;
+};
+
+class VectorExtension : public InstBinding {
+  const Extension *ExtOp;
+  VectorExtension(const Extension *ExtOp, std::string Name, InstSignature Sig,
+                 std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        ExtOp(ExtOp) {}
+
+public:
+  static VectorExtension Create(const Extension *ExtOp, unsigned VecLen);
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
+};
+
 struct Select : Operation {
   unsigned BitWidth;
   Select(unsigned BitWidth) : BitWidth(BitWidth) {}
@@ -181,6 +205,9 @@ class IRInstTable {
   std::vector<Truncate> TruncOps;
   std::vector<VectorTruncate> VectorTruncs;
 
+  std::vector<Extension> ExtOps;
+  std::vector<VectorExtension> VectorExtensions;
+
   std::vector<Select> SelectOps;
   std::vector<VectorSelect> VectorSelects;
 
@@ -198,6 +225,7 @@ public:
     return UnaryVectorInsts;
   }
   llvm::ArrayRef<VectorTruncate> getTruncates() const { return VectorTruncs; }
+  llvm::ArrayRef<VectorExtension> getExtensions() const { return VectorExtensions; }
   llvm::ArrayRef<VectorSelect> getSelects() const { return VectorSelects; }
   llvm::ArrayRef<VectorUnaryMath> getUnaryMathFuncs() const {
     return VectorUnaryMathFuncs;
