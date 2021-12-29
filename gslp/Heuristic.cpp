@@ -2,9 +2,12 @@
 #include "Packer.h"
 #include "Solver.h"
 #include "VectorPack.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+
+#define DEBUG_TYPE "heuristic"
 
 static constexpr float C_Splat = 1.0;
 static constexpr float C_Perm = 2;
@@ -61,6 +64,7 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
 
   // The baseline solution is building the vector by implicit insertion
   Solution Sol(Cost);
+  LLVM_DEBUG(dbgs() << "Scalar cost of " << *OP << " = " << Cost << '\n');
 
   if (Cost == 0) {
     Solutions[OP] = Sol;
@@ -78,8 +82,10 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
   const OperandPack *Deduped = VPCtx->dedup(OP);
   float ExtraCost = Deduped != OP ? C_Shuffle : 0;
   auto OPI = Pkr->getProducerInfo(Deduped);
-  for (auto *VP : OPI.getProducers())
+  for (auto *VP : OPI.getProducers()) {
     Sol.update(Solution(getCost(VP) + ExtraCost, VP));
+    LLVM_DEBUG(dbgs() << "Cost of " << *VP << ": " << getCost(VP) << '\n');
+  }
 
   if (AllowTranspose) {
     for (unsigned N : {2, 4, 8})

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.4)
 project(GSLP)
 
+string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+
 include(sanitizers.cmake)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -42,5 +44,3 @@ configure_file(
   ${CMAKE_SOURCE_DIR}/utils/vegen-opt.in
   ${CMAKE_BINARY_DIR}/vegen-opt
 )
-
-string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")

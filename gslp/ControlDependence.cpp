@@ -148,7 +148,6 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
 }
 
 const ControlCondition *ControlDependenceAnalysis::getConditionForBranch(BranchInst *Br, bool Taken, Loop *CtxL) {
-  assert(Br->isConditional());
   auto *Src = Br->getParent();
   auto *SrcCond = getConditionForBlock(Src);
 
