@@ -158,11 +158,9 @@ const ControlCondition *ControlDependenceAnalysis::getConditionForBranch(BranchI
     SrcCond = concat(PreheaderC, SrcCond);
   }
 
-  // 1) Ignore backedges
-  // 2) Alternatively, if we exit from the latch and there's a single exit block,
-  // then we also ignore the exit condition
+  // Ignore backedges
   auto *L = LI.getLoopFor(Src);
-  if (Br->isUnconditional() || (L && L->isLoopLatch(Src) && L->getExitBlock())) {
+  if (Br->isUnconditional() || (L && L->isLoopLatch(Src))) {
     return SrcCond;
   }
 
