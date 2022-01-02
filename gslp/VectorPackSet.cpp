@@ -1087,6 +1087,17 @@ struct CondVectorInfo {
 
 } // namespace
 
+static bool condsAreDependent(ArrayRef<const ControlCondition *> Conds) {
+  for (auto *C : Conds) {
+    if (C && any_of(Conds, [C](auto *C2) {
+          return C != C2 && C2 && (isImplied(C, C2) || isImplied(C2, C));
+          })) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
                          ArrayRef<const VectorPack *> Packs,
                          ControlReifier &Reifier, Packer &Pkr) {
@@ -1095,6 +1106,8 @@ static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
 
   auto ProcessConds = [&](CondVector Conds, VLoop *VL) {
     if (!Processed.insert({Conds, VL}).second)
+      return;
+    if (condsAreDependent(Conds))
       return;
     OperandPack OP;
     for (auto *C : Conds)
@@ -1193,9 +1206,17 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     auto *VL = Pkr.getVLoopFor(PN);
     if (!VL->getOneHotPhi(PN))
       return;
-    OperandPack OP;
+
+    SmallVector<const ControlCondition *, 8> Conds;
     for (auto *V : Vals)
-      OP.push_back(Reifier.getValue(VL->getOneHotPhi(cast<PHINode>(V))->C, VL));
+      Conds.push_back(VL->getOneHotPhi(cast<PHINode>(V))->C);
+
+    if (condsAreDependent(Conds))
+      return;
+
+    OperandPack OP;
+    for (auto *C : Conds)
+      OP.push_back(Reifier.getValue(C, VL));
     ExtraOPs.push_back(VPCtx->getCanonicalOperandPack(OP));
   };
 
