@@ -837,10 +837,24 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
           IfTrue.push_back(OneHot->IfTrue);
           IfFalse.push_back(OneHot->IfFalse);
         }
-        Builder.SetInsertPoint(GetBlock(getGreatestCommonCondition(Conds)));
-        VecInst = Builder.CreateSelect(getOrEmitMask(Conds, &VL),
-                                       gatherOperandPack(IfTrue),
-                                       gatherOperandPack(IfFalse));
+        if (is_splat(Conds)) {
+          auto *PN = cast<PHINode>(*VP->elementValues().begin());
+          auto *VecTy = getVectorType(*VP);
+          auto *Alloca = new AllocaInst(VecTy, 0, PN->getName() + ".vector",
+              &Entry->front());
+          Allocas.push_back(Alloca);
+          Builder.SetInsertPoint(GetBlock(nullptr));
+          Builder.CreateStore(gatherOperandPack(IfFalse), Alloca);
+          Builder.SetInsertPoint(GetBlock(Conds.front()));
+          Builder.CreateStore(gatherOperandPack(IfTrue), Alloca);
+          Builder.SetInsertPoint(GetBlock(nullptr));
+          VecInst = Builder.CreateLoad(VecTy, Alloca, "reload");
+        } else {
+          Builder.SetInsertPoint(GetBlock(getGreatestCommonCondition(Conds)));
+          VecInst = Builder.CreateSelect(getOrEmitMask(Conds, &VL),
+              gatherOperandPack(IfTrue),
+              gatherOperandPack(IfFalse));
+        }
         VecInst->setName(SomePhi->getName());
       } else {
         auto *PN = cast<PHINode>(*VP->elementValues().begin());
