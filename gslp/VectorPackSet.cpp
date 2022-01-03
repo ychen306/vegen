@@ -1063,20 +1063,6 @@ void VectorCodeGen::run() {
   DominatorTree DT(*F);
   PromoteMemToReg(Allocas, DT);
   fixDefUseDominance(F, DT);
-
-#if 0
-  // Delete trivially dead instructions
-  bool Changed;
-  do {
-    SmallVector<Instruction *> ReallyDeadInsts;
-    for (Instruction &I : instructions(F))
-      if (isInstructionTriviallyDead(&I))
-        ReallyDeadInsts.push_back(&I);
-    for (auto *I : ReallyDeadInsts)
-      I->eraseFromParent();
-    Changed = !ReallyDeadInsts.empty();
-  } while (Changed);
-#endif
 }
 
 namespace {
