@@ -195,9 +195,11 @@ public:
   }
   llvm::Value *emitVectorLoad(llvm::ArrayRef<llvm::Value *> Operands,
                               llvm::Value *Mask,
+                              std::function<llvm::Value *(llvm::Value *)> GetScalar,
                               IntrinsicBuilder &Builder) const;
   llvm::Value *emitVectorStore(llvm::ArrayRef<llvm::Value *> Operands,
                                llvm::Value *Mask,
+                               std::function<llvm::Value *(llvm::Value *)> GetScalar,
                                IntrinsicBuilder &Builder) const;
 
   bool isStore() const { return Kind == Store; }

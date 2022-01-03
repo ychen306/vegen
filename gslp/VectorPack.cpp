@@ -158,6 +158,7 @@ template <typename LoadStores> Align getCommonAlignment(LoadStores Insts) {
 } // namespace
 
 Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
+    std::function<Value *(Value *)> GetScalar,
                                   IntrinsicBuilder &Builder) const {
   auto *FirstLoad = Loads[0];
   auto &DL = FirstLoad->getParent()->getModule()->getDataLayout();
@@ -177,7 +178,7 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
   } else {
     // Cast the scalar pointer to a vector pointer
     unsigned AS = FirstLoad->getPointerAddressSpace();
-    Value *VecPtr = Builder.CreateBitCast(ScalarPtr, VecTy->getPointerTo(AS));
+    Value *VecPtr = Builder.CreateBitCast(GetScalar(ScalarPtr), VecTy->getPointerTo(AS));
     if (Mask)
       VecLoad = Builder.CreateMaskedLoad(VecPtr, FirstLoad->getAlign(), Mask);
     else
@@ -192,6 +193,7 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
 }
 
 Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands, Value *Mask,
+    std::function<Value *(Value *)> GetScalar,
                                    IntrinsicBuilder &Builder) const {
   // Emit the vector store
   Instruction *VecStore;
@@ -213,7 +215,7 @@ Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands, Value *Mask,
           DL.getABITypeAlignment(FirstStore->getValueOperand()->getType());
 
     // Cast the scalar pointer to vector pointer
-    Value *ScalarPtr = FirstStore->getPointerOperand();
+    Value *ScalarPtr = GetScalar(FirstStore->getPointerOperand());
     Value *VecPtr =
         Builder.CreateBitCast(ScalarPtr, VecValue->getType()->getPointerTo(AS));
 

@@ -641,15 +641,8 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
   // For the top level "loop", the loop header is just the entry block
   // FIXME: use useScalar
-  BlockBuilder BBuilder(VL.isLoop() ? Header : Entry, [&](Value *Cond) {
-    return useScalar(Cond);
-#if 0
-    auto It = ValueIndex.find(Cond);
-    if (It == ValueIndex.end())
-      return Cond;
-    return It->second.Extracted;
-#endif
-  });
+  auto UseScalar = [&](Value *V) { return useScalar(V); };
+  BlockBuilder BBuilder(VL.isLoop() ? Header : Entry, UseScalar);
   DenseMap<const ControlCondition *, BasicBlock *> LastBlockForCond;
   DenseSet<BasicBlock *> LoopBlocks{Header, Exit, Latch};
   auto GetBlock = [&](const ControlCondition *C) {
@@ -906,10 +899,10 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       ArrayRef<Value *> Vals = VP->getOrderedValues();
       if (VP->isLoad())
         VecInst =
-            VP->emitVectorLoad(Operands, getLoadStoreMask(Vals, &VL), Builder);
+            VP->emitVectorLoad(Operands, getLoadStoreMask(Vals, &VL), UseScalar, Builder);
       else if (VP->isStore()) {
         VecInst =
-            VP->emitVectorStore(Operands, getLoadStoreMask(Vals, &VL), Builder);
+            VP->emitVectorStore(Operands, getLoadStoreMask(Vals, &VL), UseScalar, Builder);
       } else {
         VecInst = VP->emit(Operands, Builder);
         // GEPs may have scalar operands that requires fixing 
@@ -1193,7 +1186,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     // Reify divergent load/stores conditions
     if (VP->isLoad() || VP->isStore()) {
       CondVector Conds;
-      for (auto *V : VP->getOrderedValues())
+      for (auto *V : VP->elementValues())
         Conds.push_back(VL->getInstCond(cast<Instruction>(V)));
       if (!is_splat(Conds)) {
         for (auto *C : Conds)
