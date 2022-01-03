@@ -103,6 +103,7 @@ class ControlDependenceAnalysis {
   llvm::DominatorTree &DT;
   llvm::PostDominatorTree &PDT;
   llvm::DenseMap<llvm::BasicBlock *, llvm::BasicBlock *> CloneToOrigMap;
+  llvm::EquivalenceClasses<const ControlCondition *> EquivalentConds;
 
   using OrKeyT = llvm::ArrayRef<const ControlCondition *>;
   llvm::DenseMap<OrKeyT, std::unique_ptr<ConditionOr>> UniqueOrs;
@@ -117,6 +118,7 @@ class ControlDependenceAnalysis {
   llvm::DenseMap<BinaryInstruction, llvm::Value *> CanonicalInsts;
   llvm::DenseMap<llvm::Value *, llvm::Value *> CanonicalValues;
   llvm::Value *getCanonicalValue(llvm::Value *);
+  const ControlCondition *getCanonicalCondition(const ControlCondition *);
 
   // use std::map to avoid reallocation/iterator stability
   std::map<llvm::BasicBlock *, llvm::SmallPtrSet<llvm::BasicBlock *, 4>>
@@ -139,6 +141,9 @@ public:
   const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);
   const ControlCondition *concat(const ControlCondition *,
                                  const ControlCondition *);
+  bool isEquivalent(const ControlCondition *C1, const ControlCondition *C2) const {
+    return EquivalentConds.isEquivalent(C1, C2);
+  }
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ControlCondition &);

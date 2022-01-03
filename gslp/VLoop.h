@@ -175,7 +175,7 @@ public:
   }
 
   static bool isSafeToCoIterate(const VLoop *, const VLoop *);
-  static bool isSafeToFuse(VLoop *, VLoop *, llvm::ScalarEvolution &SE);
+  static bool isSafeToFuse(VLoop *, VLoop *, ControlDependenceAnalysis &, llvm::ScalarEvolution &SE);
 
   bool haveIdenticalTripCounts(VLoop *, llvm::ScalarEvolution &);
   VLoop *getParent() const { return Parent; }

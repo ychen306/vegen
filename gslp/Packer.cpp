@@ -195,6 +195,8 @@ Packer::findSpeculationCond(Instruction *I, ArrayRef<Instruction *> Users) {
   SmallVector<const ControlCondition *, 8> Conds;
   for (auto *U : Users) {
     auto *UserVL = getVLoopFor(U);
+    Conds.push_back(UserVL->getInstCond(U));
+#if 0
     if (UserVL == VL)
       Conds.push_back(VL->getInstCond(U));
     else {
@@ -205,6 +207,7 @@ Packer::findSpeculationCond(Instruction *I, ArrayRef<Instruction *> Users) {
       assert(It != SubLoops.end());
       Conds.push_back((*It)->getLoopCond());
     }
+#endif
   }
   return getGreatestCommonCondition(Conds);
 }
@@ -598,7 +601,7 @@ bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
 VLoop *Packer::getVLoopFor(Instruction *I) { return VLI.getLoopForInst(I); }
 
 void Packer::fuseOrCoIterateLoops(VLoop *VL1, VLoop *VL2) {
-  if (VLoop::isSafeToFuse(VL1, VL2, *SE))
+  if (VLoop::isSafeToFuse(VL1, VL2, CDA, *SE))
     VLI.fuse(VL1, VL2);
   else
     VLI.coiterate(VL1, VL2);

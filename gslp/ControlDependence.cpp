@@ -9,20 +9,17 @@ using namespace llvm;
 
 ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT)
     : LI(LI), DT(DT), PDT(PDT) {
-#if 0
   // Run a half-ass GVN over the control conditions
+  Function *F = DT.getRootNode()->getBlock()->getParent();
   ReversePostOrderTraversal<Function *> RPO(F);
   for (auto *BB : RPO) {
     auto *Br = dyn_cast_or_null<BranchInst>(BB->getTerminator());
     if (Br && Br->isConditional())
       (void)getCanonicalValue(Br->getCondition());
   }
-#endif
-
 }
 
 Value *ControlDependenceAnalysis::getCanonicalValue(Value *V) {
-  return V;
   if (auto *V2 = CanonicalValues.lookup(V))
     return V2;
 
@@ -97,14 +94,33 @@ getGreatestCommonCondition(ArrayRef<const ControlCondition *> Conds) {
 }
 
 const ControlCondition *
+ControlDependenceAnalysis::getCanonicalCondition(const ControlCondition *C) {
+  if (auto *And = dyn_cast<ConditionAnd>(C)) {
+    auto *Parent = And->Parent;
+    if (Parent) {
+      assert(EquivalentConds.findValue(Parent) != EquivalentConds.end());
+      Parent = EquivalentConds.getLeaderValue(Parent);
+    }
+    return getAnd(Parent, getCanonicalValue(And->Cond), And->IsTrue);
+  }
+
+  auto *Or = cast<ConditionOr>(C);
+  SmallVector<const ControlCondition *, 8> Conds;
+  for (auto *C2 : Or->Conds)
+    Conds.push_back(getCanonicalCondition(C2));
+  return getOr(Conds);
+}
+
+const ControlCondition *
 ControlDependenceAnalysis::getAnd(const ControlCondition *Parent, Value *Cond,
                                   bool IsTrue) {
-  Cond = getCanonicalValue(Cond);
   AndKeyT Key(Parent, Cond);
   auto &Slot = IsTrue ? UniqueAndOfTrue[Key] : UniqueAndOfFalse[Key];
   if (!Slot) {
     Slot.reset(new ConditionAnd(Parent, Cond, IsTrue));
     Slot->Complement = getAnd(Parent, Cond, !IsTrue);
+    auto *C = Slot.get();
+    EquivalentConds.unionSets(getCanonicalCondition(C), C);
   }
   return Slot.get();
 }
@@ -123,6 +139,9 @@ ControlDependenceAnalysis::getOr(ArrayRef<const ControlCondition *> Conds) {
   if (Inserted) {
     It->second.reset(new ConditionOr(Conds));
     It->first = It->second->Conds;
+    auto *C = It->second.get();
+    EquivalentConds.unionSets(getCanonicalCondition(C), C);
+    return C;
   }
   return It->second.get();
 }

@@ -177,12 +177,12 @@ bool haveIdenticalTripCounts(const Loop *L1, const Loop *L2,
          Expr1->getOperand(1) == Expr2->getOperand(1);
 }
 
-bool VLoop::isSafeToFuse(VLoop *VL1, VLoop *VL2, ScalarEvolution &SE) {
+bool VLoop::isSafeToFuse(VLoop *VL1, VLoop *VL2, ControlDependenceAnalysis &CDA, ScalarEvolution &SE) {
   if (VL1 == VL2)
     return true;
 
   // The loops should be control-equivalent
-  if (VL1->LoopCond != VL2->LoopCond)
+  if (!CDA.isEquivalent(VL1->LoopCond, VL2->LoopCond))
     return false;
 
   // Loop level mismatch
@@ -197,7 +197,7 @@ bool VLoop::isSafeToFuse(VLoop *VL1, VLoop *VL2, ScalarEvolution &SE) {
   if (!VL1->haveIdenticalTripCounts(VL2, SE))
     return false;
 
-  return isSafeToFuse(VL1->Parent, VL2->Parent, SE);
+  return isSafeToFuse(VL1->Parent, VL2->Parent, CDA, SE);
 }
 
 // FIXME : move this to VLoopInfo and check all loops that we are already
