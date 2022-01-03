@@ -26,6 +26,7 @@ public:
   void reifyConditionsInLoop(VLoop *);
   llvm::Value *reify(const ControlCondition *, VLoop *);
   llvm::Value *getValue(const ControlCondition *, VLoop *);
+  bool hasValue(const ControlCondition *, VLoop *);
   llvm::ArrayRef<llvm::Instruction *> getInsertedInsts() const { return InsertedInsts; }
 };
 

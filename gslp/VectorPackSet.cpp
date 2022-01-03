@@ -391,6 +391,18 @@ schedule(VLoop &VL, ControlReifier &Reifier,
     // Make sure all of the control-dependent conditions are scheduled
     if (Item.is<const ControlCondition *>()) {
       auto *C = Item.dyn_cast<const ControlCondition *>();
+      if (!Reifier.hasValue(C, &VL)) {
+        if (auto *And = dyn_cast_or_null<ConditionAnd>(C)) {
+          Schedule(And->Parent);
+          if (auto *CondInst = dyn_cast<Instruction>(And->Cond))
+            Schedule(CondInst);
+        } else if (auto *Or = dyn_cast_or_null<ConditionOr>(C)) {
+          for (auto *C2 : Or->Conds)
+            Schedule(C2);
+        }
+        return;
+      }
+
       if (auto *I = dyn_cast<Instruction>(Reifier.getValue(C, &VL))) {
         Schedule(I);
       }
@@ -1164,9 +1176,47 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ControlReifier Reifier(Builder.getContext(), Pkr.getDA());
   auto &LI = Pkr.getLoopInfo();
   auto &VLI = Pkr.getVLoopInfo();
-  Reifier.reifyConditionsInLoop(&Pkr.getTopVLoop());
-  for (auto *L : LI.getLoopsInPreorder())
-    Reifier.reifyConditionsInLoop(VLI.getVLoop(L));
+  for (auto *L : LI.getLoopsInPreorder()) {
+    auto *VL = VLI.getVLoop(L);
+    Reifier.reify(VL->getBackEdgeCond(), VL);
+  }
+  for (auto *VP : AllPacks) {
+    auto Vals = VP->getOrderedValues();
+    auto *SomeInst = cast<Instruction>(Vals.front());
+    auto *VL = Pkr.getVLoopFor(SomeInst);
+
+    // Reify divergent load/stores conditions
+    if (VP->isLoad() || VP->isStore()) {
+      CondVector Conds;
+      for (auto *V : VP->getOrderedValues())
+        Conds.push_back(VL->getInstCond(cast<Instruction>(V)));
+      if (!is_splat(Conds)) {
+        for (auto *C : Conds)
+          Reifier.reify(C, VL);
+      }
+      continue;
+    }
+
+    // Reify masks for gamma pack
+    if (VP->isGamma()) {
+      ArrayRef<const GammaNode *> Gammas = VP->getGammas();
+      unsigned NumIncomings = Gammas.front()->PN->getNumIncomingValues();
+      for (unsigned i = 0; i < NumIncomings; i++)
+        for (auto *G : Gammas)
+          Reifier.reify(VL->getIncomingPhiCondition(G->PN, i), VL);
+      continue;
+    }
+
+    if (VP->isPHI() && VL->getOneHotPhi(cast<PHINode>(SomeInst))) {
+      SmallVector<const ControlCondition *, 8> Conds;
+      for (auto *V : Vals)
+        Conds.push_back(VL->getOneHotPhi(cast<PHINode>(V))->C);
+      if (is_splat(Conds))
+        continue;
+      for (auto *C : Conds)
+        Reifier.reify(C, VL);
+    }
+  }
 
   // The reifier just inserted some new instructions,
   // run the pattern matcher on them.

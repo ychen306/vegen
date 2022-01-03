@@ -118,9 +118,10 @@ ControlDependenceAnalysis::getAnd(const ControlCondition *Parent, Value *Cond,
   auto &Slot = IsTrue ? UniqueAndOfTrue[Key] : UniqueAndOfFalse[Key];
   if (!Slot) {
     Slot.reset(new ConditionAnd(Parent, Cond, IsTrue));
-    Slot->Complement = getAnd(Parent, Cond, !IsTrue);
     auto *C = Slot.get();
+    C->Complement = getAnd(Parent, Cond, !IsTrue);
     EquivalentConds.unionSets(getCanonicalCondition(C), C);
+    return C;
   }
   return Slot.get();
 }

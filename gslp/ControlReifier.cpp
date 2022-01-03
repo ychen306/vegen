@@ -50,34 +50,13 @@ Value *ControlReifier::reify(const ControlCondition *C, VLoop *VL) {
   return Reified;
 }
 
-void ControlReifier::reifyConditionsInLoop(VLoop *VL) {
-  SmallVector<Instruction *> Insts(VL->inst_begin(), VL->inst_end());
-  for (auto *I : Insts) {
-    reify(VL->getInstCond(I), VL);
-    auto *PN = dyn_cast<PHINode>(I);
-    if (!PN)
-      continue;
-
-    // Reify the condition of a one-hot phi
-    if (auto OneHot = VL->getOneHotPhi(PN))
-      reify(OneHot->C, VL);
-
-    if (!VL->isGatedPhi(PN))
-      continue;
-
-    // Reify the conditions of a gated phi
-    for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
-      reify(VL->getIncomingPhiCondition(PN, i), VL);
-  }
-  for (auto &SubVL : VL->getSubLoops())
-    reify(SubVL->getLoopCond(), VL);
-  if (VL->isLoop())
-    reify(VL->getBackEdgeCond(), VL);
+bool ControlReifier::hasValue(const ControlCondition *C, VLoop *VL) {
+  return !C || ReifiedValues.count({C, VL});
 }
 
 Value *ControlReifier::getValue(const ControlCondition *C, VLoop *VL) {
+  assert(hasValue(C, VL));
   if (!C)
     return ConstantInt::getTrue(Ctx);
-  assert(ReifiedValues.count({C, VL}));
   return ReifiedValues.lookup({C, VL});
 }
