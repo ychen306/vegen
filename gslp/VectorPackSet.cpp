@@ -910,8 +910,13 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       else if (VP->isStore()) {
         VecInst =
             VP->emitVectorStore(Operands, getLoadStoreMask(Vals, &VL), Builder);
-      } else
+      } else {
         VecInst = VP->emit(Operands, Builder);
+        // GEPs may have scalar operands that requires fixing 
+        // (e.g., from using a mu node)
+        if (auto *GEP = dyn_cast<GetElementPtrInst>(VecInst))
+          fixScalarUses(GEP);
+      }
     }
 
     // Conservatively extract all elements.
