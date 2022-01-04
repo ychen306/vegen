@@ -406,14 +406,6 @@ schedule(VLoop &VL, ControlReifier &Reifier,
       if (auto *I = dyn_cast<Instruction>(Reifier.getValue(C, &VL))) {
         Schedule(I);
       }
-#if 0
-      auto *And = dyn_cast_or_null<ConditionAnd>(C);
-      if (And) {
-        if (auto *I = dyn_cast<Instruction>(Reifier.getValue(And->Complement, &VL))) {
-          Schedule(I);
-        }
-      }
-#endif
       return;
     }
 
@@ -1174,10 +1166,23 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   ControlReifier Reifier(Builder.getContext(), Pkr.getDA());
   auto &LI = Pkr.getLoopInfo();
   auto &VLI = Pkr.getVLoopInfo();
+
+  auto ReifyOneHots = [&Reifier](VLoop *VL) {
+    for (auto *I : VL->getInstructions()) {
+      auto *PN = dyn_cast<PHINode>(I);
+      if (PN && VL->getOneHotPhi(PN)) {
+        Reifier.reify(VL->getOneHotPhi(PN)->C, VL);
+      }
+    }
+  };
+
   for (auto *L : LI.getLoopsInPreorder()) {
     auto *VL = VLI.getVLoop(L);
     Reifier.reify(VL->getBackEdgeCond(), VL);
+    ReifyOneHots(VL);
   }
+  ReifyOneHots(&Pkr.getTopVLoop());
+
   for (auto *VP : AllPacks) {
     auto Vals = VP->getOrderedValues();
     auto *SomeInst = cast<Instruction>(Vals.front());
@@ -1202,17 +1207,6 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
       for (unsigned i = 0; i < NumIncomings; i++)
         for (auto *G : Gammas)
           Reifier.reify(VL->getIncomingPhiCondition(G->PN, i), VL);
-      continue;
-    }
-
-    if (VP->isPHI() && VL->getOneHotPhi(cast<PHINode>(SomeInst))) {
-      SmallVector<const ControlCondition *, 8> Conds;
-      for (auto *V : Vals)
-        Conds.push_back(VL->getOneHotPhi(cast<PHINode>(V))->C);
-      if (is_splat(Conds))
-        continue;
-      for (auto *C : Conds)
-        Reifier.reify(C, VL);
     }
   }
 

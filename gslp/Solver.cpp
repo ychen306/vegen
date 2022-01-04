@@ -352,6 +352,8 @@ static void improvePlan(Packer *Pkr, Plan &P,
     auto *PN = dyn_cast<PHINode>(&I);
     if (!PN)
       continue;
+    if (PN->getType()->isIntegerTy())
+      continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
     if (RI && RI->Elts.size() % 2 == 0) {
       unsigned RdxLen = std::min<unsigned>(
