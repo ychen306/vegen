@@ -530,8 +530,7 @@ static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
       auto *I = dyn_cast<Instruction>(V);
 
       // Check data dependence
-      auto Depended = VPCtx->iter_values(DA.getDepended(I));
-      if (I && any_of(Depended, FindCycle))
+      if (I && any_of(VPCtx->iter_values(DA.getDepended(I)), FindCycle))
         return true;
 
       // Check control dependence
@@ -579,7 +578,6 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
   improvePlan(Pkr, P, SeedOperands, &Candidates, BlocksToIgnore);
   Packs.insert(Packs.end(), P.begin(), P.end());
   if (findDepCycle(Packs, Pkr)) {
-    errs() << "!!! found cycles\n";
     Packs.clear();
     return ScalarCost;
   }
