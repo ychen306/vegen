@@ -485,6 +485,84 @@ static void improvePlan(Packer *Pkr, Plan &P,
   } while (Optimized);
 }
 
+namespace {
+
+template<typename SetTy, typename ElemTy>
+class EraseOnReturnGuard {
+  SetTy &Set;
+  ElemTy Elem;
+public:
+  EraseOnReturnGuard(SetTy &Set, ElemTy Elem) : Set(Set), Elem(Elem) {}
+  ~EraseOnReturnGuard() {
+    assert(Set.count(Elem));
+    Set.erase(Elem);
+  }
+};
+
+}
+
+// Make sure a set of packs have neither data nor control dependence
+static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
+  GlobalDependenceAnalysis &DA = Pkr->getDA();
+  ControlDependenceAnalysis &CDA = Pkr->getCDA();
+  auto *VPCtx = Pkr->getContext();
+
+  DenseMap<Value *, const VectorPack *> ValueToPackMap;
+  for (auto *VP : Packs)
+    for (auto *V : VP->elementValues())
+      ValueToPackMap.insert({V, VP});
+
+  using NodeTy = PointerUnion<Value *, const VectorPack *, const ControlCondition *>;
+  DenseSet<NodeTy> Processing, Visited;
+  std::function<bool (NodeTy)> FindCycle = [&](NodeTy Node) -> bool {
+    if (!Processing.insert(Node).second)
+      return true;
+    EraseOnReturnGuard<decltype(Processing), NodeTy> EraseOnReturn(Processing, Node);
+
+    if (!Visited.insert(Node).second)
+      return false;
+    
+    if (auto *V = Node.dyn_cast<Value *>()) {
+      auto *VP = ValueToPackMap.lookup(V);
+      if (VP)
+        return FindCycle(VP);
+
+      auto *I = dyn_cast<Instruction>(V);
+
+      // Check data dependence
+      auto Depended = VPCtx->iter_values(DA.getDepended(I));
+      if (I && any_of(Depended, FindCycle))
+        return true;
+
+      // Check control dependence
+      return I && FindCycle(Pkr->getVLoopFor(I)->getInstCond(I));
+    }
+
+    if (auto *VP = Node.dyn_cast<const VectorPack *>()) {
+      // Data dep.
+      if (any_of(VP->dependedValues(), FindCycle))
+        return true;
+      // Control dep.
+      for (auto *V : VP->elementValues()) {
+        auto *I = dyn_cast<Instruction>(V);
+        if (I && FindCycle(Pkr->getVLoopFor(I)->getInstCond(I)))
+          return true;
+      }
+      return false;
+    }
+
+    assert(Node.is<const ControlCondition *>());
+    auto *C = Node.dyn_cast<const ControlCondition *>();
+    if (!C)
+      return false;
+    if (auto *And = dyn_cast<ConditionAnd>(C))
+      return FindCycle(And->Cond) || FindCycle(And->Parent);
+    auto *Or = cast<ConditionOr>(C);
+    return any_of(Or->Conds, FindCycle);
+  };
+  return any_of(Packs, FindCycle);
+}
+
 float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
                        ArrayRef<const OperandPack *> SeedOperands,
                        DenseSet<BasicBlock *> *BlocksToIgnore) {
@@ -497,8 +575,14 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
       Candidates.Inst2Packs[i].push_back(VP);
 
   Plan P(Pkr);
+  float ScalarCost = P.cost();
   improvePlan(Pkr, P, SeedOperands, &Candidates, BlocksToIgnore);
   Packs.insert(Packs.end(), P.begin(), P.end());
+  if (findDepCycle(Packs, Pkr)) {
+    errs() << "!!! found cycles\n";
+    Packs.clear();
+    return ScalarCost;
+  }
   return P.cost();
 }
 
