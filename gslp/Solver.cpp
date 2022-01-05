@@ -105,6 +105,7 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           ElementsExt.set(VPCtx->getScalarId(NextAccess));
           DependedExt |= DA.getDepended(NextAccess);
           Enumerate(AccessesExt, ElementsExt, DependedExt);
+          break;
         }
       };
 
@@ -326,7 +327,7 @@ static void improvePlan(Packer *Pkr, Plan &P,
     // Only pack scalar store
     if (!SI || SI->getValueOperand()->getType()->isVectorTy())
       continue;
-    for (unsigned VL : {2, 4, 8, 16, 32, 64})
+    for (unsigned VL : {2, 4, 8/*, 16, 32, 64*/})
       for (auto *VP : getSeedMemPacks(Pkr, SI, VL, BlocksToIgnore)) {
         Seeds.push_back(VP);
       }
