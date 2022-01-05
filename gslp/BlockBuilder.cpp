@@ -14,6 +14,52 @@ BasicBlock *BlockBuilder::createBlock() {
   return BasicBlock::Create(Ctx, "", F);
 }
 
+namespace {
+
+class ConditionEmitter {
+  IRBuilder<> IRB;
+  const ControlCondition *Common;
+  std::function<llvm::Value *(llvm::Value *)> EmitCondition;
+  DenseMap<const ControlCondition *, Value *> Emitted;
+
+  Value *emitAnd(const ConditionAnd *And) {
+    if (auto *V = Emitted.lookup(And))
+      return V;
+    auto *V =
+        IRB.CreateAnd(emit(And->Parent),
+                      And->IsTrue ? EmitCondition(And->Cond)
+                                  : IRB.CreateNot(EmitCondition(And->Cond)));
+    return Emitted[And] = V;
+  }
+
+  Value *emitOr(const ConditionOr *Or) {
+    if (auto *V = Emitted.lookup(Or))
+      return V;
+    return Emitted[Or] = emitDisjunction(Or->Conds);
+  }
+
+public:
+  ConditionEmitter(BasicBlock *BB, const ControlCondition *Common,
+                   decltype(EmitCondition) EmitCondition)
+      : IRB(BB), Common(Common), EmitCondition(EmitCondition) {}
+  Value *emit(const ControlCondition *C) {
+    if (C == Common || !C)
+      return IRB.getTrue();
+    if (auto *And = dyn_cast<ConditionAnd>(C))
+      return emitAnd(And);
+    return emitOr(cast<ConditionOr>(C));
+  }
+  Value *emitDisjunction(ArrayRef<const ControlCondition *> Conds) {
+    SmallVector<Value *, 8> Values;
+    for (auto *C : Conds)
+      Values.push_back(emit(C));
+    return IRB.CreateOr(Values);
+  }
+};
+
+} // namespace
+
+#if 0
 static Value *
 emitCondition(const ControlCondition *Common, const ControlCondition *C,
               IRBuilderBase &IRB,
@@ -60,6 +106,7 @@ emitDisjunction(BasicBlock *BB, const ControlCondition *Common,
   IRBuilder<> IRB(BB);
   return emitDisjunction(Common, Conds, IRB, EmitCondition);
 }
+#endif
 
 BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   if (auto *BB = ActiveConds.lookup(C))
@@ -161,10 +208,13 @@ BasicBlock *BlockBuilder::getBlockFor(const ControlCondition *C) {
   auto *DrainBB = createBlock();
   if (UnjoinedConds.empty())
     BranchInst::Create(DrainBB, AuxBB);
-  else
-    BranchInst::Create(
-        BB, DrainBB,
-        emitDisjunction(AuxBB, CommonC, UnjoinedConds, EmitCondition), AuxBB);
+  else {
+    ConditionEmitter CE(AuxBB, CommonC, EmitCondition);
+    BranchInst::Create(BB, DrainBB,
+                       // emitDisjunction(AuxBB, CommonC, UnjoinedConds,
+                       // EmitCondition), AuxBB);
+                       CE.emitDisjunction(UnjoinedConds), AuxBB);
+  }
 
   // Create a dummy condition that represents the complement of the disjunction.
   auto *DummyC = getDummyCondition();
