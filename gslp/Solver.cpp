@@ -531,9 +531,11 @@ static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
         return FindCycle(VP);
 
       auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        return false;
 
       // Check data dependence
-      if (I && any_of(VPCtx->iter_values(DA.getDepended(I)), FindCycle))
+      if (any_of(VPCtx->iter_values(DA.getDepended(I)), FindCycle))
         return true;
 
       auto *PN = dyn_cast<PHINode>(I);
