@@ -102,8 +102,10 @@ class ControlDependenceAnalysis {
   llvm::LoopInfo &LI;
   llvm::DominatorTree &DT;
   llvm::PostDominatorTree &PDT;
-  llvm::DenseMap<llvm::BasicBlock *, llvm::BasicBlock *> CloneToOrigMap;
   llvm::EquivalenceClasses<const ControlCondition *> EquivalentConds;
+  llvm::DenseMap<std::pair<const ControlCondition *, const ControlCondition *>,
+                 const ControlCondition *>
+      ConcatCache;
 
   using OrKeyT = llvm::ArrayRef<const ControlCondition *>;
   llvm::DenseMap<OrKeyT, std::unique_ptr<ConditionOr>> UniqueOrs;
@@ -131,7 +133,8 @@ class ControlDependenceAnalysis {
                                                 llvm::Loop *CtxL);
 
 public:
-  ControlDependenceAnalysis(llvm::LoopInfo &LI, llvm::DominatorTree &DT, llvm::PostDominatorTree &PDT);
+  ControlDependenceAnalysis(llvm::LoopInfo &LI, llvm::DominatorTree &DT,
+                            llvm::PostDominatorTree &PDT);
   const ControlCondition *getConditionForBlock(llvm::BasicBlock *);
   const ControlCondition *getConditionForEdge(llvm::BasicBlock *,
                                               llvm::BasicBlock *);
@@ -141,7 +144,8 @@ public:
   const ControlCondition *getOr(llvm::ArrayRef<const ControlCondition *>);
   const ControlCondition *concat(const ControlCondition *,
                                  const ControlCondition *);
-  bool isEquivalent(const ControlCondition *C1, const ControlCondition *C2) const {
+  bool isEquivalent(const ControlCondition *C1,
+                    const ControlCondition *C2) const {
     return EquivalentConds.isEquivalent(C1, C2);
   }
 };

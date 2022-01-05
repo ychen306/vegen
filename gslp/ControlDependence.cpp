@@ -7,7 +7,9 @@
 
 using namespace llvm;
 
-ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI, DominatorTree &DT, PostDominatorTree &PDT)
+ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI,
+                                                     DominatorTree &DT,
+                                                     PostDominatorTree &PDT)
     : LI(LI), DT(DT), PDT(PDT) {
   // Run a half-ass GVN over the control conditions
   Function *F = DT.getRootNode()->getBlock()->getParent();
@@ -167,7 +169,9 @@ const GammaNode *ControlDependenceAnalysis::getGamma(PHINode *PN) {
   return G;
 }
 
-const ControlCondition *ControlDependenceAnalysis::getConditionForBranch(BranchInst *Br, bool Taken, Loop *CtxL) {
+const ControlCondition *
+ControlDependenceAnalysis::getConditionForBranch(BranchInst *Br, bool Taken,
+                                                 Loop *CtxL) {
   auto *Src = Br->getParent();
   auto *SrcCond = getConditionForBlock(Src);
 
@@ -191,7 +195,8 @@ const ControlCondition *
 ControlDependenceAnalysis::getConditionForEdge(BasicBlock *Src,
                                                BasicBlock *Dst) {
   auto *Br = cast<BranchInst>(Src->getTerminator());
-  return getConditionForBranch(Br, Br->getSuccessor(0) == Dst, LI.getLoopFor(Dst));
+  return getConditionForBranch(Br, Br->getSuccessor(0) == Dst,
+                               LI.getLoopFor(Dst));
 }
 
 const ControlCondition *
@@ -202,14 +207,18 @@ ControlDependenceAnalysis::concat(const ControlCondition *CondA,
   if (!CondB)
     return CondA;
 
+  if (auto *C = ConcatCache.lookup({CondA, CondB}))
+    return C;
+
   if (auto *And = dyn_cast<ConditionAnd>(CondB))
-    return getAnd(concat(CondA, And->Parent), And->Cond, And->IsTrue);
+    return ConcatCache[{CondA, CondB}] =
+               getAnd(concat(CondA, And->Parent), And->Cond, And->IsTrue);
 
   auto *Or = cast<ConditionOr>(CondB);
   SmallVector<const ControlCondition *> Conds;
   for (auto *C : Or->Conds)
     Conds.push_back(concat(CondA, C));
-  return getOr(Conds);
+  return ConcatCache[{CondA, CondB}] = getOr(Conds);
 }
 
 // This is the same as computing the post dominance frontier of BB
@@ -271,7 +280,8 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
     auto *Br = cast<BranchInst>(BB2->getTerminator());
     assert(Br->isConditional());
     bool Taken = PDT.dominates(BB, Br->getSuccessor(0));
-    CondsToJoin.push_back(getConditionForBranch(Br, PDT.dominates(BB, Br->getSuccessor(0)), LI.getLoopFor(BB)));
+    CondsToJoin.push_back(getConditionForBranch(
+        Br, PDT.dominates(BB, Br->getSuccessor(0)), LI.getLoopFor(BB)));
   }
 
   sort(CondsToJoin);
