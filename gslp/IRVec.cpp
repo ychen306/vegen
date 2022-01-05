@@ -219,12 +219,26 @@ IRInstTable::IRInstTable() {
       VectorizableOps.emplace_back(Opcode, SB);
     }
 
-  std::vector<unsigned> UnaryOpcodes = {Instruction::SIToFP,
-                                        Instruction::FPToSI, Instruction::FNeg};
+  std::vector<unsigned> UnaryOpcodes = {Instruction::FNeg};
   for (unsigned Opcode : UnaryOpcodes) {
     for (unsigned SB : {32, 64}) {
       UnaryOps.emplace_back(Opcode, SB);
     }
+  }
+
+  // sitofp and fptosi
+  for (unsigned SB : ScalarBitwidths) {
+    FloatToIntOps.emplace_back(SB, true);
+    FloatToIntOps.emplace_back(SB, false);
+    IntToFloatOps.emplace_back(SB, true);
+    IntToFloatOps.emplace_back(SB, false);
+  }
+
+  for (unsigned VL : {2,4,8,16}) {
+    for (auto &Op : FloatToIntOps)
+      VectorFloatToInts.push_back(VectorFloatToInt::Create(&Op, VL));
+    for (auto &Op : IntToFloatOps)
+      VectorIntToFloats.push_back(VectorIntToFloat::Create(&Op, VL));
   }
 
   // enumerate vector insts
@@ -342,6 +356,107 @@ float VectorTruncate::getCost(TargetTransformInfo *TTI,
   auto *OutTy =
       FixedVectorType::get(Type::getIntNTy(Ctx, TruncOp->OutWidth), VL);
   return TTI->getCastInstrCost(Instruction::CastOps::Trunc, OutTy, InTy,
+                               TTI::CastContextHint::None,
+                               TTI::TCK_RecipThroughput);
+}
+
+/////
+bool FloatToInt::match(Value *V, SmallVectorImpl<Match> &Matches) const {
+  Value *X;
+  if (PatternMatch::match(V, m_FPToSI(m_Value(X))) && hasBitWidth(X, IsFloat ? 32 : 64) &&
+      hasBitWidth(V, OutWidth)) {
+    Matches.push_back({false, {X}, V});
+    return true;
+  }
+  return false;
+}
+
+bool IntToFloat::match(Value *V, SmallVectorImpl<Match> &Matches) const {
+  Value *X;
+  if (PatternMatch::match(V, m_SIToFP(m_Value(X))) && hasBitWidth(X, InWidth) &&
+      hasBitWidth(V, IsFloat ? 32 : 64)) {
+    Matches.push_back({false, {X}, V});
+    return true;
+  }
+  return false;
+}
+
+VectorFloatToInt VectorFloatToInt::Create(const FloatToInt *Op,
+                                      unsigned VecLen) {
+  unsigned InWidth = Op->IsFloat ? 32 : 64, OutWidth = Op->OutWidth;
+  InstSignature Sig = {// bitwidths of the inputs
+                       {InWidth * VecLen},
+                       // bitwidth of the output
+                       {OutWidth * VecLen},
+                       // has imm8?
+                       false};
+
+  std::vector<BoundOperation> LaneOps;
+  for (unsigned i = 0; i < VecLen; i++) {
+    unsigned Lo = i * InWidth, Hi = Lo + InWidth;
+    LaneOps.push_back(BoundOperation(Op, {{0, Lo, Hi}}));
+  }
+  std::string Name = formatv("fptosi-i{0}-to-f{1}", InWidth, OutWidth).str();
+  return VectorFloatToInt(Op, Name, Sig, LaneOps);
+}
+
+VectorIntToFloat VectorIntToFloat::Create(const IntToFloat *Op,
+                                      unsigned VecLen) {
+  unsigned InWidth = Op->InWidth, OutWidth = Op->IsFloat ? 32 : 64;
+  InstSignature Sig = {// bitwidths of the inputs
+                       {InWidth * VecLen},
+                       // bitwidth of the output
+                       {OutWidth * VecLen},
+                       // has imm8?
+                       false};
+
+  std::vector<BoundOperation> LaneOps;
+  for (unsigned i = 0; i < VecLen; i++) {
+    unsigned Lo = i * InWidth, Hi = Lo + InWidth;
+    LaneOps.push_back(BoundOperation(Op, {{0, Lo, Hi}}));
+  }
+  std::string Name = formatv("sitofp-i{0}-to-f{1}", InWidth, OutWidth).str();
+  return VectorIntToFloat(Op, Name, Sig, LaneOps);
+}
+
+Value *VectorFloatToInt::emit(ArrayRef<Value *> Operands,
+                            IntrinsicBuilder &Builder) const {
+  assert(Operands.size() == 1);
+  auto &Ctx = Builder.getContext();
+  unsigned VL = getLaneOps().size();
+  auto *OutTy =
+      FixedVectorType::get(Type::getIntNTy(Ctx, Op->OutWidth), VL);
+  return Builder.CreateFPToSI(Operands.front(), OutTy);
+}
+
+Value *VectorIntToFloat::emit(ArrayRef<Value *> Operands,
+                            IntrinsicBuilder &Builder) const {
+  assert(Operands.size() == 1);
+  auto &Ctx = Builder.getContext();
+  unsigned VL = getLaneOps().size();
+  auto *OutTy =
+      FixedVectorType::get(Op->IsFloat ? Type::getFloatTy(Ctx) : Type::getDoubleTy(Ctx), VL);
+  return Builder.CreateSIToFP(Operands.front(), OutTy);
+}
+
+float VectorFloatToInt::getCost(TargetTransformInfo *TTI,
+                              LLVMContext &Ctx) const {
+  unsigned VL = getLaneOps().size();
+  auto *InTy = FixedVectorType::get(Op->IsFloat ? Type::getFloatTy(Ctx) : Type::getDoubleTy(Ctx), VL);
+  auto *OutTy =
+      FixedVectorType::get(Type::getIntNTy(Ctx, Op->OutWidth), VL);
+  return TTI->getCastInstrCost(Instruction::CastOps::FPToSI, OutTy, InTy,
+                               TTI::CastContextHint::None,
+                               TTI::TCK_RecipThroughput);
+}
+
+float VectorIntToFloat::getCost(TargetTransformInfo *TTI,
+                              LLVMContext &Ctx) const {
+  unsigned VL = getLaneOps().size();
+  auto *InTy =
+      FixedVectorType::get(Type::getIntNTy(Ctx, Op->InWidth), VL);
+  auto *OutTy = FixedVectorType::get(Op->IsFloat ? Type::getFloatTy(Ctx) : Type::getDoubleTy(Ctx), VL);
+  return TTI->getCastInstrCost(Instruction::CastOps::SIToFP, OutTy, InTy,
                                TTI::CastContextHint::None,
                                TTI::TCK_RecipThroughput);
 }

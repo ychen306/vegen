@@ -300,6 +300,10 @@ bool GSLP::runOnFunction(Function &F) {
     SupportedIntrinsics.push_back(&UnaryMath);
   for (auto &BinaryMath : VecBindingTable.getBinaryMathFuncs())
     SupportedIntrinsics.push_back(&BinaryMath);
+  for (auto &FloatToInt : VecBindingTable.getFloatToInts())
+    SupportedIntrinsics.push_back(&FloatToInt);
+  for (auto &IntToFloat : VecBindingTable.getIntToFloats())
+    SupportedIntrinsics.push_back(&IntToFloat);
 
   errs() << "~~~~ num supported intrinsics: " << SupportedIntrinsics.size()
          << '\n';

@@ -98,6 +98,54 @@ public:
                 llvm::LLVMContext &Ctx) const override;
 };
 
+struct IntToFloat : public Operation {
+  unsigned InWidth;
+  bool IsFloat;
+  IntToFloat(unsigned InWidth, bool IsFloat)
+      : InWidth(InWidth), IsFloat(IsFloat) {}
+  bool match(llvm::Value *V,
+             llvm::SmallVectorImpl<Match> &Matches) const override;
+};
+
+struct FloatToInt : public Operation {
+  unsigned OutWidth;
+  bool IsFloat;
+  FloatToInt(unsigned OutWidth, bool IsFloat)
+      : OutWidth(OutWidth), IsFloat(IsFloat) {}
+  bool match(llvm::Value *V,
+             llvm::SmallVectorImpl<Match> &Matches) const override;
+};
+
+class VectorIntToFloat : public InstBinding {
+  const IntToFloat *Op;
+  VectorIntToFloat(const IntToFloat *Op, std::string Name, InstSignature Sig,
+                 std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        Op(Op) {}
+
+public:
+  static VectorIntToFloat Create(const IntToFloat *Op, unsigned VecLen);
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
+};
+
+class VectorFloatToInt : public InstBinding {
+  const FloatToInt *Op;
+  VectorFloatToInt (const FloatToInt *Op, std::string Name, InstSignature Sig,
+                 std::vector<BoundOperation> LaneOps)
+      : InstBinding(Name, {} /* no target features required*/, Sig, LaneOps),
+        Op(Op) {}
+
+public:
+  static VectorFloatToInt Create(const FloatToInt *Op, unsigned VecLen);
+  llvm::Value *emit(llvm::ArrayRef<llvm::Value *> Operands,
+                    IntrinsicBuilder &Builder) const override;
+  float getCost(llvm::TargetTransformInfo *TTI,
+                llvm::LLVMContext &Ctx) const override;
+};
+
 struct Extension : public Operation {
   unsigned InWidth, OutWidth;
   bool Signed;
@@ -214,6 +262,12 @@ class IRInstTable {
   std::vector<UnaryMath> UnaryMathOps;
   std::vector<VectorUnaryMath> VectorUnaryMathFuncs;
 
+  std::vector<IntToFloat> IntToFloatOps;
+  std::vector<VectorIntToFloat> VectorIntToFloats;
+
+  std::vector<FloatToInt> FloatToIntOps;
+  std::vector<VectorFloatToInt> VectorFloatToInts;
+
   std::vector<BinaryMath> BinaryMathOps;
   std::vector<VectorBinaryMath> VectorBinaryMathFuncs;
 
@@ -232,6 +286,12 @@ public:
   }
   llvm::ArrayRef<VectorBinaryMath> getBinaryMathFuncs() const {
     return VectorBinaryMathFuncs;
+  }
+  llvm::ArrayRef<VectorIntToFloat> getIntToFloats() const {
+    return VectorIntToFloats;
+  }
+  llvm::ArrayRef<VectorFloatToInt> getFloatToInts() const {
+    return VectorFloatToInts;
   }
 };
 
