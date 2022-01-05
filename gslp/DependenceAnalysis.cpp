@@ -143,7 +143,7 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
 
   auto *Base1 = getBaseValue(Ptr1SCEV);
   auto *Base2 = getBaseValue(Ptr2SCEV);
-  if (Base1 != Base2)
+  if (Base1 && Base2 && Base1 != Base2)
     return AA.alias(MemoryLocation::getBeforeOrAfter(Base1),
                     MemoryLocation::getBeforeOrAfter(Base2));
 
