@@ -554,7 +554,10 @@ float Packer::getScalarCost(Instruction *I) {
         TTI::TCK_RecipThroughput, SI);
 
   if (auto *CI = dyn_cast<CallInst>(I)) {
-    auto ID = CI->getCalledFunction()->getIntrinsicID();
+    auto *Callee = CI->getCalledFunction();
+    if (!Callee)
+      return 1;
+    auto ID = Callee->getIntrinsicID();
     switch (ID) {
     default:
       return 1;
