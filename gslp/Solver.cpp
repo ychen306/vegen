@@ -536,6 +536,14 @@ static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
       if (I && any_of(VPCtx->iter_values(DA.getDepended(I)), FindCycle))
         return true;
 
+      auto *PN = dyn_cast<PHINode>(I);
+      auto *VLI = Pkr->getVLoopFor(I);
+      if (PN && VLI->isGatedPhi(PN)) {
+        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+          if (FindCycle(VLI->getIncomingPhiCondition(PN, i)))
+            return true;
+      }
+
       // Check control dependence
       return I && FindCycle(Pkr->getVLoopFor(I)->getInstCond(I));
     }
@@ -547,8 +555,16 @@ static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
       // Control dep.
       for (auto *V : VP->elementValues()) {
         auto *I = dyn_cast<Instruction>(V);
-        if (I && FindCycle(Pkr->getVLoopFor(I)->getInstCond(I)))
+        if (!I) continue;
+        if (FindCycle(Pkr->getVLoopFor(I)->getInstCond(I)))
           return true;
+        auto *PN = dyn_cast<PHINode>(V);
+        auto *VLI = Pkr->getVLoopFor(I);
+        if (PN && VLI->isGatedPhi(PN)) {
+          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+            if (FindCycle(VLI->getIncomingPhiCondition(PN, i)))
+              return true;
+        }
       }
       return false;
     }
