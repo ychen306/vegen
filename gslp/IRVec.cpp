@@ -575,7 +575,8 @@ bool UnaryMath::match(Value *V, SmallVectorImpl<Match> &Matches) const {
 
   // Match the intrinsic call
   auto *Call = dyn_cast<CallInst>(V);
-  if (!Call || Call->getCalledFunction()->getIntrinsicID() != ID)
+  if (!Call || !Call->getCalledFunction() ||
+      Call->getCalledFunction()->getIntrinsicID() != ID)
     return false;
 
   assert(Call->arg_size() == 1);
@@ -637,7 +638,8 @@ bool BinaryMath::match(Value *V, SmallVectorImpl<Match> &Matches) const {
 
   // Match the intrinsic call
   auto *Call = dyn_cast<CallInst>(V);
-  if (!Call || Call->getCalledFunction()->getIntrinsicID() != ID)
+  if (!Call || !Call->getCalledFunction() ||
+      Call->getCalledFunction()->getIntrinsicID() != ID)
     return false;
 
   assert(Call->arg_size() == 2);
