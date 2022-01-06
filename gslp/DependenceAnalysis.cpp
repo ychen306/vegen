@@ -246,23 +246,23 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
   DenseMap<Instruction *, SmallVector<Instruction *, 8>> Dependences;
   SmallVector<BasicBlock *> RPO;
   computeRPO(F, LI, RPO);
-  // ReversePostOrderTraversal<Function *> RPO(F);
 
   DenseSet<Instruction *> Processed;
   for (auto *BB : RPO) {
+    auto *L = LI.getLoopFor(BB);
+    bool IsHeader = LI.isLoopHeader(BB);
+    assert(!IsHeader || L);
     for (auto &I : *BB) {
       Processed.insert(&I);
       // Get the SSA dependences
       for (Value *V : I.operand_values()) {
         auto *OpInst = dyn_cast<Instruction>(V);
-        // Ignore loop carried dependences, which can only come from phi nodes
-        if (OpInst && (DT.dominates(&I, OpInst) || OpInst == &I)) {
-          assert(isa<PHINode>(&I));
+        if (!OpInst)
           continue;
-        }
-        if (OpInst) {
+        // Ignore loop carried dependences, which can only come from loop-header phi nodes
+        bool IsLoopCarriedDep = IsHeader && isa<PHINode>(&I) && L->contains(OpInst);
+        if (!IsLoopCarriedDep)
           Dependences[&I].push_back(OpInst);
-        }
       }
 
       if (m_Intrinsic<Intrinsic::experimental_noalias_scope_decl>(m_Value()).match(&I) ||
