@@ -41,6 +41,11 @@ static bool matchReduction(Value *Rdx, Value *&A, Value *&B, RecurKind Kind) {
   }
 }
 
+static bool cmpHasMoreThanOneUse(Value *V) {
+  auto *Select = dyn_cast<SelectInst>(V);
+  return Select && !Select->getCondition()->hasOneUse();
+}
+
 static void matchReductionTreeWithKind(Value *Root,
                                        SmallVectorImpl<Instruction *> &Ops,
                                        SmallVectorImpl<Value *> &Leaves,
@@ -57,6 +62,7 @@ static void matchReductionTreeWithKind(Value *Root,
     Value *A, *B;
     // Only the root is allowed to have more than one use
     if ((V != Root && V->getNumUses() > MaxNumUses) ||
+        cmpHasMoreThanOneUse(V) ||
         !matchReduction(V, A, B, Kind)) {
       LeavesAndHeights.emplace_back(V, Height);
       continue;
