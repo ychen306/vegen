@@ -31,6 +31,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 // For pass building
+#include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
@@ -360,6 +361,7 @@ static void registerGSLP(const PassManagerBuilder &PMB,
   MPM.add(createScalarizerPass());
   //MPM.add(createStructurizeCFGPass(false));
   //MPM.add(createCFGSimplificationPass());
+  MPM.add(createUnifyFunctionExitNodesPass());
   MPM.add(createLoopSimplifyPass());
   MPM.add(createLoopRotatePass());
   MPM.add(createLCSSAPass());
