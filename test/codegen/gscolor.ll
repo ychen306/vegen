@@ -5,17 +5,21 @@ target triple = "x86_64-apple-macosx10.15.0"
 
 define dso_local i32 @d() local_unnamed_addr {
 entry:
-  br i1 zeroinitializer, label %cleanup8, label %if.then
+  br i1 false, label %cleanup8, label %if.then
 
 if.then:                                          ; preds = %entry
-  br i1 zeroinitializer, label %if.end, label %cleanup8.critedge
+  br i1 false, label %if.end, label %cleanup8.critedge
 
 if.end:                                           ; preds = %if.then
-  ret i32 0
+  br label %UnifiedReturnBlock
 
 cleanup8.critedge:                                ; preds = %if.then
   br label %cleanup8
 
 cleanup8:                                         ; preds = %cleanup8.critedge, %entry
-  ret i32 zeroinitializer
+  br label %UnifiedReturnBlock
+
+UnifiedReturnBlock:                               ; preds = %cleanup8, %if.end
+  %UnifiedRetVal = phi i32 [ 0, %if.end ], [ 0, %cleanup8 ]
+  ret i32 %UnifiedRetVal
 }
