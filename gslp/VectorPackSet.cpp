@@ -616,6 +616,12 @@ static void fixDefUseDominance(Function *F, DominatorTree &DT) {
   assert(!verifyFunction(*F, &errs()));
 }
 
+static AllocaInst *createAlloca(Type *Ty, const Twine &Name, BasicBlock *BB) {
+  if (!BB->empty())
+    return new AllocaInst(Ty, 0, Name, &BB->front());
+  return new AllocaInst(Ty, 0, Name, BB);
+}
+
 std::pair<BasicBlock *, BasicBlock *>
 VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
   BasicBlock *Header = nullptr;
@@ -733,8 +739,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       }
 
       // Demote the phi to memory
-      auto *Alloca = new AllocaInst(
-          PN->getType(), 0, PN->getName() + ".demoted", &Entry->front());
+      auto *Alloca = createAlloca(PN->getType(), PN->getName()+".demoted", Entry);
       Allocas.push_back(Alloca);
       if (auto MaybeOneHot = VL.getOneHotPhi(PN)) {
         Builder.SetInsertPoint(GetBlock(nullptr));
@@ -837,8 +842,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         if (is_splat(Conds)) {
           auto *PN = cast<PHINode>(*VP->elementValues().begin());
           auto *VecTy = getVectorType(*VP);
-          auto *Alloca = new AllocaInst(VecTy, 0, PN->getName() + ".vector",
-              &Entry->front());
+          auto *Alloca = createAlloca(VecTy, PN->getName() + ".vector", Entry);
           Allocas.push_back(Alloca);
           Builder.SetInsertPoint(GetBlock(nullptr));
           Builder.CreateStore(gatherOperandPack(IfFalse), Alloca);
@@ -856,8 +860,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
       } else {
         auto *PN = cast<PHINode>(*VP->elementValues().begin());
         auto *VecTy = getVectorType(*VP);
-        auto *Alloca = new AllocaInst(VecTy, 0, PN->getName() + ".vector",
-                                      &Entry->front());
+        auto *Alloca = createAlloca(VecTy, PN->getName() + ".vector", Entry);
         // Track the alloca so we can promote it back to phi later
         Allocas.push_back(Alloca);
 
