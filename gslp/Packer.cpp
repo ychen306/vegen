@@ -343,12 +343,34 @@ static bool matchPackableGEPs(ArrayRef<Value *> Values,
   unsigned NumOperands = GEP->getNumOperands();
   Type *Ty = GEP->getSourceElementType();
 
+  SmallVector<ConstantInt *> StructOffsets;
+  auto *CurTy = Ty;
+  for (Value *Idx : drop_begin(GEP->indices())) {
+    if (isa<StructType>(CurTy))
+      StructOffsets.push_back(cast<ConstantInt>(Idx));
+    else
+      StructOffsets.push_back(nullptr);
+    CurTy = GetElementPtrInst::getTypeAtIndex(CurTy, Idx);
+    if (!CurTy)
+      return false;
+  }
+
   for (auto *V : drop_begin(Values)) {
     auto *GEP2 = dyn_cast<GetElementPtrInst>(V);
     if (!GEP2 || GEP2->getNumOperands() != NumOperands ||
         GEP2->getSourceElementType() != Ty)
       return false;
     GEPs.push_back(GEP2);
+    auto *CurTy = Ty;
+    for (auto Item : enumerate(drop_begin(GEP2->indices()))) {
+      unsigned i = Item.index();
+      Value *Idx = Item.value();
+      if (isa<StructType>(CurTy) && StructOffsets[i] != cast<ConstantInt>(Idx))
+        return false;
+      CurTy = GetElementPtrInst::getTypeAtIndex(CurTy, Idx);
+      if (!CurTy)
+        return false;
+    }
   }
   return true;
 }
