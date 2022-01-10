@@ -355,6 +355,8 @@ static void improvePlan(Packer *Pkr, Plan &P,
       continue;
     if (PN->getType()->isIntegerTy())
       continue;
+    if (BlocksToIgnore && BlocksToIgnore->count(PN->getParent()))
+      continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
     if (RI && RI->Elts.size() % 2 == 0) {
       unsigned RdxLen = std::min<unsigned>(
