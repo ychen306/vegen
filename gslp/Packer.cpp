@@ -195,8 +195,8 @@ Packer::findSpeculationCond(Instruction *I, ArrayRef<Instruction *> Users) {
   SmallVector<const ControlCondition *, 8> Conds;
   for (auto *U : Users) {
     auto *UserVL = getVLoopFor(U);
-    if (UserVL == VL)
-      Conds.push_back(VL->getInstCond(U));
+    if (VLoop::isSafeToCoIterate(VL, UserVL))
+      Conds.push_back(UserVL->getInstCond(U));
     else {
       auto SubLoops = VL->getSubLoops();
       auto It = find_if(SubLoops, [&](auto &SubVL) {
