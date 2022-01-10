@@ -195,19 +195,16 @@ Packer::findSpeculationCond(Instruction *I, ArrayRef<Instruction *> Users) {
   SmallVector<const ControlCondition *, 8> Conds;
   for (auto *U : Users) {
     auto *UserVL = getVLoopFor(U);
-    Conds.push_back(UserVL->getInstCond(U));
-#if 0
     if (UserVL == VL)
       Conds.push_back(VL->getInstCond(U));
     else {
       auto SubLoops = VL->getSubLoops();
       auto It = find_if(SubLoops, [&](auto &SubVL) {
-        return SubVL.get() == UserVL || SubVL->contains(UserVL);
+        return SubVL->contains(U);
       });
       assert(It != SubLoops.end());
       Conds.push_back((*It)->getLoopCond());
     }
-#endif
   }
   return getGreatestCommonCondition(Conds);
 }
