@@ -156,7 +156,7 @@ public:
   llvm::Function *getFunction() const { return F; }
 
   // Fixme : templatize this to decouple use of bitvector
-  class value_iterator {
+  class value_iterator : public std::iterator<std::forward_iterator_tag, typename llvm::Value *> {
     const VectorPackContext *VPCtx;
     llvm::BitVector::const_set_bits_iterator Handle;
 
@@ -175,6 +175,7 @@ public:
     }
 
     bool operator!=(const value_iterator &It) { return Handle != It.Handle; }
+    bool operator==(const value_iterator &It) { return Handle == It.Handle; }
   };
 
   llvm::iterator_range<value_iterator>
