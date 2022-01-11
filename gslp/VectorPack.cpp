@@ -282,8 +282,8 @@ void VectorPack::computeOperandPacks() {
         Conds.push_back(G->Conds[i]);
         ValOP.push_back(G->Vals[i]);
       }
-      getOperandPacksFromCondition(VPCtx->getConditionPack(Conds),
-                                   OperandPacks);
+      //getOperandPacksFromCondition(VPCtx->getConditionPack(Conds),
+      //                             OperandPacks);
       OperandPacks.push_back(VPCtx->getCanonicalOperandPack(ValOP));
     }
   } break;
@@ -299,8 +299,8 @@ void VectorPack::computeOperandPacks() {
 
   } // end switch
 
-  if (CP)
-    getOperandPacksFromCondition(CP, OperandPacks);
+  //if (CP)
+  //  getOperandPacksFromCondition(CP, OperandPacks);
 }
 
 static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
