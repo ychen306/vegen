@@ -79,18 +79,21 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
 void
 getOperandPacksFromCondition(const ConditionPack *CP,
                              SmallVectorImpl<const OperandPack *> &OPs) {
-  if (!CP)
-    return;
-
-  if (CP->Parent) {
-    getOperandPacksFromCondition(CP->Parent, OPs);
-  } else {
-    for (auto *CP2 : CP->CPs)
-      getOperandPacksFromCondition(CP2, OPs);
+  SmallPtrSet<const ConditionPack *, 4> Visited;
+  SmallVector<const ConditionPack *, 8> Worklist { CP };
+  while (!Worklist.empty()) {
+    auto *CP = Worklist.pop_back_val();
+    if (!CP)
+      continue;
+    if (!Visited.insert(CP).second)
+      continue;
+    if (CP->OP)
+      OPs.push_back(CP->OP);
+    if (CP->Parent)
+      Worklist.push_back(CP->Parent);
+    else
+      Worklist.append(CP->CPs);
   }
-
-  if (CP->OP)
-    OPs.push_back(CP->OP);
 }
 
 std::vector<OperandPack> VectorPack::computeOperandPacksForLoad() {
@@ -282,8 +285,8 @@ void VectorPack::computeOperandPacks() {
         Conds.push_back(G->Conds[i]);
         ValOP.push_back(G->Vals[i]);
       }
-      //getOperandPacksFromCondition(VPCtx->getConditionPack(Conds),
-      //                             OperandPacks);
+      getOperandPacksFromCondition(VPCtx->getConditionPack(Conds),
+                                   OperandPacks);
       OperandPacks.push_back(VPCtx->getCanonicalOperandPack(ValOP));
     }
   } break;
@@ -299,8 +302,8 @@ void VectorPack::computeOperandPacks() {
 
   } // end switch
 
-  //if (CP)
-  //  getOperandPacksFromCondition(CP, OperandPacks);
+  if (CP)
+    getOperandPacksFromCondition(CP, OperandPacks);
 }
 
 static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
