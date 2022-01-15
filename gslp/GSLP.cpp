@@ -69,6 +69,11 @@ static cl::opt<bool>
                    cl::desc("Don't run GVN and ADCE after vectorization"),
                    cl::init(false));
 
+static cl::opt<bool>
+    DisableReductionBalancing("no-balance-rdx",
+                   cl::desc("Don't balance reduction tree"),
+                   cl::init(false));
+
 namespace llvm {
 void initializeGSLPPass(PassRegistry &);
 }
@@ -251,7 +256,8 @@ bool GSLP::runOnFunction(Function &F) {
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
   errs() << "Optimizing " << F.getName() << '\n';
-  balanceReductionTree(F);
+  if (!DisableReductionBalancing)
+    balanceReductionTree(F);
   // Table holding all IR vector instructions
   IRInstTable VecBindingTable;
 
