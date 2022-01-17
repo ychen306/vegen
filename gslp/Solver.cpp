@@ -67,10 +67,13 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
         if (Accesses.size() == VL) {
           // Make sure we can compute the addresses speculatively if we are
           // doing masked load/stores
-          auto *AddrComp = dyn_cast<Instruction>(Accesses.front()->getPointerOperand());
-          SmallVector<Instruction *, 8> AccessInsts(Accesses.begin(), Accesses.end());
-          if (AddrComp && !Pkr->canSpeculateAt(AddrComp, 
-                Pkr->findSpeculationCond(AddrComp, AccessInsts))) {
+          auto *AddrComp =
+              dyn_cast<Instruction>(Accesses.front()->getPointerOperand());
+          SmallVector<Instruction *, 8> AccessInsts(Accesses.begin(),
+                                                    Accesses.end());
+          if (AddrComp &&
+              !Pkr->canSpeculateAt(
+                  AddrComp, Pkr->findSpeculationCond(AddrComp, AccessInsts))) {
             return;
           }
 
@@ -327,7 +330,7 @@ static void improvePlan(Packer *Pkr, Plan &P,
     // Only pack scalar store
     if (!SI || SI->getValueOperand()->getType()->isVectorTy())
       continue;
-    for (unsigned VL : {2, 4, 8/*, 16, 32, 64*/})
+    for (unsigned VL : {2, 4, 8 /*, 16, 32, 64*/})
       for (auto *VP : getSeedMemPacks(Pkr, SI, VL, BlocksToIgnore)) {
         Seeds.push_back(VP);
       }
@@ -492,10 +495,10 @@ static void improvePlan(Packer *Pkr, Plan &P,
 
 namespace {
 
-template<typename SetTy, typename ElemTy>
-class EraseOnReturnGuard {
+template <typename SetTy, typename ElemTy> class EraseOnReturnGuard {
   SetTy &Set;
   ElemTy Elem;
+
 public:
   EraseOnReturnGuard(SetTy &Set, ElemTy Elem) : Set(Set), Elem(Elem) {}
   ~EraseOnReturnGuard() {
@@ -504,29 +507,40 @@ public:
   }
 };
 
-}
+} // namespace
 
+// FIXME: also make sure we the loops that we want to fuse/co-iterate do not have dep cycle
 // Make sure a set of packs have neither data nor control dependence
-static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
+bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr,
+                  ArrayRef<std::pair<Instruction *, Instruction *>> ExtraDeps) {
   GlobalDependenceAnalysis &DA = Pkr->getDA();
   ControlDependenceAnalysis &CDA = Pkr->getCDA();
   auto *VPCtx = Pkr->getContext();
+
+  std::map<Instruction *, SmallVector<Instruction *, 8>> ExtraDepMap;
+  for (auto &Dep : ExtraDeps) {
+    Instruction *I, *Depended;
+    std::tie(Depended, I) = Dep;
+    ExtraDepMap[I].push_back(Depended);
+  }
 
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
   for (auto *VP : Packs)
     for (auto *V : VP->elementValues())
       ValueToPackMap.insert({V, VP});
 
-  using NodeTy = PointerUnion<Value *, const VectorPack *, const ControlCondition *>;
+  using NodeTy =
+      PointerUnion<Value *, const VectorPack *, const ControlCondition *>;
   DenseSet<NodeTy> Processing, Visited;
-  std::function<bool (NodeTy)> FindCycle = [&](NodeTy Node) -> bool {
+  std::function<bool(NodeTy)> FindCycle = [&](NodeTy Node) -> bool {
     if (!Processing.insert(Node).second)
       return true;
-    EraseOnReturnGuard<decltype(Processing), NodeTy> EraseOnReturn(Processing, Node);
+    EraseOnReturnGuard<decltype(Processing), NodeTy> EraseOnReturn(Processing,
+                                                                   Node);
 
     if (!Visited.insert(Node).second)
       return false;
-    
+
     if (auto *V = Node.dyn_cast<Value *>()) {
       auto *VP = ValueToPackMap.lookup(V);
       if (VP)
@@ -538,6 +552,10 @@ static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
 
       // Check data dependence
       if (any_of(VPCtx->iter_values(DA.getDepended(I)), FindCycle))
+        return true;
+
+      auto DepIt = ExtraDepMap.find(I);
+      if (DepIt != ExtraDepMap.end() && any_of(DepIt->second, FindCycle))
         return true;
 
       auto *PN = dyn_cast<PHINode>(I);
@@ -559,7 +577,11 @@ static bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr) {
       // Control dep.
       for (auto *V : VP->elementValues()) {
         auto *I = dyn_cast<Instruction>(V);
-        if (!I) continue;
+        if (!I)
+          continue;
+        auto DepIt = ExtraDepMap.find(I);
+        if (DepIt != ExtraDepMap.end() && any_of(DepIt->second, FindCycle))
+          return true;
         if (FindCycle(Pkr->getVLoopFor(I)->getInstCond(I)))
           return true;
         auto *PN = dyn_cast<PHINode>(V);
