@@ -153,6 +153,7 @@ public:
     return SubLoops;
   }
   const llvm::BitVector &getDepended() const { return Depended; }
+  const llvm::BitVector &getContained() const { return Insts; }
   const ControlCondition *getLoopCond() const { return LoopCond; }
   const ControlCondition *getBackEdgeCond() const { return BackEdgeCond; }
   bool isLoop() const { return L; }

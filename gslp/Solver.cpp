@@ -509,14 +509,66 @@ public:
 
 } // namespace
 
-// FIXME: also make sure we the loops that we want to fuse/co-iterate do not have dep cycle
-// Make sure a set of packs have neither data nor control dependence
+static bool findLoopDepCycle(
+    const EquivalenceClasses<VLoop *> &LoopsToFuse,
+    GlobalDependenceAnalysis &DA,
+    const VectorPackContext *VPCtx,
+    const std::map<Instruction *, SmallVector<Instruction *, 8>> &ExtraDepMap) {
+  std::map<VLoop *, BitVector> ExtendedDeps;
+  for (auto It = LoopsToFuse.begin(), E = LoopsToFuse.end(); It != E; ++It) {
+    for (auto *VL : make_range(LoopsToFuse.member_begin(It), LoopsToFuse.member_end())) {
+      // Extend the dependences of VL by taking ExtraDepMap into account
+      BitVector Depended = VL->getDepended();
+      for (auto *V : VPCtx->iter_values(VL->getContained())) {
+        auto *I = cast<Instruction>(V);
+        auto DepIt = ExtraDepMap.find(I);
+        if (DepIt == ExtraDepMap.end())
+          continue;
+        for (auto *I2 : DepIt->second) {
+          unsigned DepId = VPCtx->getScalarId(I2);
+          // Ignore I2 if it doesn't introduce new inter-loop dependence
+          if (Depended.test(DepId) || VL->contains(I2))
+            continue;
+          Depended.set(DepId);
+          // Assumption: the extra dep map already contains transitive dependences
+          // (and consequently we don't need to find the transitive closure)
+          Depended |= DA.getDepended(I2);
+        }
+      }
+      ExtendedDeps[VL] = Depended;
+    }
+  }
+
+  for (auto It = LoopsToFuse.begin(), E = LoopsToFuse.end(); It != E; ++It) {
+    if (!It->isLeader())
+      continue;
+    for (auto MemberIt = LoopsToFuse.member_begin(It), MemberE = LoopsToFuse.member_end();
+        MemberIt != MemberE; ++MemberIt) {
+      auto *VL1 = *MemberIt;
+      auto &VL1Deps = ExtendedDeps[VL1];
+      auto &VL1Members = VL1->getContained();
+      for (auto MemberIt2 = std::next(MemberIt); MemberIt2 != MemberE; ++MemberIt2) {
+        auto *VL2 = *MemberIt2;
+        if (VL1Deps.anyCommon(VL2->getContained()))
+          return true;
+        if (ExtendedDeps[VL2].anyCommon(VL1Members))
+          return true;
+      }
+    }
+  }
+  return false;
+}
+
+// FIXME: also make sure we the loops that we want to fuse/co-iterate do not
+// have dep cycle Make sure a set of packs have neither data nor control
+// dependence
 bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr,
                   ArrayRef<std::pair<Instruction *, Instruction *>> ExtraDeps) {
   GlobalDependenceAnalysis &DA = Pkr->getDA();
   ControlDependenceAnalysis &CDA = Pkr->getCDA();
   auto *VPCtx = Pkr->getContext();
 
+  // Mapping instruction -> extra deps
   std::map<Instruction *, SmallVector<Instruction *, 8>> ExtraDepMap;
   for (auto &Dep : ExtraDeps) {
     Instruction *I, *Depended;
@@ -524,11 +576,37 @@ bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr,
     ExtraDepMap[I].push_back(Depended);
   }
 
+  // Map instructions to their packs
   DenseMap<Value *, const VectorPack *> ValueToPackMap;
   for (auto *VP : Packs)
     for (auto *V : VP->elementValues())
       ValueToPackMap.insert({V, VP});
 
+  // Figure out the loops that we need to fuse (or co-iterate)
+  EquivalenceClasses<VLoop *> LoopsToFuse;
+  std::function<void(VLoop *, VLoop *)> MarkLoopsToFuse = [&](VLoop *VL1,
+                                                              VLoop *VL2) {
+    if (VL1 || VL1 == VL2)
+      return;
+
+    assert(VL1 == VL2 &&
+           "attempting to fuse loops with different nesting level");
+    LoopsToFuse.unionSets(VL1, VL2);
+    MarkLoopsToFuse(VL1->getParent(), VL2->getParent());
+  };
+  for (auto *VP : Packs) {
+    auto *VL =
+        Pkr->getVLoopFor(cast<Instruction>(*VP->elementValues().begin()));
+    for (auto *V : drop_begin(VP->elementValues()))
+      MarkLoopsToFuse(VL, Pkr->getVLoopFor(cast<Instruction>(V)));
+  }
+
+  // Figure out if there are any dependence cycles among the loops that we want
+  // to fuse.
+  if (findLoopDepCycle(LoopsToFuse, DA, VPCtx, ExtraDepMap))
+    return true;
+
+  // Use DFS to discover dependence cycle
   using NodeTy =
       PointerUnion<Value *, const VectorPack *, const ControlCondition *>;
   DenseSet<NodeTy> Processing, Visited;
