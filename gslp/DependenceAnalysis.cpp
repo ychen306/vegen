@@ -3,12 +3,9 @@
 #include "LoopAwareRPO.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/Analysis/DependenceAnalysis.h"
-#include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -17,14 +14,6 @@
 
 using namespace llvm;
 using namespace PatternMatch;
-
-static cl::opt<bool> UseLVI(
-    "use-lvi",
-    cl::desc("use lazy value info to improve dependence analysis precision"),
-    cl::init(false));
-
-static cl::opt<bool> UseDA("use-da", cl::desc("use dependence info"),
-                           cl::init(false));
 
 static bool isLessThan(ScalarEvolution &SE, const SCEV *A, const SCEV *B) {
   return SE.isKnownNegative(SE.getMinusSCEV(A, B));
@@ -121,7 +110,7 @@ static Value *getBaseValue(const SCEV *S) {
 }
 
 static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
-                      ScalarEvolution &SE, DominatorTree &DT, LoopInfo &LI,
+                      ScalarEvolution &SE, LoopInfo &LI,
                       LazyValueInfo &LVI) {
   auto Loc1 = getLocation(I1);
   auto Loc2 = getLocation(I2);
@@ -169,49 +158,13 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
   LoopCollector.visitAll(Ptr1SCEV);
   LoopCollector.visitAll(Ptr2SCEV);
 
-  auto CompareLoops = [&DT](const Loop *L1, const Loop *L2) {
+  auto CompareLoops = [](const Loop *L1, const Loop *L2) {
     return L1 == L2 || L1->contains(L2);
   };
   stable_sort(Loops, CompareLoops);
   for (int i = 0; i < (int)Loops.size() - 1; i++)
     if (!CompareLoops(Loops[i], Loops[i + 1]))
       return true;
-
-  if (UseLVI) {
-    SmallPtrSet<Value *, 16> Unknowns;
-    UnknownSCEVCollector UnknownCollector(SE, Unknowns);
-    UnknownCollector.visit(Ptr1SCEV);
-    UnknownCollector.visit(Ptr2SCEV);
-
-    // Scan the function for CFG edges that dominates `I2` gives us range
-    // information. Record and intersect those ranges.
-    DenseMap<Value *, ConstantRange> Ranges;
-    for (auto &BB : *F) {
-      for (auto *Succ : successors(&BB)) {
-        if (!DT.dominates({&BB, Succ}, I2->getParent()))
-          continue;
-        for (Value *V : Unknowns) {
-          // We only care about the unknown paremeters defined before both `I1`
-          // and `I2`
-          if (!DT.dominates(V, I2) || !DT.dominates(V, I1))
-            continue;
-          auto *I = dyn_cast<Instruction>(V);
-          if (I && !DT.dominates(I, &BB))
-            continue;
-          auto CR = LVI.getConstantRangeOnEdge(V, &BB, Succ);
-          if (CR.isFullSet())
-            continue;
-          auto Pair = Ranges.try_emplace(V, CR);
-          if (!Pair.second) {
-            ConstantRange &OldRange = Pair.first->second;
-            OldRange = OldRange.intersectWith(CR);
-          }
-        }
-      }
-    }
-    Ptr1SCEV = refineWithRanges(SE, Ptr1SCEV, Ranges);
-    Ptr2SCEV = refineWithRanges(SE, Ptr2SCEV, Ranges);
-  }
 
   bool Lt = isLessThan(SE, Ptr1SCEV, Ptr2SCEV);
   bool Gt = isLessThan(SE, Ptr2SCEV, Ptr1SCEV);
@@ -236,7 +189,7 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
 
 // FIXME: change this to use LazyDependenceAnalysis
 GlobalDependenceAnalysis::GlobalDependenceAnalysis(
-    AliasAnalysis &AA, ScalarEvolution &SE, DominatorTree &DT, LoopInfo &LI,
+    AliasAnalysis &AA, ScalarEvolution &SE, LoopInfo &LI,
     LazyValueInfo &LVI, Function *F, VectorPackContext *VPCtx, bool NoAlias) : VPCtx(VPCtx) {
 
   SmallVector<Instruction *> MemRefs;
@@ -276,7 +229,7 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
       for (Instruction *PrevRef : MemRefs)
         if ((isa<ReturnInst>(PrevRef) || PrevRef->mayWriteToMemory() ||
              I.mayWriteToMemory()) &&
-            isAliased(&I, PrevRef, AA, SE, DT, LI, LVI))
+            isAliased(&I, PrevRef, AA, SE, LI, LVI))
           Dependences[&I].push_back(PrevRef);
 
       MemRefs.push_back(&I);

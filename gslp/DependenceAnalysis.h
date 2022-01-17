@@ -8,7 +8,6 @@
 namespace llvm {
 class LazyValueInfo;
 class ScalarEvolution;
-class DominatorTree;
 class Instruction;
 class DependenceInfo;
 class LoopInfo;
@@ -25,7 +24,7 @@ class GlobalDependenceAnalysis {
 
 public:
   GlobalDependenceAnalysis(llvm::AliasAnalysis &, llvm::ScalarEvolution &,
-                           llvm::DominatorTree &, llvm::LoopInfo &LI,
+                           llvm::LoopInfo &LI,
                            llvm::LazyValueInfo &, llvm::Function *,
                            VectorPackContext *, bool NoAlias);
 
