@@ -6,6 +6,8 @@ set(LIB_PACKING_SRC
 
   Plan.cpp
 
+  Scalarizer.cpp
+
   ControlDependence.cpp
   BlockBuilder.cpp
   VLoop.cpp

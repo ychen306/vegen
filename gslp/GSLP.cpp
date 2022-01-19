@@ -7,6 +7,7 @@
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
 #include "RenameAllocas.h"
+#include "Scalarizer.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -364,7 +365,7 @@ INITIALIZE_PASS_END(GSLP, "gslp", "gslp", false, false)
 // http://adriansampson.net/blog/clangpass.html
 static void registerGSLP(const PassManagerBuilder &PMB,
                          legacy::PassManagerBase &MPM) {
-  MPM.add(createScalarizerPass());
+  MPM.add(createVeGenScalarizerPass());
   //MPM.add(createStructurizeCFGPass(false));
   //MPM.add(createCFGSimplificationPass());
   MPM.add(createUnifyFunctionExitNodesPass());
