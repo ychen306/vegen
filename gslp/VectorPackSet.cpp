@@ -17,9 +17,12 @@
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
+#include "llvm/Support/Debug.h"
 
 using namespace llvm;
 using namespace PatternMatch;
+
+#define DEBUG_TYPE "vegen-codegen"
 
 extern cl::opt<bool> TestCodeGen;
 
@@ -1150,11 +1153,12 @@ static void collectMasks(SmallVectorImpl<const OperandPack *> &Masks,
 }
 
 void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
- if (AllPacks.empty() && !TestCodeGen)
-   return;
+  if (AllPacks.empty() && !TestCodeGen)
+    return;
 
   // Fuse the loops for packs involving multiple loops
   for (auto *VP : AllPacks) {
+    LLVM_DEBUG(dbgs() << *VP << '\n');
     auto *VL = Pkr.getVLoopFor(cast<Instruction>(*VP->elementValues().begin()));
     for (auto *V : VP->elementValues()) {
       auto *VL2 = Pkr.getVLoopFor(cast<Instruction>(V));
