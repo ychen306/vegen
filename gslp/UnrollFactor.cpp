@@ -57,10 +57,10 @@ public:
         BasicResult(M.getDataLayout(), F, GetTLI(F), AC, &DT, &LI, &PV), CG(M),
         GlobalsResult(GlobalsAAResult::analyzeModule(M, GetTLI, CG)),
         Result(GetTLI(F)) {
-    Result.addAAResult(BasicResult);
     Result.addAAResult(ScopedNoAliasResult);
     Result.addAAResult(TBAAResult);
     Result.addAAResult(GlobalsResult);
+    Result.addAAResult(BasicResult);
   }
 
   AAResults &getResult() { return Result; }
