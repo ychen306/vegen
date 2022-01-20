@@ -6,7 +6,6 @@
 #include "Solver.h"
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
-#include "RenameAllocas.h"
 #include "Scalarizer.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -327,8 +326,6 @@ bool GSLP::runOnFunction(Function &F) {
   }
 
   PostDominatorTree PDT(F); // recompute PDT after unrolling
-  if (!TestCodeGen)
-    renameAllocas(&F, *DT, PDT, *LI, *AA);
   Packer Pkr(SupportedIntrinsics, F, AA, LI, SE, DT, &PDT, DI, LVI, TTI, BFI);
 
   // Forward the seeds from the unroller
