@@ -212,10 +212,23 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
         auto *OpInst = dyn_cast<Instruction>(V);
         if (!OpInst)
           continue;
+
         // Ignore loop carried dependences, which can only come from loop-header phi nodes
         bool IsLoopCarriedDep = IsHeader && isa<PHINode>(&I) && L->contains(OpInst);
         if (!IsLoopCarriedDep)
           Dependences[&I].push_back(OpInst);
+
+        // User of a header phi that's OUTSIDE of that loop
+        // should take that recursive dep. into account
+        auto *PN = dyn_cast<PHINode>(OpInst);
+        if (!PN)
+          continue;
+        auto *PNLoop = LI.getLoopFor(PN->getParent());
+        if (PNLoop && PN->getParent() == PNLoop->getHeader() && !PNLoop->contains(&I)) {
+          assert(PNLoop->getLoopLatch());
+          if (auto *I2 = dyn_cast<Instruction>(PN->getIncomingValueForBlock(PNLoop->getLoopLatch())))
+            Dependences[&I].push_back(I2);
+        }
       }
 
       if (m_Intrinsic<Intrinsic::experimental_noalias_scope_decl>(m_Value()).match(&I) ||

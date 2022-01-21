@@ -702,6 +702,7 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
   improvePlan(Pkr, P, SeedOperands, &Candidates, BlocksToIgnore);
   Packs.insert(Packs.end(), P.begin(), P.end());
   if (findDepCycle(Packs, Pkr)) {
+    errs() << "Aborting due to dependence cycle\n";
     Packs.clear();
     return ScalarCost;
   }
