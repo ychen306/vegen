@@ -512,12 +512,12 @@ public:
 
 static bool findLoopDepCycle(
     const EquivalenceClasses<VLoop *> &LoopsToFuse,
-    GlobalDependenceAnalysis &DA,
-    const VectorPackContext *VPCtx,
+    GlobalDependenceAnalysis &DA, const VectorPackContext *VPCtx,
     const std::map<Instruction *, SmallVector<Instruction *, 8>> &ExtraDepMap) {
   std::map<VLoop *, BitVector> ExtendedDeps;
   for (auto It = LoopsToFuse.begin(), E = LoopsToFuse.end(); It != E; ++It) {
-    for (auto *VL : make_range(LoopsToFuse.member_begin(It), LoopsToFuse.member_end())) {
+    for (auto *VL :
+         make_range(LoopsToFuse.member_begin(It), LoopsToFuse.member_end())) {
       // Extend the dependences of VL by taking ExtraDepMap into account
       BitVector Depended = VL->getDepended();
       for (auto *V : VPCtx->iter_values(VL->getContained())) {
@@ -531,8 +531,9 @@ static bool findLoopDepCycle(
           if (Depended.test(DepId) || VL->contains(I2))
             continue;
           Depended.set(DepId);
-          // Assumption: the extra dep map already contains transitive dependences
-          // (and consequently we don't need to find the transitive closure)
+          // Assumption: the extra dep map already contains transitive
+          // dependences (and consequently we don't need to find the transitive
+          // closure)
           Depended |= DA.getDepended(I2);
         }
       }
@@ -543,12 +544,14 @@ static bool findLoopDepCycle(
   for (auto It = LoopsToFuse.begin(), E = LoopsToFuse.end(); It != E; ++It) {
     if (!It->isLeader())
       continue;
-    for (auto MemberIt = LoopsToFuse.member_begin(It), MemberE = LoopsToFuse.member_end();
-        MemberIt != MemberE; ++MemberIt) {
+    for (auto MemberIt = LoopsToFuse.member_begin(It),
+              MemberE = LoopsToFuse.member_end();
+         MemberIt != MemberE; ++MemberIt) {
       auto *VL1 = *MemberIt;
       auto &VL1Deps = ExtendedDeps[VL1];
       auto &VL1Members = VL1->getContained();
-      for (auto MemberIt2 = std::next(MemberIt); MemberIt2 != MemberE; ++MemberIt2) {
+      for (auto MemberIt2 = std::next(MemberIt); MemberIt2 != MemberE;
+           ++MemberIt2) {
         auto *VL2 = *MemberIt2;
         if (VL1Deps.anyCommon(VL2->getContained()))
           return true;
@@ -557,6 +560,145 @@ static bool findLoopDepCycle(
       }
     }
   }
+  return false;
+}
+
+// Detect dependence cycle within the body of a given loop
+static bool findDepCycleInLoop(
+    VLoop *VL, const DenseMap<Value *, const VectorPack *> &ValueToPackMap,
+    const EquivalenceClasses<VLoop *> &LoopsToFuse,
+    const std::map<Instruction *, SmallVector<Instruction *, 8>> &ExtraDepMap,
+    GlobalDependenceAnalysis &DA, const VectorPackContext *VPCtx, Packer *Pkr) {
+  // Use DFS to discover dependence cycle
+  using NodeTy = PointerUnion<Value *, const VectorPack *,
+                              const ControlCondition *, VLoop *>;
+  DenseSet<NodeTy> Processing, Visited;
+
+  auto GetLeaderVL = [&LoopsToFuse](VLoop *VL) {
+    auto It = LoopsToFuse.findValue(VL);
+    if (It != LoopsToFuse.end())
+      return LoopsToFuse.getLeaderValue(VL);
+    return VL;
+  };
+  SmallVector<VLoop *, 8> FusedLoops;
+  auto It = LoopsToFuse.findValue(VL);
+  if (It != LoopsToFuse.end())
+    FusedLoops.assign(LoopsToFuse.member_begin(It), LoopsToFuse.member_end());
+  else
+    FusedLoops.push_back(VL);
+
+  std::function<bool(NodeTy)> FindCycle = [&](NodeTy Node) -> bool {
+    if (!Processing.insert(Node).second)
+      return true;
+    EraseOnReturnGuard<decltype(Processing), NodeTy> EraseOnReturn(Processing,
+                                                                   Node);
+
+    if (!Visited.insert(Node).second)
+      return false;
+
+    if (auto *V = Node.dyn_cast<Value *>()) {
+      auto *I = dyn_cast<Instruction>(V);
+      if (!I)
+        return false;
+
+      // If I is contained by a sub loop, treat that sub loop as a whole item
+      // (instead of processing the dep of I individually)
+      auto *VLOfI = Pkr->getVLoopFor(I);
+      if (any_of(FusedLoops,
+                 [VLOfI](VLoop *CoVL) { return CoVL->contains(VLOfI); })) {
+        return FindCycle(GetLeaderVL(VLOfI));
+      }
+
+      // If the (fused) loop doesn't contain this instruction,
+      // the instruction must be from a parent loop of VL and is not our
+      // concern.
+      if (VL->isLoop() &&
+          none_of(FusedLoops, [I](VLoop *CoVL) { return CoVL->contains(I); }))
+        return false;
+
+      // If this instruction is packed, need to check the pack as a whole
+      auto *VP = ValueToPackMap.lookup(V);
+      if (VP) {
+        return FindCycle(VP);
+      }
+
+      // Check data dependence
+      if (any_of(VPCtx->iter_values(DA.getDepended(I)), FindCycle))
+        return true;
+
+      auto DepIt = ExtraDepMap.find(I);
+      if (DepIt != ExtraDepMap.end() && any_of(DepIt->second, FindCycle))
+        return true;
+
+      auto *PN = dyn_cast<PHINode>(I);
+      auto *VLI = Pkr->getVLoopFor(I);
+      if (PN && VLI->isGatedPhi(PN)) {
+        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+          if (FindCycle(VLI->getIncomingPhiCondition(PN, i)))
+            return true;
+      }
+
+      // Check control dependence
+      return I && FindCycle(Pkr->getVLoopFor(I)->getInstCond(I));
+    }
+
+    if (auto *VP = Node.dyn_cast<const VectorPack *>()) {
+      // Data dep.
+      if (any_of(VP->dependedValues(), FindCycle))
+        return true;
+      // Control dep.
+      for (auto *V : VP->elementValues()) {
+        auto *I = dyn_cast<Instruction>(V);
+        if (!I)
+          continue;
+        auto DepIt = ExtraDepMap.find(I);
+        if (DepIt != ExtraDepMap.end() && any_of(DepIt->second, FindCycle))
+          return true;
+        if (FindCycle(Pkr->getVLoopFor(I)->getInstCond(I)))
+          return true;
+        auto *PN = dyn_cast<PHINode>(V);
+        auto *VLI = Pkr->getVLoopFor(I);
+        if (PN && VLI->isGatedPhi(PN)) {
+          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
+            if (FindCycle(VLI->getIncomingPhiCondition(PN, i)))
+              return true;
+        }
+      }
+      return false;
+    }
+
+    if (auto *SubVL = Node.dyn_cast<VLoop *>()) {
+      auto It = LoopsToFuse.findValue(SubVL);
+      if (It == LoopsToFuse.end()) {
+        return FindCycle(SubVL->getLoopCond()) ||
+               any_of(VPCtx->iter_values(SubVL->getDepended()), FindCycle);
+      }
+      assert(LoopsToFuse.getLeaderValue(SubVL) == SubVL);
+      auto CoIteratingLoops =
+          make_range(LoopsToFuse.member_begin(It), LoopsToFuse.member_end());
+      for (auto *CoVL : CoIteratingLoops)
+        if (FindCycle(CoVL->getLoopCond()) ||
+            any_of(VPCtx->iter_values(CoVL->getDepended()), FindCycle))
+          return true;
+    }
+
+    assert(Node.is<const ControlCondition *>());
+    auto *C = Node.dyn_cast<const ControlCondition *>();
+    if (!C)
+      return false;
+    if (auto *And = dyn_cast<ConditionAnd>(C))
+      return FindCycle(And->Cond) || FindCycle(And->Parent);
+    auto *Or = cast<ConditionOr>(C);
+    return any_of(Or->Conds, FindCycle);
+  };
+
+  for (auto &SubVL : VL->getSubLoops())
+    if (FindCycle(GetLeaderVL(SubVL.get())))
+      return true;
+
+  for (auto *CoVL : FusedLoops)
+    if (any_of(CoVL->getInstructions(), FindCycle))
+      return true;
   return false;
 }
 
@@ -607,83 +749,24 @@ bool findDepCycle(ArrayRef<const VectorPack *> Packs, Packer *Pkr,
   if (findLoopDepCycle(LoopsToFuse, DA, VPCtx, ExtraDepMap))
     return true;
 
-  // Use DFS to discover dependence cycle
-  using NodeTy =
-      PointerUnion<Value *, const VectorPack *, const ControlCondition *>;
-  DenseSet<NodeTy> Processing, Visited;
-  std::function<bool(NodeTy)> FindCycle = [&](NodeTy Node) -> bool {
-    if (!Processing.insert(Node).second)
+  // Find dependence cycle loop by loop
+  if (findDepCycleInLoop(&Pkr->getTopVLoop(), ValueToPackMap, LoopsToFuse,
+                         ExtraDepMap, DA, VPCtx, Pkr))
+    return true;
+  auto &VLI = Pkr->getVLoopInfo();
+  SmallPtrSet<VLoop *, 8> Checked;
+  for (auto *L : Pkr->getLoopInfo().getLoopsInPreorder()) {
+    auto *VL = VLI.getVLoop(L);
+    auto It = LoopsToFuse.findValue(VL);
+    if (It != LoopsToFuse.end())
+      VL = LoopsToFuse.getLeaderValue(VL);
+    if (!Checked.insert(VL).second)
+      continue;
+    if (findDepCycleInLoop(VL, ValueToPackMap, LoopsToFuse, ExtraDepMap, DA,
+                           VPCtx, Pkr))
       return true;
-    EraseOnReturnGuard<decltype(Processing), NodeTy> EraseOnReturn(Processing,
-                                                                   Node);
-
-    if (!Visited.insert(Node).second)
-      return false;
-
-    if (auto *V = Node.dyn_cast<Value *>()) {
-      auto *VP = ValueToPackMap.lookup(V);
-      if (VP)
-        return FindCycle(VP);
-
-      auto *I = dyn_cast<Instruction>(V);
-      if (!I)
-        return false;
-
-      // Check data dependence
-      if (any_of(VPCtx->iter_values(DA.getDepended(I)), FindCycle))
-        return true;
-
-      auto DepIt = ExtraDepMap.find(I);
-      if (DepIt != ExtraDepMap.end() && any_of(DepIt->second, FindCycle))
-        return true;
-
-      auto *PN = dyn_cast<PHINode>(I);
-      auto *VLI = Pkr->getVLoopFor(I);
-      if (PN && VLI->isGatedPhi(PN)) {
-        for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
-          if (FindCycle(VLI->getIncomingPhiCondition(PN, i)))
-            return true;
-      }
-
-      // Check control dependence
-      return I && FindCycle(Pkr->getVLoopFor(I)->getInstCond(I));
-    }
-
-    if (auto *VP = Node.dyn_cast<const VectorPack *>()) {
-      // Data dep.
-      if (any_of(VP->dependedValues(), FindCycle))
-        return true;
-      // Control dep.
-      for (auto *V : VP->elementValues()) {
-        auto *I = dyn_cast<Instruction>(V);
-        if (!I)
-          continue;
-        auto DepIt = ExtraDepMap.find(I);
-        if (DepIt != ExtraDepMap.end() && any_of(DepIt->second, FindCycle))
-          return true;
-        if (FindCycle(Pkr->getVLoopFor(I)->getInstCond(I)))
-          return true;
-        auto *PN = dyn_cast<PHINode>(V);
-        auto *VLI = Pkr->getVLoopFor(I);
-        if (PN && VLI->isGatedPhi(PN)) {
-          for (unsigned i = 0; i < PN->getNumIncomingValues(); i++)
-            if (FindCycle(VLI->getIncomingPhiCondition(PN, i)))
-              return true;
-        }
-      }
-      return false;
-    }
-
-    assert(Node.is<const ControlCondition *>());
-    auto *C = Node.dyn_cast<const ControlCondition *>();
-    if (!C)
-      return false;
-    if (auto *And = dyn_cast<ConditionAnd>(C))
-      return FindCycle(And->Cond) || FindCycle(And->Parent);
-    auto *Or = cast<ConditionOr>(C);
-    return any_of(Or->Conds, FindCycle);
-  };
-  return any_of(Packs, FindCycle);
+  }
+  return false;
 }
 
 float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,

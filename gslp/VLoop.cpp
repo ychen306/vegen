@@ -285,7 +285,7 @@ bool VLoop::contains(VLoop *VL) const {
   for (auto &SubVL : SubLoops)
     if (SubVL.get() == VL || SubVL->contains(VL))
       return true;
-  return true;
+  return false;
 }
 
 // Determine whether I has user from out of VL
