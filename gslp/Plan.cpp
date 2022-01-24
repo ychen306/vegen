@@ -283,10 +283,27 @@ void Plan::removeImpl(const VectorPack *VP) {
       // If there's someone using I, we have to now produce it as a scalar
       if (isAlive(I)) {
         revive(I);
+
+        unsigned NumUses = NumScalarUses.lookup(I);
+        // In some rare cases we are packing recursive phi nodes that use one another.
+        // In these cases, we don't need to retract the vector extract cost (there are no actual vector extracts).
+        if (VP->isPHI() && NumUses) {
+          // Find out the number of uses of I within this pack
+          unsigned NumIntraPackUses = 0;
+          for (auto *V : Values) {
+            auto *I2 = dyn_cast_or_null<Instruction>(V);
+            for (Value *O : I2->operands())
+              if (O == I)
+                ++NumIntraPackUses;
+          }
+          if (NumUses == NumIntraPackUses)
+            continue;
+        }
+
         // Since we are producing I as a scalar now, we don't need to pay the
         // extract cost One exception is "Reduction pack" which produces a
         // single scalar that we never extract
-        if (!VP->isReduction() && NumScalarUses.lookup(I)) {
+        if (!VP->isReduction() && NumUses) {
           assert(ExtractCosts.count(I));
           Cost -= ExtractCosts[I];
           ExtractCosts.erase(I);
