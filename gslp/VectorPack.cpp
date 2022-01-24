@@ -330,7 +330,12 @@ static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
     else
       Idxs.push_back(Operands[j++]);
   }
-  return Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idxs);
+  auto *GEP = Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idxs);
+  if (GEP->getType()->isVectorTy())
+    return GEP;
+  // Sometimes we end up not needing to vectorize,
+  // in which case, we just broadcast the GEP to fix the type
+  return Builder.CreateVectorSplat(GEPs.size(), GEP);
 }
 
 static Value *emitVectorCmp(ArrayRef<CmpInst *> Cmps,
