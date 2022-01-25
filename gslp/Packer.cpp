@@ -192,7 +192,7 @@ static bool supersedes(VLoop *VL1, const ControlCondition *C1, VLoop *VL2,
 const ControlCondition *
 Packer::findSpeculationCond(Instruction *I, ArrayRef<Instruction *> Users) {
   auto *VL = getVLoopFor(I);
-  SmallVector<const ControlCondition *, 8> Conds;
+  SmallVector<const ControlCondition *, 8> Conds { VL->getInstCond(I) };
   for (auto *U : Users) {
     auto *UserVL = getVLoopFor(U);
     if (VLoop::isSafeToCoIterate(VL, UserVL))
