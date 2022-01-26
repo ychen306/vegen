@@ -1156,6 +1156,9 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   if (AllPacks.empty() && !TestCodeGen)
     return;
 
+  if (!AllPacks.empty())
+    errs() << "Vectorized " << Pkr.getFunction()->getName() << '\n';
+
   // Fuse the loops for packs involving multiple loops
   for (auto *VP : AllPacks) {
     LLVM_DEBUG(dbgs() << *VP << '\n');
