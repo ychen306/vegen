@@ -75,6 +75,9 @@ const ControlCondition *getCommonCondForOr(const ControlCondition *C) {
 
 const ControlCondition *getGreatestCommonCondition(const ControlCondition *C1,
                                                    const ControlCondition *C2) {
+  if (C1 == C2)
+    return C1;
+
   C1 = getCommonCondForOr(C1);
   C2 = getCommonCondForOr(C2);
   if (!C1 || !C2)
