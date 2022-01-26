@@ -4,8 +4,11 @@
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Support/Debug.h"
 
 using namespace llvm;
+
+#define DEBUG_TYPE "vegen-control-dep"
 
 ControlDependenceAnalysis::ControlDependenceAnalysis(LoopInfo &LI,
                                                      DominatorTree &DT,
@@ -259,8 +262,11 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
     return It->second;
 
   // Use this rule to propagate conditions for exit-block/edge
-  if (auto *Pred = BB->getUniquePredecessor())
-    return getConditionForEdge(Pred, BB);
+  if (auto *Pred = BB->getUniquePredecessor()) {
+    auto *C = getConditionForEdge(Pred, BB);
+    LLVM_DEBUG(dbgs() << "Condition for " << BB->getName() << " is " << *C << '\n');
+    return C;
+  }
 
   // The entry block always executes unconditionally
   auto *Node = DT.getNode(BB);
@@ -285,7 +291,9 @@ ControlDependenceAnalysis::getConditionForBlock(BasicBlock *BB) {
   }
 
   sort(CondsToJoin);
-  return BlockConditions[BB] = getOr(CondsToJoin);
+  auto *C = getOr(CondsToJoin);
+  LLVM_DEBUG(dbgs() << "Condition for " << BB->getName() << " is " << *C << '\n');
+  return BlockConditions[BB] = C;
 }
 
 static void dump(raw_ostream &OS, const ControlCondition *C) {
