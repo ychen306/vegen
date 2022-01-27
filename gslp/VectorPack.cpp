@@ -477,8 +477,9 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
     ProducerName = Producer->getName();
   else if (VP.isGamma())
     ProducerName = "Gamma";
-  else if (VP.isReduction())
-    ProducerName = "reduction";
+  else if (VP.isReduction() || VP.isLoopFreeReduction()) {
+    return OS << "PACK<REDUCTION> " << VP.getReductionInfo() << '\n';
+  }
   else if (VP.IsGatherScatter)
     ProducerName = "gather/scatter";
 

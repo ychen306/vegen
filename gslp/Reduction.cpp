@@ -68,8 +68,8 @@ static void matchReductionTreeWithKind(Value *Root,
       continue;
     }
     Ops.push_back(cast<Instruction>(V));
-    Worklist.emplace_back(A, Height + 1);
     Worklist.emplace_back(B, Height + 1);
+    Worklist.emplace_back(A, Height + 1);
   }
   stable_sort(LeavesAndHeights,
               [](auto &P1, auto &P2) { return P1.second > P2.second; });
@@ -77,17 +77,18 @@ static void matchReductionTreeWithKind(Value *Root,
     Leaves.push_back(Pair.first);
 }
 
+static RecurKind RdxKinds[] = {RecurKind::Add,  RecurKind::Mul,  RecurKind::And,
+  RecurKind::Or,   RecurKind::Xor,  RecurKind::FAdd,
+  RecurKind::FMul, RecurKind::FMin, RecurKind::FMax,
+  RecurKind::SMin, RecurKind::SMax, RecurKind::UMin,
+  RecurKind::UMax};
+
 static bool matchReductionTree(PHINode *PN, Loop *L,
                                SmallVectorImpl<Instruction *> &Ops,
                                SmallVectorImpl<Value *> &Leaves,
                                RecurKind &Kind) {
-  auto Kinds = {RecurKind::Add,  RecurKind::Mul,  RecurKind::And,
-                RecurKind::Or,   RecurKind::Xor,  RecurKind::FAdd,
-                RecurKind::FMul, RecurKind::FMin, RecurKind::FMax,
-                RecurKind::SMin, RecurKind::SMax, RecurKind::UMin,
-                RecurKind::UMax};
   Value *Root = PN->getIncomingValueForBlock(L->getLoopLatch());
-  for (RecurKind K : Kinds) {
+  for (RecurKind K : RdxKinds) {
     Ops.clear();
     Leaves.clear();
     matchReductionTreeWithKind(Root, Ops, Leaves, K);
@@ -134,7 +135,32 @@ Optional<ReductionInfo> matchLoopReduction(PHINode *PN, LoopInfo &LI) {
   return RI;
 }
 
+Optional<ReductionInfo> matchLoopFreeReduction(Value *Root) {
+  ReductionInfo RI;
+  RI.Phi = nullptr;
+  auto &Leaves = RI.Elts;
+  auto &Ops = RI.Ops;
+  for (auto K : RdxKinds) {
+    RI.Kind = K;
+    Leaves.clear();
+    Ops.clear();
+    matchReductionTreeWithKind(Root, Ops, Leaves, K);
+    if (Leaves.size() >= 4)
+      return RI;
+  }
+  return None;
+}
+
 raw_ostream &operator<<(raw_ostream &OS, const ReductionInfo &RI) {
-  return OS << "reduction { "
-            << "phi = " << *RI.Phi << ", root = " << *RI.Ops.front() << "}";
+  OS << "reduction {";
+  if (RI.Phi)
+    OS << "\n\tphi = " << *RI.Phi;
+  OS << "\n\troot = " << *RI.Ops.front();
+  OS << "\n\telements = [";
+  for (auto *V : RI.Elts) {
+    OS << "\n\t\t" << *V;
+  }
+  OS << "\n\t]\n";
+  OS << "}";
+  return OS;
 }

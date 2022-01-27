@@ -883,6 +883,18 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
         Builder.SetInsertPoint(GetBlock(getGreatestCommonCondition(Conds)));
         VecInst = Builder.CreateLoad(VecTy, Alloca, "reload");
       }
+    } else if (VP->isLoopFreeReduction()) {
+      auto &RI = VP->getReductionInfo();
+      Builder.SetInsertPoint(GetBlock(VL.getInstCond(RI.Ops.front())));
+      ArrayRef<const OperandPack *> OPs = VP->getOperandPacks();
+      auto *Vec = gatherOperandPack(*OPs.front());
+      // Aggregate the partially reduced vectors together
+      for (auto *OP : drop_begin(OPs))
+        Vec = emitReduction(RI.Kind, Vec, gatherOperandPack(*OP), Builder);
+      // Do the final horizontal reduction
+      auto *HorizontalRdx =
+        createSimpleTargetReduction(Builder, Pkr.getTTI(), Vec, RI.Kind);
+      ReplacedUses[RI.Ops.front()] = HorizontalRdx;
     } else {
       Builder.SetInsertPoint(GetBlock(getGreatestCommonCondition(Conds)));
 

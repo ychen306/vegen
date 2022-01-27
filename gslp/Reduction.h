@@ -22,6 +22,9 @@ struct ReductionInfo {
 llvm::Optional<ReductionInfo> matchLoopReduction(llvm::PHINode *,
                                                  llvm::LoopInfo &);
 
+// Match a straightline reduction
+llvm::Optional<ReductionInfo> matchLoopFreeReduction(llvm::Value *);
+
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const ReductionInfo &);
 
 #endif // REDUCTION_H

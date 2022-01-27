@@ -351,7 +351,7 @@ static void improvePlan(Packer *Pkr, Plan &P,
   auto *TTI = Pkr->getTTI();
   auto *VPCtx = Pkr->getContext();
   unsigned MaxVecWidth = TTI->getLoadStoreVecRegBitWidth(0);
-  // Add reduction packs
+  // Add loop-reduction packs
   for (auto &I : instructions(Pkr->getFunction())) {
     auto *PN = dyn_cast<PHINode>(&I);
     if (!PN)
@@ -363,7 +363,30 @@ static void improvePlan(Packer *Pkr, Plan &P,
       unsigned RdxLen = std::min<unsigned>(
           greatestPowerOfTwoDivisor(RI->Elts.size()),
           MaxVecWidth / getBitWidth(PN, Pkr->getDataLayout()));
-      Seeds.push_back(VPCtx->createReduction(*RI, RdxLen, TTI));
+      Seeds.push_back(VPCtx->createLoopReduction(*RI, RdxLen, TTI));
+    }
+  }
+  // Add loop-free reductions.
+  // To reduce the search space,
+  // we only consider reduction that feed into instructions without users.
+  auto &DA = Pkr->getDA();
+  for (auto &I : instructions(Pkr->getFunction())) {
+    if (isa<StoreInst>(&I))
+      continue;
+    if (I.use_empty() && (I.getType()->isVoidTy() || isa<CallInst>(I) || isa<InvokeInst>(I))) {
+      for (Value *Root : I.operand_values()) {
+        Optional<ReductionInfo>(RI) = matchLoopFreeReduction(Root);
+        if (RI && RI->Elts.size() % 2 == 0) {
+          unsigned RdxLen = std::min<unsigned>(
+              greatestPowerOfTwoDivisor(RI->Elts.size()),
+              MaxVecWidth / getBitWidth(Root, Pkr->getDataLayout()));
+          BitVector Depended(VPCtx->getNumValues());
+          for (auto *V : RI->Elts)
+            if (auto *I2 = dyn_cast<Instruction>(V))
+              Depended |= DA.getDepended(I2);
+          Seeds.push_back(VPCtx->createLoopFreeReduction(*RI, RdxLen, Depended, TTI));
+        }
+      }
     }
   }
 

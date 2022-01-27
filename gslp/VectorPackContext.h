@@ -119,10 +119,17 @@ public:
                             llvm::BitVector Elements, llvm::BitVector Depended,
                             llvm::TargetTransformInfo *TTI) const;
 
+  // Create a loop reduction pack
   VectorPack *
-  createReduction(const ReductionInfo &,
+  createLoopReduction(const ReductionInfo &,
                   unsigned RdxLen /*vector length of the reduction*/,
                   llvm::TargetTransformInfo *TTI) const;
+
+  // Create a loop free reduction
+  VectorPack *
+  createLoopFreeReduction(const ReductionInfo &, unsigned RdxLen,
+      llvm::BitVector Depended,
+      llvm::TargetTransformInfo *TTI) const;
 
   OperandPack *getCanonicalOperandPack(OperandPack OP) const;
   ConditionPack *getConditionPack(

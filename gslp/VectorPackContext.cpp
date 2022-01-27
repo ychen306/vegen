@@ -126,7 +126,7 @@ VectorPack *VectorPackContext::createGEPPack(ArrayRef<GetElementPtrInst *> GEPs,
   return VP.get();
 }
 
-VectorPack *VectorPackContext::createReduction(const ReductionInfo &Rdx,
+VectorPack *VectorPackContext::createLoopReduction(const ReductionInfo &Rdx,
                                                unsigned RdxLen,
                                                TargetTransformInfo *TTI) const {
   auto *Root = Rdx.Ops.front();
@@ -134,6 +134,19 @@ VectorPack *VectorPackContext::createReduction(const ReductionInfo &Rdx,
   if (!VP) {
     BitVector Elements(getNumValues());
     BitVector Depended(getNumValues());
+    Elements.set(getScalarId(Root));
+    VP.reset(new VectorPack(this, Rdx, RdxLen, Elements, Depended, TTI));
+  }
+  return VP.get();
+}
+
+VectorPack *VectorPackContext::createLoopFreeReduction(const ReductionInfo &Rdx,
+                                               unsigned RdxLen, BitVector Depended,
+                                               TargetTransformInfo *TTI) const {
+  auto *Root = Rdx.Ops.front();
+  auto &VP = PackCache->ReductionPacks[Root];
+  if (!VP) {
+    BitVector Elements(getNumValues());
     Elements.set(getScalarId(Root));
     VP.reset(new VectorPack(this, Rdx, RdxLen, Elements, Depended, TTI));
   }
