@@ -356,9 +356,6 @@ static void improvePlan(Packer *Pkr, Plan &P,
     auto *PN = dyn_cast<PHINode>(&I);
     if (!PN)
       continue;
-    // FIXME: also allow integer reduction
-    if (!PN->getType()->isFloatTy() && !PN->getType()->isDoubleTy())
-      continue;
     if (BlocksToIgnore && BlocksToIgnore->count(PN->getParent()))
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);

@@ -194,10 +194,11 @@ public:
 
 struct UnaryMath : public Operation {
   llvm::Intrinsic::ID ID;
-  bool IsDouble;
+  unsigned BitWidth;
+  bool IsFloat;
 
-  UnaryMath(llvm::Intrinsic::ID ID, bool IsDouble)
-      : ID(ID), IsDouble(IsDouble) {}
+  UnaryMath(llvm::Intrinsic::ID ID, unsigned BitWidth, bool IsFloat)
+      : ID(ID), BitWidth(BitWidth), IsFloat(IsFloat) {}
   bool match(llvm::Value *V,
              llvm::SmallVectorImpl<Match> &Matches) const override;
 };
