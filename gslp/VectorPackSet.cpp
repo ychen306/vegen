@@ -924,7 +924,7 @@ VectorCodeGen::emitLoop(VLoop &VL, BasicBlock *Preheader) {
 
     // Conservatively extract all elements.
     // Let the later cleanup passes clean up dead extracts.
-    if (!VP->isStore() && !VP->isReduction()) {
+    if (!VP->isStore() && !VP->isReduction() && !VP->isLoopFreeReduction()) {
       if (auto *I = dyn_cast<Instruction>(VecInst)) {
         setInsertAtEndOfBlock(Builder, cast<Instruction>(VecInst)->getParent());
         for (auto &Item : enumerate(VP->getOrderedValues())) {
