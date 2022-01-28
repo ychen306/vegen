@@ -346,8 +346,10 @@ static void findLoopFreeReductions(SmallVectorImpl<const VectorPack *> &Seeds,
             MaxVecWidth / getBitWidth(Root, DL));
       BitVector Depended(VPCtx->getNumValues());
       for (auto *V : RI->Elts)
-        if (auto *I2 = dyn_cast<Instruction>(V))
+        if (auto *I2 = dyn_cast<Instruction>(V)) {
           Depended |= DA.getDepended(I2);
+          Depended.set(VPCtx->getScalarId(I2));
+        }
       Seeds.push_back(
           VPCtx->createLoopFreeReduction(*RI, RdxLen, Depended, TTI));
       Worklist.append(RI->Elts);
