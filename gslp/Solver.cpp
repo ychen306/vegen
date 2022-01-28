@@ -319,6 +319,43 @@ void tryPackBackEdgeConds(Packer *Pkr, Plan &P, Heuristic &H) {
   if (P2.cost() <= P.cost())
     P = P2;
 }
+static void findLoopFreeReductions(SmallVectorImpl<const VectorPack *> &Seeds,
+                                   unsigned MaxVecWidth, Function *F,
+                                   GlobalDependenceAnalysis &DA,
+                                   const VectorPackContext *VPCtx,
+                                   const DataLayout *DL,
+                                   TargetTransformInfo *TTI) {
+  SmallVector<Value *> Worklist;
+  for (auto &I : instructions(F)) {
+    if (isa<StoreInst>(&I))
+      continue;
+    if (I.use_empty() &&
+        (I.getType()->isVoidTy() || isa<CallInst>(I) || isa<InvokeInst>(I)))
+      Worklist.append(I.value_op_begin(), I.value_op_end());
+  }
+
+  DenseSet<Value *> Visited;
+  while (!Worklist.empty()) {
+    auto *Root = Worklist.pop_back_val();
+    if (!Visited.insert(Root).second)
+      continue;
+    Optional<ReductionInfo>(RI) = matchLoopFreeReduction(Root);
+    if (RI && RI->Elts.size() % 2 == 0) {
+      unsigned RdxLen =
+        std::min<unsigned>(greatestPowerOfTwoDivisor(RI->Elts.size()),
+            MaxVecWidth / getBitWidth(Root, DL));
+      BitVector Depended(VPCtx->getNumValues());
+      for (auto *V : RI->Elts)
+        if (auto *I2 = dyn_cast<Instruction>(V))
+          Depended |= DA.getDepended(I2);
+      Seeds.push_back(
+          VPCtx->createLoopFreeReduction(*RI, RdxLen, Depended, TTI));
+      Worklist.append(RI->Elts);
+    } else if (auto *I = dyn_cast<Instruction>(Root)) {
+      Worklist.append(I->value_op_begin(), I->value_op_end());
+    }
+  }
+}
 
 static void improvePlan(Packer *Pkr, Plan &P,
                         ArrayRef<const OperandPack *> SeedOperands,
@@ -366,29 +403,8 @@ static void improvePlan(Packer *Pkr, Plan &P,
       Seeds.push_back(VPCtx->createLoopReduction(*RI, RdxLen, TTI));
     }
   }
-  // Add loop-free reductions.
-  // To reduce the search space,
-  // we only consider reduction that feed into instructions without users.
-  auto &DA = Pkr->getDA();
-  for (auto &I : instructions(Pkr->getFunction())) {
-    if (isa<StoreInst>(&I))
-      continue;
-    if (I.use_empty() && (I.getType()->isVoidTy() || isa<CallInst>(I) || isa<InvokeInst>(I))) {
-      for (Value *Root : I.operand_values()) {
-        Optional<ReductionInfo>(RI) = matchLoopFreeReduction(Root);
-        if (RI && RI->Elts.size() % 2 == 0) {
-          unsigned RdxLen = std::min<unsigned>(
-              greatestPowerOfTwoDivisor(RI->Elts.size()),
-              MaxVecWidth / getBitWidth(Root, Pkr->getDataLayout()));
-          BitVector Depended(VPCtx->getNumValues());
-          for (auto *V : RI->Elts)
-            if (auto *I2 = dyn_cast<Instruction>(V))
-              Depended |= DA.getDepended(I2);
-          Seeds.push_back(VPCtx->createLoopFreeReduction(*RI, RdxLen, Depended, TTI));
-        }
-      }
-    }
-  }
+  findLoopFreeReductions(Seeds, MaxVecWidth, Pkr->getFunction(), Pkr->getDA(),
+                         VPCtx, Pkr->getDataLayout(), TTI);
 
   if (Candidates)
     Seeds.append(Candidates->Packs.begin(), Candidates->Packs.end());
