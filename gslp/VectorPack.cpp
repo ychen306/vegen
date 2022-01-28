@@ -416,8 +416,12 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     if (IsGatherScatter) {
       Cost = TTI->getGatherScatterOpCost(
           Instruction::Load, VecTy, LI->getPointerOperand(),
-          false /*variable mask*/, getCommonAlignment(Loads),
+          (bool)CP/*variable mask*/, getCommonAlignment(Loads),
           TTI::TCK_RecipThroughput, LI);
+    } else if (CP) {
+      // Contiguous masked load
+      Cost = TTI->getMaskedMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
+                                  TTI::TCK_RecipThroughput);
     } else {
       Cost = TTI->getMemoryOpCost(Instruction::Load, VecTy, LI->getAlign(), 0,
                                   TTI::TCK_RecipThroughput, LI);
@@ -431,8 +435,12 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     if (IsGatherScatter) {
       Cost = TTI->getGatherScatterOpCost(
           Instruction::Store, VecTy, SI->getPointerOperand(),
-          false /*variable mask*/, getCommonAlignment(Stores),
+          (bool)CP/*variable mask*/, getCommonAlignment(Stores),
           TTI::TCK_RecipThroughput, SI);
+    } else if (CP) {
+      // Contiguous masked store
+      Cost = TTI->getMaskedMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(), 0,
+                                  TTI::TCK_RecipThroughput);
     } else {
       Cost = TTI->getMemoryOpCost(Instruction::Store, VecTy, SI->getAlign(), 0,
                                   TTI::TCK_RecipThroughput, SI);
