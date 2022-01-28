@@ -76,11 +76,10 @@ std::vector<OperandPack> VectorPack::computeOperandPacksForGeneral() {
   return OperandPacks;
 }
 
-void
-getOperandPacksFromCondition(const ConditionPack *CP,
-                             SmallVectorImpl<const OperandPack *> &OPs) {
+void getOperandPacksFromCondition(const ConditionPack *CP,
+                                  SmallVectorImpl<const OperandPack *> &OPs) {
   SmallPtrSet<const ConditionPack *, 4> Visited;
-  SmallVector<const ConditionPack *, 8> Worklist { CP };
+  SmallVector<const ConditionPack *, 8> Worklist{CP};
   while (!Worklist.empty()) {
     auto *CP = Worklist.pop_back_val();
     if (!CP)
@@ -161,7 +160,7 @@ template <typename LoadStores> Align getCommonAlignment(LoadStores Insts) {
 } // namespace
 
 Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
-    std::function<Value *(Value *)> GetScalar,
+                                  std::function<Value *(Value *)> GetScalar,
                                   IntrinsicBuilder &Builder) const {
   auto *FirstLoad = Loads[0];
   auto &DL = FirstLoad->getParent()->getModule()->getDataLayout();
@@ -172,7 +171,6 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
   auto *ScalarTy = cast<PointerType>(ScalarPtr->getType())->getElementType();
   auto *VecTy = FixedVectorType::get(ScalarTy, Loads.size());
 
-
   // Emit the load
   Instruction *VecLoad;
   if (IsGatherScatter) {
@@ -181,7 +179,8 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
   } else {
     // Cast the scalar pointer to a vector pointer
     unsigned AS = FirstLoad->getPointerAddressSpace();
-    Value *VecPtr = Builder.CreateBitCast(GetScalar(ScalarPtr), VecTy->getPointerTo(AS));
+    Value *VecPtr =
+        Builder.CreateBitCast(GetScalar(ScalarPtr), VecTy->getPointerTo(AS));
     if (Mask)
       VecLoad = Builder.CreateMaskedLoad(VecPtr, FirstLoad->getAlign(), Mask);
     else
@@ -196,7 +195,7 @@ Value *VectorPack::emitVectorLoad(ArrayRef<Value *> Operands, Value *Mask,
 }
 
 Value *VectorPack::emitVectorStore(ArrayRef<Value *> Operands, Value *Mask,
-    std::function<Value *(Value *)> GetScalar,
+                                   std::function<Value *(Value *)> GetScalar,
                                    IntrinsicBuilder &Builder) const {
   // Emit the vector store
   Instruction *VecStore;
@@ -330,7 +329,8 @@ static Value *emitVectorGEP(ArrayRef<GetElementPtrInst *> GEPs,
     else
       Idxs.push_back(Operands[j++]);
   }
-  auto *GEP = Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idxs);
+  auto *GEP =
+      Builder.CreateGEP(GEPs.front()->getSourceElementType(), Ptr, Idxs);
   if (GEP->getType()->isVectorTy())
     return GEP;
   // Sometimes we end up not needing to vectorize,
@@ -364,6 +364,42 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
   case Gamma:
   case Phi:
     llvm_unreachable("Don't call emit on reduction and gamma pack directly");
+  }
+}
+
+static float getReductionCost(const ReductionInfo &RI, unsigned RdxLen,
+                              TargetTransformInfo *TTI) {
+  auto *VecTy = FixedVectorType::get(RI.Elts.front()->getType(), RdxLen);
+  auto RdxKind = RI.Kind;
+  switch (RdxKind) {
+  case RecurKind::Add:
+  case RecurKind::Mul:
+  case RecurKind::Or:
+  case RecurKind::And:
+  case RecurKind::Xor:
+  case RecurKind::FAdd:
+  case RecurKind::FMul: {
+    unsigned RdxOpcode = RecurrenceDescriptor::getOpcode(RdxKind);
+    return TTI->getArithmeticReductionCost(RdxOpcode, VecTy,
+                                           /*IsPairwiseForm=*/false);
+  }
+  case RecurKind::FMax:
+  case RecurKind::FMin: {
+    auto *VecCondTy = cast<VectorType>(CmpInst::makeCmpResultType(VecTy));
+    return TTI->getMinMaxReductionCost(VecTy, VecCondTy,
+                                       /*pairwise=*/false, /*unsigned=*/false);
+  }
+  case RecurKind::SMax:
+  case RecurKind::SMin:
+  case RecurKind::UMax:
+  case RecurKind::UMin: {
+    auto *VecCondTy = cast<VectorType>(CmpInst::makeCmpResultType(VecTy));
+    bool IsUnsigned = RdxKind == RecurKind::UMax || RdxKind == RecurKind::UMin;
+    return TTI->getMinMaxReductionCost(VecTy, VecCondTy,
+                                       /*IsPairwiseForm=*/false, IsUnsigned);
+  }
+  default:
+    llvm_unreachable("unexpected reduction type");
   }
 }
 
@@ -413,6 +449,8 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
   case Reduction:
     // FIXME: actually compute the cost
     Cost = 1;
+    if (isLoopFreeReduction())
+      Cost = getReductionCost(getReductionInfo(), RdxLen, TTI);
     break;
   case GEP:
     Cost = 0;
@@ -479,8 +517,7 @@ raw_ostream &operator<<(raw_ostream &OS, const VectorPack &VP) {
     ProducerName = "Gamma";
   else if (VP.isReduction() || VP.isLoopFreeReduction()) {
     return OS << "PACK<REDUCTION> " << VP.getReductionInfo() << '\n';
-  }
-  else if (VP.IsGatherScatter)
+  } else if (VP.IsGatherScatter)
     ProducerName = "gather/scatter";
 
   OS << "PACK<" << ProducerName << ">: (\n";
