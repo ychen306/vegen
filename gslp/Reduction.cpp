@@ -6,6 +6,8 @@ using namespace llvm;
 
 // Suppose we are doing A + B, find A and B
 static bool matchReduction(Value *Rdx, Value *&A, Value *&B, RecurKind Kind) {
+  if (!isa<Instruction>(Rdx))
+    return false;
   using namespace PatternMatch;
   switch (Kind) {
   case RecurKind::Add:
