@@ -420,20 +420,18 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
                          LazyValueInfo *LVI, TargetTransformInfo *TTI,
                          BlockFrequencyInfo *BFI, Function *F,
                          const LoopInfo &LI, DenseMap<Loop *, unsigned> &UFs) {
+  DenseSet<Loop *> UnrolledLoops;
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
+    if (any_of(UnrolledLoops, [L](Loop *UnrolledL) { return UnrolledL->contains(L); })) {
+      UFs[L] = 0;
+      continue;
+    }
     UFs[L] = 8;
     computeUnrollFactorImpl(Insts, LVI, TTI, BFI, F, LI, UFs);
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
-           << ')' << " " << UFs.lookup(L) << '\n';
-#if 1
-    if (UFs[L] > 1) {
-      //UFs[L] = 8;
-      for (auto &KV : UFs)
-        if (KV.first != L)
-          KV.second = 0;
-      break;
-    }
-#endif
+      << ')' << " " << UFs.lookup(L) << '\n';
+    if (UFs[L] > 1)
+      UnrolledLoops.insert(L);
   }
   errs() << "========= final unroll plan ========\n";
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
