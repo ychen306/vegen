@@ -455,7 +455,10 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     Cost = 0;
     break;
   case Reduction:
-    Cost = getReductionCost(getReductionInfo(), RdxLen, TTI);
+    if (isLoopFreeReduction())
+      Cost = getReductionCost(getReductionInfo(), RdxLen, TTI);
+    else
+      Cost = 1;
     break;
   case GEP:
     Cost = 0;
