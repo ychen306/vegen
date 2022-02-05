@@ -339,6 +339,9 @@ static void findLoopFreeReductions(SmallVectorImpl<const VectorPack *> &Seeds,
     auto *Root = Worklist.pop_back_val();
     if (!Visited.insert(Root).second)
       continue;
+    auto *Ty = Root->getType();
+    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isIntegerTy())
+      continue;
     Optional<ReductionInfo>(RI) = matchLoopFreeReduction(Root);
     if (RI && RI->Elts.size() % 2 == 0) {
       unsigned RdxLen =
@@ -398,6 +401,9 @@ static void improvePlan(Packer *Pkr, Plan &P,
     if (BlocksToIgnore && BlocksToIgnore->count(PN->getParent()))
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
+    auto *Ty = PN->getType();
+    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isIntegerTy())
+      continue;
     if (RI && RI->Elts.size() % 2 == 0) {
       unsigned RdxLen = std::min<unsigned>(
           greatestPowerOfTwoDivisor(RI->Elts.size()),
