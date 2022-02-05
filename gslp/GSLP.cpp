@@ -253,6 +253,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  if (F.getName() == "_ZN3pov17Check_And_EnqueueEPNS_21Priority_Queue_StructEPNS_16BBox_Tree_StructEPNS_19Bounding_Box_StructEPNS_14Rayinfo_StructE")
+    return false;
   if (!Filter.empty() && !F.getName().contains(Filter))
     return false;
   errs() << "Optimizing " << F.getName() << '\n';
