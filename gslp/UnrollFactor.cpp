@@ -430,8 +430,10 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
     computeUnrollFactorImpl(Insts, LVI, TTI, BFI, F, LI, UFs);
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
       << ')' << " " << UFs.lookup(L) << '\n';
-    if (UFs[L] > 1)
+    if (UFs[L] > 1) {
       UnrolledLoops.insert(L);
+      break;
+    }
   }
   for (auto &KV : UFs) {
     if (!UnrolledLoops.count(KV.first))
