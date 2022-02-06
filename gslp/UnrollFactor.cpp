@@ -433,6 +433,10 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
     if (UFs[L] > 1)
       UnrolledLoops.insert(L);
   }
+  for (auto &KV : UFs) {
+    if (!UnrolledLoops.count(KV.first))
+      KV.second = 0;
+  }
   errs() << "========= final unroll plan ========\n";
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
