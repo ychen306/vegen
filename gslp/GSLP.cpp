@@ -57,6 +57,11 @@ static cl::opt<std::string>
                 cl::desc("Path to the directory containing InstWrappers.*.bc"),
                 cl::Required);
 
+static cl::list<std::string>
+    VectorizeOnly("vectorize-only", cl::desc("only vectorize specified passes"),
+                  cl::CommaSeparated);
+
+
 static cl::opt<std::string>
     Filter("filter",
            cl::desc("only run on function names containing this substring"));
@@ -253,6 +258,8 @@ static void balanceReductionTree(Function &F) {
 }
 
 bool GSLP::runOnFunction(Function &F) {
+  if (!VectorizeOnly.empty() && none_of(VectorizeOnly, [&F](StringRef FuncName) { return F.getName() == FuncName; }))
+    return false;
   if (F.getName() == "_ZN3pov17Check_And_EnqueueEPNS_21Priority_Queue_StructEPNS_16BBox_Tree_StructEPNS_19Bounding_Box_StructEPNS_14Rayinfo_StructE")
     return false;
   if (!Filter.empty() && !F.getName().contains(Filter))
