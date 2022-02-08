@@ -357,6 +357,7 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
     }
   }
 
+#if 0
   for (auto &Pair : LoopsWithReductions) {
     auto *L = Pair.first;
     unsigned NumRdxs = Pair.second;
@@ -365,6 +366,7 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
     UFs[L] = PowerOf2Ceil(UFs[L]) * divideCeil(4, NumRdxs);
     errs() << "Adjusted uf = " << UFs[L] << '\n';
   }
+#endif
 
   for (auto &Pair : UFs)
     Pair.second = PowerOf2Ceil(Pair.second);
