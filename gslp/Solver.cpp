@@ -401,7 +401,7 @@ static void improvePlan(Packer *Pkr, Plan &P,
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
     auto *Ty = PN->getType();
-    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isIntegerTy())
+    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isDoubleTy())
       continue;
     if (RI && RI->Elts.size() % 2 == 0) {
       unsigned RdxLen = std::min<unsigned>(
