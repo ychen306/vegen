@@ -434,13 +434,15 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     findExtendingLoadPacks(*OP, this, OPI.LoadProducers);
 
     // TODO: add a pack to disable gathers?
-    SmallVector<LoadInst *, 8> Loads;
-    // FIXME: make sure the loads have the same type?
-    for (auto *V : *OP)
-      Loads.push_back(cast<LoadInst>(V));
-    OPI.LoadProducers.push_back(
-        VPCtx.createLoadPack(Loads, getConditionPack(Loads), Elements, Depended,
-                             TTI, true /*is gather*/));
+    //if (OPI.LoadProducers.empty()) {
+    //  SmallVector<LoadInst *, 8> Loads;
+    //  // FIXME: make sure the loads have the same type?
+    //  for (auto *V : *OP)
+    //    Loads.push_back(cast<LoadInst>(V));
+    //  OPI.LoadProducers.push_back(
+    //      VPCtx.createLoadPack(Loads, getConditionPack(Loads), Elements, Depended,
+    //        TTI, true /*is gather*/));
+    //}
     if (OPI.LoadProducers.empty())
       OPI.Feasible = false;
     return OPI;

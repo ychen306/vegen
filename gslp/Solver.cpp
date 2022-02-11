@@ -108,7 +108,6 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           ElementsExt.set(VPCtx->getScalarId(NextAccess));
           DependedExt |= DA.getDepended(NextAccess);
           Enumerate(AccessesExt, ElementsExt, DependedExt);
-          break;
         }
       };
 
@@ -402,7 +401,7 @@ static void improvePlan(Packer *Pkr, Plan &P,
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
     auto *Ty = PN->getType();
-    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isIntegerTy())
+    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isDoubleTy())
       continue;
     if (RI && RI->Elts.size() % 2 == 0) {
       unsigned RdxLen = std::min<unsigned>(
@@ -817,7 +816,7 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
                        ArrayRef<const OperandPack *> SeedOperands,
                        DenseSet<BasicBlock *> *BlocksToIgnore) {
   CandidatePackSet Candidates;
-  // Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
+  //Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
   auto *VPCtx = Pkr->getContext();
   Candidates.Inst2Packs.resize(VPCtx->getNumValues());
   for (auto *VP : Candidates.Packs)

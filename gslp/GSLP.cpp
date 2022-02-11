@@ -163,8 +163,8 @@ bool isSupported(InstBinding *Inst, const llvm::Function &F,
     return false;
   if (Inst->getName().contains("broadcast"))
     return false;
-  if (Inst->getName().contains("fmadd"))
-    return false;
+  //if (Inst->getName().contains("fmadd"))
+  //  return false;
   for (auto &Feature : Inst->getTargetFeatures())
     if (!hasFeature(F, Feature) ||
         Inst->getSignature().OutputBitwidths[0] > PreferVectorWidth)
@@ -299,7 +299,7 @@ bool GSLP::runOnFunction(Function &F) {
     if (isSupported(&Inst, F, TTI))
       SupportedIntrinsics.push_back(&Inst);
   for (auto &Inst : VecBindingTable.getBindings()) {
-    //if (Inst.isSupported(TTI))
+    if (Inst.isSupported(TTI))
       SupportedIntrinsics.push_back(&Inst);
   }
   for (auto &Inst : VecBindingTable.getUnarys()) {
