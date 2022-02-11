@@ -11,6 +11,8 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
+
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -18,51 +20,6 @@ using namespace PatternMatch;
 static bool isLessThan(ScalarEvolution &SE, const SCEV *A, const SCEV *B) {
   return SE.isKnownNegative(SE.getMinusSCEV(A, B));
 }
-
-static const SCEV *refineWithRange(ScalarEvolution &SE, const SCEV *Expr,
-                                   const ConstantRange &CR) {
-  auto SMin = APInt::getSignedMinValue(CR.getBitWidth());
-  auto UMin = APInt::getMinValue(CR.getBitWidth());
-  auto SMax = APInt::getSignedMaxValue(CR.getBitWidth());
-  auto UMax = APInt::getMaxValue(CR.getBitWidth());
-
-  if (CR.getSignedMin() != SMax &&
-      ConstantRange(CR.getSignedMin(), SMax).contains(CR))
-    Expr = SE.getSMaxExpr(Expr, SE.getConstant(CR.getSignedMin()));
-  if (CR.getUnsignedMin() != UMax &&
-      ConstantRange(CR.getUnsignedMin(), UMax).contains(CR))
-    Expr = SE.getUMaxExpr(Expr, SE.getConstant(CR.getUnsignedMin()));
-  if (CR.getUpper() != SMin && ConstantRange(SMin, CR.getUpper()).contains(CR))
-    Expr = SE.getSMinExpr(Expr, SE.getConstant(CR.getSignedMax()));
-  if (UMin != CR.getUpper() && ConstantRange(UMin, CR.getUpper()).contains(CR))
-    Expr = SE.getUMinExpr(Expr, SE.getConstant(CR.getUnsignedMax()));
-  return Expr;
-}
-
-static const SCEV *
-refineWithRanges(ScalarEvolution &SE, const SCEV *Expr,
-                 const DenseMap<Value *, ConstantRange> &Ranges) {
-  ValueToSCEVMapTy ValueToSCEV;
-  for (auto &KV : Ranges)
-    ValueToSCEV[KV.first] =
-        refineWithRange(SE, SE.getSCEV(KV.first), KV.second);
-  return SCEVParameterRewriter::rewrite(Expr, SE, ValueToSCEV);
-}
-
-namespace {
-class UnknownSCEVCollector : public SCEVRewriteVisitor<UnknownSCEVCollector> {
-  SmallPtrSetImpl<Value *> &Values;
-
-public:
-  UnknownSCEVCollector(ScalarEvolution &SE, SmallPtrSetImpl<Value *> &Values)
-      : SCEVRewriteVisitor(SE), Values(Values) {}
-  const SCEV *visitUnknown(const SCEVUnknown *Expr) {
-    if (Expr->getType()->isIntegerTy())
-      Values.insert(Expr->getValue());
-    return Expr;
-  }
-};
-} // namespace
 
 static MemoryLocation getLocation(Instruction *I) {
   if (StoreInst *SI = dyn_cast<StoreInst>(I))
@@ -81,13 +38,6 @@ static bool isSimple(Instruction *I) {
   if (MemIntrinsic *MI = dyn_cast<MemIntrinsic>(I))
     return !MI->isVolatile();
   return true;
-}
-
-static const Loop *getLoopForPointer(LoopInfo &LI, Value *Ptr) {
-  auto *I = dyn_cast<Instruction>(Ptr);
-  if (!I)
-    return nullptr;
-  return LI.getLoopFor(I->getParent());
 }
 
 // Copied from SCEV AA
@@ -136,36 +86,6 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
     return AA.alias(MemoryLocation::getBeforeOrAfter(Base1),
                     MemoryLocation::getBeforeOrAfter(Base2));
 
-  // The check below assumes that the loops used by the two SCEVs are totally
-  // ordered. Check it!
-  struct FindUsedLoops {
-    FindUsedLoops(SmallVectorImpl<const Loop *> &LoopsUsed)
-        : LoopsUsed(LoopsUsed) {}
-    SmallVectorImpl<const Loop *> &LoopsUsed;
-    bool follow(const SCEV *S) {
-      if (auto *AR = dyn_cast<SCEVAddRecExpr>(S))
-        LoopsUsed.push_back(AR->getLoop());
-      return true;
-    }
-
-    bool isDone() const { return false; }
-  };
-
-  SmallVector<const Loop *> Loops;
-  FindUsedLoops LoopFinder(Loops);
-  SCEVTraversal<FindUsedLoops> LoopCollector(LoopFinder);
-
-  LoopCollector.visitAll(Ptr1SCEV);
-  LoopCollector.visitAll(Ptr2SCEV);
-
-  auto CompareLoops = [](const Loop *L1, const Loop *L2) {
-    return L1 == L2 || L1->contains(L2);
-  };
-  stable_sort(Loops, CompareLoops);
-  for (int i = 0; i < (int)Loops.size() - 1; i++)
-    if (!CompareLoops(Loops[i], Loops[i + 1]))
-      return true;
-
   bool Lt = isLessThan(SE, Ptr1SCEV, Ptr2SCEV);
   bool Gt = isLessThan(SE, Ptr2SCEV, Ptr1SCEV);
   if (!Lt && !Gt)
@@ -183,8 +103,6 @@ static bool isAliased(Instruction *I1, Instruction *I2, AliasAnalysis &AA,
   APInt Size(IndexWidth, DL.getTypeStoreSize(Ty->getElementType()));
   return SE.isKnownPositive(
       SE.getMinusSCEV(SE.getAddExpr(Ptr1SCEV, SE.getConstant(Size)), Ptr2SCEV));
-
-  return true;
 }
 
 // FIXME: change this to use LazyDependenceAnalysis
@@ -199,6 +117,8 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
   DenseMap<Instruction *, SmallVector<Instruction *, 8>> Dependences;
   SmallVector<BasicBlock *> RPO;
   computeRPO(F, LI, RPO);
+
+  DependenceInfo DI(F, &AA, &SE, &LI);
 
   DenseSet<Instruction *> Processed;
   for (auto *BB : RPO) {
@@ -241,9 +161,15 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
 
       for (Instruction *PrevRef : MemRefs)
         if ((isa<ReturnInst>(PrevRef) || PrevRef->mayWriteToMemory() ||
-             I.mayWriteToMemory()) &&
-            isAliased(&I, PrevRef, AA, SE, LI, LVI))
-          Dependences[&I].push_back(PrevRef);
+              I.mayWriteToMemory())) {
+          auto *L1 = LI.getLoopFor(PrevRef->getParent());
+          auto *L2 = LI.getLoopFor(I.getParent());
+          if (L1 == L2 && !isAliased(PrevRef, &I, AA, SE, LI, LVI))
+            continue;
+          auto Dep = DI.depends(PrevRef, &I, true);
+          if (Dep && Dep->isOrdered())
+            Dependences[&I].push_back(PrevRef);
+        }
 
       MemRefs.push_back(&I);
     }
