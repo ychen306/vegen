@@ -189,10 +189,10 @@ const OperandPack *VectorPackContext::odd(const OperandPack *OP) const {
 OperandPack *VectorPackContext::getCanonicalOperandPack(OperandPack OP) const {
   // Look for equivalent values in OP,
   // and replace them with a single, arbitrary value.
-  //for (unsigned i = 0; i < OP.size(); i++)
-  //  for (unsigned j = i + 1; j < OP.size(); j++)
-  //    if (EquivalentValues.isEquivalent(OP[i], OP[j]))
-  //      OP[j] = OP[i];
+  for (unsigned i = 0; i < OP.size(); i++)
+    for (unsigned j = i + 1; j < OP.size(); j++)
+      if (EquivalentValues.isEquivalent(OP[i], OP[j]))
+        OP[j] = OP[i];
 
   auto It = OperandCache.find(OP);
   if (It != OperandCache.end())

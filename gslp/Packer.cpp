@@ -101,7 +101,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
   // TODO: find more equivalent instructions based on the equivalent loads
   // Find equivalent loads
 
-#if 0
+#if 1
   EquivalenceClasses<Value *> EquivalentValues;
   for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     auto *L1 = dyn_cast<LoadInst>(&*I);
@@ -381,6 +381,21 @@ ArrayRef<Operation::Match> Packer::findMatches(const Operation *O, Value *V) {
   return {};
 }
 
+static bool loadingFromDifferentObjects(const OperandPack *OP) {
+  Value *Obj = nullptr;
+  for (auto *V : *OP) {
+    auto *LI = dyn_cast<LoadInst>(V);
+    if (!LI)
+      continue;
+    auto Obj2 = getUnderlyingObject(LI->getPointerOperand());
+    if (!Obj)
+      Obj = Obj2;
+    if (Obj != Obj2)
+      return true;
+  }
+  return true;
+}
+
 const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   if (OP->OPIValid)
     return OP->OPI;
@@ -433,18 +448,18 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   if (AllLoads) {
     findExtendingLoadPacks(*OP, this, OPI.LoadProducers);
 
-    // TODO: add a pack to disable gathers?
-    //if (OPI.LoadProducers.empty()) {
-    //  SmallVector<LoadInst *, 8> Loads;
-    //  // FIXME: make sure the loads have the same type?
-    //  for (auto *V : *OP)
-    //    Loads.push_back(cast<LoadInst>(V));
-    //  OPI.LoadProducers.push_back(
-    //      VPCtx.createLoadPack(Loads, getConditionPack(Loads), Elements, Depended,
-    //        TTI, true /*is gather*/));
-    //}
-    if (OPI.LoadProducers.empty())
+    if (OPI.LoadProducers.empty() && loadingFromDifferentObjects(OP)) {
+      SmallVector<LoadInst *, 8> Loads;
+      // FIXME: make sure the loads have the same type?
+      for (auto *V : *OP)
+        Loads.push_back(cast<LoadInst>(V));
+      OPI.LoadProducers.push_back(
+          VPCtx.createLoadPack(Loads, getConditionPack(Loads), Elements, Depended,
+            TTI, true /*is gather*/));
+    }
+    if (OPI.LoadProducers.empty()) {
       OPI.Feasible = false;
+    }
     return OPI;
   }
 
