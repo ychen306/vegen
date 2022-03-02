@@ -382,6 +382,7 @@ ArrayRef<Operation::Match> Packer::findMatches(const Operation *O, Value *V) {
 }
 
 static bool loadingFromDifferentObjects(const OperandPack *OP) {
+  return true;
   Value *Obj = nullptr;
   for (auto *V : *OP) {
     auto *LI = dyn_cast<LoadInst>(V);

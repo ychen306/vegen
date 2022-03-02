@@ -357,7 +357,7 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
     }
   }
 
-#if 0
+#if 1
   for (auto &Pair : LoopsWithReductions) {
     auto *L = Pair.first;
     unsigned NumRdxs = Pair.second;
