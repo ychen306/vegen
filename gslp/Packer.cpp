@@ -56,6 +56,30 @@ bool BlockOrdering::comesBefore(Instruction *I1, Instruction *I2) const {
   return comesBefore(I1->getParent(), I2->getParent());
 }
 
+static bool isControlEquivalent(ControlDependenceAnalysis &CDA, VLoop *VL1, VLoop *VL2) {
+  if (VL1 == VL2)
+    return true;
+
+  if (!VL1 || !VL2)
+    return false;
+
+  if (!CDA.isEquivalent(VL1->getLoopCond(), VL2->getLoopCond()))
+    return false;
+
+  return isControlEquivalent(CDA, VL1->getParent(), VL2->getParent());
+}
+
+static bool isControlEquivalent(Packer *Pkr, Instruction *I1, Instruction *I2) {
+  auto &CDA = Pkr->getCDA();
+  auto *VL1 = Pkr->getVLoopFor(I1);
+  auto *VL2 = Pkr->getVLoopFor(I2);
+  auto *C1 = VL1->getInstCond(I1);
+  auto *C2 = VL2->getInstCond(I2);
+  if (!CDA.isEquivalent(C1, C2))
+    return false;
+  return isControlEquivalent(CDA, VL1, VL2);
+}
+
 Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, LoopInfo *LI, ScalarEvolution *SE,
                DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
@@ -113,6 +137,9 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
         continue;
 
       if (!EquivalentAccesses.isEquivalent(L1, L2))
+        continue;
+
+      if (!isControlEquivalent(this, L1, L2))
         continue;
 
       if (BO.comesBefore(L2, L1))
