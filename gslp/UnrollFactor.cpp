@@ -418,16 +418,25 @@ void computeUnrollFactorImpl(ArrayRef<const InstBinding *> Insts,
   F->eraseFromParent();
 }
 
+static bool isCountable(Loop *L, ScalarEvolution &SE) {
+  return !isa<SCEVCouldNotCompute>(SE.getBackedgeTakenCount(L));
+}
+
 void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
-                         LazyValueInfo *LVI, TargetTransformInfo *TTI,
-                         BlockFrequencyInfo *BFI, Function *F,
-                         const LoopInfo &LI, DenseMap<Loop *, unsigned> &UFs) {
+                         ScalarEvolution *SE, LazyValueInfo *LVI,
+                         TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
+                         Function *F, const LoopInfo &LI,
+                         DenseMap<Loop *, unsigned> &UFs) {
   DenseSet<Loop *> UnrolledLoops;
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
     //if (any_of(UnrolledLoops, [L](Loop *UnrolledL) { return UnrolledL->contains(L); })) {
     //  UFs[L] = 0;
     //  continue;
     //}
+    if (!isCountable(L, *SE)) {
+      UFs[L] = 0;
+      continue;
+    }
     UFs[L] = 8;
     computeUnrollFactorImpl(Insts, LVI, TTI, BFI, F, LI, UFs);
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
