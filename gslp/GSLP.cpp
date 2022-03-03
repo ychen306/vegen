@@ -329,7 +329,7 @@ bool GSLP::runOnFunction(Function &F) {
   if (!DisableUnrolling && !TestCodeGen) {
     AssumptionCache AC(F);
     DenseMap<Loop *, unsigned> UFs;
-    computeUnrollFactor(SupportedIntrinsics, LVI, TTI, BFI, &F, *LI, UFs);
+    computeUnrollFactor(SupportedIntrinsics, SE, LVI, TTI, BFI, &F, *LI, UFs);
     unrollLoops(&F, *SE, *LI, AC, *DT, TTI, UFs, DupToOrigLoopMap,
                 &UnrolledIterations);
   }
