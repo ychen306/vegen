@@ -569,6 +569,27 @@ float VectorSelect::getCost(TargetTransformInfo *TTI, LLVMContext &Ctx) const {
   return TTI->getArithmeticInstrCost(Instruction::Select, VecTy);
 }
 
+static bool matchLibFuncWithIntrinsic(StringRef FuncName, Intrinsic::ID ID) {
+  switch (ID) {
+  case Intrinsic::exp:
+    return FuncName == "__exp_finite" || FuncName == "__expf_finite";
+  case Intrinsic::exp2:
+    return FuncName == "__exp2_finite" || FuncName == "__exp2f_finite";
+  case Intrinsic::log:
+    return FuncName == "__log_finite" || FuncName == "__log2f_finite";
+  case Intrinsic::log10:
+    return FuncName == "__log10_finite" || FuncName == "__log10f_finite";
+  case Intrinsic::log2:
+    return FuncName == "__log2_finite" || FuncName == "__log2f_finite";
+  case Intrinsic::sqrt:
+    return FuncName == "__sqrt_finite" || FuncName == "__sqrtf_finite";
+  case Intrinsic::pow:
+    return FuncName == "__pow_finite" || FuncName == "__powf_finite";
+  default:
+    return false;
+  }
+}
+
 bool UnaryMath::match(Value *V, SmallVectorImpl<Match> &Matches) const {
   // Match for the right floating type
   auto &Ctx = V->getContext();
@@ -577,8 +598,11 @@ bool UnaryMath::match(Value *V, SmallVectorImpl<Match> &Matches) const {
 
   // Match the intrinsic call
   auto *Call = dyn_cast<CallInst>(V);
-  if (!Call || !Call->getCalledFunction() ||
-      Call->getCalledFunction()->getIntrinsicID() != ID)
+  if (!Call || !Call->getCalledFunction())
+    return false;
+  auto *Callee = Call->getCalledFunction();
+  if (Callee->getIntrinsicID() != ID &&
+      !matchLibFuncWithIntrinsic(Callee->getName(), ID))
     return false;
 
   assert(Call->arg_size() == 1 || ID == Intrinsic::abs);
@@ -650,8 +674,11 @@ bool BinaryMath::match(Value *V, SmallVectorImpl<Match> &Matches) const {
 
   // Match the intrinsic call
   auto *Call = dyn_cast<CallInst>(V);
-  if (!Call || !Call->getCalledFunction() ||
-      Call->getCalledFunction()->getIntrinsicID() != ID)
+  if (!Call || !Call->getCalledFunction())
+    return false;
+  auto *Callee = Call->getCalledFunction();
+  if (Callee->getIntrinsicID() != ID &&
+      !matchLibFuncWithIntrinsic(Callee->getName(), ID))
     return false;
 
   assert(Call->arg_size() == 2);
