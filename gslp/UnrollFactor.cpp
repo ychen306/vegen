@@ -429,10 +429,10 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
                          DenseMap<Loop *, unsigned> &UFs) {
   DenseSet<Loop *> UnrolledLoops;
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
-    //if (any_of(UnrolledLoops, [L](Loop *UnrolledL) { return UnrolledL->contains(L); })) {
-    //  UFs[L] = 0;
-    //  continue;
-    //}
+    if (any_of(UnrolledLoops, [L](Loop *UnrolledL) { return UnrolledL->contains(L); })) {
+      UFs[L] = 0;
+      continue;
+    }
     if (!isCountable(L, *SE)) {
       UFs[L] = 0;
       continue;
@@ -445,10 +445,10 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
       UnrolledLoops.insert(L);
     }
   }
-  //for (auto &KV : UFs) {
-  //  if (!UnrolledLoops.count(KV.first))
-  //    KV.second = 0;
-  //}
+  for (auto &KV : UFs) {
+    if (!UnrolledLoops.count(KV.first))
+      KV.second = 0;
+  }
   errs() << "========= final unroll plan ========\n";
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()

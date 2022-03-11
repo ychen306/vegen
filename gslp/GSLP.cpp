@@ -374,6 +374,7 @@ static void registerGSLP(const PassManagerBuilder &PMB,
   MPM.add(createVeGenScalarizerPass());
   //MPM.add(createStructurizeCFGPass(false));
   //MPM.add(createCFGSimplificationPass());
+  MPM.add(createGVNHoistPass());
   MPM.add(createUnifyFunctionExitNodesPass());
   MPM.add(createLoopSimplifyPass());
   MPM.add(createLoopRotatePass());
