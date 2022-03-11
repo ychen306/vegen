@@ -118,6 +118,10 @@ public:
   VectorPack *createGEPPack(llvm::ArrayRef<llvm::GetElementPtrInst *> GEPs,
                             llvm::BitVector Elements, llvm::BitVector Depended,
                             llvm::TargetTransformInfo *TTI) const;
+  // Create a simd pack
+  VectorPack *createSIMDPack(llvm::ArrayRef<llvm::Instruction *> Insts,
+                             llvm::BitVector Elements, llvm::BitVector Depended,
+                             llvm::TargetTransformInfo *TTI) const;
 
   // Create a loop reduction pack
   VectorPack *
@@ -192,5 +196,14 @@ public:
     return llvm::make_range(Begin, End);
   }
 };
+
+static bool is_drand48(llvm::Instruction *I) {
+  using namespace llvm;
+  auto *Call = dyn_cast<CallInst>(I);
+  if (!Call)
+    return false;
+  auto *F = Call->getCalledFunction();
+  return F && F->getName() == "drand48";
+}
 
 #endif // VECTOR_PACK_CONTEXT_H

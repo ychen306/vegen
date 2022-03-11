@@ -271,6 +271,16 @@ void VectorPack::computeOperandPacks() {
     }
     canonicalizeOperandPacks(OPs);
   } break;
+  case SIMD: {
+    unsigned NumOperands = Insts.front()->getNumOperands();
+    SmallVector<OperandPack> OPs;
+    for (unsigned i = 0; i < NumOperands; i++) {
+      auto &OP = OPs.emplace_back();
+      for (auto *I : Insts)
+        OP.push_back(I->getOperand(i));
+    }
+    canonicalizeOperandPacks(OPs);
+  } break;
   case Gamma: {
     unsigned NumIncomings = Gammas.front()->PN->getNumIncomingValues();
     assert(all_of(Gammas, [&](auto *G2) {
@@ -346,6 +356,35 @@ static Value *emitVectorCmp(ArrayRef<CmpInst *> Cmps,
   return Builder.CreateCmp(Pred, Operands[0], Operands[1]);
 }
 
+static Value *emitSIMD(ArrayRef<Instruction *> Insts,
+                       ArrayRef<Value *> Operands, IRBuilderBase &Builder) {
+  auto *Leader = Insts.front();
+  if (is_drand48(Leader)) {
+    FunctionCallee F;
+    auto VecTy = FixedVectorType::get(Leader->getType(), Insts.size());
+    auto *M = Builder.GetInsertBlock()->getModule();
+    if (Insts.size() == 4) {
+      F = M->getOrInsertFunction("drand48_x_4", VecTy);
+    } else if (Insts.size() == 8) {
+      F = M->getOrInsertFunction("drand48_x_8", VecTy);
+    } else {
+      llvm_unreachable("unsupported drand48 vector size");
+    }
+    return Builder.CreateCall(F);
+  }
+
+  switch (Leader->getOpcode()) {
+  case Instruction::FPTrunc: {
+    assert(Operands.size() == 1);
+    return Builder.CreateFPTrunc(
+        Operands.front(),
+        FixedVectorType::get(Leader->getType(), Insts.size()));
+  }
+  default:
+    llvm_unreachable("unsupported simd pack");
+  }
+}
+
 Value *VectorPack::emit(ArrayRef<Value *> Operands,
                         IntrinsicBuilder &Builder) const {
   IRBuilderBase::InsertPointGuard Guard(Builder);
@@ -358,6 +397,8 @@ Value *VectorPack::emit(ArrayRef<Value *> Operands,
     return emitVectorGEP(GEPs, Operands, Builder);
   case Cmp:
     return emitVectorCmp(Cmps, Operands, Builder);
+  case SIMD:
+    return emitSIMD(Insts, Operands, Builder);
   case Load:
   case Store:
   case Reduction:
@@ -400,6 +441,24 @@ static float getReductionCost(const ReductionInfo &RI, unsigned RdxLen,
   }
   default:
     llvm_unreachable("unexpected reduction type");
+  }
+}
+
+static float getSIMDCost(Instruction *I, unsigned VL,
+                         TargetTransformInfo *TTI) {
+  if (is_drand48(I))
+    return 1;
+
+  unsigned Opcode = I->getOpcode();
+  switch (Opcode) {
+  case Instruction::FPTrunc: {
+    auto *SrcTy = FixedVectorType::get(I->getOperand(0)->getType(), VL);
+    auto *Ty = FixedVectorType::get(I->getType(), VL);
+    return TTI->getCastInstrCost(Opcode, Ty, SrcTy, TTI::getCastContextHint(I),
+                                 TTI::TCK_RecipThroughput, I);
+  }
+  default:
+    llvm_unreachable("unsupported");
   }
 }
 
@@ -447,6 +506,9 @@ void VectorPack::computeCost(TargetTransformInfo *TTI) {
     }
     break;
   }
+  case SIMD:
+    Cost = getSIMDCost(Insts.front(), Insts.size(), TTI);
+    break;
   case Cmp:
     // FIXME: call TTI
     Cost = 1;
@@ -492,6 +554,9 @@ void VectorPack::computeOrderedValues() {
     break;
   case GEP:
     OrderedValues.assign(GEPs.begin(), GEPs.end());
+    break;
+  case SIMD:
+    OrderedValues.assign(Insts.begin(), Insts.end());
     break;
   case Cmp:
     OrderedValues.assign(Cmps.begin(), Cmps.end());

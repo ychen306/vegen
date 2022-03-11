@@ -19,7 +19,7 @@ public:
   friend llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
                                        const VectorPack &VP);
 
-  enum PackKind { General, Phi, Load, Store, Reduction, GEP, Gamma, Cmp };
+  enum PackKind { General, Phi, Load, Store, Reduction, GEP, Gamma, Cmp, SIMD };
 
 private:
   friend class VectorPackContext;
@@ -50,6 +50,8 @@ private:
   // GEP
   llvm::SmallVector<llvm::GetElementPtrInst *, 4> GEPs;
   llvm::SmallVector<llvm::CmpInst *, 4> Cmps;
+  // SIMD
+  llvm::SmallVector<llvm::Instruction *, 4> Insts;
   ///////////////
 
   // For side-effectul packs like loads and stores
@@ -131,6 +133,18 @@ private:
              llvm::TargetTransformInfo *TTI)
       : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
         Kind(PackKind::GEP), GEPs(GEPs.begin(), GEPs.end()) {
+    computeOperandPacks();
+    computeOrderedValues();
+    computeCost(TTI);
+  }
+
+  // SIMD Pack
+  VectorPack(const VectorPackContext *VPCtx,
+             llvm::ArrayRef<llvm::Instruction *> Insts,
+             llvm::BitVector Elements, llvm::BitVector Depended,
+             llvm::TargetTransformInfo *TTI)
+      : VPCtx(VPCtx), Elements(Elements), Depended(Depended),
+        Kind(PackKind::SIMD), Insts(Insts.begin(), Insts.end()) {
     computeOperandPacks();
     computeOrderedValues();
     computeCost(TTI);
@@ -260,5 +274,4 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OperandPack &);
 
 void getOperandPacksFromCondition(
     const ConditionPack *CP, llvm::SmallVectorImpl<const OperandPack *> &OPs);
-
 #endif // VECTOR_PACK_H
