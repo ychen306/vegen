@@ -13,6 +13,7 @@ struct VectorPackCache {
   using StorePackKey = decltype(VectorPack::Stores);
   using PHIPackKey = decltype(VectorPack::PHIs);
   using GEPPackKey = decltype(VectorPack::GEPs);
+  using SIMDPackKey = decltype(VectorPack::Insts);
   using GammaPackKey = decltype(VectorPack::Gammas);
   using CmpPackKey = decltype(VectorPack::Cmps);
 
@@ -25,6 +26,7 @@ struct VectorPackCache {
   std::map<GEPPackKey, std::unique_ptr<VectorPack>> GEPPacks;
   std::map<CmpPackKey, std::unique_ptr<VectorPack>> CmpPacks;
   std::map<Instruction *, std::unique_ptr<VectorPack>> ReductionPacks;
+  std::map<SIMDPackKey, std::unique_ptr<VectorPack>> SIMDPacks;
 };
 
 VectorPackContext::~VectorPackContext() = default;
@@ -123,6 +125,17 @@ VectorPack *VectorPackContext::createGEPPack(ArrayRef<GetElementPtrInst *> GEPs,
   auto &VP = PackCache->GEPPacks[Key];
   if (!VP)
     VP.reset(new VectorPack(this, GEPs, Elements, Depended, TTI));
+  return VP.get();
+}
+
+VectorPack *VectorPackContext::createSIMDPack(ArrayRef<Instruction *> Insts,
+                                              BitVector Elements,
+                                              BitVector Depended,
+                                              TargetTransformInfo *TTI) const {
+  VectorPackCache::SIMDPackKey Key(Insts.begin(), Insts.end());
+  auto &VP = PackCache->SIMDPacks[Key];
+  if (!VP)
+    VP.reset(new VectorPack(this, Insts, Elements, Depended, TTI));
   return VP.get();
 }
 

@@ -358,6 +358,41 @@ static bool matchPackableCmps(ArrayRef<Value *> Values,
   });
 }
 
+// Detect isomorphic instructions that we know how to vectorize
+static bool matchSIMDPack(ArrayRef<Value *> Values, SmallVectorImpl<Instruction *> &Insts) {
+  if (Values.empty())
+    return false;
+
+  auto *Leader = dyn_cast<Instruction>(Values.front());
+  if (!Leader)
+    return false;
+
+  bool Packable = false, IsDRand48 = false;
+  if (Leader->getOpcode() == Instruction::FPTrunc) {
+    Packable = true;
+  } else if (is_drand48(Leader)) {
+    if (Values.size() != 4 && Values.size() != 8)
+      return false;
+    Packable = true;
+    IsDRand48 = true;
+  }
+
+  if (!Packable)
+    return false;
+
+  for (auto *V : Values) {
+    auto *I = dyn_cast<Instruction>(V);
+    if (!I ||
+        I->getOpcode() != Leader->getOpcode() ||
+        I->getType() != Leader->getType())
+      return false;
+    if (IsDRand48 && !is_drand48(I))
+      return false;
+    Insts.push_back(I);
+  }
+  return true;
+}
+
 static bool matchPackableGEPs(ArrayRef<Value *> Values,
                               SmallVectorImpl<GetElementPtrInst *> &GEPs) {
   GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(Values.front());
@@ -575,6 +610,12 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     OPI.Producers.push_back(
         VPCtx.createGEPPack(GEPs, OPI.Elements, Depended, TTI));
     return OPI;
+  }
+
+  SmallVector<Instruction *, 4> Insts;
+  if (matchSIMDPack(*OP, Insts)) {
+    OPI.Producers.push_back(
+        VPCtx.createSIMDPack(Insts, OPI.Elements, Depended, TTI));
   }
 
   for (auto *Inst : getInsts()) {
