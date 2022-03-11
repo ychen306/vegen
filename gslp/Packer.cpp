@@ -709,7 +709,7 @@ bool Packer::isCompatible(Instruction *I1, Instruction *I2) {
 VLoop *Packer::getVLoopFor(Instruction *I) { return VLI.getLoopForInst(I); }
 
 void Packer::fuseOrCoIterateLoops(VLoop *VL1, VLoop *VL2) {
-  if (VLoop::isSafeToFuse(VL1, VL2, CDA, *SE))
+  if (false && VLoop::isSafeToFuse(VL1, VL2, CDA, *SE))
     VLI.fuse(VL1, VL2);
   else
     VLI.coiterate(VL1, VL2);

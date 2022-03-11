@@ -1250,6 +1250,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     OperandPack OP;
     for (auto *V : Vals) {
       auto *I = cast<Instruction>(V);
+      assert(Pkr.getVLoopFor(I) == VL);
       assert(Guarded.count(I));
       assert(VL->getOneHotPhi(cast<PHINode>(Guarded.lookup(I))));
       OP.push_back(Guarded.lookup(I));
