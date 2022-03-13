@@ -42,7 +42,8 @@ public:
   void coiterate(VLoop *, VLoop *);
   // jam loops that we are coiterating together
   void doCoiteration(llvm::LLVMContext &, const VectorPackContext &,
-                     GlobalDependenceAnalysis &, ControlDependenceAnalysis &);
+                     GlobalDependenceAnalysis &, ControlDependenceAnalysis &,
+                     llvm::ScalarEvolution &);
   VLoop *getVLoop(llvm::Loop *) const;
   void setVLoop(llvm::Loop *, VLoop *);
   void fuse(VLoop *, VLoop *);

@@ -1182,7 +1182,7 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
     }
   }
   Pkr.getVLoopInfo().doCoiteration(Builder.getContext(), *Pkr.getContext(),
-                                   Pkr.getDA(), Pkr.getCDA());
+                                   Pkr.getDA(), Pkr.getCDA(), Pkr.getSE());
 
   // Reify control conditions into boolean ir values
   ControlReifier Reifier(Builder.getContext(), Pkr.getDA());

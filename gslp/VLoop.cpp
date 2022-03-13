@@ -300,7 +300,8 @@ static bool hasOutsideUser(VLoop *VL, Instruction *I) {
 
 void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
                               GlobalDependenceAnalysis &DA,
-                              ControlDependenceAnalysis &CDA) {
+                              ControlDependenceAnalysis &CDA,
+                              ScalarEvolution &SE) {
   DenseSet<VLoop *> Visited;
   std::function<void(VLoop *)> Visit = [&](VLoop *VL) {
     if (!Visited.insert(VL).second)
@@ -320,6 +321,13 @@ void VLoopInfo::doCoiteration(LLVMContext &Ctx, const VectorPackContext &VPCtx,
     auto *True = ConstantInt::getTrue(Ctx);
     auto *False = ConstantInt::getFalse(Ctx);
     VLoop *Leader = *Members.begin();
+    if (all_of(drop_begin(Members), [&](VLoop *VL) {
+          return VLoop::isSafeToFuse(Leader, VL, CDA, SE); })) {
+      for (auto *VL : drop_begin(Members))
+        fuse(Leader, VL);
+      return;
+    }
+
     SmallVector<const ControlCondition *, 8> LoopConds, BackEdgeConds;
     for (auto *CoVL : Members) {
       // Insert the active guard for CoVL
