@@ -228,6 +228,8 @@ getSeeds(Packer &Pkr, DenseMap<Loop *, UnrolledLoopTy> &DupToOrigLoopMap,
       auto *Ty = I.getType();
       if (Ty->isVoidTy() || Ty->isVectorTy())
         continue;
+      if (!Ty->isFloatTy() && !Ty->isDoubleTy() && !Ty->isIntegerTy())
+        continue;
       unsigned MaxVL =
           MaxVecWidth / getBitWidth(&I, &F->getParent()->getDataLayout());
 
