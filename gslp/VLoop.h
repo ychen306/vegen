@@ -53,9 +53,7 @@ public:
   }
 
   auto getCoIteratingLoops(VLoop *VL) {
-    auto It = CoIteratingLoops.findValue(VL);
-    assert(It != CoIteratingLoops.end());
-    return llvm::make_range(CoIteratingLoops.member_begin(It),
+    return llvm::make_range(CoIteratingLoops.findLeader(VL),
                             CoIteratingLoops.member_end());
   }
 

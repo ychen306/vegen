@@ -272,10 +272,10 @@ void VLoopInfo::coiterate(VLoop *VL1, VLoop *VL2) {
 bool VLoopInfo::isCoIterating(VLoop *VL) const {
   if (!VL->isLoop())
     return false;
-  auto It = CoIteratingLoops.findValue(VL);
-  assert(It != CoIteratingLoops.end());
-  assert(CoIteratingLoops.member_begin(It) != CoIteratingLoops.member_end());
-  return std::next(CoIteratingLoops.member_begin(It)) !=
+  //auto It = CoIteratingLoops.findValue(VL);
+  //assert(It != CoIteratingLoops.end());
+  //assert(CoIteratingLoops.member_begin(It) != CoIteratingLoops.member_end());
+  return std::next(CoIteratingLoops.findLeader(VL)) !=
          CoIteratingLoops.member_end();
 }
 

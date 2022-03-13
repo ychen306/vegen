@@ -1190,7 +1190,8 @@ void VectorPackSet::codegen(IntrinsicBuilder &Builder, Packer &Pkr) {
   auto &VLI = Pkr.getVLoopInfo();
 
   auto ReifyOneHots = [&Reifier](VLoop *VL) {
-    for (auto *I : VL->getInstructions()) {
+    std::vector<Instruction *> Insts(VL->inst_begin(), VL->inst_end());
+    for (auto *I : Insts) {
       auto *PN = dyn_cast<PHINode>(I);
       if (PN && VL->getOneHotPhi(PN)) {
         Reifier.reify(VL->getOneHotPhi(PN)->C, VL);
