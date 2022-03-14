@@ -568,8 +568,14 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
       return VL && VL->getMu(PN);
     });
 
-    bool Convergent = true;
-    if (!AllMus) {
+    auto *LeaderVL = getVLoopFor(PHIs.front());
+    bool LoopsAreConvergent = all_of(drop_begin(PHIs), [&](auto *PN) {
+      auto *VL = getVLoopFor(PN);
+      return VL == LeaderVL || (VL && LeaderVL && VLoop::isSafeToFuse(VL, LeaderVL, CDA, *SE));
+    });
+
+    bool Convergent = LoopsAreConvergent;
+    if (!AllMus && Convergent) {
       for (unsigned i = 0; i < NumIncomings; i++) {
         SmallVector<const ControlCondition *> EdgeConds;
         for (auto *PN : PHIs)
