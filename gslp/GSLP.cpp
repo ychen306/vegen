@@ -7,6 +7,7 @@
 #include "UnrollFactor.h"
 #include "VectorPackSet.h"
 #include "Scalarizer.h"
+#include "VectorCombiner.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -391,11 +392,22 @@ static void registerGSLP(const PassManagerBuilder &PMB,
   }
 }
 
+static void registerVectorCombiner(const PassManagerBuilder &,
+                                   legacy::PassManagerBase &MPM) {
+  MPM.add(createVectorCombiner());
+  MPM.add(createAggressiveDCEPass());
+}
+
 // Register this pass to run after all optimization,
 // because we want this pass to replace LLVM SLP.
 static RegisterStandardPasses
-    RegisterMyPass(PassManagerBuilder::EP_VectorizerStart, registerGSLP);
+    RegisterMyPass(PassManagerBuilder::EP_VectorizerStart, registerGSLP),
+    RegisterVectorCombiner(PassManagerBuilder::EP_OptimizerLast,
+                           registerVectorCombiner);
 
 static struct RegisterGSLP {
-  RegisterGSLP() { initializeGSLPPass(*PassRegistry::getPassRegistry()); }
+  RegisterGSLP() {
+    initializeGSLPPass(*PassRegistry::getPassRegistry());
+    initializeVectorCombinerPass(*PassRegistry::getPassRegistry());
+  }
 } X;

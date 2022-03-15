@@ -8,6 +8,8 @@ set(LIB_PACKING_SRC
 
   Scalarizer.cpp
 
+  VectorCombiner.cpp
+
   ControlDependence.cpp
   BlockBuilder.cpp
   VLoop.cpp
