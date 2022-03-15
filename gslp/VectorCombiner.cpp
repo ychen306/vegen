@@ -47,13 +47,21 @@ static Value *matchOrOfExtract(Instruction *I) {
     return nullptr;
 
   std::sort(Idxs.begin(), Idxs.end());
+  bool IsIdentity = true;
   if (Idxs.front() != 0)
-    return nullptr;
+    IsIdentity = false;
   for (unsigned i = 1; i < Idxs.size(); i++)
-    if (Idxs[i] != Idxs[i-1]+1)
-      return nullptr;
+    if (Idxs[i] != Idxs[i-1]+1) {
+      IsIdentity = false;
+      break;
+    }
 
-  return Vec;
+  if (IsIdentity)
+    return Vec;
+
+  IRBuilder<> Builder(I);
+  SmallVector<int, 8> Mask(Idxs.begin(), Idxs.end());
+  return Builder.CreateShuffleVector(Vec, Mask);
 }
 
 bool VectorCombiner::runOnFunction(Function &F) {
