@@ -108,7 +108,6 @@ getSeedMemPacks(Packer *Pkr, AccessType *Access, unsigned VL,
           ElementsExt.set(VPCtx->getScalarId(NextAccess));
           DependedExt |= DA.getDepended(NextAccess);
           Enumerate(AccessesExt, ElementsExt, DependedExt);
-          break;
         }
       };
 
@@ -319,6 +318,12 @@ void tryPackBackEdgeConds(Packer *Pkr, Plan &P, Heuristic &H) {
   if (P2.cost() <= P.cost())
     P = P2;
 }
+
+static bool isTrivialReduction(const ReductionInfo &RI) {
+  unsigned NumConsts = count_if(RI.Elts, [](Value *V) { return isa<Constant>(V); });
+  return RI.Elts.size() == NumConsts + 1;
+}
+
 static void findLoopFreeReductions(SmallVectorImpl<const VectorPack *> &Seeds,
                                    unsigned MaxVecWidth, Function *F,
                                    GlobalDependenceAnalysis &DA,
@@ -343,7 +348,7 @@ static void findLoopFreeReductions(SmallVectorImpl<const VectorPack *> &Seeds,
     if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isIntegerTy())
       continue;
     Optional<ReductionInfo>(RI) = matchLoopFreeReduction(Root);
-    if (RI && RI->Elts.size() % 2 == 0) {
+    if (RI && RI->Elts.size() % 2 == 0 && !isTrivialReduction(*RI)) {
       unsigned RdxLen =
         std::min<unsigned>(greatestPowerOfTwoDivisor(RI->Elts.size()),
             MaxVecWidth / getBitWidth(Root, DL));
@@ -402,7 +407,9 @@ static void improvePlan(Packer *Pkr, Plan &P,
       continue;
     Optional<ReductionInfo> RI = matchLoopReduction(PN, LI);
     auto *Ty = PN->getType();
-    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isIntegerTy())
+    if (Ty->isIntegerTy())
+      continue;
+    if (!Ty->isIntegerTy() && !Ty->isFloatTy() && !Ty->isDoubleTy())
       continue;
     if (RI && RI->Elts.size() % 2 == 0) {
       unsigned RdxLen = std::min<unsigned>(

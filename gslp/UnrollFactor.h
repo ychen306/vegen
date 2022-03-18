@@ -33,6 +33,7 @@ struct UnrolledLoopTy {
 // Compute the the unroll factors
 // for all loop-nests in F that best benefit vectorization
 void computeUnrollFactor(llvm::ArrayRef<const InstBinding *> Insts,
+                         llvm::ScalarEvolution *SE,
                          llvm::LazyValueInfo *LVI,
                          llvm::TargetTransformInfo *TTI,
                          llvm::BlockFrequencyInfo *BFI, llvm::Function *F,

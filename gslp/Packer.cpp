@@ -56,6 +56,30 @@ bool BlockOrdering::comesBefore(Instruction *I1, Instruction *I2) const {
   return comesBefore(I1->getParent(), I2->getParent());
 }
 
+static bool isControlEquivalent(ControlDependenceAnalysis &CDA, VLoop *VL1, VLoop *VL2) {
+  if (VL1 == VL2)
+    return true;
+
+  if (!VL1 || !VL2)
+    return false;
+
+  if (!CDA.isEquivalent(VL1->getLoopCond(), VL2->getLoopCond()))
+    return false;
+
+  return isControlEquivalent(CDA, VL1->getParent(), VL2->getParent());
+}
+
+static bool isControlEquivalent(Packer *Pkr, Instruction *I1, Instruction *I2) {
+  auto &CDA = Pkr->getCDA();
+  auto *VL1 = Pkr->getVLoopFor(I1);
+  auto *VL2 = Pkr->getVLoopFor(I2);
+  auto *C1 = VL1->getInstCond(I1);
+  auto *C2 = VL2->getInstCond(I2);
+  if (!CDA.isEquivalent(C1, C2))
+    return false;
+  return isControlEquivalent(CDA, VL1, VL2);
+}
+
 Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
                AliasAnalysis *AA, LoopInfo *LI, ScalarEvolution *SE,
                DominatorTree *DT, PostDominatorTree *PDT, DependenceInfo *DI,
@@ -101,7 +125,7 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
   // TODO: find more equivalent instructions based on the equivalent loads
   // Find equivalent loads
 
-#if 0
+#if 1
   EquivalenceClasses<Value *> EquivalentValues;
   for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     auto *L1 = dyn_cast<LoadInst>(&*I);
@@ -113,6 +137,9 @@ Packer::Packer(ArrayRef<const InstBinding *> Insts, Function &F,
         continue;
 
       if (!EquivalentAccesses.isEquivalent(L1, L2))
+        continue;
+
+      if (!isControlEquivalent(this, L1, L2))
         continue;
 
       if (BO.comesBefore(L2, L1))
@@ -331,6 +358,41 @@ static bool matchPackableCmps(ArrayRef<Value *> Values,
   });
 }
 
+// Detect isomorphic instructions that we know how to vectorize
+static bool matchSIMDPack(ArrayRef<Value *> Values, SmallVectorImpl<Instruction *> &Insts) {
+  if (Values.empty())
+    return false;
+
+  auto *Leader = dyn_cast<Instruction>(Values.front());
+  if (!Leader)
+    return false;
+
+  bool Packable = false, IsDRand48 = false;
+  if (Leader->getOpcode() == Instruction::FPTrunc) {
+    Packable = true;
+  } else if (is_drand48(Leader)) {
+    if (Values.size() != 4 && Values.size() != 8)
+      return false;
+    Packable = true;
+    IsDRand48 = true;
+  }
+
+  if (!Packable)
+    return false;
+
+  for (auto *V : Values) {
+    auto *I = dyn_cast<Instruction>(V);
+    if (!I ||
+        I->getOpcode() != Leader->getOpcode() ||
+        I->getType() != Leader->getType())
+      return false;
+    if (IsDRand48 && !is_drand48(I))
+      return false;
+    Insts.push_back(I);
+  }
+  return true;
+}
+
 static bool matchPackableGEPs(ArrayRef<Value *> Values,
                               SmallVectorImpl<GetElementPtrInst *> &GEPs) {
   GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(Values.front());
@@ -379,6 +441,22 @@ ArrayRef<Operation::Match> Packer::findMatches(const Operation *O, Value *V) {
   if (SecondaryMM)
     return SecondaryMM->getMatchesForOutput(O, V);
   return {};
+}
+
+static bool loadingFromDifferentObjects(const OperandPack *OP) {
+  return true;
+  Value *Obj = nullptr;
+  for (auto *V : *OP) {
+    auto *LI = dyn_cast<LoadInst>(V);
+    if (!LI)
+      continue;
+    auto Obj2 = getUnderlyingObject(LI->getPointerOperand());
+    if (!Obj)
+      Obj = Obj2;
+    if (Obj != Obj2)
+      return true;
+  }
+  return true;
 }
 
 const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
@@ -433,16 +511,18 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
   if (AllLoads) {
     findExtendingLoadPacks(*OP, this, OPI.LoadProducers);
 
-    // TODO: add a pack to disable gathers?
-    SmallVector<LoadInst *, 8> Loads;
-    // FIXME: make sure the loads have the same type?
-    for (auto *V : *OP)
-      Loads.push_back(cast<LoadInst>(V));
-    OPI.LoadProducers.push_back(
-        VPCtx.createLoadPack(Loads, getConditionPack(Loads), Elements, Depended,
-                             TTI, true /*is gather*/));
-    if (OPI.LoadProducers.empty())
+    if (OPI.LoadProducers.empty() && loadingFromDifferentObjects(OP)) {
+      SmallVector<LoadInst *, 8> Loads;
+      // FIXME: make sure the loads have the same type?
+      for (auto *V : *OP)
+        Loads.push_back(cast<LoadInst>(V));
+      OPI.LoadProducers.push_back(
+          VPCtx.createLoadPack(Loads, getConditionPack(Loads), Elements, Depended,
+            TTI, true /*is gather*/));
+    }
+    if (OPI.LoadProducers.empty()) {
       OPI.Feasible = false;
+    }
     return OPI;
   }
 
@@ -530,6 +610,12 @@ const OperandProducerInfo &Packer::getProducerInfo(const OperandPack *OP) {
     OPI.Producers.push_back(
         VPCtx.createGEPPack(GEPs, OPI.Elements, Depended, TTI));
     return OPI;
+  }
+
+  SmallVector<Instruction *, 4> Insts;
+  if (matchSIMDPack(*OP, Insts)) {
+    OPI.Producers.push_back(
+        VPCtx.createSIMDPack(Insts, OPI.Elements, Depended, TTI));
   }
 
   for (auto *Inst : getInsts()) {

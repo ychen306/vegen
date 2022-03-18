@@ -236,6 +236,9 @@ GlobalDependenceAnalysis::GlobalDependenceAnalysis(
           m_Intrinsic<Intrinsic::lifetime_end>(m_Value()).match(&I))
         continue;
 
+      if (is_drand48(&I))
+        continue;
+
       if (!isa<ReturnInst>(&I) && (NoAlias || !I.mayReadOrWriteMemory()))
         continue;
 

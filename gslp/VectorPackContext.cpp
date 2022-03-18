@@ -13,6 +13,7 @@ struct VectorPackCache {
   using StorePackKey = decltype(VectorPack::Stores);
   using PHIPackKey = decltype(VectorPack::PHIs);
   using GEPPackKey = decltype(VectorPack::GEPs);
+  using SIMDPackKey = decltype(VectorPack::Insts);
   using GammaPackKey = decltype(VectorPack::Gammas);
   using CmpPackKey = decltype(VectorPack::Cmps);
 
@@ -25,6 +26,7 @@ struct VectorPackCache {
   std::map<GEPPackKey, std::unique_ptr<VectorPack>> GEPPacks;
   std::map<CmpPackKey, std::unique_ptr<VectorPack>> CmpPacks;
   std::map<Instruction *, std::unique_ptr<VectorPack>> ReductionPacks;
+  std::map<SIMDPackKey, std::unique_ptr<VectorPack>> SIMDPacks;
 };
 
 VectorPackContext::~VectorPackContext() = default;
@@ -126,6 +128,17 @@ VectorPack *VectorPackContext::createGEPPack(ArrayRef<GetElementPtrInst *> GEPs,
   return VP.get();
 }
 
+VectorPack *VectorPackContext::createSIMDPack(ArrayRef<Instruction *> Insts,
+                                              BitVector Elements,
+                                              BitVector Depended,
+                                              TargetTransformInfo *TTI) const {
+  VectorPackCache::SIMDPackKey Key(Insts.begin(), Insts.end());
+  auto &VP = PackCache->SIMDPacks[Key];
+  if (!VP)
+    VP.reset(new VectorPack(this, Insts, Elements, Depended, TTI));
+  return VP.get();
+}
+
 VectorPack *VectorPackContext::createLoopReduction(const ReductionInfo &Rdx,
                                                unsigned RdxLen,
                                                TargetTransformInfo *TTI) const {
@@ -189,10 +202,10 @@ const OperandPack *VectorPackContext::odd(const OperandPack *OP) const {
 OperandPack *VectorPackContext::getCanonicalOperandPack(OperandPack OP) const {
   // Look for equivalent values in OP,
   // and replace them with a single, arbitrary value.
-  //for (unsigned i = 0; i < OP.size(); i++)
-  //  for (unsigned j = i + 1; j < OP.size(); j++)
-  //    if (EquivalentValues.isEquivalent(OP[i], OP[j]))
-  //      OP[j] = OP[i];
+  for (unsigned i = 0; i < OP.size(); i++)
+    for (unsigned j = i + 1; j < OP.size(); j++)
+      if (EquivalentValues.isEquivalent(OP[i], OP[j]))
+        OP[j] = OP[i];
 
   auto It = OperandCache.find(OP);
   if (It != OperandCache.end())

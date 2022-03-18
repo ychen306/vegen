@@ -357,6 +357,7 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
     }
   }
 
+#if 1
   for (auto &Pair : LoopsWithReductions) {
     auto *L = Pair.first;
     unsigned NumRdxs = Pair.second;
@@ -365,6 +366,7 @@ static void refineUnrollFactors(Function *F, DominatorTree &DT, LoopInfo &LI,
     UFs[L] = PowerOf2Ceil(UFs[L]) * divideCeil(4, NumRdxs);
     errs() << "Adjusted uf = " << UFs[L] << '\n';
   }
+#endif
 
   for (auto &Pair : UFs)
     Pair.second = PowerOf2Ceil(Pair.second);
@@ -416,13 +418,22 @@ void computeUnrollFactorImpl(ArrayRef<const InstBinding *> Insts,
   F->eraseFromParent();
 }
 
+static bool isCountable(Loop *L, ScalarEvolution &SE) {
+  return !isa<SCEVCouldNotCompute>(SE.getBackedgeTakenCount(L));
+}
+
 void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
-                         LazyValueInfo *LVI, TargetTransformInfo *TTI,
-                         BlockFrequencyInfo *BFI, Function *F,
-                         const LoopInfo &LI, DenseMap<Loop *, unsigned> &UFs) {
+                         ScalarEvolution *SE, LazyValueInfo *LVI,
+                         TargetTransformInfo *TTI, BlockFrequencyInfo *BFI,
+                         Function *F, const LoopInfo &LI,
+                         DenseMap<Loop *, unsigned> &UFs) {
   DenseSet<Loop *> UnrolledLoops;
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
-    if (any_of(UnrolledLoops, [L](Loop *UnrolledL) { return UnrolledL->contains(L); })) {
+    //if (any_of(UnrolledLoops, [L](Loop *UnrolledL) { return UnrolledL->contains(L); })) {
+    //  UFs[L] = 0;
+    //  continue;
+    //}
+    if (!isCountable(L, *SE)) {
       UFs[L] = 0;
       continue;
     }
@@ -432,13 +443,12 @@ void computeUnrollFactor(ArrayRef<const InstBinding *> Insts,
       << ')' << " " << UFs.lookup(L) << '\n';
     if (UFs[L] > 1) {
       UnrolledLoops.insert(L);
-      break;
     }
   }
-  for (auto &KV : UFs) {
-    if (!UnrolledLoops.count(KV.first))
-      KV.second = 0;
-  }
+  //for (auto &KV : UFs) {
+  //  if (!UnrolledLoops.count(KV.first))
+  //    KV.second = 0;
+  //}
   errs() << "========= final unroll plan ========\n";
   for (auto *L : const_cast<LoopInfo &>(LI).getLoopsInPreorder()) {
     errs() << "Unroll factor for loop " << L << "(depth=" << L->getLoopDepth()
