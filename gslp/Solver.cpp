@@ -161,7 +161,7 @@ void runBottomUpFromOperand(
     std::function<void(const VectorPack *,
                        llvm::SmallVectorImpl<const OperandPack *> &)>
         GetExtraOperands) {
-  // Plan Best = P;
+  Plan Best = P;
   SmallVector<const OperandPack *> Worklist;
   Worklist.push_back(OP);
   SmallPtrSet<const OperandPack *, 4> Visited;
@@ -195,10 +195,10 @@ void runBottomUpFromOperand(
       if (GetExtraOperands)
         GetExtraOperands(VP, Worklist);
     }
-    // if (P.cost() < Best.cost())
-    //  Best = P;
+    if (P.cost() < Best.cost())
+      Best = P;
   }
-  // P = Best;
+  P = Best;
 }
 
 SmallVector<const OperandPack *> deinterleave(const VectorPackContext *VPCtx,
@@ -472,9 +472,9 @@ static void improvePlan(Packer *Pkr, Plan &P,
     if (any_of(*OP, IsPacked))
       continue;
     Plan P2 = P;
-    if (Improve(P2, {OP})/* || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
+    if (Improve(P2, {OP}) || Improve(P2, deinterleave(VPCtx, OP, 2)) ||
         Improve(P2, deinterleave(VPCtx, OP, 4)) ||
-        Improve(P2, deinterleave(VPCtx, OP, 8))*/) {
+        Improve(P2, deinterleave(VPCtx, OP, 8))) {
       errs() << "~COST: " << P.cost() << '\n';
     }
   }
@@ -817,7 +817,7 @@ float optimizeBottomUp(std::vector<const VectorPack *> &Packs, Packer *Pkr,
                        ArrayRef<const OperandPack *> SeedOperands,
                        DenseSet<BasicBlock *> *BlocksToIgnore) {
   CandidatePackSet Candidates;
-  // Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
+  Candidates.Packs = enumerate(Pkr, BlocksToIgnore);
   auto *VPCtx = Pkr->getContext();
   Candidates.Inst2Packs.resize(VPCtx->getNumValues());
   for (auto *VP : Candidates.Packs)

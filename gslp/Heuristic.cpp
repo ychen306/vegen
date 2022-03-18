@@ -115,7 +115,7 @@ Heuristic::Solution Heuristic::solve(const OperandPack *OP) {
     }
   }
 
-#if 0
+#if 1
   if (!Candidates)
     return Solutions[OP] = Sol;
 
