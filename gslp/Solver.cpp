@@ -521,6 +521,8 @@ static void improvePlan(Packer *Pkr, Plan &P,
       continue;
 
     for (auto *VP : Seeds) {
+      if (VP->getOperandPacks().empty())
+        continue;
       Plan P2 = P;
       for (auto *V : VP->elementValues())
         if (auto *VP2 = P2.getProducer(cast<Instruction>(V)))
