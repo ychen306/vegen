@@ -374,9 +374,11 @@ static Value *emitSIMD(ArrayRef<Instruction *> Insts,
   }
 
   switch (Leader->getOpcode()) {
+  case Instruction::UIToFP:
   case Instruction::FPTrunc: {
     assert(Operands.size() == 1);
-    return Builder.CreateFPTrunc(
+    return Builder.CreateCast(
+        cast<CastInst>(Leader)->getOpcode(),
         Operands.front(),
         FixedVectorType::get(Leader->getType(), Insts.size()));
   }
@@ -451,6 +453,7 @@ static float getSIMDCost(Instruction *I, unsigned VL,
 
   unsigned Opcode = I->getOpcode();
   switch (Opcode) {
+  case Instruction::UIToFP:
   case Instruction::FPTrunc: {
     auto *SrcTy = FixedVectorType::get(I->getOperand(0)->getType(), VL);
     auto *Ty = FixedVectorType::get(I->getType(), VL);

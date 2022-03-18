@@ -368,7 +368,8 @@ static bool matchSIMDPack(ArrayRef<Value *> Values, SmallVectorImpl<Instruction 
     return false;
 
   bool Packable = false, IsDRand48 = false;
-  if (Leader->getOpcode() == Instruction::FPTrunc) {
+  if (Leader->getOpcode() == Instruction::FPTrunc ||
+      Leader->getOpcode() == Instruction::UIToFP) {
     Packable = true;
   } else if (is_drand48(Leader)) {
     if (Values.size() != 4 && Values.size() != 8)
