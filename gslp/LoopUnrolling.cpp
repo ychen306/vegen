@@ -24,6 +24,7 @@
 #include "llvm/IR/DebugLoc.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
@@ -49,12 +50,14 @@
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 #include "llvm/Transforms/Utils/UnrollLoop.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include "llvm/Transforms/InstCombine/InstCombiner.h"
 #include <algorithm>
 #include <assert.h>
 #include <type_traits>
 #include <vector>
 
 using namespace llvm;
+using namespace PatternMatch;
 
 static cl::opt<bool>
     UnrollRuntimeEpilog("vegen-unroll-runtime-epilog", cl::init(false),
@@ -81,6 +84,220 @@ static bool needToInsertPhisForLCSSA(Loop *L,
     }
   }
   return false;
+}
+
+static void ClearSubclassDataAfterReassociation(BinaryOperator &I) {
+  FPMathOperator *FPMO = dyn_cast<FPMathOperator>(&I);
+  if (!FPMO) {
+    I.clearSubclassOptionalData();
+    return;
+  }
+
+  FastMathFlags FMF = I.getFastMathFlags();
+  I.clearSubclassOptionalData();
+  I.setFastMathFlags(FMF);
+}
+
+// Return true, if No Signed Wrap should be maintained for I.
+// The No Signed Wrap flag can be kept if the operation "B (I.getOpcode) C",
+// where both B and C should be ConstantInts, results in a constant that does
+// not overflow. This function only handles the Add and Sub opcodes. For
+// all other opcodes, the function conservatively returns false.
+static bool maintainNoSignedWrap(BinaryOperator &I, Value *B, Value *C) {
+  auto *OBO = dyn_cast<OverflowingBinaryOperator>(&I);
+  if (!OBO || !OBO->hasNoSignedWrap())
+    return false;
+
+  // We reason about Add and Sub Only.
+  Instruction::BinaryOps Opcode = I.getOpcode();
+  if (Opcode != Instruction::Add && Opcode != Instruction::Sub)
+    return false;
+
+  const APInt *BVal, *CVal;
+  if (!match(B, m_APInt(BVal)) || !match(C, m_APInt(CVal)))
+    return false;
+
+  bool Overflow = false;
+  if (Opcode == Instruction::Add)
+    (void)BVal->sadd_ov(*CVal, Overflow);
+  else
+    (void)BVal->ssub_ov(*CVal, Overflow);
+
+  return !Overflow;
+}
+
+static void replaceOperand(User &U, unsigned OperandIdx, Value *Operand) {
+  U.setOperand(OperandIdx, Operand);
+}
+
+static bool hasNoUnsignedWrap(BinaryOperator &I) {
+  auto *OBO = dyn_cast<OverflowingBinaryOperator>(&I);
+  return OBO && OBO->hasNoUnsignedWrap();
+}
+
+static bool hasNoSignedWrap(BinaryOperator &I) {
+  auto *OBO = dyn_cast<OverflowingBinaryOperator>(&I);
+  return OBO && OBO->hasNoSignedWrap();
+}
+
+
+// Copy from InstCombiner
+static bool SimplifyAssociativeOrCommutative(BinaryOperator &I) {
+  const DataLayout &DL = I.getModule()->getDataLayout();
+  SimplifyQuery SQ(DL, &I);
+  Instruction::BinaryOps Opcode = I.getOpcode();
+  bool Changed = false;
+
+  do {
+    // Order operands such that they are listed from right (least complex) to
+    // left (most complex).  This puts constants before unary operators before
+    // binary operators.
+    if (I.isCommutative() && InstCombiner::getComplexity(I.getOperand(0)) <
+                                 InstCombiner::getComplexity(I.getOperand(1)))
+      Changed = !I.swapOperands();
+
+    BinaryOperator *Op0 = dyn_cast<BinaryOperator>(I.getOperand(0));
+    BinaryOperator *Op1 = dyn_cast<BinaryOperator>(I.getOperand(1));
+
+    if (I.isAssociative()) {
+      // Transform: "(A op B) op C" ==> "A op (B op C)" if "B op C" simplifies.
+      if (Op0 && Op0->getOpcode() == Opcode) {
+        Value *A = Op0->getOperand(0);
+        Value *B = Op0->getOperand(1);
+        Value *C = I.getOperand(1);
+
+        // Does "B op C" simplify?
+        if (Value *V = SimplifyBinOp(Opcode, B, C, SQ.getWithInstruction(&I))) {
+          // It simplifies to V.  Form "A op V".
+          replaceOperand(I, 0, A);
+          replaceOperand(I, 1, V);
+          bool IsNUW = hasNoUnsignedWrap(I) && hasNoUnsignedWrap(*Op0);
+          bool IsNSW = maintainNoSignedWrap(I, B, C) && hasNoSignedWrap(*Op0);
+
+          // Conservatively clear all optional flags since they may not be
+          // preserved by the reassociation. Reset nsw/nuw based on the above
+          // analysis.
+          ClearSubclassDataAfterReassociation(I);
+
+          // Note: this is only valid because SimplifyBinOp doesn't look at
+          // the operands to Op0.
+          if (IsNUW)
+            I.setHasNoUnsignedWrap(true);
+
+          if (IsNSW)
+            I.setHasNoSignedWrap(true);
+
+          Changed = true;
+          continue;
+        }
+      }
+
+      // Transform: "A op (B op C)" ==> "(A op B) op C" if "A op B" simplifies.
+      if (Op1 && Op1->getOpcode() == Opcode) {
+        Value *A = I.getOperand(0);
+        Value *B = Op1->getOperand(0);
+        Value *C = Op1->getOperand(1);
+
+        // Does "A op B" simplify?
+        if (Value *V = SimplifyBinOp(Opcode, A, B, SQ.getWithInstruction(&I))) {
+          // It simplifies to V.  Form "V op C".
+          replaceOperand(I, 0, V);
+          replaceOperand(I, 1, C);
+          // Conservatively clear the optional flags, since they may not be
+          // preserved by the reassociation.
+          ClearSubclassDataAfterReassociation(I);
+          Changed = true;
+          continue;
+        }
+      }
+    }
+
+    if (I.isAssociative() && I.isCommutative()) {
+#if 0
+      if (simplifyAssocCastAssoc(&I, *this)) {
+        Changed = true;
+        continue;
+      }
+#endif
+
+      // Transform: "(A op B) op C" ==> "(C op A) op B" if "C op A" simplifies.
+      if (Op0 && Op0->getOpcode() == Opcode) {
+        Value *A = Op0->getOperand(0);
+        Value *B = Op0->getOperand(1);
+        Value *C = I.getOperand(1);
+
+        // Does "C op A" simplify?
+        if (Value *V = SimplifyBinOp(Opcode, C, A, SQ.getWithInstruction(&I))) {
+          // It simplifies to V.  Form "V op B".
+          replaceOperand(I, 0, V);
+          replaceOperand(I, 1, B);
+          // Conservatively clear the optional flags, since they may not be
+          // preserved by the reassociation.
+          ClearSubclassDataAfterReassociation(I);
+          Changed = true;
+          continue;
+        }
+      }
+
+      // Transform: "A op (B op C)" ==> "B op (C op A)" if "C op A" simplifies.
+      if (Op1 && Op1->getOpcode() == Opcode) {
+        Value *A = I.getOperand(0);
+        Value *B = Op1->getOperand(0);
+        Value *C = Op1->getOperand(1);
+
+        // Does "C op A" simplify?
+        if (Value *V = SimplifyBinOp(Opcode, C, A, SQ.getWithInstruction(&I))) {
+          // It simplifies to V.  Form "B op V".
+          replaceOperand(I, 0, B);
+          replaceOperand(I, 1, V);
+          // Conservatively clear the optional flags, since they may not be
+          // preserved by the reassociation.
+          ClearSubclassDataAfterReassociation(I);
+          Changed = true;
+          continue;
+        }
+      }
+
+#if 0
+      // Transform: "(A op C1) op (B op C2)" ==> "(A op B) op (C1 op C2)"
+      // if C1 and C2 are constants.
+      Value *A, *B;
+      Constant *C1, *C2;
+      if (Op0 && Op1 && Op0->getOpcode() == Opcode &&
+          Op1->getOpcode() == Opcode &&
+          match(Op0, m_OneUse(m_BinOp(m_Value(A), m_Constant(C1)))) &&
+          match(Op1, m_OneUse(m_BinOp(m_Value(B), m_Constant(C2))))) {
+        bool IsNUW = hasNoUnsignedWrap(I) && hasNoUnsignedWrap(*Op0) &&
+                     hasNoUnsignedWrap(*Op1);
+        BinaryOperator *NewBO = (IsNUW && Opcode == Instruction::Add)
+                                    ? BinaryOperator::CreateNUW(Opcode, A, B)
+                                    : BinaryOperator::Create(Opcode, A, B);
+
+        if (isa<FPMathOperator>(NewBO)) {
+          FastMathFlags Flags = I.getFastMathFlags();
+          Flags &= Op0->getFastMathFlags();
+          Flags &= Op1->getFastMathFlags();
+          NewBO->setFastMathFlags(Flags);
+        }
+        InsertNewInstWith(NewBO, I);
+        NewBO->takeName(Op1);
+        replaceOperand(I, 0, NewBO);
+        replaceOperand(I, 1, ConstantExpr::get(Opcode, C1, C2));
+        // Conservatively clear the optional flags, since they may not be
+        // preserved by the reassociation.
+        ClearSubclassDataAfterReassociation(I);
+        if (IsNUW)
+          I.setHasNoUnsignedWrap(true);
+
+        Changed = true;
+        continue;
+      }
+#endif
+    }
+
+    // No further simplifications.
+    return Changed;
+  } while (true);
 }
 
 void simplifyLoopAfterUnroll2(Loop *L, bool SimplifyIVs, LoopInfo *LI,
@@ -117,10 +334,14 @@ void simplifyLoopAfterUnroll2(Loop *L, bool SimplifyIVs, LoopInfo *LI,
     }
   }
 
-  // TODO: after peeling or unrolling, previously loop variant conditions are
-  // likely to fold to constants, eagerly propagating those here will require
-  // fewer cleanup passes to be run.  Alternatively, a LoopEarlyCSE might be
-  // appropriate.
+  LoopBlocksRPO RPO(L);
+  RPO.perform(LI);
+  for (auto *BB : RPO) {
+    for (auto &I : *BB) {
+      if (auto *BO = dyn_cast<BinaryOperator>(&I))
+        SimplifyAssociativeOrCommutative(*BO);
+    }
+  }
 }
 
 static bool isEpilogProfitable(Loop *L) {
